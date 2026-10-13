@@ -1,6 +1,6 @@
 # State debugger: MVP spec and roadmap
 
-- **Working name:** `library` / `<Library />` (placeholder until named)
+- **Name:** `state-viewer` / `<StateViewer />`
 - **Status:** Draft 0.1, October 11, 2026
 - **MVP scope:** XState v5 + React, development builds only
 
@@ -11,13 +11,13 @@ A drop-in React overlay that lists every state of every XState machine on the pa
 Integration is two changes. Mount the overlay:
 
 ```tsx
-import { Library } from 'library';
+import { StateViewer } from 'state-viewer';
 
 function App() {
   return (
     <>
       <YourApp />
-      <Library />
+      <StateViewer />
     </>
   );
 }
@@ -27,7 +27,7 @@ And swap the import path:
 
 ```diff
 - import { useMachine, useSelector, createActorContext } from '@xstate/react';
-+ import { useMachine, useSelector, createActorContext } from 'library/xstate';
++ import { useMachine, useSelector, createActorContext } from 'state-viewer/xstate';
 ```
 
 ## 2. Problem
@@ -52,7 +52,7 @@ The gap this fills: every state, in context, in the running app.
 - **G2** Preview any state in place. Components render the chosen state without remounting, however they read XState state (`useMachine`, `useActor`, `useSelector`, `createActorContext`).
 - **G3** Keep previews safe. Events sent during a preview are blocked and logged; the real actor is never modified.
 - **G4** Give previews realistic data from recorded snapshots, fixtures or live context, and show which one is in use.
-- **G5** Integrate with an import-path swap plus `<Library />`.
+- **G5** Integrate with an import-path swap plus `<StateViewer />`.
 - **G6** Leave nothing behind in production builds.
 - **G7** Make previews shareable through a URL.
 
@@ -105,7 +105,7 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 
 ### 6.1 Discovery
 
-- **R1 (P0)** Actors created through `library/xstate` hooks register on mount and unregister on unmount.
+- **R1 (P0)** Actors created through `state-viewer/xstate` hooks register on mount and unregister on unmount.
 - **R2 (P0)** Actors created outside React register through `connect(actor, { id })`.
 - **R3 (P0)** Each instance gets a stable instance id. Instances group under their machine id and display as `checkout · 1`, `checkout · 2` in registration order.
 - **R4 (P0)** The machine id comes from `debug.id`, then `machine.id`. A machine still on XState's default id `'(machine)'` gets a one-time console warning and a generated fallback id.
@@ -131,12 +131,12 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 
 - **R16 (P0)** Context resolution order: recorded, then fixture, then live. The panel shows which source was used and lets you switch it per preview.
 - **R17 (P0)** The latest context per state configuration is recorded in memory and persisted best-effort to sessionStorage.
-- **R18 (P0)** Fixtures are written with `defineFixtures(machine, …)`, keyed by leaf id, and registered through `<Library fixtures>`, which accepts a lazy loader.
+- **R18 (P0)** Fixtures are written with `defineFixtures(machine, …)`, keyed by leaf id, and registered through `<StateViewer fixtures>`, which accepts a lazy loader.
 - **R19 (P0)** States with neither a recording nor a fixture are marked in the tree. Previewing one falls back to live context with a warning.
 
 ### 6.5 Overlay
 
-- **R20 (P0)** `<Library />` renders into a shadow root (a host element appended to `document.body` by default; override with `portalTarget`). Styles don't leak in either direction.
+- **R20 (P0)** `<StateViewer />` renders into a shadow root (a host element appended to `document.body` by default; override with `portalTarget`). Styles don't leak in either direction.
 - **R21 (P0)** While any preview is active, the toolbar shows a badge with the count.
 - **R22 (P0)** Panel sections: machine list with instance picker, state tree, context viewer, event log.
 - **R23 (P0)** Keyboard support as described in §10.6. Shortcuts are ignored while typing.
@@ -150,7 +150,7 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 
 ### 6.7 Production
 
-- **R28 (P0)** In production builds, `<Library />` renders nothing, `library/xstate` hooks are plain re-exports of `@xstate/react`, and the registry and overlay are removed from the bundle.
+- **R28 (P0)** In production builds, `<StateViewer />` renders nothing, `state-viewer/xstate` hooks are plain re-exports of `@xstate/react`, and the registry and overlay are removed from the bundle.
 
 ## 7. Architecture
 
@@ -162,16 +162,16 @@ flowchart TD
     PX --> RA["Real XState actor"]
   end
   PX <--> REG["Registry (globalThis singleton)"]
-  REG <--> OV["Library overlay (shadow root)"]
+  REG <--> OV["StateViewer overlay (shadow root)"]
 ```
 
 | Layer | Package entry | Responsibility | Imports XState? |
 |---|---|---|---|
-| Core | `library` | Protocol types, registry, overrides, recording, fixtures, event log, deep links | No |
-| Overlay | `library` | `<Library />` toolbar and panel; reads the registry with `useSyncExternalStore` | No |
-| Adapter | `library/xstate` | Hooks, actor proxy, `connect`, `defineFixtures`, state-tree extraction | Yes |
+| Core | `state-viewer` | Protocol types, registry, overrides, recording, fixtures, event log, deep links | No |
+| Overlay | `state-viewer` | `<StateViewer />` toolbar and panel; reads the registry with `useSyncExternalStore` | No |
+| Adapter | `state-viewer/xstate` | Hooks, actor proxy, `connect`, `defineFixtures`, state-tree extraction | Yes |
 
-Rule: only `library/xstate` may import `xstate` or `@xstate/react`. Holding that boundary is what makes later adapters additive rather than a rewrite.
+Rule: only `state-viewer/xstate` may import `xstate` or `@xstate/react`. Holding that boundary is what makes later adapters additive rather than a rewrite.
 
 ### 7.1 Intercept at the actor, not the hook
 
@@ -180,7 +180,7 @@ XState apps rarely read state only from `useMachine`'s return value. They use `u
 - `useSelector` only calls `subscribe` and `getSnapshot` on the actor.
 - `createActorContext`'s Provider creates its actor with `useActorRef` and passes it down through React context.
 
-So every hook in `library/xstate` builds on one primitive, a proxy around the real actor:
+So every hook in `state-viewer/xstate` builds on one primitive, a proxy around the real actor:
 
 | Member | Normally | While previewing |
 |---|---|---|
@@ -213,12 +213,12 @@ sequenceDiagram
 
 ## 8. Public API
 
-### 8.1 `library`
+### 8.1 `state-viewer`
 
 ```tsx
-import { Library } from 'library';
+import { StateViewer } from 'state-viewer';
 
-<Library
+<StateViewer
   position="bottom-right"                      // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   defaultOpen={false}
   theme="system"                               // 'system' | 'light' | 'dark'
@@ -229,7 +229,7 @@ import { Library } from 'library';
 />
 ```
 
-### 8.2 `library/xstate`
+### 8.2 `state-viewer/xstate`
 
 Same names and signatures as `@xstate/react`, plus an optional `debug` option that is stripped before the options reach XState.
 
@@ -243,7 +243,7 @@ import {
   createActorContext,  // Provider creates a proxied actor
   connect,             // proxy for actors created outside React
   defineFixtures,
-} from 'library/xstate';
+} from 'state-viewer/xstate';
 
 type DebugOptions = {
   id?: string;        // machine id in the registry; defaults to machine.id
@@ -259,8 +259,8 @@ export const appActor = connect(createActor(appMachine).start(), { id: 'app' });
 ### 8.3 Fixtures
 
 ```ts
-// src/debug/fixtures.ts, loaded lazily by <Library fixtures>
-import { defineFixtures } from 'library/xstate';
+// src/debug/fixtures.ts, loaded lazily by <StateViewer fixtures>
+import { defineFixtures } from 'state-viewer/xstate';
 import { checkoutMachine } from '../checkout/machine';
 
 const base = { items: [{ id: 'sku_1', qty: 2 }], total: 4800 };
@@ -364,7 +364,7 @@ interface Registry {
 
 ### 10.1 Registry
 
-- Created lazily on first use and stored on `globalThis.__LIBRARY_REGISTRY__`, so HMR, multiple React roots and duplicate copies of the package share one instance. The first instance wins; a version mismatch logs a warning.
+- Created lazily on first use and stored on `globalThis.__STATE_VIEWER_REGISTRY__`, so HMR, multiple React roots and duplicate copies of the package share one instance. The first instance wins; a version mismatch logs a warning.
 - `getSnapshot()` returns an immutable snapshot. Change notifications are batched per microtask.
 - Per-instance `onOverride` listeners let a proxy react without re-rendering the panel.
 - The event log is a ring buffer of 200 entries.
@@ -381,7 +381,7 @@ interface Registry {
 ### 10.3 Recording
 
 - On each real snapshot, keep `{ leaves, context }` per configuration key (sorted leaves joined with `|`) as an in-memory reference. XState's `assign` replaces context rather than mutating it, so references stay valid.
-- Persist to sessionStorage (`library:recorded:<machineId>`), debounced, with a replacer that drops functions and actor refs. Entries that fail to serialize stay memory-only. Caps: 50 configurations per machine, 100 KB per entry.
+- Persist to sessionStorage (`state-viewer:recorded:<machineId>`), debounced, with a replacer that drops functions and actor refs. Entries that fail to serialize stay memory-only. Caps: 50 configurations per machine, 100 KB per entry.
 - Lookup: the exact configuration first, then the most recent configuration containing the selected leaf.
 - Stay off the hot path: each transition only stores a reference; serialization happens later.
 
@@ -406,7 +406,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ### 10.6 Overlay
 
-- **Host:** a `<div data-library-root>` appended to `document.body`, with an open shadow root, styles injected inside it, a system font stack and `z-index: 2147483647`. Only the toolbar and panel take pointer events.
+- **Host:** a `<div data-state-viewer-root>` appended to `document.body`, with an open shadow root, styles injected inside it, a system font stack and `z-index: 2147483647`. Only the toolbar and panel take pointer events.
 - **Toolbar:** a 40px bubble, bottom-right by default, carrying the preview badge.
 - **Panel:** about 320px wide, at most 70vh tall, scrolling internally.
   - Header: machine selector, instance picker, release all, close
@@ -435,14 +435,14 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 - Effects inside the machine (invokes, delayed transitions, entry actions) don't run during a preview, by design. Effects in components that react to state, such as a `useEffect` keyed on `snapshot.value`, still do.
 - Child actors can't be previewed, and carrying them over is experimental.
-- Actors not created through `library/xstate` or `connect()` are invisible.
+- Actors not created through `state-viewer/xstate` or `connect()` are invisible.
 - History states can't be selected.
 - The real actor keeps running during a preview, so releasing can land the UI somewhere other than where it started.
 - Deep links don't carry context.
 
 ## 12. Acceptance criteria for 0.1.0
 
-- [ ] In the demo app, swapping the import path and mounting `<Library />` are the only changes needed for every machine to appear.
+- [ ] In the demo app, swapping the import path and mounting `<StateViewer />` are the only changes needed for every machine to appear.
 - [ ] Every non-history state of every demo machine is listed, including never-visited ones.
 - [ ] Previewing any state renders without errors using recorded or fixture data.
 - [ ] Components reading through `useSelector` and `createActorContext` show the preview.
@@ -468,8 +468,8 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ### Milestone 0: Setup
 
-- [ ] pnpm workspace with `packages/library` and `apps/demo`
-- [ ] TypeScript strict; tsup build with `library` and `library/xstate` entries and `'use client'` banners
+- [x] pnpm workspace with `packages/state-viewer` and `apps/demo`
+- [x] TypeScript strict; tsdown build with `state-viewer` and `state-viewer/xstate` entries and `'use client'` banners
 - [ ] Vitest, React Testing Library, Playwright
 - [ ] ESLint, Prettier, CI (typecheck, test, build, size), Changesets
 - [ ] Demo app (Vite + React):
@@ -478,7 +478,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
   - [ ] A `createActorContext` provider read with `useSelector`
   - [ ] A module-level actor wired with `connect()`
   - [ ] Mount and render counters
-- [ ] Choose the name and check npm availability
+- [x] Choose the name and check npm availability (`state-viewer`, unclaimed on npm as of October 13, 2026)
 
 ### Milestone 1: Core
 
@@ -544,7 +544,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ### v0.4: Automation and sharing
 
-- [ ] `window.__LIBRARY__` API: list, preview, release
+- [ ] `window.__STATE_VIEWER__` API: list, preview, release
 - [ ] Playwright helper that visits every state and takes a screenshot
 - [ ] "Copy repro" as agent-ready markdown: machine, state, context, link
 - [ ] Optional encoded context in deep links
@@ -558,7 +558,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
   4. Effects declared per state rather than in component `useEffect`s
 - [ ] `useMachineReducer`
 - [ ] Enforcement: inferred state names and exhaustive fixtures in the types; dev assertions for undeclared states; warnings in the panel
-- [ ] Public `library/core` entry and a custom-adapter guide
+- [ ] Public `state-viewer/core` entry and a custom-adapter guide
 - [ ] Investigate a Zag.js adapter
 
 ### Later
@@ -573,7 +573,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ## 15. Open questions
 
-1. Name and npm package.
+1. ~~Name and npm package.~~ Resolved: `state-viewer` (see Milestone 0).
 2. Default toggle shortcut: `Alt+S`, or a single key like Mesurer's.
 3. Data priority: recorded first (realistic, zero authoring) or fixtures first (deterministic)?
 4. Deep-link parameter name and format.
@@ -582,7 +582,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 7. License.
 8. Minimum XState 5.x for 0.1.0 (preview only needs `resolveState`; routes need 5.28).
 9. Should the MVP log also show real, non-blocked events through inspection?
-10. Should `<Library />` be allowed in production-mode builds for staging?
+10. Should `<StateViewer />` be allowed in production-mode builds for staging?
 
 ## 16. Decision log
 
