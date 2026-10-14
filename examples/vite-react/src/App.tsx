@@ -4,6 +4,9 @@ import { Checkout } from './checkout/Checkout.tsx';
 import { SessionStatus } from './session/SessionStatus.tsx';
 import { Uploads } from './uploads/Uploads.tsx';
 
+// A dev check around the loader keeps the fixtures chunk out of production builds entirely.
+const fixtures = import.meta.env.DEV ? () => import('./debug/fixtures.ts') : undefined;
+
 export function App() {
   return (
     <>
@@ -24,7 +27,7 @@ export function App() {
         <Uploads />
       </main>
 
-      <StateViewer />
+      <StateViewer fixtures={fixtures} />
     </>
   );
 }

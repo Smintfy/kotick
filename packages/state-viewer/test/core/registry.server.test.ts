@@ -82,6 +82,7 @@ describe('getRegistry on the server', () => {
     registry.record('checkout#1', ['idle'], { count: 1 });
     registry.registerFixtures([{ machineId: 'checkout', states: { idle: { context: {} } } }]);
     registry.logEvent({ instanceKey: 'checkout#1', event: { type: 'GO' }, leaves: ['idle'], blocked: true, at: 0 });
+    registry.link([{ machineId: 'checkout', leaves: ['idle'] }]);
     registry.release('checkout#1');
     registry.release();
     registry.clearLog();
