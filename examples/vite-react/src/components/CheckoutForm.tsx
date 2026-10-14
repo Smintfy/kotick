@@ -1,7 +1,7 @@
 import { useMachine } from 'state-viewer/xstate';
-import { formatPrice } from '../format.ts';
-import { useRenderStats } from '../renderStats.ts';
-import { checkoutMachine, type CheckoutEvent } from './machine.ts';
+import { formatPrice } from '@/lib/format.ts';
+import { useRenderStats } from '@/lib/renderStats.ts';
+import { checkoutMachine, type CheckoutEvent } from '@/machines/checkout.ts';
 
 const shippingOptions = [
   { key: 'standard', label: 'Standard', fee: 0, event: { type: 'SHIP_STANDARD' } },
@@ -9,7 +9,7 @@ const shippingOptions = [
   { key: 'pickup', label: 'Pickup', fee: 0, event: { type: 'SHIP_PICKUP' } },
 ] as const satisfies ReadonlyArray<{ key: string; label: string; fee: number; event: CheckoutEvent }>;
 
-export function Checkout() {
+export function CheckoutForm() {
   const [snapshot, send] = useMachine(checkoutMachine);
   const stats = useRenderStats('checkout');
 
@@ -18,16 +18,8 @@ export function Checkout() {
   const grandTotal = formatPrice(total + shipping.fee);
 
   return (
-    <section className="card" aria-labelledby="checkout-title">
-      <header className="card-header">
-        <div>
-          <h2 id="checkout-title">Checkout</h2>
-          <p className="pattern">
-            <code>useMachine</code> · nested and parallel states
-          </p>
-        </div>
-        <small ref={stats} className="stats" />
-      </header>
+    <section className="card" aria-label="Checkout">
+      <small ref={stats} className="stats" />
 
       <ul className="lines">
         {items.map((item) => (
@@ -59,7 +51,7 @@ export function Checkout() {
 
       <p className="total">
         <span>Total</span>
-        <strong data-testid="checkout-total">{grandTotal}</strong>
+        <strong>{grandTotal}</strong>
       </p>
 
       {snapshot.matches({ payment: 'editing' }) && (

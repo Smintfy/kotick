@@ -1,6 +1,6 @@
 import { useSelector } from 'state-viewer/xstate';
-import { useRenderStats } from '../renderStats.ts';
-import { sessionActor } from './actor.ts';
+import { useRenderStats } from '@/lib/renderStats.ts';
+import { sessionActor } from '@/machines/session.ts';
 
 const signIn = () => sessionActor.send({ type: 'SIGN_IN' });
 const signOut = () => sessionActor.send({ type: 'SIGN_OUT' });

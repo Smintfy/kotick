@@ -1,9 +1,9 @@
 import { assign, fromPromise, not, or, setup, stateIn } from 'xstate';
-import type { LineItem } from '../products.ts';
+import type { LineItem } from '@/lib/products.ts';
 
 export type CheckoutContext = {
   items: LineItem[];
-  /** Item total in cents, before shipping. */
+  /** The total of the items in cents, without shipping. */
   total: number;
   cardNumber: string;
   error?: string;
@@ -21,7 +21,8 @@ export type CheckoutEvent =
 
 const digitsOf = (cardNumber: string) => cardNumber.replace(/\D/g, '');
 
-// Fake payment provider: any 16-digit card works, except ones ending in 0002.
+// A payment provider for the example app.
+// The charge completes for all 16-digit card numbers, but not for numbers that end in 0002.
 const charge = fromPromise<{ receiptId: string }, { cardNumber: string }>(async ({ input }) => {
   await new Promise((resolve) => setTimeout(resolve, 800));
   if (digitsOf(input.cardNumber).endsWith('0002')) throw new Error('Card declined');
@@ -77,7 +78,7 @@ export const checkoutMachine = setup({
           states: {
             incomplete: {},
             complete: { on: { PAY: '#checkout.payment.processing' } },
-            // Lets "Edit card" return to whichever editing state was last active.
+            // With this history state, "Edit card" goes back to the last state in `editing`.
             last: { type: 'history' },
           },
         },

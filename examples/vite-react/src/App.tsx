@@ -1,33 +1,22 @@
-import { StateViewer } from 'state-viewer';
-import { Cart } from './cart/Cart.tsx';
-import { Checkout } from './checkout/Checkout.tsx';
-import { SessionStatus } from './session/SessionStatus.tsx';
-import { Uploads } from './uploads/Uploads.tsx';
-
-// A dev check around the loader keeps the fixtures chunk out of production builds entirely.
-const fixtures = import.meta.env.DEV ? () => import('./debug/fixtures.ts') : undefined;
+import { BrowserRouter, Route, Routes } from 'react-router';
+import { Layout } from '@/Layout.tsx';
+import { examples } from '@/examples.ts';
+import { CartPage } from '@/pages/CartPage.tsx';
+import { CheckoutPage } from '@/pages/CheckoutPage.tsx';
+import { Home } from '@/pages/Home.tsx';
+import { UploadsPage } from '@/pages/UploadsPage.tsx';
 
 export function App() {
   return (
-    <>
-      <header className="app-header">
-        <div>
-          <h1>state-viewer · vite-react</h1>
-          <p className="muted">
-            Each section reads XState state a different way. The counters show mounts and committed renders; a preview
-            should never add a mount.
-          </p>
-        </div>
-        <SessionStatus />
-      </header>
-
-      <main className="grid">
-        <Checkout />
-        <Cart />
-        <Uploads />
-      </main>
-
-      <StateViewer fixtures={fixtures} />
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path={examples.checkout.path} element={<CheckoutPage />} />
+          <Route path={examples.cart.path} element={<CartPage />} />
+          <Route path={examples.uploads.path} element={<UploadsPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }

@@ -1,5 +1,6 @@
 import { assign, setup } from 'xstate';
-import type { LineItem, Product } from '../products.ts';
+import { createActorContext } from 'state-viewer/xstate';
+import type { LineItem, Product } from '@/lib/products.ts';
 
 type CartEvent = { type: 'ADD'; product: Product } | { type: 'REMOVE'; id: string } | { type: 'CLEAR' };
 
@@ -40,3 +41,5 @@ export const cartMachine = setup({
     },
   },
 });
+
+export const CartContext = createActorContext(cartMachine);

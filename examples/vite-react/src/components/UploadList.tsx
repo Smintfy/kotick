@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
 import type { ActorRefFrom } from 'xstate';
 import { useActor, useSelector } from 'state-viewer/xstate';
-import { formatSize } from '../format.ts';
-import { useRenderStats } from '../renderStats.ts';
-import { uploadMachine, type UploadInput } from './machine.ts';
+import { formatSize } from '@/lib/format.ts';
+import { useRenderStats } from '@/lib/renderStats.ts';
+import { uploadMachine, type UploadInput } from '@/machines/upload.ts';
 
 type FileEntry = UploadInput & { id: number };
 
@@ -13,7 +13,7 @@ const initialFiles: FileEntry[] = [
   { id: 3, fileName: 'walkthrough.mov', size: 48_000_000, failAt: 60 },
 ];
 
-export function Uploads() {
+export function UploadList() {
   const [files, setFiles] = useState(initialFiles);
   const nextId = useRef(initialFiles.length + 1);
   const stats = useRenderStats('uploads');
@@ -28,16 +28,8 @@ export function Uploads() {
   }
 
   return (
-    <section className="card" aria-labelledby="uploads-title">
-      <header className="card-header">
-        <div>
-          <h2 id="uploads-title">Uploads</h2>
-          <p className="pattern">
-            <code>useActor</code> · one machine per row
-          </p>
-        </div>
-        <small ref={stats} className="stats" />
-      </header>
+    <section className="card" aria-label="Uploads">
+      <small ref={stats} className="stats" />
 
       <ul className="uploads">
         {files.map((file) => (
@@ -100,7 +92,7 @@ function UploadRow({ file, onRemove }: { file: FileEntry; onRemove: () => void }
   );
 }
 
-// Reads the row's actor through a prop, the way child components usually receive one.
+// This component gets the actor of the row from a prop. Child components usually get an actor with this method.
 function UploadProgress({ actorRef, label }: { actorRef: ActorRefFrom<typeof uploadMachine>; label: string }) {
   const progress = useSelector(actorRef, (snapshot) => snapshot.context.progress);
   return <progress max={100} value={progress} aria-label={label} />;

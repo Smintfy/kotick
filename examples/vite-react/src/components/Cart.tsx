@@ -1,23 +1,15 @@
-import { formatPrice } from '../format.ts';
-import { products } from '../products.ts';
-import { useRenderStats } from '../renderStats.ts';
-import { CartContext } from './CartContext.ts';
+import { formatPrice } from '@/lib/format.ts';
+import { products } from '@/lib/products.ts';
+import { useRenderStats } from '@/lib/renderStats.ts';
+import { CartContext } from '@/machines/cart.ts';
 
 export function Cart() {
   const stats = useRenderStats('cart');
 
   return (
     <CartContext.Provider>
-      <section className="card" aria-labelledby="cart-title">
-        <header className="card-header">
-          <div>
-            <h2 id="cart-title">Cart</h2>
-            <p className="pattern">
-              <code>createActorContext</code> · read with <code>useSelector</code>
-            </p>
-          </div>
-          <small ref={stats} className="stats" />
-        </header>
+      <section className="card" aria-label="Cart">
+        <small ref={stats} className="stats" />
         <CartBadge />
         <Catalog />
         <CartLines />
@@ -33,14 +25,14 @@ function CartBadge() {
   return (
     <p className="row">
       <span>
-        Items in cart: <strong data-testid="cart-count">{count}</strong>
+        Items in cart: <strong>{count}</strong>
       </span>
       <small ref={stats} className="stats" />
     </p>
   );
 }
 
-// Only sends events, so it should never re-render after mounting.
+// This component only sends events. Thus, it does not render again after it mounts.
 function Catalog() {
   const cart = CartContext.useActorRef();
   const stats = useRenderStats('cart-catalog');

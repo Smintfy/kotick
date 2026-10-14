@@ -1,7 +1,7 @@
 export type Product = {
   id: string;
   name: string;
-  /** In cents. */
+  /** The price in cents. */
   price: number;
 };
 
