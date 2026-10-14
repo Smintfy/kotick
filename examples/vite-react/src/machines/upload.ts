@@ -2,9 +2,12 @@ import { assign, fromCallback, setup, type EventObject } from 'xstate';
 
 export type UploadInput = {
   fileName: string;
-  /** In bytes. */
+  /** The size in bytes. */
   size: number;
-  /** Progress percentage at which the first attempt fails, to simulate a flaky connection. */
+  /**
+   * If the first transfer gets to this progress in %, an error occurs.
+   * This simulates a connection that is not stable.
+   */
   failAt?: number;
 };
 
@@ -22,7 +25,8 @@ type UploadEvent =
   | { type: 'COMPLETE' }
   | { type: 'FAIL'; error: string };
 
-// Fake transfer: 20% every 150 ms, failing at `failAt` when it's set.
+// A transfer for the example app. The progress increases by 20% each 150 ms.
+// If `failAt` has a value, an error occurs at that progress.
 const transfer = fromCallback<EventObject, { failAt?: number }>(({ sendBack, input }) => {
   let progress = 0;
   const timer = setInterval(() => {
@@ -62,7 +66,7 @@ export const uploadMachine = setup({
       }),
       invoke: {
         src: 'transfer',
-        // Only the first attempt fails, so Retry succeeds.
+        // An error occurs only in the first transfer. Thus, the transfer completes after "Retry".
         input: ({ context }) => ({ failAt: context.attempts === 1 ? context.failAt : undefined }),
       },
       on: {

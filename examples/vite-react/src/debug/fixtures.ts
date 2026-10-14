@@ -1,14 +1,17 @@
-// Hand-written context for states the demo is slow or awkward to reach. Loaded lazily by <StateViewer fixtures>, and
-// only in development (App.tsx), so production builds don't include it.
+// Context for states that are slow or hard to get to in the example app.
+// <StateViewer fixtures> loads this file only when necessary, and only in development (Layout.tsx).
+// Thus, production builds do not include it.
 //
-// The uploads have none on purpose: each row's context comes from its own input, which a fixture would replace, so
-// their states show the "no data" marker until they've been visited, and previews of them use live context.
+// We did not write fixtures for the upload machine.
+// The context of each row comes from the input of the row, and a fixture will replace that input.
+// Thus, a state of a row shows "no data" until the row goes to that state.
+// Previews of that state use the live context.
 
 import { defineFixtures } from 'state-viewer/xstate';
-import { cartMachine } from '../cart/machine.ts';
-import { checkoutMachine } from '../checkout/machine.ts';
-import { products } from '../products.ts';
-import { sessionMachine } from '../session/machine.ts';
+import { products } from '@/lib/products.ts';
+import { cartMachine } from '@/machines/cart.ts';
+import { checkoutMachine } from '@/machines/checkout.ts';
+import { sessionMachine } from '@/machines/session.ts';
 
 const items = [
   { ...products[0], qty: 2 },

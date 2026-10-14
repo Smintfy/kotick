@@ -66,24 +66,60 @@ code {
   flex-wrap: wrap;
   gap: 16px;
   justify-content: space-between;
-  align-items: flex-start;
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 24px 16px 8px;
-}
-
-.app-header > div:first-child {
-  max-width: 560px;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 16px;
-  align-items: start;
-  max-width: 1120px;
+  align-items: center;
+  max-width: 720px;
   margin: 0 auto;
   padding: 16px;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+.nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav a:first-child {
+  font-weight: 600;
+}
+
+.nav a.active {
+  color: var(--text);
+}
+
+.page {
+  display: grid;
+  gap: 16px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 16px 32px;
+}
+
+.page-header {
+  display: grid;
+  gap: 4px;
+}
+
+.examples {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.examples .card {
+  gap: 2px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.examples .card:hover {
+  border-color: var(--accent);
 }
 
 .card,
@@ -101,10 +137,8 @@ code {
   padding: 8px 12px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+.card > .stats {
+  justify-self: end;
 }
 
 .pattern,

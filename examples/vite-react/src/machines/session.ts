@@ -1,8 +1,9 @@
-import { assign, fromPromise, setup } from 'xstate';
+import { assign, createActor, fromPromise, setup } from 'xstate';
+import { connect } from 'state-viewer/xstate';
 
 type User = { name: string };
 
-/** How long a session lasts before it expires. */
+/** The time from sign-in to the `expired` state. */
 export const SESSION_TTL = 5 * 60 * 1000;
 
 const authenticate = fromPromise<User>(async () => {
@@ -45,3 +46,6 @@ export const sessionMachine = setup({
     },
   },
 });
+
+// We make this actor at module level, not in React. Thus, it registers through connect() and not through a hook.
+export const sessionActor = connect(createActor(sessionMachine).start(), { id: 'session' });
