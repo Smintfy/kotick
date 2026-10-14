@@ -43,8 +43,11 @@ describe.each(IMPLEMENTATIONS)('%s', (name, hooks) => {
     let loads = 0;
     function Loader({ title }: { title: string }) {
       const [snapshot, send, actorRef] = hooks.useMachine(loaderMachine, { debug: { label: title } } as never);
-      actorRefs.add(actorRef);
-      sends.add(send);
+      // Committed renders only: React 18's StrictMode throws away the first render, and the actor it made.
+      React.useLayoutEffect(() => {
+        actorRefs.add(actorRef);
+        sends.add(send);
+      });
       loads = snapshot.context.loads;
       // The common "load on mount" effect: it depends on send, so a new send sends LOAD again.
       React.useEffect(() => {
@@ -72,7 +75,9 @@ describe.each(IMPLEMENTATIONS)('%s', (name, hooks) => {
     const actorRefs = new Set<unknown>();
     function Loader({ id }: { id: string }) {
       const [, , actorRef] = hooks.useMachine(loaderMachine, { debug: { id } } as never);
-      actorRefs.add(actorRef);
+      React.useLayoutEffect(() => {
+        actorRefs.add(actorRef);
+      });
       return null;
     }
 

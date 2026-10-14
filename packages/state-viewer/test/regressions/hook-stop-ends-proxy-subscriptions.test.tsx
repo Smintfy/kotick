@@ -14,7 +14,7 @@ import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMachine, waitFor, type AnyActorRef } from 'xstate';
 import * as stateViewer from '../../src/xstate';
-import { flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
+import { describeWithActivity, flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
 
 v8.setFlagsFromString('--expose-gc');
 const collectGarbage = vm.runInNewContext('gc') as () => void;
@@ -205,7 +205,7 @@ describe('under StrictMode, an effect without cleanup that follows the hook acto
   });
 });
 
-describe('an Activity hiding and revealing the component', () => {
+describeWithActivity('an Activity hiding and revealing the component', () => {
   const Activity = (
     React as unknown as {
       Activity: React.ComponentType<{ mode: 'visible' | 'hidden'; children: React.ReactNode }>;

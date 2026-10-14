@@ -16,7 +16,7 @@ import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { fromCallback, setup, type Actor, type SnapshotFrom } from 'xstate';
 import * as stateViewer from '../../src/xstate';
-import { flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
+import { ACTOR_SELECT, flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
 
 /** What the invoked worker uses to report the job finished, past the proxy (R12 blocks sends during a preview). */
 let finish: (() => void) | undefined;
@@ -171,7 +171,11 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, hooks, previews) => {
     expect(page.take()).toEqual([]);
   }
 
-  describe.each(SUBSCRIBERS)('%s made through the hook before an Activity hides the component', (_kind, subscribe) => {
+  // XState's own actors have select() from XState 5.29.
+  const subscribers =
+    previews || ACTOR_SELECT ? SUBSCRIBERS : SUBSCRIBERS.filter(([kind]) => !kind.startsWith('select'));
+
+  describe.each(subscribers)('%s made through the hook before an Activity hides the component', (_kind, subscribe) => {
     // Without StrictMode: under it React runs a revealed Activity's effects twice, and the second time the hook stops
     // the actor would end the subscription, already told, by itself.
     test('the actor finished under a preview, and the registry flushed while it was hidden: told the ending at the flush, it follows no preview after the reveal', async () => {

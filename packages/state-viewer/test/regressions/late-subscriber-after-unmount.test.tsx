@@ -18,7 +18,15 @@ import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMachine, waitFor, type AnyActorRef } from 'xstate';
 import * as stateViewer from '../../src/xstate';
-import { flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
+import {
+  ACTOR_SELECT,
+  describeWithActivity,
+  flush,
+  keyOf,
+  onlyHandle,
+  registry,
+  resetRegistry,
+} from '../xstate/helpers';
 
 v8.setFlagsFromString('--expose-gc');
 const collectGarbage = vm.runInNewContext('gc') as () => void;
@@ -35,9 +43,9 @@ const formMachine = createMachine({
 
 type UseActorRef = (logic: typeof formMachine) => AnyActorRef;
 const svUseActorRef = stateViewer.useActorRef as unknown as UseActorRef;
-const IMPLEMENTATIONS: [name: string, useActorRef: UseActorRef][] = [
-  ['@xstate/react (control)', xstateReact.useActorRef as unknown as UseActorRef],
-  ['state-viewer/xstate', svUseActorRef],
+const IMPLEMENTATIONS: [name: string, useActorRef: UseActorRef, control: boolean][] = [
+  ['@xstate/react (control)', xstateReact.useActorRef as unknown as UseActorRef, true],
+  ['state-viewer/xstate', svUseActorRef, false],
 ];
 
 /** Subscribes to the actor and records, in `heard`, the state values the subscription is given. */
@@ -66,6 +74,11 @@ const SUBSCRIPTIONS: [name: string, subscribe: Subscribe][] = [
     },
   ],
 ];
+
+/** The subscriptions to try with an implementation. XState's own actors have select() from XState 5.29. */
+function subscriptionsFor(control: boolean): [name: string, subscribe: Subscribe][] {
+  return !control || ACTOR_SELECT ? SUBSCRIPTIONS : SUBSCRIPTIONS.filter(([name]) => !name.startsWith('select'));
+}
 
 /** Which of the targets are gone after a few full collections. Nothing derefs before collecting. */
 async function collected(refs: WeakRef<object>[]): Promise<boolean[]> {
@@ -226,8 +239,9 @@ describe('a subscription made through a hook proxy after the component unmounted
     expect(heard).toEqual([]);
   });
 
-  describe.each(IMPLEMENTATIONS)('with %s', (_name, useActorRef) => {
-    test.each(SUBSCRIPTIONS)('%s: the actor can be garbage-collected with it pending', async (_kind, subscribe) => {
+  describe.each(IMPLEMENTATIONS)('with %s', (_name, useActorRef, control) => {
+    const subscriptions = subscriptionsFor(control);
+    test.each(subscriptions)('%s: the actor can be garbage-collected with it pending', async (_kind, subscribe) => {
       const refs: WeakRef<object>[] = [];
       for (let i = 0; i < 3; i++) refs.push(await navigateAwayThenSubscribe(useActorRef, subscribe));
 
@@ -236,7 +250,7 @@ describe('a subscription made through a hook proxy after the component unmounted
   });
 });
 
-describe('a subscription made while an <Activity> hides the component, which is then removed', () => {
+describeWithActivity('a subscription made while an <Activity> hides the component, which is then removed', () => {
   test.each(SUBSCRIPTIONS)('%s: adds no registry override listener', async (_name, subscribe) => {
     const active = countOverrideListeners();
     await subscribeWhileHiddenThenRemove(svUseActorRef, subscribe);
@@ -245,8 +259,9 @@ describe('a subscription made while an <Activity> hides the component, which is 
     expect(active()).toBe(0);
   });
 
-  describe.each(IMPLEMENTATIONS)('with %s', (_name, useActorRef) => {
-    test.each(SUBSCRIPTIONS)('%s: the actor can be garbage-collected with it pending', async (_kind, subscribe) => {
+  describe.each(IMPLEMENTATIONS)('with %s', (_name, useActorRef, control) => {
+    const subscriptions = subscriptionsFor(control);
+    test.each(subscriptions)('%s: the actor can be garbage-collected with it pending', async (_kind, subscribe) => {
       const refs: WeakRef<object>[] = [];
       for (let i = 0; i < 3; i++) refs.push(await subscribeWhileHiddenThenRemove(useActorRef, subscribe));
 
@@ -255,14 +270,14 @@ describe('a subscription made while an <Activity> hides the component, which is 
   });
 });
 
-describe('a subscription made while an <Activity> hides the component, which is then revealed', () => {
+describeWithActivity('a subscription made while an <Activity> hides the component, which is then revealed', () => {
   const STRICT: [reactStrictMode: boolean, expected: string[]][] = [
     [false, ['submitting']],
     [true, []],
   ];
 
-  describe.each(IMPLEMENTATIONS)('with %s', (_name, useActorRef) => {
-    describe.each(SUBSCRIPTIONS)('%s', (_kind, subscribe) => {
+  describe.each(IMPLEMENTATIONS)('with %s', (_name, useActorRef, control) => {
+    describe.each(subscriptionsFor(control))('%s', (_kind, subscribe) => {
       test.each(STRICT)('StrictMode %s: a real transition after the reveal', async (strict, expected) => {
         const { heard, actorRef } = await subscribeWhileHiddenThenReveal(useActorRef, subscribe, strict);
 

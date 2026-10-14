@@ -13,7 +13,7 @@ import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createMachine, type Actor, type Observer } from 'xstate';
 import * as stateViewer from '../../src/xstate';
-import { flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
+import { describeWithActivity, flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
 
 const BROKEN = 'Broken on purpose';
 
@@ -191,7 +191,7 @@ afterEach(() => {
 });
 
 describe.each(IMPLEMENTATIONS)('%s: an observer given to useActorRef', (_name, hooks, previews) => {
-  describe.each(MODES)('%s, an Activity hiding and revealing the component', (_mode, strict, restarts) => {
+  describeWithActivity.each(MODES)('%s, an Activity hiding and revealing the component', (_mode, strict, restarts) => {
     describe.each(ENDINGS)('after the actor %s', (_ending, event, told) => {
       test.each(FORMS)(
         '%s observer hears the ending again on each restart, and no preview',

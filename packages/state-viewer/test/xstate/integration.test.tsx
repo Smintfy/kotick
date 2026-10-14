@@ -27,7 +27,7 @@ import {
   type DebugOptions,
   type FixtureStates,
 } from '../../src/xstate';
-import { flush, handlesOf, keyOf, onlyHandle, registry, resetRegistry } from './helpers';
+import { flush, handlesOf, keyOf, onlyHandle, REACT_MAJOR, registry, resetRegistry } from './helpers';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Machines
@@ -692,7 +692,9 @@ describe('fixtures', () => {
     expect(registry().getOverride(key)).toBeUndefined();
     expect(screen.getByTestId('machine').textContent).toBe('"idle"');
     // Until the new handle registered, the proxy showed the real state instead of the stale preview.
-    expect(takeWarnings()).toEqual([expect.stringContaining(`Can't show the preview of "${key}" on this actor`)]);
+    // React 18's StrictMode throws away the first render, and the actor it made warns too.
+    const warning = expect.stringContaining(`Can't show the preview of "${key}" on this actor`);
+    expect(takeWarnings()).toEqual(REACT_MAJOR < 19 ? [warning, warning] : [warning]);
   });
 
   test("a set for another machine object doesn't reach an instance registered under a different id", async () => {
