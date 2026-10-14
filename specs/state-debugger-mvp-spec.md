@@ -582,7 +582,7 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 - [x] Next.js App Router example (`'use client'`, SSR safety): `examples/next-app`, on port 3100
 - [x] End-to-end tests with Playwright in a separate repository, run against the examples (state-viewer-e2e)
 - [x] Test matrix: React 18 and 19; pin the minimum XState 5.x (`pnpm test:matrix`; `xstate` 5.28, `@xstate/react` 6.1)
-- [x] Measure overhead with the panel closed. In jsdom with StrictMode, against `@xstate/react`: about 8 µs more per transition that re-renders a `useMachine` component (27 → 34 µs), 25 µs more per mount (50 rows: 1.0 → 2.2 ms), and under 1 µs more per event to a `connect()`ed actor. Mounting `<StateViewer />` with its panel closed adds nothing measurable; the cost is the adapter's.
+- [x] Measure overhead with the panel closed. In jsdom with StrictMode, against `@xstate/react`: about 8 µs more per transition that re-renders a `useMachine` component (27 → 34 µs), 22 µs more per mount (50 rows: 1.0 → 2.1 ms), and under 1 µs more per event to a `connect()`ed actor. Mounting `<StateViewer />` with its panel closed adds nothing measurable; the cost is the adapter's.
 - [x] README: quickstart, concepts, API, limitations, FAQ
 - [ ] Publish 0.1.0
 

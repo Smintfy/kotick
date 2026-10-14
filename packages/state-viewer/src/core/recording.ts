@@ -46,6 +46,8 @@ export interface RecordingStore {
 interface MachineRecordings {
   /** By configuration key, in recency order (oldest first). */
   entries: Map<string, RecordedEntry>;
+  /** The entry recorded last. It is the last one in `entries` while `entries` still has it. */
+  newest: RecordedEntry | undefined;
   /** Number of entries containing each leaf; leaves with no entry are absent. */
   leafCounts: Map<string, number>;
   /** `recordedLeaves`, built on demand and dropped when a leaf gains or loses its last entry. */
@@ -200,6 +202,7 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
     if (!machine) {
       machine = {
         entries: new Map(),
+        newest: undefined,
         leafCounts: new Map(),
         leaves: undefined,
         hydrated: false,
@@ -256,8 +259,12 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
     const key = sorted.join('|');
     const previous = machine.entries.get(key);
     let changed = false;
-    if (previous) machine.entries.delete(key);
-    machine.entries.set(key, { leaves: sorted, context, at: now() });
+    const entry: RecordedEntry = { leaves: sorted, context, at: now() };
+    // The newest entry is replaced in place, as a delete makes the Map rehash.
+    // The instances of a list record the same configuration one after the other.
+    if (previous && previous !== machine.newest) machine.entries.delete(key);
+    machine.entries.set(key, entry);
+    machine.newest = entry;
 
     if (!previous) {
       changed = addLeaves(machine, sorted);

@@ -16,42 +16,115 @@ import {
   type SnapshotFrom,
   type StateFrom,
 } from 'xstate';
-import { findBinding, getBinding, isMachineActor, type Binding } from './binding';
+import { findBinding, getBinding, isMachineActor, isProxy, type Binding, type Registration } from './binding';
 import { nextInstanceId } from './instance-id';
 import { resolveMachineId } from './machine-id';
 import type { HookActorOptions, WithDebug } from './types';
-import { createView, createViewMemory, type View, type ViewLifetime } from './view';
+import { createView, createViewMemory, type View, type ViewLifetime, type ViewMemory } from './view';
 
 type ObserverOrListener<T> = Observer<T> | ((value: T) => void);
 
 // Layout effects run before @xstate/react's passive ones; on the server neither runs.
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
 
+/** The connection made for `key`, which `disconnect` ends. */
+interface Connection<T> {
+  key: T;
+  disconnect: () => void;
+}
+
+/** Holds a hook's connection between commits, as a ref does. */
+interface ConnectionSlot<T> {
+  current?: Connection<T>;
+}
+
+interface Listening {
+  binding: Binding;
+  view: View;
+}
+
 /**
- * Keeps `connect(key)` connected for as long as @xstate/react keeps the actor running: from the layout phase, before
- * its passive effect starts the actor, to a passive cleanup, where it stops it. Unmounting, StrictMode's simulated
- * unmount and a hidden Activity run passive cleanups. A Suspense boundary hiding the component runs only layout
- * cleanups, and the actor keeps running, so the connection stays.
+ * What useProxiedActorRef keeps while the component is mounted, in one hook rather than one for each value.
+ * Every row of a list runs these hooks, and each hook has a cost.
  */
-function useConnection<T extends object>(key: T | undefined, connect: (key: T) => () => void): void {
-  const current = React.useRef<{ key: T; disconnect: () => void } | undefined>(undefined);
-  const ensure = (): void => {
-    if (current.current?.key === key) return;
-    current.current?.disconnect();
-    current.current = key === undefined ? undefined : { key, disconnect: connect(key) };
+interface HookState {
+  instanceId: string;
+  /**
+   * The committed actor, binding and view, written in the commit phase: a render React throws away (a suspended
+   * transition) can make a new actor, which never starts, and must not move the observers of the committed one.
+   */
+  committed: { actor?: AnyActorRef; binding?: Binding; view?: View };
+  /**
+   * Shared by the views of every observer the component passes, an inline one being new on each render, and kept per
+   * actor, which stays the same while debug is turned off and on.
+   */
+  memory: ViewMemory;
+  listening: ConnectionSlot<Listening>;
+  registration: ConnectionSlot<Registration>;
+}
+
+function createHookState(): HookState {
+  const committed: HookState['committed'] = {};
+  return {
+    instanceId: nextInstanceId(),
+    committed,
+    memory: createViewMemory(() => committed.actor),
+    listening: {},
+    registration: {},
   };
-  useIsomorphicLayoutEffect(ensure, [key]);
+}
+
+/** Connects `key` in place of the connection the slot holds, unless that one is for the same key. */
+function ensureConnection<T extends object>(
+  slot: ConnectionSlot<T>,
+  key: T | undefined,
+  connect: (key: T) => () => void,
+): void {
+  if (slot.current?.key === key) return;
+  slot.current?.disconnect();
+  slot.current = key === undefined ? undefined : { key, disconnect: connect(key) };
+}
+
+/**
+ * Keeps `connect(key)` connected for as long as @xstate/react keeps the actor running: from the layout phase, where
+ * the caller connects it with ensureConnection() before @xstate/react's passive effect starts the actor, to a passive
+ * cleanup, where it stops it. Unmounting, StrictMode's simulated unmount and a hidden Activity run passive cleanups.
+ * A Suspense boundary hiding the component runs only layout cleanups, and the actor keeps running, so the connection
+ * stays.
+ */
+function useConnection<T extends object>(
+  slot: ConnectionSlot<T>,
+  key: T | undefined,
+  connect: (key: T) => () => void,
+): void {
   React.useEffect(() => {
     // Fast Refresh runs every cleanup and setup again, the passive ones after the layout ones.
-    ensure();
+    ensureConnection(slot, key, connect);
     return () => {
       // A newer key's connection, made in this commit's layout phase, stays.
-      if (current.current === undefined || current.current.key !== key) return;
-      current.current.disconnect();
-      current.current = undefined;
+      if (slot.current === undefined || slot.current.key !== key) return;
+      slot.current.disconnect();
+      slot.current = undefined;
     };
   }, [key]);
 }
+
+/** Follows the binding's previews in the view, until the returned cleanup. */
+function listen(committed: HookState['committed'], { binding, view }: Listening): () => void {
+  const stop = binding.onPreviewChange(view.showCurrent);
+  // The preview that held back how the actor ended can end while the hook isn't listening (an Activity hid it), and a
+  // replaced actor's owed ending isn't held by a preview of another key. XState repeats a finished or failed actor's
+  // ending when @xstate/react restarts it, but tells a stopped one nothing.
+  if (view.owes()) view.showCurrent();
+  return () => {
+    stop();
+    // The hook no longer previews the actor (debug.disabled): the observer leaves the preview, as on a release. The
+    // committed view's, which @xstate/react subscribes to the new actor when one replaced this one in the same render.
+    if (committed.binding === undefined) (committed.view ?? view).detach(binding);
+  };
+}
+
+const connectRegistration = (registration: Registration): (() => void) => registration.connect();
 
 /**
  * Creates and starts the actor through @xstate/react, then hands out its proxy. Machines are registered while the
@@ -68,15 +141,8 @@ function useProxiedActorRef(
   { observerKey, lifetime = 'ended' }: { observerKey?: unknown; lifetime?: ViewLifetime } = {},
 ): AnyActorRef {
   const { debug, ...actorOptions } = options ?? {};
-  const [instanceId] = React.useState(nextInstanceId);
-  // The committed actor and binding, written in the commit phase: a render React throws away (a suspended transition)
-  // can make a new actor, which never starts, and must not move the observers of the committed one.
-  const bindingRef = React.useRef<Binding | undefined>(undefined);
-  const actorRef = React.useRef<AnyActorRef | undefined>(undefined);
-  const viewRef = React.useRef<View | undefined>(undefined);
-  // Shared by the views of every observer the component passes, an inline one being new on each render, and kept
-  // per actor, which stays the same while debug is turned off and on.
-  const [memory] = React.useState(() => createViewMemory(() => actorRef.current));
+  const [hook] = React.useState(createHookState);
+  const { committed } = hook;
   const observed = React.useMemo(() => {
     if (!observer) return undefined;
     // The actor @xstate/react subscribed this observer to, once it has. It subscribes an observer again only when the
@@ -84,11 +150,11 @@ function useProxiedActorRef(
     // the actor a new config replaced, which then tells it nothing, and so do the new actor's previews. Each view has
     // its own, so a render React throws away, which passes a new observer, doesn't move the committed one.
     const subscription: { actor?: AnyActorRef; late?: boolean } = {};
-    const view = createView(toObserver(observer), () => bindingRef.current, lifetime, undefined, memory, {
+    const view = createView(toObserver(observer), () => committed.binding, lifetime, undefined, hook.memory, {
       subscribed: () => subscription.actor !== undefined,
       replaced: () => {
         const { actor } = subscription;
-        return actor === undefined || actor === actorRef.current ? undefined : { source: findBinding(actor) };
+        return actor === undefined || actor === committed.actor ? undefined : { source: findBinding(actor) };
       },
       late: () => subscription.late === true,
     });
@@ -101,7 +167,7 @@ function useProxiedActorRef(
   // stopped (ProcessingStatus.Stopped, which @xstate/react resets when it restarts one).
   React.useEffect(() => {
     if (!observed) return;
-    const actor = actorRef.current;
+    const actor = committed.actor;
     observed.subscription.actor = actor;
     observed.subscription.late = (actor as { _processingStatus?: number } | undefined)?._processingStatus === 2;
   }, [observed]);
@@ -113,41 +179,31 @@ function useProxiedActorRef(
   const registration = binding?.registration({
     // The actor's logic rather than this render's: @xstate/react keeps the actor while the config stays the same.
     machineId: resolveMachineId((actor as unknown as { logic: AnyStateMachine }).logic, debug?.id),
-    instanceId,
+    instanceId: hook.instanceId,
     label: debug?.label,
   });
-  // Before the connections below, which read them. A new observer follows the committed actor's previews from here
-  // on, before @xstate/react subscribes it: it hears a deep link before the first paint.
-  useIsomorphicLayoutEffect(() => {
-    actorRef.current = actor;
-    bindingRef.current = binding;
-    viewRef.current = view;
-  });
-
-  // Before the registration, so a preview applied when the actor registers (a deep link) reaches the observer.
   const listening = React.useMemo(() => (binding && view ? { binding, view } : undefined), [binding, view]);
-  useConnection(listening, ({ binding, view }) => {
-    const stop = binding.onPreviewChange(view.showCurrent);
-    // The preview that held back how the actor ended can end while the hook isn't listening (an Activity hid it), and a
-    // replaced actor's owed ending isn't held by a preview of another key. XState repeats a finished or failed actor's
-    // ending when @xstate/react restarts it, but tells a stopped one nothing.
-    if (view.owes()) view.showCurrent();
-    return () => {
-      stop();
-      // The hook no longer previews the actor (debug.disabled): the observer leaves the preview, as on a release. The
-      // committed view's, which @xstate/react subscribes to the new actor when one replaced this one in the same render.
-      if (bindingRef.current === undefined) (viewRef.current ?? view).detach(binding);
-    };
-  });
-  // The same when it stopped previewing while it wasn't listening (debug.disabled while an Activity hid it): layout
-  // effects run again on the reveal, before @xstate/react restarts the actor. With a new actor too, so the memory
-  // moves to it in the commit, before the replaced actor tells the observer anything more.
+  const connectListening = (key: Listening): (() => void) => listen(committed, key);
+  // One layout effect for four steps, which keep this order. A step does nothing while its own values stay the same.
   useIsomorphicLayoutEffect(() => {
+    // Before the connections, which read them. A new observer follows the committed actor's previews from here on,
+    // before @xstate/react subscribes it: it hears a deep link before the first paint.
+    committed.actor = actor;
+    committed.binding = binding;
+    committed.view = view;
+    // Before the registration, so a preview applied when the actor registers (a deep link) reaches the observer.
+    ensureConnection(hook.listening, listening, connectListening);
+    // The observer leaves the preview here, as in listen()'s cleanup, when the hook stopped previewing while it wasn't
+    // listening (debug.disabled while an Activity hid it): layout effects run again on the reveal, before
+    // @xstate/react restarts the actor. With a new actor too, so the memory moves to it in the commit, before the
+    // replaced actor tells the observer anything more.
     if (!listening) view?.settle();
-  }, [listening, view, actor]);
-  // Before @xstate/react starts the actor, as with connect(createActor(m)).start(): the registry records the snapshot
-  // the component first rendered and everything start() goes through (R17).
-  useConnection(registration, (registration) => registration.connect());
+    // Before @xstate/react starts the actor, as with connect(createActor(m)).start(): the registry records the
+    // snapshot the component first rendered and everything start() goes through (R17).
+    ensureConnection(hook.registration, registration, connectRegistration);
+  }, [actor, binding, view, listening, registration]);
+  useConnection(hook.listening, listening, connectListening);
+  useConnection(hook.registration, registration, connectRegistration);
 
   return binding ? binding.proxy : actor;
 }
@@ -199,7 +255,11 @@ export function useActor<TLogic extends AnyActorLogic>(
     observerKey: (logic as { config?: unknown }).config,
     lifetime: 'stopped',
   });
-  const getSnapshot = React.useCallback(() => actorRef.getSnapshot(), [actorRef]);
+  // A proxy's getSnapshot doesn't use `this`. useSyncExternalStore calls it often, so it skips the proxy's get trap.
+  const getSnapshot = React.useMemo(
+    () => (isProxy(actorRef) ? actorRef.getSnapshot : () => actorRef.getSnapshot()),
+    [actorRef],
+  );
   const snapshot = React.useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
   // useSyncExternalStore subscribes, and checks the snapshot it rendered, in a passive effect, which runs after the
   // paint unless the commit was synchronous. A preview applied in this commit's layout phase (a deep link, as the actor
