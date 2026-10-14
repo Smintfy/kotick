@@ -132,7 +132,7 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 - **R16 (P0)** Context resolution order: recorded, then fixture, then live. The panel shows which source was used and lets you switch it per preview. Previews that used the default order are resolved again when fixtures register, so a preview made before a lazy loader finishes picks up its fixture.
 - **R17 (P0)** The latest context per state configuration is recorded in memory and persisted best-effort to sessionStorage.
 - **R18 (P0)** Fixtures are written with `defineFixtures(machine, …)`, keyed by leaf id, and registered through `<StateViewer fixtures>`, which accepts a lazy loader. A fixture set matches instances of the same machine definition first (its config, which `machine.provide()` copies share), then of the same machine id, so `debug.id` and generated ids need no extra setup.
-- **R19 (P0)** States with neither a recording nor a fixture are marked in the tree. Previewing one falls back to live context with a warning.
+- **R19 (P0)** States with neither a recording nor a fixture are marked in the tree. Previewing one falls back to live context with a warning. While a fixtures loader is pending, a preview on the default order waits to warn until the loader settles, and warns only if no fixture then gives it context (§10.3).
 
 ### 6.5 Overlay
 
@@ -368,6 +368,7 @@ interface Registry {
 
   record(instanceKey: string, leaves: string[], context: unknown): void;
   registerFixtures(sets: FixtureSet[]): void;
+  expectFixtures(): () => void;                  // a fixture load starts; call the result when it ends (§10.3)
   logEvent(entry: EventLogEntry): void;
   clearLog(): void;
 }
@@ -409,6 +410,7 @@ interface Registry {
 - A leaf is marked recorded when at least one recorded configuration contains it, matching the lookup fallback.
 - Fixture sets match an instance by `source` (the same definition object), then by `machineId`. The id fallback covers HMR, which recreates the machine and its config. A set that matched by source keeps matching that registry id afterwards, so machines under `debug.id` or a generated id keep their fixtures across HMR. Sets for the same machine merge, and a later set wins per leaf id.
 - When fixtures register, every preview whose source came from the default order is checked again for the same configuration, and replaced only if its context or source changed. A live preview picks up a fixture that now matches, a fixture preview follows its fixture (or falls back to live if none matches any more), and a preview on a recording stays put. Recordings aren't consulted again, so a preview never changes with live traffic. Previews with an explicitly chosen source are left alone.
+- `<StateViewer fixtures>` calls `expectFixtures()` when a load starts, and the function it returns when the load settles: after its sets register, or when the loader fails. It starts the load in an insertion effect, like the deep link, so the registry expects the fixtures before the app's hooks register in layout effects and the link previews them. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't, and the instances of one linked machine warn once. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
 - Fixture lookup checks the requested leaves in the order given (the clicked leaf, or a deep link's order), then the leaves `normalizeTarget` filled in. The first leaf with a fixture wins.
 
 ### 10.4 Deep links
@@ -669,6 +671,7 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 | D22 | Each entry is built on its own, without shared chunks | Turbopack keeps a shared chunk once a module imports it, even if only removed code used it; the `globalThis` registry makes the duplicated core safe |
 | D23 | Minimum versions: `xstate` 5.28, `@xstate/react` 6.1 | @xstate/react 6.1 forwards actor errors to error boundaries, which the adapter matches, and needs `xstate` ^5.28. The suite passes on both minimums and on the latest versions; below 5.29, only the @xstate/react controls that call the real `Actor.select` are skipped |
 | D24 | On React 18, tests built on `<Activity>` or `use()` are skipped, and identity checks record committed renders only | React 18 has neither API, and its StrictMode throws away the first render together with the actor it created, which the @xstate/react controls show too |
+| D25 | A preview on the default order holds its live-context warning while fixtures load | A deep link applies before a lazy loader is done, and the fixtures that load then give most such previews context (D13), so an early warning would usually be false |
 
 ## 17. References
 
