@@ -573,11 +573,12 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   };
 }
 
-const EMPTY_SNAPSHOT: RegistrySnapshot = freeze({
-  machines: freeze([]),
-  overrides: freeze(emptyRecord()),
-  log: freeze([]),
-  data: freeze(emptyRecord()),
+// Marked pure, so that production builds can remove it (spec §10.7).
+const EMPTY_SNAPSHOT: RegistrySnapshot = /* @__PURE__ */ freeze({
+  machines: /* @__PURE__ */ freeze([]),
+  overrides: /* @__PURE__ */ freeze(/* @__PURE__ */ emptyRecord()),
+  log: /* @__PURE__ */ freeze([]),
+  data: /* @__PURE__ */ freeze(/* @__PURE__ */ emptyRecord()),
 });
 
 /** A registry that does nothing, for the server. */

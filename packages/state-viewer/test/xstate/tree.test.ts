@@ -465,6 +465,11 @@ describe('leavesOfSnapshot', () => {
     const snapshot = createActor(machine).getSnapshot();
 
     expect(snapshot.status).toBe('error');
+    // XState 5.28, the minimum supported version, gives this snapshot no value. Later versions keep the initial one.
+    if (snapshot.value === undefined) {
+      expect(leavesOfSnapshot(machine, snapshot)).toEqual([]);
+      return;
+    }
     expect(snapshot.value).toBe('idle');
     expect(leavesOfSnapshot(machine, snapshot)).toEqual(['idle']);
   });

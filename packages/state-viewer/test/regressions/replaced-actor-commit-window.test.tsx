@@ -94,7 +94,10 @@ function setupUpload(
     const machine = React.useMemo(() => createUploadMachine(endpoint), [endpoint]);
     const observer: Observer<UploadSnapshot> = stable ? stableObserver : { ...stableObserver };
     const actorRef = hooks.useActorRef(machine, undefined, observer) as Actor<UploadMachine>;
-    first ??= actorRef;
+    // The first committed actor: React 18's StrictMode throws away the first render, and the actor it made.
+    React.useLayoutEffect(() => {
+      first ??= actorRef;
+    });
     // The old upload's socket reports once the new upload is in place.
     const previous = React.useRef(endpoint);
     React.useLayoutEffect(() => {

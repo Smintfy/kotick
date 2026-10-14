@@ -47,8 +47,9 @@ type MachineActor = AnyActorRef & {
   _send(event: unknown): void;
 };
 
-const EMPTY_CHILDREN: Readonly<Record<string, AnyActorRef>> = Object.freeze({});
-const OBSERVABLE: PropertyKey = (Symbol as { observable?: symbol }).observable ?? '@@observable';
+// The /* @__PURE__ */ marks and the observableKey() function let production builds remove these (spec §10.7).
+const EMPTY_CHILDREN: Readonly<Record<string, AnyActorRef>> = /* @__PURE__ */ Object.freeze({});
+const observableKey = (): PropertyKey => (Symbol as { observable?: symbol }).observable ?? '@@observable';
 const noop = (): void => {};
 
 // One binding per real actor, so re-renders, StrictMode's second render and label changes all hand out the same
@@ -289,7 +290,7 @@ function createBinding(actor: MachineActor): Binding {
       for (const listener of [...stopListeners]) call(listener, `Stopping "${key}" threw.`);
       return proxy;
     },
-    [OBSERVABLE]: () => proxy,
+    [observableKey()]: () => proxy,
   };
   // Bound once per method, so `proxy.on === proxy.on` and React dependency arrays stay stable.
   const bound = new Map<PropertyKey, { source: (...args: unknown[]) => unknown; bound: unknown }>();

@@ -23,7 +23,7 @@ import * as stateViewer from '../../src/xstate';
 import { createActorContext, shallowEqual, useActor, useActorRef, useMachine, useSelector } from '../../src/xstate';
 import { isProxy } from '../../src/xstate/binding';
 import { nextInstanceId } from '../../src/xstate/instance-id';
-import { flush, handlesOf, keyOf, onlyHandle, registry, resetRegistry } from './helpers';
+import { flush, handlesOf, keyOf, onlyHandle, REACT_MAJOR, registry, resetRegistry } from './helpers';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Machines
@@ -323,7 +323,8 @@ describe('useMachine', () => {
 
     expect(text('value')).toBe('on');
     expect(registry().getOverride(keyOf(onlyHandle('toggle')))?.requested).toEqual(['on']);
-    expect(statsOf('toggle')).toEqual({ mounts: 1, renders: 2 });
+    // React 18's StrictMode runs the mount's effects again in a later commit, which renders once more.
+    expect(statsOf('toggle')).toEqual({ mounts: 1, renders: REACT_MAJOR < 19 ? 3 : 2 });
 
     releaseAll();
     expect(text('value')).toBe('off');
@@ -333,7 +334,10 @@ describe('useMachine', () => {
     const seen: { send: unknown; actorRef: unknown }[] = [];
     function Capture() {
       const [, send, actorRef] = useMachine(toggleMachine);
-      seen.push({ send, actorRef });
+      // Committed renders only: React 18's StrictMode throws away the first render, and the actor it made.
+      React.useLayoutEffect(() => {
+        seen.push({ send, actorRef });
+      });
       return null;
     }
     render(<Capture />);
@@ -1081,9 +1085,12 @@ describe('debug options', () => {
     const actors = new Set<unknown>();
     function Toggle({ label }: { label: string }) {
       const [, , actorRef] = useMachine(toggleMachine, { debug: { label } });
-      actorRefs.add(actorRef);
-      // XState's `ref` is the real actor itself; the proxy passes it through.
-      actors.add(actorRef.ref);
+      // Committed renders only: React 18's StrictMode throws away the first render, and the actor it made.
+      React.useLayoutEffect(() => {
+        actorRefs.add(actorRef);
+        // XState's `ref` is the real actor itself; the proxy passes it through.
+        actors.add(actorRef.ref);
+      });
       return null;
     }
     const { rerender } = render(<Toggle label="Before" />);

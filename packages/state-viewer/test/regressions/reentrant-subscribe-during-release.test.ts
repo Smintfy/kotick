@@ -13,7 +13,7 @@ import vm from 'node:vm';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { assign, createActor, createMachine, waitFor, type AnyActorRef } from 'xstate';
 import { connect } from '../../src/xstate';
-import { flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
+import { ACTOR_SELECT, flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
 
 v8.setFlagsFromString('--expose-gc');
 const collectGarbage = vm.runInNewContext('gc') as () => void;
@@ -133,7 +133,10 @@ describe.each<[name: string, wrap: boolean]>([
   ['a plain actor (control)', false],
   ['a connect()ed actor without a preview (control)', true],
 ])('%s finishing, with a subscriber that subscribes again as it hears the end', (_name, wrap) => {
-  test.each(CASES)(
+  // XState's own actors have select() from XState 5.29. The proxy has it with every supported version.
+  const cases = wrap || ACTOR_SELECT ? CASES : CASES.filter(([, how]) => !how.startsWith('select'));
+
+  test.each(cases)(
     'from inside %s (%s), subscriber %s: every subscriber hears the end',
     async (where, _how, position, resubscribe) => {
       const actor = createActor(jobMachine).start();

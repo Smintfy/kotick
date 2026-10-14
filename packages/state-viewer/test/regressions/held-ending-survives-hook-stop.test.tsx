@@ -15,7 +15,7 @@ import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { fromCallback, setup, waitFor, type AnyActorRef } from 'xstate';
 import * as stateViewer from '../../src/xstate';
-import { flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
+import { flush, HAS_ACTIVITY, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
 
 const Activity = (
   React as unknown as { Activity: React.ComponentType<{ mode: 'visible' | 'hidden'; children: React.ReactNode }> }
@@ -66,7 +66,8 @@ const IMPLEMENTATIONS: [name: string, hooks: Hooks, previews: boolean][] = [
 
 const CLOSINGS: [how: string, withActivity: boolean][] = [
   ['unmounts', false],
-  ['is hidden by an Activity', true],
+  // React 18 has no <Activity>.
+  ...(HAS_ACTIVITY ? [['is hidden by an Activity', true] as [string, boolean]] : []),
 ];
 
 const ANSWERS: [result: string, answer: Answer][] = [

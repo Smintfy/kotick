@@ -73,7 +73,7 @@ The gap this fills: every state, in context, in the running app.
 ### 3.3 Supported environments
 
 - React 18+ (needs `useSyncExternalStore`)
-- XState v5 with a compatible `@xstate/react`; the minimum 5.x version gets pinned in Milestone 4
+- XState 5.28+ with `@xstate/react` 6.1+ (pinned in Milestone 4, D23)
 - Evergreen desktop browsers
 - Development builds
 
@@ -458,8 +458,12 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ### 10.7 Production and environments
 
-- Debug code sits behind `process.env.NODE_ENV !== 'production'` so bundlers remove it, and the hooks become re-exports of `@xstate/react`. The package is marked `sideEffects: false`.
-- Entry files carry `'use client'`. The registry does nothing on the server.
+- Debug code sits behind `process.env.NODE_ENV !== 'production'` so bundlers remove it: `<StateViewer />` becomes a component that renders nothing, and the hooks become re-exports of `@xstate/react`. The package is marked `sideEffects: false`.
+- The condition is written out at each use (D21). esbuild, webpack and Turbopack don't copy the value of a `const DEV = …` into its uses, so they'd keep both branches.
+- Module-level values in debug-only modules are free of side effects as minifiers see them: calls such as `Object.freeze` carry `/* @__PURE__ */`, and the overlay's style sheet comes from a function, since minifiers keep a top-level template literal with `${…}` parts.
+- tsdown builds each entry on its own, so the core is in both output files and no chunk is shared (D22). Turbopack keeps a chunk that a module imports, even when only code it removes used it. Two copies are safe because the registry lives on `globalThis` (§10.1).
+- Each entry's source starts with `'use client'`, which the build keeps at the top of its output. The registry does nothing on the server.
+- `pnpm check:bundles` confirms all of this against the packed tarball (D20): it builds a fixture app that uses every export with esbuild, Vite, Next.js (webpack and Turbopack) and React Router, then the examples, and looks for strings that only debug code contains. With esbuild and Vite, the startup JavaScript is about 150–160 B (gzip) larger than the same app on `@xstate/react`; the check fails above 512 B.
 
 ## 11. Known limitations (MVP)
 
@@ -489,17 +493,19 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ## 12. Acceptance criteria for 0.1.0
 
-- [ ] In the vite-react example, swapping the import path and mounting `<StateViewer />` are the only changes needed for every machine to appear.
-- [ ] Every non-history state of every example machine is listed, including never-visited ones.
-- [ ] Previewing any state renders without errors using recorded or fixture data.
-- [ ] Components reading through `useSelector` and `createActorContext` show the preview.
-- [ ] Previews never remount components (checked with mount counters in the vite-react example).
-- [ ] Events sent during a preview are blocked and appear in the log.
-- [ ] Releasing restores the real, current state.
-- [ ] A deep link reproduces a preview after reload.
-- [ ] Hostile global CSS doesn't change the panel, and the panel doesn't change the app (checked in the hostile-css example).
-- [ ] The examples' production builds contain no registry or overlay code (checked by bundle analysis).
-- [ ] Works on React 18 and 19 with StrictMode on.
+Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pnpm test:matrix`.
+
+- [x] In the vite-react example, swapping the import path and mounting `<StateViewer />` are the only changes needed for every machine to appear. The module-level session actor also goes through `connect()` (R2).
+- [x] Every non-history state of every example machine is listed, including never-visited ones.
+- [x] Previewing any state renders without errors using recorded or fixture data.
+- [x] Components reading through `useSelector` and `createActorContext` show the preview.
+- [x] Previews never remount components (checked with mount counters in the vite-react example).
+- [x] Events sent during a preview are blocked and appear in the log.
+- [x] Releasing restores the real, current state.
+- [x] A deep link reproduces a preview after reload.
+- [x] Hostile global CSS doesn't change the panel, and the panel doesn't change the app (checked in the hostile-css example).
+- [x] The examples' production builds contain no registry or overlay code (checked by bundle analysis).
+- [x] Works on React 18 and 19 with StrictMode on.
 
 ## 13. Testing strategy
 
@@ -508,15 +514,17 @@ Checked in the XState source at tag `xstate@5.28.0`:
 | Unit | Vitest | Registry, leaf/state-value conversion, deep-link parsing, context resolution, recording caps and serialization |
 | Adapter | Vitest + React Testing Library | Proxy with `useMachine`, `useSelector` and `createActorContext`; blocked sends; release; StrictMode double mount; multiple instances; render and mount counts |
 | Types | `expectTypeOf` | `defineFixtures` keys and context types |
-| End to end | Playwright, in a separate repository, against the examples | Previewing every state, deep links, keyboard, navigation between pages, the hostile-css example |
-| Bundle | Production build + size-limit | Debug code removed, size budget |
+| Version matrix | `pnpm test:matrix` (`scripts/test-matrix.mjs`) | The Vitest suite on React 18 and 19, each with the minimum and the latest `xstate` and `@xstate/react` (D24) |
+| End to end | Playwright, in a separate repository (state-viewer-e2e), against the examples' dev servers | Previewing every state, deep links, keyboard, navigation between pages, the hostile-css example, server rendering and hydration in the Next.js example |
+| Bundle | `pnpm check:bundles` (`tests/bundles/check.mjs`), against the packed tarball | Debug code removed with each supported bundler; startup JavaScript against the same app on `@xstate/react`, with a 512 B gzip budget |
+| Overhead | `pnpm --filter state-viewer bench` (`bench/overhead.bench.tsx`) | Development cost with the panel closed and without `<StateViewer />`, against `@xstate/react` |
 
 ## 14. Roadmap
 
 ### Milestone 0: Setup
 
 - [x] pnpm workspace with `packages/state-viewer` and `examples/*`
-- [x] TypeScript strict; tsdown build with `state-viewer` and `state-viewer/xstate` entries and `'use client'` banners
+- [x] TypeScript strict; tsdown build with `state-viewer` and `state-viewer/xstate` entries, each starting with `'use client'`
 - [x] Vitest and React Testing Library
 - [ ] ESLint, Prettier, CI (typecheck, test, build, size), Changesets
 - [x] Example app (Vite + React Router, `examples/vite-react`), with one page per example and a home page that lists them:
@@ -568,12 +576,12 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ### Milestone 4: Hardening and 0.1.0
 
-- [ ] Confirm production removal with Vite, Next.js (webpack and Turbopack), React Router and esbuild
-- [ ] Next.js App Router example (`'use client'`, SSR safety)
-- [ ] End-to-end tests with Playwright in a separate repository, run against the examples
-- [ ] Test matrix: React 18 and 19; pin the minimum XState 5.x
-- [ ] Measure overhead with the panel closed
-- [ ] README: quickstart, concepts, API, limitations, FAQ
+- [x] Confirm production removal with Vite, Next.js (webpack and Turbopack), React Router and esbuild (`pnpm check:bundles`, §10.7)
+- [x] Next.js App Router example (`'use client'`, SSR safety): `examples/next-app`, on port 3100
+- [x] End-to-end tests with Playwright in a separate repository, run against the examples (state-viewer-e2e)
+- [x] Test matrix: React 18 and 19; pin the minimum XState 5.x (`pnpm test:matrix`; `xstate` 5.28, `@xstate/react` 6.1)
+- [x] Measure overhead with the panel closed. In jsdom with StrictMode, against `@xstate/react`: about 8 µs more per transition that re-renders a `useMachine` component (27 → 34 µs), 25 µs more per mount (50 rows: 1.0 → 2.2 ms), and under 1 µs more per event to a `connect()`ed actor. Mounting `<StateViewer />` with its panel closed adds nothing measurable; the cost is the adapter's.
+- [x] README: quickstart, concepts, API, limitations, FAQ
 - [ ] Publish 0.1.0
 
 ### v0.2: Live mode
@@ -629,7 +637,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 5. Should a preview pause the real actor instead of letting it run underneath?
 6. ESM-only or dual ESM/CJS?
 7. License.
-8. Minimum XState 5.x for 0.1.0 (preview only needs `resolveState`; routes need 5.28).
+8. ~~Minimum XState 5.x for 0.1.0.~~ Resolved: `xstate` 5.28 and `@xstate/react` 6.1 (D23).
 9. Should the MVP log also show real, non-blocked events through inspection?
 10. Should `<StateViewer />` be allowed in production-mode builds for staging?
 
@@ -656,6 +664,11 @@ Checked in the XState source at tag `xstate@5.28.0`:
 | D17 | A total budget for persisted recordings | The debugger must never make the app's own sessionStorage writes fail |
 | D18 | Unregistering keeps the preview until the next flush | Fast Refresh re-runs effects on every save, and a preview should survive editing the component it previews |
 | D19 | Examples stay minimal; end-to-end tests live in a separate repository | The examples read as usage documentation, without test ids, extra pages or Playwright setup |
+| D20 | Production removal is checked against the packed tarball, with each bundler | The examples use the workspace source; only the tarball shows what users get (`dist`, `publishConfig.exports`, `sideEffects`) |
+| D21 | The `NODE_ENV` condition is written out at each use | esbuild, webpack and Turbopack don't inline a `const`, so a shared `DEV` constant keeps both branches in production |
+| D22 | Each entry is built on its own, without shared chunks | Turbopack keeps a shared chunk once a module imports it, even if only removed code used it; the `globalThis` registry makes the duplicated core safe |
+| D23 | Minimum versions: `xstate` 5.28, `@xstate/react` 6.1 | @xstate/react 6.1 forwards actor errors to error boundaries, which the adapter matches, and needs `xstate` ^5.28. The suite passes on both minimums and on the latest versions; below 5.29, only the @xstate/react controls that call the real `Actor.select` are skipped |
+| D24 | On React 18, tests built on `<Activity>` or `use()` are skipped, and identity checks record committed renders only | React 18 has neither API, and its StrictMode throws away the first render together with the actor it created, which the @xstate/react controls show too |
 
 ## 17. References
 

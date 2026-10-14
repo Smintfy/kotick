@@ -58,7 +58,13 @@ const DARK = `
 
 const MONO = `ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace`;
 
-export const STYLES = `
+/**
+ * The overlay's style sheet.
+ * It is a function, so production builds can remove it (spec §10.7).
+ * Minifiers keep a top-level template literal with `${…}` parts, because they can't be sure it has no side effects.
+ */
+export function overlayStyles(): string {
+  return `
 :host {
   all: initial !important;
   display: block !important;
@@ -437,3 +443,4 @@ code { font-family: ${MONO}; font-size: 11px; }
   .sv-bubble:hover { transform: none; }
 }
 `;
+}
