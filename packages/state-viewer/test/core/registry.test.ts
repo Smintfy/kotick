@@ -1800,6 +1800,247 @@ describe('data', () => {
   });
 });
 
+describe('link', () => {
+  const fixture = { from: 'fixture' };
+  const LIVE_WARNING = /^\[state-viewer\] No recorded or fixture context/;
+
+  /** A registry with a fixture for ERROR, so linked previews resolve without warning. */
+  function setupWithFixture(): Registry {
+    const registry = setup();
+    registry.registerFixtures([fixtureSet('checkout', { [ERROR]: fixture })]);
+    return registry;
+  }
+
+  test('previews an instance inside its registration, so a listener set up before it hears the preview', () => {
+    const registry = setupWithFixture();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    // What the XState adapter does: the proxy listens before it registers, so a deep link reaches the first paint.
+    const heard = vi.fn(() => registry.getOverride('checkout#1'));
+    registry.onOverride('checkout#1', heard);
+
+    registry.register(fakeHandle());
+    const override = registry.getOverride('checkout#1');
+    expect(override).toMatchObject({
+      requested: [ERROR],
+      leaves: [ERROR, STANDARD],
+      source: 'fixture',
+      context: fixture,
+    });
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(heard).toHaveLastReturnedWith(override);
+  });
+
+  test('previews every instance of the machine as it registers, and leaves other machines alone', () => {
+    const registry = setupWithFixture();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+
+    registry.register(fakeHandle({ instanceId: '1' }));
+    registry.register(fakeHandle({ instanceId: '2' }));
+    registry.register(fakeHandle({ machineId: 'cart', instanceId: '3' }));
+
+    expect(Object.keys(registry.getSnapshot().overrides)).toEqual(['checkout#1', 'checkout#2']);
+  });
+
+  test('previews instances registered already at the next microtask, not inside link()', async () => {
+    const registry = setupWithFixture();
+    registry.register(fakeHandle({ instanceId: '1' }));
+    const heard = vi.fn();
+    registry.onOverride('checkout#1', heard);
+
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    expect(registry.getOverride('checkout#1')).toBeUndefined();
+    expect(heard).not.toHaveBeenCalled();
+
+    // Registered between link() and the microtask: previewed as it registers, and only once.
+    registry.register(fakeHandle({ instanceId: '2' }));
+    const second = registry.getOverride('checkout#2');
+    await settle();
+    expect(registry.getOverride('checkout#1')).toMatchObject({ requested: [ERROR], source: 'fixture' });
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(registry.getOverride('checkout#2')).toBe(second);
+  });
+
+  test('skips an instance unregistered before the microtask, and one that came back gets it', async () => {
+    const registry = setupWithFixture();
+    const unregisterGone = registry.register(fakeHandle({ instanceId: '1' }));
+    const unregisterBack = registry.register(fakeHandle({ instanceId: '2' }));
+
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    unregisterGone();
+    // StrictMode and Fast Refresh run a cleanup and the setup again in the same tick.
+    unregisterBack();
+    registry.register(fakeHandle({ instanceId: '2' }));
+    await settle();
+
+    expect(Object.keys(registry.getSnapshot().overrides)).toEqual(['checkout#2']);
+  });
+
+  test('skips child machines, which are listed without the preview capability, without warning', async () => {
+    const registry = setupWithFixture();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+
+    registry.register(
+      fakeHandle({ parentKey: 'parent#1', capabilities: { preview: false, live: false, children: false } }),
+    );
+    await settle();
+    expect(registry.getSnapshot().overrides).toEqual({});
+  });
+
+  test('an instance that registers again before the flush keeps its preview', () => {
+    const registry = setupWithFixture();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    const unregister = registry.register(fakeHandle());
+    const override = registry.getOverride('checkout#1');
+
+    unregister();
+    registry.register(fakeHandle());
+    expect(registry.getOverride('checkout#1')).toBe(override);
+  });
+
+  test('previews an instance that registers again after the flush released its preview', async () => {
+    const registry = setupWithFixture();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    const unregister = registry.register(fakeHandle());
+    // A hidden Activity unregisters its components until it's revealed.
+    unregister();
+    await settle();
+    expect(registry.getOverride('checkout#1')).toBeUndefined();
+
+    registry.register(fakeHandle());
+    expect(registry.getOverride('checkout#1')).toMatchObject({ requested: [ERROR] });
+  });
+
+  test('ends when preview() is called for one of the machine’s instances, and only for that machine', () => {
+    const registry = setupWithFixture();
+    registry.link([
+      { machineId: 'checkout', leaves: [ERROR] },
+      { machineId: 'cart', leaves: [ERROR] },
+    ]);
+    registry.register(fakeHandle({ instanceId: '1' }));
+
+    registry.preview('checkout#1', { leaves: [SUCCESS] });
+    expect(takeWarnings()).toEqual([expect.stringMatching(LIVE_WARNING)]);
+    registry.register(fakeHandle({ instanceId: '2' }));
+    expect(registry.getOverride('checkout#1')?.requested).toEqual([SUCCESS]);
+    expect(registry.getOverride('checkout#2')).toBeUndefined();
+
+    // The fixture is for checkout, so the cart's linked preview falls back to live context.
+    registry.register(fakeHandle({ machineId: 'cart', instanceId: '3' }));
+    expect(registry.getOverride('cart#3')?.requested).toEqual([ERROR]);
+    expect(takeWarnings()).toEqual([expect.stringMatching(LIVE_WARNING)]);
+  });
+
+  test('ends when release() is called for one of the machine’s instances', () => {
+    const registry = setupWithFixture();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    const unregister = registry.register(fakeHandle({ instanceId: '1' }));
+
+    registry.release('checkout#1');
+    // Fast Refresh registers the instance again in the same tick; the released link doesn't come back.
+    unregister();
+    registry.register(fakeHandle({ instanceId: '1' }));
+    registry.register(fakeHandle({ instanceId: '2' }));
+
+    expect(registry.getSnapshot().overrides).toEqual({});
+  });
+
+  test('every link ends when release() releases everything', () => {
+    const registry = setupWithFixture();
+    registry.link([
+      { machineId: 'checkout', leaves: [ERROR] },
+      { machineId: 'cart', leaves: [ERROR] },
+    ]);
+
+    registry.release();
+    registry.register(fakeHandle({ instanceId: '1' }));
+    registry.register(fakeHandle({ machineId: 'cart', instanceId: '2' }));
+
+    expect(registry.getSnapshot().overrides).toEqual({});
+  });
+
+  test('a preview the flush releases after an unregister doesn’t end the link', async () => {
+    const registry = setupWithFixture();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    registry.register(fakeHandle({ instanceId: '1' }))();
+    await settle();
+
+    registry.register(fakeHandle({ instanceId: '2' }));
+    expect(registry.getOverride('checkout#2')?.requested).toEqual([ERROR]);
+  });
+
+  test('uses the default order, so fixtures that load later move its previews to them', () => {
+    const registry = setup();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    registry.register(fakeHandle({ instanceId: '1' }));
+    expect(registry.getOverride('checkout#1')?.source).toBe('live');
+    expect(takeWarnings()).toEqual([expect.stringMatching(LIVE_WARNING)]);
+
+    registry.registerFixtures([fixtureSet('checkout', { [ERROR]: fixture })]);
+    expect(registry.getOverride('checkout#1')).toMatchObject({ source: 'fixture', context: fixture });
+  });
+
+  test('warns for the first instance only, so a list with the same problem warns once', async () => {
+    const registry = setup();
+    registry.register(fakeHandle({ instanceId: '1' }));
+    registry.register(fakeHandle({ instanceId: '2' }));
+    registry.link([{ machineId: 'checkout', leaves: [ERROR, 'nope'] }]);
+    await settle();
+    registry.register(fakeHandle({ instanceId: '3' }));
+
+    expect(takeWarnings()).toEqual([
+      expect.stringMatching(/^\[state-viewer\] Ignoring "nope" in the preview of "checkout#1"/),
+      expect.stringMatching(LIVE_WARNING),
+    ]);
+    expect(Object.keys(registry.getSnapshot().overrides)).toEqual(['checkout#1', 'checkout#2', 'checkout#3']);
+  });
+
+  test('a link that can’t preview warns once and previews nothing', async () => {
+    const registry = setup();
+    registry.link([{ machineId: 'checkout', leaves: ['nope'] }]);
+    registry.register(fakeHandle({ instanceId: '1' }));
+    registry.register(fakeHandle({ instanceId: '2' }));
+    await settle();
+
+    expect(takeWarnings()).toEqual([
+      expect.stringMatching(/^\[state-viewer\] Can't preview "checkout#1": "nope" is not a leaf state/),
+    ]);
+    expect(registry.getSnapshot().overrides).toEqual({});
+  });
+
+  test('a later link for the machine replaces the earlier one, and may warn again', () => {
+    const registry = setup();
+    registry.link([{ machineId: 'checkout', leaves: [ERROR] }]);
+    registry.register(fakeHandle({ instanceId: '1' }));
+    expect(takeWarnings()).toEqual([expect.stringMatching(LIVE_WARNING)]);
+
+    registry.link([{ machineId: 'checkout', leaves: [SUCCESS] }]);
+    registry.register(fakeHandle({ instanceId: '2' }));
+    expect(takeWarnings()).toEqual([expect.stringMatching(LIVE_WARNING)]);
+    expect(registry.getOverride('checkout#1')?.requested).toEqual([ERROR]);
+    expect(registry.getOverride('checkout#2')?.requested).toEqual([SUCCESS]);
+  });
+
+  test('ignores targets that aren’t a machine id with string leaves, with a warning each', async () => {
+    const registry = setupWithFixture();
+    registry.register(fakeHandle());
+
+    registry.link([
+      { machineId: '', leaves: [ERROR] },
+      { machineId: 'checkout', leaves: [] },
+      { machineId: 'checkout', leaves: [ERROR, 1] } as never,
+      null as never,
+    ]);
+    registry.link('checkout:error' as never);
+    await settle();
+
+    expect(takeWarnings()).toEqual([
+      ...Array(4).fill(expect.stringMatching(/^\[state-viewer\] Ignoring a deep link target: /)),
+      expect.stringMatching(/^\[state-viewer\] Ignoring a deep link: expected an array/),
+    ]);
+    expect(registry.getSnapshot().overrides).toEqual({});
+  });
+});
+
 describe('getRegistry', () => {
   type Scope = typeof globalThis & { [REGISTRY_KEY]?: Registry };
 

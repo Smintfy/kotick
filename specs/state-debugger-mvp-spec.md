@@ -435,21 +435,25 @@ Checked in the XState source at tag `xstate@5.28.0`:
 - **Host:** a `<div data-state-viewer-root>` appended to `document.body`, with an open shadow root, styles injected inside it, a system font stack and `z-index: 2147483647`. Only the toolbar and panel take pointer events.
 - **Toolbar:** a 40px bubble, bottom-right by default, carrying the preview badge.
 - **Panel:** about 320px wide, at most 70vh tall, scrolling internally.
-  - Header: machine selector, instance picker, release all, close
+  - Header: machine selector, instance picker, release all, move to the next corner, close
   - State tree (`role="tree"`): active leaves highlighted, previewed leaf marked, data indicator per state (recorded, fixture, none)
   - Context: read-only JSON viewer with a data-source switcher
   - Event log: blocked events with state and time, and a clear button
   - Footer: copy link, copy JSON
+- **Selecting a leaf** (click or `Enter`) adds it to the instance's preview, first, so its fixture is looked up first; `normalizeTarget` drops the previewed leaves it can't be active with, and leaves in other parallel regions stay. Selecting a previewed leaf takes it out, and taking out the last one releases the instance. Child machines are listed read-only.
+- **Focus:** opening the panel by hand (bubble or shortcut) moves focus to the tree; closing gives it back to where the shortcut was pressed, or to the bubble. A panel left open across a reload doesn't take focus.
 - **Shortcuts** (configurable; ignored in inputs, textareas and contenteditable):
 
 | Keys | Where | Action |
 |---|---|---|
 | `Alt+S` | Anywhere | Toggle the panel |
 | `↑` / `↓` | Panel focused | Move through states |
+| `Home` / `End` | Panel focused | First / last state |
 | `Enter` | Panel focused | Preview or release the selected state |
 | `Esc` | Panel focused | Release all previews |
 | `[` / `]` | Panel focused | Previous / next machine |
 
+- Panel keys stay with the controls that use them: arrows in the selects and the source switcher, `Enter` on buttons.
 - **Accessibility:** everything is keyboard reachable, focus is visible, and `prefers-reduced-motion` is respected.
 
 ### 10.7 Production and environments
@@ -471,6 +475,8 @@ Checked in the XState source at tag `xstate@5.28.0`:
 - Fixture markers in the tree follow the first-registered instance of a machine id. Another instance whose machine config differs (for example after HMR) can resolve different fixtures.
 - A machine without an id gets a generated id from its state tree's shape and context keys, so editing its states or context keys during HMR changes the id, and its previews and id-matched fixtures don't carry over.
 - A `connect()`ed actor that fails stays listed until the page reloads.
+- In the state tree, arrow keys move through leaves only; compound and parallel states aren't focusable.
+- A page that gives `body` a transform, filter or `contain` becomes the containing block of the overlay's fixed host, which then moves with it. Pass `portalTarget={document.documentElement}` on such pages.
 - A `connect()`ed actor that's stopped before it ever started, through the actor itself rather than its proxy, stays listed until the page reloads: XState reports nothing in that case.
 - Observers passed to the hooks match @xstate/react exactly when nothing is previewed. Around a preview, a few narrow sequences deliver a snapshot once more, once less or later than ideal; the totals of `complete` and `error` still match @xstate/react:
   - An inline observer hears the new actor's preview once when @xstate/react replaces the actor (a new config: Fast Refresh, a machine built from props).
@@ -550,15 +556,15 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ### Milestone 3: Overlay
 
-- [ ] Shadow-root host, portal, style injection, `portalTarget`
-- [ ] Toolbar bubble with preview badge
-- [ ] Panel: machine list and instance picker, state tree with data indicators, context viewer and source switcher, event log
-- [ ] Keyboard shortcuts
-- [ ] Persisted panel UI state
-- [ ] Deep links applied on registration
-- [ ] P1: copy JSON and copy link, theming, description and tag hints
-- [ ] Accessibility pass
-- [ ] Hostile-CSS test page
+- [x] Shadow-root host, portal, style injection, `portalTarget`
+- [x] Toolbar bubble with preview badge
+- [x] Panel: machine list and instance picker, state tree with data indicators, context viewer and source switcher, event log
+- [x] Keyboard shortcuts
+- [x] Persisted panel UI state
+- [x] Deep links applied on registration
+- [x] P1: copy JSON and copy link, theming, description and tag hints
+- [x] Accessibility pass
+- [x] Hostile-CSS test page
 
 ### Milestone 4: Hardening and 0.1.0
 

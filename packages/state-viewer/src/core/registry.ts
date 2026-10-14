@@ -6,8 +6,10 @@ import { createRecordingStore, type RecordingStoreOptions } from './recording';
 import type {
   DataAvailability,
   DataSource,
+  DeepLinkTarget,
   MachineHandle,
   Override,
+  PreviewTarget,
   Registry,
   RegistrySnapshot,
   StateNodeInfo,
@@ -51,6 +53,10 @@ const REFRESH_ORDER: Readonly<Record<DataSource, readonly DataSource[]>> = {
 
 const noop = (): void => {};
 
+type Warn = (message: string, ...details: unknown[]) => void;
+
+const warnInConsole: Warn = (message, ...details) => console.warn(message, ...details);
+
 export function toInstanceKey(machineId: string, instanceId: string): string {
   return `${machineId}#${instanceId}`;
 }
@@ -67,6 +73,12 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   // the mark goes with it when it's released, dropped or replaced.
   const chosenSource = new WeakSet<Override>();
   const overrideListeners = new Map<string, Set<() => void>>();
+  // Deep links (R27): machine id to the leaves its link previews. A link ends when preview() or release() is called for
+  // one of the machine's instances, or release() releases everything, so one the user moved on from doesn't come back
+  // on the machine's next instance (a new list row, a remount).
+  const links = new Map<string, readonly string[]>();
+  // Machines whose link has warned since it was set, so the instances of a list don't repeat the same warning.
+  const linkWarned = new Set<string>();
   const listeners = new Set<() => void>();
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
   const eventLog = createEventLog(options.logCapacity ?? 200);
@@ -114,7 +126,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     removing.clear();
     for (const key of keys) {
       registrations.delete(key);
-      release(key);
+      releaseOverride(key);
     }
   }
 
@@ -197,6 +209,8 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
       markDirty('machines');
       markDirty('data');
       if (replaced) releaseIfInvalid(key, handle);
+      // Synchronously, inside the registration: a hook registers in a layout effect, so its first paint shows the link.
+      applyLink(key, handle);
     }
 
     const current = registration;
@@ -227,12 +241,12 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     };
     const valid = attempt('describe', () => validLeaves(handle));
     if (!valid || !override.leaves.every((leaf) => valid.has(leaf))) {
-      release(key);
+      releaseOverride(key);
       return;
     }
     const kept: unknown = attempt('normalizeTarget', () => handle.normalizeTarget([...override.leaves]));
     if (!Array.isArray(kept) || !override.leaves.every((leaf) => kept.includes(leaf))) {
-      release(key);
+      releaseOverride(key);
       return;
     }
     // Regions the edit added, which the preview shows: the configuration names them, as the blocked-event log does.
@@ -307,19 +321,20 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     return undefined;
   }
 
-  function preview(instanceKey: string, target: { leaves: string[]; source?: DataSource }): void {
+  /** What preview() does, with its warnings going to `warn`. */
+  function applyPreview(instanceKey: string, target: PreviewTarget, warn: Warn): void {
     const handle = registeredHandle(instanceKey);
     if (!handle) {
-      console.warn(`[state-viewer] Can't preview "${instanceKey}": no machine is registered under that key.`);
+      warn(`[state-viewer] Can't preview "${instanceKey}": no machine is registered under that key.`);
       return;
     }
     if (!handle.capabilities?.preview) {
-      console.warn(`[state-viewer] Can't preview "${instanceKey}": its adapter doesn't support previews.`);
+      warn(`[state-viewer] Can't preview "${instanceKey}": its adapter doesn't support previews.`);
       return;
     }
     const given: unknown[] = Array.isArray(target?.leaves) ? target.leaves : [];
     if (given.length === 0) {
-      console.warn(`[state-viewer] Can't preview "${instanceKey}": no leaves were given.`);
+      warn(`[state-viewer] Can't preview "${instanceKey}": no leaves were given.`);
       return;
     }
 
@@ -327,7 +342,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     try {
       valid = validLeaves(handle);
     } catch (error) {
-      console.warn(`[state-viewer] Can't preview "${instanceKey}": describe() threw.`, error);
+      warn(`[state-viewer] Can't preview "${instanceKey}": describe() threw.`, error);
       return;
     }
     const asked: string[] = [];
@@ -341,22 +356,22 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
       const plural = unknown.length > 1;
       if (asked.length === 0) {
         const verb = plural ? 'are not leaf states' : 'is not a leaf state';
-        console.warn(`[state-viewer] Can't preview "${instanceKey}": ${list} ${verb} of "${handle.machineId}".`);
+        warn(`[state-viewer] Can't preview "${instanceKey}": ${list} ${verb} of "${handle.machineId}".`);
         return;
       }
       const what = `not ${plural ? 'leaf states' : 'a leaf state'} of "${handle.machineId}"`;
-      console.warn(`[state-viewer] Ignoring ${list} in the preview of "${instanceKey}": ${what}.`);
+      warn(`[state-viewer] Ignoring ${list} in the preview of "${instanceKey}": ${what}.`);
     }
 
     let normalized: string[];
     try {
       normalized = handle.normalizeTarget([...asked]);
     } catch (error) {
-      console.warn(`[state-viewer] Can't preview "${instanceKey}": normalizeTarget() threw.`, error);
+      warn(`[state-viewer] Can't preview "${instanceKey}": normalizeTarget() threw.`, error);
       return;
     }
     if (!Array.isArray(normalized)) {
-      console.warn(`[state-viewer] Can't preview "${instanceKey}": normalizeTarget() didn't return an array.`);
+      warn(`[state-viewer] Can't preview "${instanceKey}": normalizeTarget() didn't return an array.`);
       return;
     }
 
@@ -364,9 +379,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     const requested = asked.filter((leaf) => normalized.includes(leaf));
     if (requested.length === 0) {
       // Nothing that was asked for would be shown, and the override would have no leaves to link to or mark.
-      console.warn(
-        `[state-viewer] Can't preview "${instanceKey}": normalizeTarget() kept none of the requested leaves.`,
-      );
+      warn(`[state-viewer] Can't preview "${instanceKey}": normalizeTarget() kept none of the requested leaves.`);
       return;
     }
     // Requested leaves first, in the order given, so previewing the whole configuration again still resolves the
@@ -379,7 +392,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     try {
       resolved = resolveContext(handle, order, requested, leaves);
     } catch (error) {
-      console.warn(`[state-viewer] Can't preview "${instanceKey}": getContext() threw.`, error);
+      warn(`[state-viewer] Can't preview "${instanceKey}": getContext() threw.`, error);
       return;
     }
     // Live always has context, and the order always ends with it.
@@ -387,9 +400,9 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
 
     const shown = `"${requested.join(', ')}" on "${instanceKey}"`;
     if (source === 'live' && explicit !== 'live') {
-      console.warn(`[state-viewer] No recorded or fixture context for ${shown}, so the preview uses the live context.`);
+      warn(`[state-viewer] No recorded or fixture context for ${shown}, so the preview uses the live context.`);
     } else if (explicit !== undefined && source !== explicit) {
-      console.warn(`[state-viewer] No ${explicit} context for ${shown}, so the preview uses the ${source} context.`);
+      warn(`[state-viewer] No ${explicit} context for ${shown}, so the preview uses the ${source} context.`);
     }
 
     const override: Override = freeze({
@@ -430,7 +443,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     }
   }
 
-  function release(instanceKey?: string): void {
+  function releaseOverride(instanceKey?: string): void {
     if (instanceKey !== undefined) {
       if (!overrides.delete(instanceKey)) return;
       markDirty('overrides');
@@ -442,6 +455,57 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     overrides.clear();
     markDirty('overrides');
     for (const key of released) notifyOverride(key);
+  }
+
+  /**
+   * Previews an instance with its machine's link. One with a preview keeps it: an instance that registers again before
+   * the flush (StrictMode, Fast Refresh) still has the preview it had, linked or chosen since.
+   */
+  function applyLink(key: string, handle: MachineHandle): void {
+    const leaves = links.get(handle.machineId);
+    // Child machines are listed read-only, without the capability.
+    if (!leaves || overrides.has(key) || !handle.capabilities?.preview) return;
+    const { machineId } = handle;
+    let warned = false;
+    const warn: Warn = linkWarned.has(machineId)
+      ? noop
+      : (message, ...details) => {
+          warned = true;
+          console.warn(message, ...details);
+        };
+    applyPreview(key, { leaves: [...leaves] }, warn);
+    if (warned) linkWarned.add(machineId);
+  }
+
+  function link(targets: DeepLinkTarget[]): void {
+    if (!Array.isArray(targets)) {
+      console.warn('[state-viewer] Ignoring a deep link: expected an array of targets.');
+      return;
+    }
+    let added = false;
+    for (const target of targets) {
+      if (!isLinkTarget(target)) {
+        console.warn('[state-viewer] Ignoring a deep link target: expected { machineId, leaves } with string leaves.');
+        continue;
+      }
+      links.set(target.machineId, freeze([...target.leaves]));
+      linkWarned.delete(target.machineId);
+      added = true;
+    }
+    if (!added) return;
+    // Not at once, so a UI can link from the commit where its components register (React's insertion effects run
+    // before every layout effect) without updating the components that show instances registered earlier.
+    queueMicrotask(() => {
+      for (const [key, { handle }] of [...registrations]) {
+        if (!removing.has(key)) applyLink(key, handle);
+      }
+    });
+  }
+
+  /** Ends the link of the instance's machine: whoever previews or releases it has taken over from the link. */
+  function dismissLink(instanceKey: string): void {
+    const handle = registrations.get(instanceKey)?.handle;
+    if (handle) links.delete(handle.machineId);
   }
 
   function onOverride(instanceKey: string, listener: () => void): () => void {
@@ -473,8 +537,15 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     register,
     subscribe,
     getSnapshot,
-    preview,
-    release,
+    preview(instanceKey, target) {
+      dismissLink(instanceKey);
+      applyPreview(instanceKey, target, warnInConsole);
+    },
+    release(instanceKey) {
+      if (instanceKey === undefined) links.clear();
+      else dismissLink(instanceKey);
+      releaseOverride(instanceKey);
+    },
     getOverride: (instanceKey) => overrides.get(instanceKey),
     onOverride,
     record(instanceKey, leaves, context) {
@@ -498,6 +569,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
       eventLog.clear();
       markDirty('log');
     },
+    link,
   };
 }
 
@@ -523,6 +595,7 @@ export function createNoopRegistry(): Registry {
     registerFixtures: noop,
     logEvent: noop,
     clearLog: noop,
+    link: noop,
   };
 }
 
@@ -562,6 +635,18 @@ function isValidHandle(handle: MachineHandle): boolean {
     handle.machineId !== '' &&
     typeof handle.instanceId === 'string' &&
     handle.instanceId !== ''
+  );
+}
+
+function isLinkTarget(target: unknown): target is DeepLinkTarget {
+  if (typeof target !== 'object' || target === null) return false;
+  const { machineId, leaves } = target as { machineId?: unknown; leaves?: unknown };
+  return (
+    typeof machineId === 'string' &&
+    machineId !== '' &&
+    Array.isArray(leaves) &&
+    leaves.length > 0 &&
+    leaves.every((leaf) => typeof leaf === 'string')
   );
 }
 

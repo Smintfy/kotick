@@ -1,11 +1,10 @@
 // Deep links (spec §10.4): ?debug-state=<machineId>:<leaf>[;<leaf>…][,<machineId>:…]
 
-export const DEFAULT_URL_PARAM = 'debug-state';
+import type { DeepLinkTarget } from './types';
 
-export interface DeepLinkTarget {
-  machineId: string;
-  leaves: string[];
-}
+export type { DeepLinkTarget } from './types';
+
+export const DEFAULT_URL_PARAM = 'debug-state';
 
 export interface ParsedDeepLink {
   targets: DeepLinkTarget[];
