@@ -79,6 +79,11 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   const links = new Map<string, readonly string[]>();
   // Machines whose link has warned since it was set, so the instances of a list don't repeat the same warning.
   const linkWarned = new Set<string>();
+  // Fixture loads that expectFixtures() started and that are not done yet.
+  let pendingFixtureLoads = 0;
+  // Instance key to the live-context warning (R19) that its preview holds until no fixture load is pending.
+  // The fixtures that load can still give the preview context (D13), so the preview warns only if they don't.
+  const heldWarnings = new Map<string, () => void>();
   const listeners = new Set<() => void>();
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
   const eventLog = createEventLog(options.logCapacity ?? 200);
@@ -399,11 +404,18 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     const { source, context }: ResolvedContext = resolved ?? { source: 'live', context: undefined };
 
     const shown = `"${requested.join(', ')}" on "${instanceKey}"`;
+    let held: (() => void) | undefined;
     if (source === 'live' && explicit !== 'live') {
-      warn(`[state-viewer] No recorded or fixture context for ${shown}, so the preview uses the live context.`);
+      const message = `[state-viewer] No recorded or fixture context for ${shown}, so the preview uses the live context.`;
+      // Only a preview on the default order takes the fixtures that register later (D13).
+      if (explicit === undefined && pendingFixtureLoads > 0) held = () => warn(message);
+      else warn(message);
     } else if (explicit !== undefined && source !== explicit) {
       warn(`[state-viewer] No ${explicit} context for ${shown}, so the preview uses the ${source} context.`);
     }
+    // Before the listeners are notified, because a listener can preview the instance again.
+    if (held) heldWarnings.set(instanceKey, held);
+    else heldWarnings.delete(instanceKey);
 
     const override: Override = freeze({
       instanceKey,
@@ -443,13 +455,41 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     }
   }
 
+  /**
+   * Tells the registry that a fixture load starts (R18), and returns the function that ends it.
+   * When the last pending load ends, each preview that holds its live-context warning gives it, if it still uses the
+   * live context.
+   */
+  function expectFixtures(): () => void {
+    pendingFixtureLoads++;
+    let pending = true;
+    // One-shot, so calling it again can't end a different load.
+    return () => {
+      if (!pending) return;
+      pending = false;
+      pendingFixtureLoads--;
+      if (pendingFixtureLoads === 0) giveHeldWarnings();
+    };
+  }
+
+  function giveHeldWarnings(): void {
+    const held = [...heldWarnings];
+    heldWarnings.clear();
+    for (const [key, warn] of held) {
+      // A fixture that registered moved the preview off the live context (D13).
+      if (overrides.get(key)?.source === 'live') warn();
+    }
+  }
+
   function releaseOverride(instanceKey?: string): void {
     if (instanceKey !== undefined) {
+      heldWarnings.delete(instanceKey);
       if (!overrides.delete(instanceKey)) return;
       markDirty('overrides');
       notifyOverride(instanceKey);
       return;
     }
+    heldWarnings.clear();
     if (overrides.size === 0) return;
     const released = [...overrides.keys()];
     overrides.clear();
@@ -467,14 +507,15 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     if (!leaves || overrides.has(key) || !handle.capabilities?.preview) return;
     const { machineId } = handle;
     let warned = false;
-    const warn: Warn = linkWarned.has(machineId)
-      ? noop
-      : (message, ...details) => {
-          warned = true;
-          console.warn(message, ...details);
-        };
+    // Checked at each call, because the preview can give a held warning after another instance warned.
+    const warn: Warn = (message, ...details) => {
+      // Another instance of the machine warned first.
+      if (!warned && linkWarned.has(machineId)) return;
+      warned = true;
+      linkWarned.add(machineId);
+      console.warn(message, ...details);
+    };
     applyPreview(key, { leaves: [...leaves] }, warn);
-    if (warned) linkWarned.add(machineId);
   }
 
   function link(targets: DeepLinkTarget[]): void {
@@ -560,6 +601,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
       markDirty('data');
       reresolve();
     },
+    expectFixtures,
     logEvent(entry) {
       eventLog.push(entry);
       markDirty('log');
@@ -594,6 +636,7 @@ export function createNoopRegistry(): Registry {
     onOverride: () => noop,
     record: noop,
     registerFixtures: noop,
+    expectFixtures: () => noop,
     logEvent: noop,
     clearLog: noop,
     link: noop,

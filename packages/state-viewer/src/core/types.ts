@@ -114,6 +114,13 @@ export interface Registry {
 
   record(instanceKey: string, leaves: string[], context: unknown): void;
   registerFixtures(sets: FixtureSet[]): void;
+  /**
+   * Starts a fixture load, such as a lazy loader of `<StateViewer fixtures>` (R18), and returns the function that ends
+   * it, which the caller calls after it registers the sets or when the load fails.
+   * While a load is pending, a preview on the default order that finds only live context holds its warning (R19).
+   * It warns when the last load ends, and only if no fixture that registered gave it context (D13).
+   */
+  expectFixtures(): () => void;
   logEvent(entry: EventLogEntry): void;
   clearLog(): void;
 

@@ -154,7 +154,8 @@ In Vite, you can use `import.meta.env.DEV` as the condition.
 - A fixture set applies to each instance of its machine, also to copies from `machine.provide()`, and to machines that
   `debug.id` renames.
 - The loader runs after the page loads. Previews that started before it finished, such as previews from a deep link,
-  change to the fixture when it arrives.
+  change to the fixture when it arrives. Such a preview logs the warning about the live context only if the loader
+  gives no fixture for it.
 - In a parallel preview, the first leaf that has a fixture gives the context: the leaves you selected, in sequence,
   then the leaves of the other regions.
 - You can give an array of sets in place of a loader. Then the sets are in your main bundle, also in production.

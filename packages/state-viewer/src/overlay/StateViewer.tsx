@@ -55,24 +55,34 @@ function useDeepLink(registry: Registry, param: string): void {
 // Sets already registered, so a loader that runs again (an inline arrow on a re-render, StrictMode) adds nothing new.
 const registeredSets = new WeakMap<Registry, WeakSet<FixtureSet>>();
 
-/** Registers fixtures given directly or by a lazy loader (R18). Previews made before they load pick them up (R16). */
+/**
+ * Registers fixtures given directly or by a lazy loader (R18). Previews made before they load pick them up (R16).
+ * In an insertion effect, like the deep link: then the registry expects the fixtures before the app's hooks register in
+ * layout effects and the link previews them.
+ * Thus, a linked preview that starts on the live context warns only if the fixtures don't give it context (R19).
+ */
 function useFixtures(registry: Registry, input: FixturesInput | undefined): void {
-  React.useEffect(() => {
+  React.useInsertionEffect(() => {
     if (input === undefined) return;
     let current = true;
-    void loadFixtures(input).then((sets) => {
-      // A newer input took over; its sets win.
-      if (!current) return;
-      let seen = registeredSets.get(registry);
-      if (!seen) {
-        seen = new WeakSet();
-        registeredSets.set(registry, seen);
-      }
-      const fresh = sets.filter((set) => !seen.has(set));
-      if (fresh.length === 0) return;
-      for (const set of fresh) seen.add(set);
-      registry.registerFixtures(fresh);
-    });
+    // Ended when the load settles, not on cleanup: StrictMode and a new input start the next load after the cleanup,
+    // and an end between them would give the held warnings too early.
+    const done = registry.expectFixtures();
+    void loadFixtures(input)
+      .then((sets) => {
+        // A newer input took over; its sets win.
+        if (!current) return;
+        let seen = registeredSets.get(registry);
+        if (!seen) {
+          seen = new WeakSet();
+          registeredSets.set(registry, seen);
+        }
+        const fresh = sets.filter((set) => !seen.has(set));
+        if (fresh.length === 0) return;
+        for (const set of fresh) seen.add(set);
+        registry.registerFixtures(fresh);
+      })
+      .finally(done);
     return () => {
       current = false;
     };
