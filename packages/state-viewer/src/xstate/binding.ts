@@ -2,7 +2,7 @@
 
 import { toObserver, type AnyActorRef, type AnyMachineSnapshot, type AnyStateMachine, type Observer } from 'xstate';
 import { getRegistry, toInstanceKey } from '../core/registry';
-import type { MachineHandle, Override, StateNodeInfo } from '../core/types';
+import type { Capabilities, MachineHandle, Override, Registry, StateNodeInfo } from '../core/types';
 import { isFallbackId, resolveMachineId, warnFallbackId } from './machine-id';
 import { getTree, isMachine, leavesOfSnapshot, normalizeLeaves, resolveSnapshot } from './tree';
 import { createView, type View, type ViewSource } from './view';
@@ -49,6 +49,17 @@ type MachineActor = AnyActorRef & {
 
 // The /* @__PURE__ */ marks and the observableKey() function let production builds remove these (spec §10.7).
 const EMPTY_CHILDREN: Readonly<Record<string, AnyActorRef>> = /* @__PURE__ */ Object.freeze({});
+// Shared by every handle: the registry and the overlay only read them.
+const PREVIEW_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
+  preview: true,
+  live: false,
+  children: true,
+});
+const READ_ONLY_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
+  preview: false,
+  live: false,
+  children: true,
+});
 const observableKey = (): PropertyKey => (Symbol as { observable?: symbol }).observable ?? '@@observable';
 const noop = (): void => {};
 
@@ -91,10 +102,11 @@ function createBinding(actor: MachineActor): Binding {
   // The instance key the proxy reads previews from. Set by the first registration, so an actor that HMR recreated
   // shows the preview on its first render, and moved by connect() when the id changes.
   let key: string | undefined;
-  let latest: { identity: string; registration: Registration } | undefined;
+  let latest: { identity: Identity; registration: Registration } | undefined;
   const previewListeners = new Set<() => void>();
   let stopWatching: (() => void) | undefined;
-  const stopListeners = new Set<() => void>();
+  // Made on first use, as are `views` and `bound` below: most actors never need them, and each mount makes a binding.
+  let stopListeners: Set<() => void> | undefined;
   // Connected registrations. The registry is watched only while one is, or while it still keeps a preview for the key,
   // which it releases at its next flush after the last one disconnects. Nothing previews an actor nobody registers,
   // and the page-wide registry would otherwise keep it alive through subscribers that never unsubscribe: XState lets
@@ -210,7 +222,7 @@ function createBinding(actor: MachineActor): Binding {
   };
 
   // The proxy.subscribe() views still open, for dropObservers().
-  const views = new Set<View>();
+  let views: Set<View> | undefined;
 
   function subscribe(
     nextOrObserver?: Observer<unknown> | ((snapshot: unknown) => void),
@@ -220,10 +232,10 @@ function createBinding(actor: MachineActor): Binding {
     const target = toObserver(nextOrObserver, error, complete);
     let stopPreview = noop;
     const view = createView(target, () => source, 'notified', () => {
-      views.delete(view);
+      views!.delete(view);
       stopPreview();
     });
-    views.add(view);
+    (views ??= new Set()).add(view);
     const subscription = actor.subscribe(view.observer);
     // An observer without next, such as toPromise's, has nothing to show, and listening would only keep it alive.
     if (target.next && !view.isClosed()) stopPreview = onPreviewChange(view.showCurrent);
@@ -287,13 +299,13 @@ function createBinding(actor: MachineActor): Binding {
     stop: () => {
       actor.stop();
       // An actor stopped before it started sends nothing XState can observe, so connect() hears about it here.
-      for (const listener of [...stopListeners]) call(listener, `Stopping "${key}" threw.`);
+      if (stopListeners) for (const listener of [...stopListeners]) call(listener, `Stopping "${key}" threw.`);
       return proxy;
     },
     [observableKey()]: () => proxy,
   };
   // Bound once per method, so `proxy.on === proxy.on` and React dependency arrays stay stable.
-  const bound = new Map<PropertyKey, { source: (...args: unknown[]) => unknown; bound: unknown }>();
+  let bound: Map<PropertyKey, { source: (...args: unknown[]) => unknown; bound: unknown }> | undefined;
 
   proxy = new Proxy(actor, {
     get(target, property) {
@@ -302,6 +314,7 @@ function createBinding(actor: MachineActor): Binding {
       const value: unknown = Reflect.get(target, property, target);
       // Everything else is the real actor's, bound to it (§7.1). Constructors stay as they are for instanceof checks.
       if (typeof value !== 'function' || property === 'constructor') return value;
+      bound ??= new Map();
       let entry = bound.get(property);
       if (entry?.source !== value) {
         entry = { source: value as (...args: unknown[]) => unknown, bound: value.bind(target) };
@@ -313,7 +326,7 @@ function createBinding(actor: MachineActor): Binding {
   proxies.add(proxy);
 
   function createRegistration(identity: Identity, registrationKey: string): Registration {
-    const { handle, notify, record } = createHandle(actor, machine, identity, undefined, true);
+    const { handle, notify, record } = createHandle(actor, machine, identity, undefined, true, registry);
     return {
       key: registrationKey,
       handle,
@@ -330,7 +343,7 @@ function createBinding(actor: MachineActor): Binding {
         const disconnect = (): void => {
           if (!connected) return;
           connected = false;
-          stopListeners.delete(disconnect);
+          stopListeners?.delete(disconnect);
           stopInspecting();
           unregister();
           connections--;
@@ -338,12 +351,12 @@ function createBinding(actor: MachineActor): Binding {
         };
         // Inspection rather than actor.subscribe(): an observer without an error callback makes XState report errors
         // the app handles as unhandled, and one with an error callback hides errors the app doesn't handle.
-        stopInspecting = inspect(actor, registrationKey, (snapshot) => {
+        stopInspecting = inspect(actor, registrationKey, registry, (snapshot) => {
           record(snapshot);
           notify();
           if (untilStopped && statusOf(snapshot) !== 'active') disconnect();
         });
-        if (untilStopped) stopListeners.add(disconnect);
+        if (untilStopped) (stopListeners ??= new Set()).add(disconnect);
         return disconnect;
       },
     };
@@ -353,17 +366,24 @@ function createBinding(actor: MachineActor): Binding {
     ...source,
     proxy,
     registration(identity) {
+      // Field by field, so a render that keeps the identity makes no strings. No label is the same as an empty one.
+      const previous = latest?.identity;
+      if (
+        previous?.machineId === identity.machineId &&
+        previous.instanceId === identity.instanceId &&
+        (previous.label ?? '') === (identity.label ?? '')
+      ) {
+        return latest!.registration;
+      }
       const registrationKey = toInstanceKey(identity.machineId, identity.instanceId);
-      const id = `${registrationKey}\n${identity.label ?? ''}`;
-      if (latest?.identity === id) return latest.registration;
       key ??= registrationKey;
       const registration = createRegistration(identity, registrationKey);
-      latest = { identity: id, registration };
+      latest = { identity, registration };
       return registration;
     },
     onPreviewChange,
     dropObservers() {
-      for (const view of [...views]) view.drop();
+      if (views) for (const view of [...views]) view.drop();
     },
   };
 }
@@ -381,16 +401,20 @@ function createHandle(
   identity: Identity,
   parentKey: string | undefined,
   preview: boolean,
+  registry: Registry,
 ): ObservedHandle {
-  const registry = getRegistry();
   const key = toInstanceKey(identity.machineId, identity.instanceId);
-  const listeners = new Set<() => void>();
+  // Made on the first subscribe(). Only the open panel subscribes, and only to the handle it shows.
+  let listeners: Set<() => void> | undefined;
+  // The leaves of the snapshot recorded last. An actor records the same snapshot when it connects and when it starts.
+  let recordedSnapshot: unknown;
+  let recordedLeaves: string[] = [];
 
   const handle: MachineHandle = {
     machineId: identity.machineId,
     instanceId: identity.instanceId,
     adapter: 'xstate',
-    capabilities: Object.freeze({ preview, live: false, children: true }),
+    capabilities: preview ? PREVIEW_CAPABILITIES : READ_ONLY_CAPABILITIES,
     // The config, not the machine: machine.provide() makes a new machine around the same config, and fixtures
     // defined for the machine should still match (D10).
     source: machine.config,
@@ -399,9 +423,9 @@ function createHandle(
     getContext: () => contextOf(actor.getSnapshot()),
     subscribe(onChange) {
       const listener = (): void => onChange();
-      listeners.add(listener);
+      (listeners ??= new Set()).add(listener);
       return () => {
-        listeners.delete(listener);
+        listeners!.delete(listener);
       };
     },
     normalizeTarget: (leaves) => normalizeLeaves(machine, leaves, leavesOfSnapshot(machine, actor.getSnapshot())),
@@ -413,6 +437,7 @@ function createHandle(
   return {
     handle,
     notify() {
+      if (!listeners || listeners.size === 0) return;
       for (const listener of [...listeners]) {
         if (listeners.has(listener)) call(listener, `A listener of "${key}" threw.`);
       }
@@ -420,8 +445,11 @@ function createHandle(
     record(snapshot) {
       const status = statusOf(snapshot);
       if (status !== 'active' && status !== 'done') return;
-      const leaves = leavesOfSnapshot(machine, snapshot);
-      if (leaves.length > 0) registry.record(key, leaves, (snapshot as AnyMachineSnapshot).context);
+      if (snapshot !== recordedSnapshot) {
+        recordedSnapshot = snapshot;
+        recordedLeaves = leavesOfSnapshot(machine, snapshot);
+      }
+      if (recordedLeaves.length > 0) registry.record(key, recordedLeaves, (snapshot as AnyMachineSnapshot).context);
     },
   };
 }
@@ -434,18 +462,23 @@ const childHandles = new WeakMap<AnyActorRef, ObservedHandle>();
  * are listed read-only under it. The system takes an inspector after creation, which covers hooks and connect()
  * alike; children that already exist are found through the snapshot.
  */
-function inspect(root: MachineActor, rootKey: string, onRootSnapshot: (snapshot: unknown) => void): () => void {
-  const registry = getRegistry();
-  const connected = new Map<AnyActorRef, { child: ObservedHandle; unregister: () => void }>();
+function inspect(
+  root: MachineActor,
+  rootKey: string,
+  registry: Registry,
+  onRootSnapshot: (snapshot: unknown) => void,
+): () => void {
+  // Made when the first child comes in: most machines have no child machines.
+  let connected: Map<AnyActorRef, { child: ObservedHandle; unregister: () => void }> | undefined;
 
   function keyOf(ref: AnyActorRef): string | undefined {
     if (ref === root) return rootKey;
-    const handle = connected.get(ref)?.child.handle;
+    const handle = connected?.get(ref)?.child.handle;
     return handle && toInstanceKey(handle.machineId, handle.instanceId);
   }
 
   function add(ref: AnyActorRef): void {
-    if (connected.has(ref) || !isMachineActor(ref)) return;
+    if (connected?.has(ref) || !isMachineActor(ref)) return;
     // Only under a listed parent. The system reports every actor in it, including the ancestors and siblings of an
     // actor connect()ed below its root, and XState leaves the children of a failed actor running.
     const parentKey = ref._parent && keyOf(ref._parent);
@@ -457,10 +490,10 @@ function inspect(root: MachineActor, rootKey: string, onRootSnapshot: (snapshot:
       if (isFallbackId(ref.logic, machineId)) warnFallbackId(machineId);
       // An invoke or spawn id names the child better than its session id.
       const label = typeof ref.id === 'string' && ref.id !== ref.sessionId ? ref.id : undefined;
-      child = createHandle(ref, ref.logic, { machineId, instanceId: ref.sessionId, label }, parentKey, false);
+      child = createHandle(ref, ref.logic, { machineId, instanceId: ref.sessionId, label }, parentKey, false, registry);
       childHandles.set(ref, child);
     }
-    connected.set(ref, { child, unregister: registry.register(child.handle) });
+    (connected ??= new Map()).set(ref, { child, unregister: registry.register(child.handle) });
     child.record(ref.getSnapshot());
     // XState starts children before their parent's first snapshot, so the ones turned away above come in now.
     walk(ref);
@@ -471,8 +504,8 @@ function inspect(root: MachineActor, rootKey: string, onRootSnapshot: (snapshot:
    * be unseen, as when a grandchild's finish ends its parent before its own snapshot comes in (R17).
    */
   function remove(ref: AnyActorRef): void {
-    const entry = connected.get(ref);
-    if (!entry) return;
+    const entry = connected?.get(ref);
+    if (!connected || !entry) return;
     entry.child.record(ref.getSnapshot());
     connected.delete(ref);
     entry.unregister();
@@ -493,6 +526,7 @@ function inspect(root: MachineActor, rootKey: string, onRootSnapshot: (snapshot:
         const ref = event.actorRef as AnyActorRef;
         if (ref === root) {
           onRootSnapshot(event.snapshot);
+          if (!connected || connected.size === 0) return;
           // A backstop for children that ended without telling anyone, or before their own snapshot came in.
           for (const child of [...connected.keys()]) {
             if (statusOf(child.getSnapshot()) !== 'active') remove(child);
@@ -503,7 +537,7 @@ function inspect(root: MachineActor, rootKey: string, onRootSnapshot: (snapshot:
           remove(ref);
           return;
         }
-        const entry = connected.get(ref);
+        const entry = connected?.get(ref);
         if (!entry) {
           add(ref);
           return;
@@ -524,6 +558,7 @@ function inspect(root: MachineActor, rootKey: string, onRootSnapshot: (snapshot:
     if (!active) return;
     active = false;
     subscription.unsubscribe();
+    if (!connected) return;
     // A connect()ed actor that finishes along with its child disconnects before the child's done snapshot comes in.
     for (const [ref, { child, unregister }] of connected) {
       child.record(ref.getSnapshot());

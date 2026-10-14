@@ -298,10 +298,10 @@ in jsdom with StrictMode. Compare the rows, not the absolute times.
 | Work | `@xstate/react` | `state-viewer/xstate` |
 |---|---|---|
 | A transition that renders a `useMachine` component again | 27 µs | 34 µs |
-| Mount and unmount 50 rows, each with `useMachine` | 1.0 ms | 2.2 ms |
+| Mount and unmount 50 rows, each with `useMachine` | 1.0 ms | 2.1 ms |
 | 100 events to an actor outside React (`connect()`) | 0.17 ms | 0.22 ms |
 
-Thus, a transition costs approximately 8 µs more, a mount approximately 25 µs more, and an event to a `connect()`ed
+Thus, a transition costs approximately 8 µs more, a mount approximately 22 µs more, and an event to a `connect()`ed
 actor less than 1 µs more. Production builds do not have this cost.
 
 ## Limitations
