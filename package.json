@@ -5,6 +5,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm --filter vite-react dev",
+    "dev:hostile-css": "pnpm --filter hostile-css dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck"
   },
