@@ -1,6 +1,6 @@
 packages:
   - packages/*
-  - apps/*
+  - examples/*
 
 catalog:
   react: ^19.3.0

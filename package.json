@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --filter demo dev",
+    "dev": "pnpm --filter vite-react dev",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter vite-react test:e2e",
     "typecheck": "pnpm -r typecheck"
   },
   "devEngines": {
