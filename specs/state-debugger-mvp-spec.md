@@ -489,16 +489,16 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ## 12. Acceptance criteria for 0.1.0
 
-- [ ] In the demo app, swapping the import path and mounting `<StateViewer />` are the only changes needed for every machine to appear.
-- [ ] Every non-history state of every demo machine is listed, including never-visited ones.
+- [ ] In the vite-react example, swapping the import path and mounting `<StateViewer />` are the only changes needed for every machine to appear.
+- [ ] Every non-history state of every example machine is listed, including never-visited ones.
 - [ ] Previewing any state renders without errors using recorded or fixture data.
 - [ ] Components reading through `useSelector` and `createActorContext` show the preview.
-- [ ] Previews never remount components (checked with mount counters in the demo).
+- [ ] Previews never remount components (checked with mount counters in the vite-react example).
 - [ ] Events sent during a preview are blocked and appear in the log.
 - [ ] Releasing restores the real, current state.
 - [ ] A deep link reproduces a preview after reload.
-- [ ] Hostile global CSS doesn't change the panel, and the panel doesn't change the app.
-- [ ] The demo's production build contains no registry or overlay code (checked by bundle analysis).
+- [ ] Hostile global CSS doesn't change the panel, and the panel doesn't change the app (checked in the hostile-css example).
+- [ ] The examples' production builds contain no registry or overlay code (checked by bundle analysis).
 - [ ] Works on React 18 and 19 with StrictMode on.
 
 ## 13. Testing strategy
@@ -508,18 +508,18 @@ Checked in the XState source at tag `xstate@5.28.0`:
 | Unit | Vitest | Registry, leaf/state-value conversion, deep-link parsing, context resolution, recording caps and serialization |
 | Adapter | Vitest + React Testing Library | Proxy with `useMachine`, `useSelector` and `createActorContext`; blocked sends; release; StrictMode double mount; multiple instances; render and mount counts |
 | Types | `expectTypeOf` | `defineFixtures` keys and context types |
-| End to end | Playwright on the demo app | Previewing every state, deep links, keyboard, the hostile-CSS page |
+| End to end | Playwright, in a separate repository, against the examples | Previewing every state, deep links, keyboard, navigation between pages, the hostile-css example |
 | Bundle | Production build + size-limit | Debug code removed, size budget |
 
 ## 14. Roadmap
 
 ### Milestone 0: Setup
 
-- [x] pnpm workspace with `packages/state-viewer` and `examples/vite-react`
+- [x] pnpm workspace with `packages/state-viewer` and `examples/*`
 - [x] TypeScript strict; tsdown build with `state-viewer` and `state-viewer/xstate` entries and `'use client'` banners
-- [x] Vitest, React Testing Library, Playwright
+- [x] Vitest and React Testing Library
 - [ ] ESLint, Prettier, CI (typecheck, test, build, size), Changesets
-- [x] Demo app (Vite + React, `examples/vite-react`):
+- [x] Example app (Vite + React Router, `examples/vite-react`), with one page per example and a home page that lists them:
   - [x] Checkout machine with nested and parallel states
   - [x] A list with one machine per row
   - [x] A `createActorContext` provider read with `useSelector`
@@ -564,12 +564,13 @@ Checked in the XState source at tag `xstate@5.28.0`:
 - [x] Deep links applied on registration
 - [x] P1: copy JSON and copy link, theming, description and tag hints
 - [x] Accessibility pass
-- [x] Hostile-CSS test page
+- [x] Hostile-CSS example (`examples/hostile-css`)
 
 ### Milestone 4: Hardening and 0.1.0
 
 - [ ] Confirm production removal with Vite, Next.js (webpack and Turbopack), React Router and esbuild
 - [ ] Next.js App Router example (`'use client'`, SSR safety)
+- [ ] End-to-end tests with Playwright in a separate repository, run against the examples
 - [ ] Test matrix: React 18 and 19; pin the minimum XState 5.x
 - [ ] Measure overhead with the panel closed
 - [ ] README: quickstart, concepts, API, limitations, FAQ
@@ -654,6 +655,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 | D16 | Overrides keep the requested leaves | Copy link, source switching and the previewed-leaf mark need what was asked for, not the filled-in configuration |
 | D17 | A total budget for persisted recordings | The debugger must never make the app's own sessionStorage writes fail |
 | D18 | Unregistering keeps the preview until the next flush | Fast Refresh re-runs effects on every save, and a preview should survive editing the component it previews |
+| D19 | Examples stay minimal; end-to-end tests live in a separate repository | The examples read as usage documentation, without test ids, extra pages or Playwright setup |
 
 ## 17. References
 
