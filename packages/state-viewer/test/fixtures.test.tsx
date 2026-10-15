@@ -5,6 +5,7 @@ import { defineFixtures, useMachine, type FixtureStates } from 'state-viewer/xst
 import { describe, expect, test } from 'vitest';
 import { assign, createMachine, setup, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { watchConsole } from './support/console';
+import { REACT_MAJOR } from './support/hooks';
 import { flush, freshId, marks, panel, pickSource, preview, release, show, shownKey } from './support/panel';
 
 /** A factory. A test makes the machine again with it, as HMR does. Each transition adds one to the step. */
@@ -87,8 +88,6 @@ function liveWarning(leaves: string, key: string) {
 function firstLines(lines: string[]): string[] {
   return lines.map((line) => line.split('\n')[0]);
 }
-
-const REACT_MAJOR = Number(React.version.split('.')[0]);
 
 const ROOT_SYSTEM_ID = 'root';
 const actors = new Map<string, AnyActorRef>();

@@ -153,6 +153,11 @@ export function shownKey(): string {
   return one<HTMLSelectElement>('select[aria-label="Instance"]').value;
 }
 
+/** The keys of the shown machine's instances, in registration order. They are the values of the Instance options. */
+export function instanceKeys(): string[] {
+  return [...one<HTMLSelectElement>('select[aria-label="Instance"]').options].map((option) => option.value);
+}
+
 /**
  * What the panel header shows: the count of previewed instances, whether Release all is enabled, and the Machine and
  * Instance pickers. A picker is null while no machine is registered.
