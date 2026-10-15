@@ -182,16 +182,12 @@
       // When black-box tests replace a file, delete the file and its line.
       "files": [
         "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
-        "packages/state-viewer/test/regressions/child-final-recording.test.tsx",
         "packages/state-viewer/test/regressions/complete-during-preview.test.ts",
         "packages/state-viewer/test/regressions/debug-disabled-during-preview.test.tsx",
         "packages/state-viewer/test/regressions/debug-disabled-while-hidden.test.tsx",
         "packages/state-viewer/test/regressions/debug-disabled-without-preview.test.tsx",
         "packages/state-viewer/test/regressions/debug-toggle-observer-memory.test.tsx",
-        "packages/state-viewer/test/regressions/errored-child.test.tsx",
-        "packages/state-viewer/test/regressions/failed-child-descendants.test.tsx",
         "packages/state-viewer/test/regressions/finished-connect-subscriber-retention.test.ts",
-        "packages/state-viewer/test/regressions/grandchild-final-recording.test.tsx",
         "packages/state-viewer/test/regressions/held-ending-across-actor-replacement.test.tsx",
         "packages/state-viewer/test/regressions/held-ending-dropped-after-told.test.tsx",
         "packages/state-viewer/test/regressions/held-ending-survives-hook-stop.test.tsx",
@@ -226,9 +222,7 @@
         "packages/state-viewer/test/regressions/useactorref-observer-done.test.tsx",
         "packages/state-viewer/test/regressions/useactorref-observer-restart.test.tsx",
         "packages/state-viewer/test/regressions/waitfor-done-during-preview.test.tsx",
-        "packages/state-viewer/test/xstate/helpers.ts",
-        "packages/state-viewer/test/xstate/integration.test.tsx",
-        "packages/state-viewer/test/xstate/proxy.test.ts"
+        "packages/state-viewer/test/xstate/helpers.ts"
       ],
       "rules": {
         "no-restricted-imports": "off",
