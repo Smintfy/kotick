@@ -6,7 +6,6 @@ import type { StateNodeInfo, StateNodeType } from '../core/types';
 export type AnyStateNode = AnyStateMachine['root'];
 
 interface MachineTree {
-  /** The root's children as protocol nodes, frozen. History nodes are left out. */
   nodes: readonly StateNodeInfo[];
   /** Leaf id to its state node, for every atomic and final node. */
   leaves: ReadonlyMap<string, AnyStateNode>;

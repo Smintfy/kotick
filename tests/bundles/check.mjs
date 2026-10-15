@@ -33,10 +33,10 @@ import { gzipSync } from 'node:zlib';
 const root = join(import.meta.dirname, '../..');
 const fixtureDir = import.meta.dirname;
 
-/** Strings that only debug code contains, and the part of the package each one stands for. */
 /** The most that the startup JavaScript may grow against the same app with @xstate/react, in gzip bytes. */
 const STARTUP_BUDGET = 512;
 
+/** Strings that only debug code contains, and the part of the package each one stands for. */
 const MARKERS = {
   __STATE_VIEWER_REGISTRY__: 'registry',
   'state-viewer:recorded:': 'recordings',

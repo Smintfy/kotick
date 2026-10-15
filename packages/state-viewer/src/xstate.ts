@@ -1,7 +1,5 @@
 'use client';
 
-// state-viewer/xstate: drop-in for @xstate/react. The only entry allowed to import xstate.
-
 import * as xstateReact from '@xstate/react';
 import type { AnyActorRef } from 'xstate';
 import { connect as connectActor } from './xstate/connect';
@@ -14,10 +12,8 @@ export type { DebugOptions } from './xstate/options';
 // Declared here rather than through @types/node, so apps that typecheck this source without Node types still compile.
 declare const process: { env: { NODE_ENV?: string } };
 
-// Bundlers replace process.env.NODE_ENV and remove the branch that production builds don't use.
-// Production builds then keep @xstate/react's hooks and drop the rest.
 // Write the condition at each use.
-// esbuild, webpack and Turbopack don't copy the value of a `const DEV = …` into its uses, so they keep both branches.
+// esbuild doesn't copy the value of a `const DEV = …` into its uses, so it keeps both branches.
 
 export const useActorRef: typeof hooks.useActorRef =
   process.env.NODE_ENV !== 'production' ? hooks.useActorRef : (xstateReact.useActorRef as typeof hooks.useActorRef);

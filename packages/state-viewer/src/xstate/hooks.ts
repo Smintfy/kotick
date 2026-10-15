@@ -198,8 +198,8 @@ function useProxiedActorRef(
     // @xstate/react restarts the actor. With a new actor too, so the memory moves to it in the commit, before the
     // replaced actor tells the observer anything more.
     if (!listening) view?.settle();
-    // Before @xstate/react starts the actor, as with connect(createActor(m)).start(): the registry records the
-    // snapshot the component first rendered and everything start() goes through.
+    // @xstate/react starts the actor in a passive effect, after this layout effect.
+    // So the registry records the first rendered snapshot and every snapshot that start() goes through.
     ensureConnection(hook.registration, registration, connectRegistration);
   }, [actor, binding, view, listening, registration]);
   useConnection(hook.listening, listening, connectListening);

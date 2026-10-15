@@ -3,14 +3,12 @@
 import type { AnyActorRef, AnyStateMachine } from 'xstate';
 import { isMachine } from './tree';
 
-/** A machine actor as far as the adapter needs one. */
 export type MachineActor = AnyActorRef & {
   logic: AnyStateMachine;
   sessionId: string;
   _send(event: unknown): void;
 };
 
-// The /* @__PURE__ */ mark lets production builds remove it.
 export const EMPTY_CHILDREN: Readonly<Record<string, AnyActorRef>> = /* @__PURE__ */ Object.freeze({});
 
 export function isMachineActor(actor: unknown): actor is MachineActor {

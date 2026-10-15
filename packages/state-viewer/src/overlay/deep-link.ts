@@ -4,7 +4,6 @@ import type { DeepLinkTarget } from '../core/types';
 
 const DEFAULT_URL_PARAM = 'debug-state';
 
-/** The query parameter that `<StateViewer urlParam>` names, or the default when it names none. */
 export function resolveUrlParam(urlParam: string | undefined): string {
   return typeof urlParam === 'string' && urlParam !== '' ? urlParam : DEFAULT_URL_PARAM;
 }

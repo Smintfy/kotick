@@ -1,5 +1,3 @@
-// Fixture registry.
-
 import type { FixtureSet, MachineHandle } from './types';
 
 export type FixtureTarget = Pick<MachineHandle, 'machineId' | 'source'>;

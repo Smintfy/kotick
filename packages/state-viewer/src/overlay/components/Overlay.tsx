@@ -159,7 +159,6 @@ export function Overlay(props: OverlayProps) {
   );
 }
 
-/** The parsed toggle shortcut, `undefined` when it's turned off or invalid (with a warning). */
 function useShortcut(value: string | false | undefined) {
   const source = value === undefined ? 'alt+s' : value;
   return React.useMemo(() => {

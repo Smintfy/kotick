@@ -11,8 +11,9 @@ export async function flush(): Promise<void> {
 let count = 0;
 
 /**
- * Returns a machine id that no earlier test in the file used. The page keeps one registry for the whole file, so a
- * fresh id keeps the recordings, fixtures and one-time warnings of earlier tests away.
+ * Returns a machine id that no earlier test in the file used.
+ * The page keeps one registry for the whole file.
+ * A fresh id keeps the recordings, fixtures and one-time warnings of earlier tests away.
  */
 export function freshId(name: string): string {
   count += 1;
@@ -49,7 +50,6 @@ async function choose(select: HTMLSelectElement, value: string): Promise<void> {
   await flush();
 }
 
-/** Whether the panel is open, as the overlay's button announces it. */
 export function isOpen(): boolean {
   return one('button[aria-expanded]').getAttribute('aria-expanded') === 'true';
 }
@@ -66,9 +66,10 @@ export async function show(machineId: string, nth = 1): Promise<void> {
 type Source = 'recorded' | 'fixture' | 'live';
 
 /**
- * Previews leaves of an instance the way a developer does. It releases the instance's preview, then clicks each leaf
- * in the state tree. A click puts its leaf first, so the leaves are clicked last to first. Then `source` picks the
- * context source.
+ * Previews leaves of an instance the way a developer does.
+ * It releases the instance's preview, then clicks each leaf in the state tree.
+ * A click puts its leaf first, so the leaves are clicked last to first.
+ * Then `source` picks the context source.
  */
 export async function preview(
   machineId: string,
@@ -82,12 +83,10 @@ export async function preview(
   if (source) await pickSource(source);
 }
 
-/** Picks the context source of the shown preview. */
 export async function pickSource(source: Source): Promise<void> {
   await click(one(`[aria-label="Context source"] input[value="${source}"]`));
 }
 
-/** Clicks the Release button of an instance. */
 export async function release(machineId: string, nth = 1): Promise<void> {
   await show(machineId, nth);
   const found = button('Release');

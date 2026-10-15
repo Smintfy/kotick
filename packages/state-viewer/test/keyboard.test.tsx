@@ -1,5 +1,3 @@
-// The keyboard shortcut that opens and closes the panel, set with the `shortcut` prop.
-
 import { fireEvent, render, screen } from '@testing-library/react';
 import { StateViewer } from 'state-viewer';
 import { describe, expect, test } from 'vitest';
@@ -47,7 +45,6 @@ describe('the shortcut prop', () => {
     await flush();
 
     await press(ALT_S);
-    // StrictMode renders twice, and only React 19 prints the second render's warnings, so the count varies.
     expect({ open: isOpen(), warnings: [...new Set(output.warn)] }).toEqual({
       open: false,
       warnings: [

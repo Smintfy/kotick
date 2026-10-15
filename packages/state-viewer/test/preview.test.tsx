@@ -1,6 +1,3 @@
-// Previewing a state: a developer clicks a leaf in the panel, and every component that reads the machine shows that
-// state until the preview is released.
-
 import { fireEvent, render, screen } from '@testing-library/react';
 import { StateViewer, type FixturesInput } from 'state-viewer';
 import { defineFixtures, useMachine } from 'state-viewer/xstate';
@@ -76,14 +73,12 @@ async function press(name: string) {
   await flush();
 }
 
-/** What the checkout component shows. */
 function shown() {
   return JSON.parse(screen.getByRole('status').textContent ?? 'null');
 }
 
 const LIVE_WARNING = 'No recording or fixture for this state, so the preview uses live context.';
 
-/** The console warning for a preview that falls back to the live context. */
 function liveWarning(leaves: string, key: string) {
   return `[state-viewer] No recorded or fixture context for "${leaves}" on "${key}", so the preview uses the live context.`;
 }

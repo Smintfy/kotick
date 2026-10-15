@@ -1,4 +1,4 @@
-// Core protocol. Adapter-neutral: nothing in src/core may import xstate or @xstate/react.
+// The core protocol: the registry, and what the overlay and the adapter give it or read from it.
 
 export type StateNodeType = 'atomic' | 'compound' | 'parallel' | 'final';
 

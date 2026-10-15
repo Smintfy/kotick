@@ -1,5 +1,3 @@
-// Fixtures for XState machines.
-
 import type { AnyStateMachine, ContextFrom, SnapshotFrom } from 'xstate';
 import type { FixtureSet } from '../core/types';
 import { resolveMachineId } from './identity';

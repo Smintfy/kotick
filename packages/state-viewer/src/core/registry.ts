@@ -38,8 +38,7 @@ interface ResolvedContext {
   context: unknown;
 }
 
-/** Context resolution order when no source is asked for. */
-const SOURCES: readonly DataSource[] = ['recorded', 'fixture', 'live'];
+const DEFAULT_SOURCE_ORDER: readonly DataSource[] = ['recorded', 'fixture', 'live'];
 /**
  * The default order as a preview found it, by its source, for when fixtures register. A recording that arrived since
  * would move the preview with live traffic, so none is looked up, and a preview on a recording, which fixtures can't
@@ -392,7 +391,10 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     const leaves = [...requested, ...normalized.filter((leaf) => !requested.includes(leaf))];
 
     const explicit = target.source;
-    const order = explicit === undefined ? SOURCES : [explicit, ...SOURCES.filter((source) => source !== explicit)];
+    const order =
+      explicit === undefined
+        ? DEFAULT_SOURCE_ORDER
+        : [explicit, ...DEFAULT_SOURCE_ORDER.filter((source) => source !== explicit)];
     let resolved: ResolvedContext | undefined;
     try {
       resolved = resolveContext(handle, order, requested, leaves);
@@ -455,11 +457,6 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     }
   }
 
-  /**
-   * Tells the registry that a fixture load starts, and returns the function that ends it.
-   * When the last pending load ends, each preview that holds its live-context warning gives it, if it still uses the
-   * live context.
-   */
   function expectFixtures(): () => void {
     pendingFixtureLoads++;
     let pending = true;
@@ -476,7 +473,6 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     const held = [...heldWarnings];
     heldWarnings.clear();
     for (const [key, warn] of held) {
-      // A fixture that registered moved the preview off the live context.
       if (overrides.get(key)?.source === 'live') warn();
     }
   }
@@ -615,7 +611,6 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   };
 }
 
-// Marked pure, so that production builds can remove it.
 const EMPTY_SNAPSHOT: RegistrySnapshot = /* @__PURE__ */ freeze({
   machines: /* @__PURE__ */ freeze([]),
   overrides: /* @__PURE__ */ freeze(/* @__PURE__ */ emptyRecord()),
@@ -718,7 +713,6 @@ function freeze<T extends object>(value: T): T {
   return value;
 }
 
-/** Calls the listener. When it throws, logs the error with the message, and returns. */
 export function callListener(listener: () => void, message: string): void {
   try {
     listener();

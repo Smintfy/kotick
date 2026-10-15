@@ -36,7 +36,7 @@ export interface Binding<TActor extends AnyActorRef = AnyActorRef> extends ViewS
   dropObservers(): void;
 }
 
-// A function rather than a constant, so production builds can remove it.
+// observableKey is a function, not a constant, so production builds can remove it.
 const observableKey = (): PropertyKey => (Symbol as { observable?: symbol }).observable ?? '@@observable';
 const noop = (): void => {};
 
@@ -280,7 +280,6 @@ function createBinding(actor: MachineActor): Binding {
       if (Object.hasOwn(members, property)) return members[property];
       if (property === 'ref') return proxy;
       const value: unknown = Reflect.get(target, property, target);
-      // Everything else is the real actor's, bound to it. Constructors stay as they are for instanceof checks.
       if (typeof value !== 'function' || property === 'constructor') return value;
       bound ??= new Map();
       let entry = bound.get(property);
