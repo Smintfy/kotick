@@ -1,10 +1,10 @@
 // Actors created outside React.
 
 import type { AnyActorRef } from 'xstate';
-import { findBinding, getBinding, isMachineActor, isProxy } from './binding';
 import { nextInstanceId } from './instance-id';
 import { resolveMachineId } from './machine-id';
-import type { DebugOptions } from './types';
+import type { DebugOptions } from './options';
+import { findBinding, getBinding, isMachineActor, isProxy } from './proxy';
 
 // Proxies made here, and hook proxies already warned about.
 const connected = new WeakSet<object>();

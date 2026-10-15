@@ -1,10 +1,10 @@
 // The core modules working together: the registry with its real recording, fixture and event-log stores,
 // sessionStorage-like storage shared across page loads, and deep links driving previews.
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
-import { readDeepLink, writeDeepLink } from '../../src/core/deep-link';
 import { STORAGE_PREFIX } from '../../src/core/recording';
 import { createRegistry, toInstanceKey, type RegistryOptions } from '../../src/core/registry';
 import type { MachineHandle, Registry, StateNodeInfo, StateNodeType } from '../../src/core/types';
+import { readDeepLink, writeDeepLink } from '../../src/overlay/deep-link';
 
 function node(id: string, type: StateNodeType, children: StateNodeInfo[] = []): StateNodeInfo {
   return { id, key: id.slice(id.lastIndexOf('.') + 1), type, children };

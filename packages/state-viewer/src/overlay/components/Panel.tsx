@@ -2,16 +2,16 @@
 // a footer to copy a link or the state as JSON. Keyboard shortcuts that need focus in the panel are handled here.
 
 import * as React from 'react';
-import { writeDeepLink } from '../core/deep-link';
-import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../core/types';
-import { copyText } from './clipboard';
+import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../../core/types';
+import { copyText } from '../clipboard';
+import { writeDeepLink } from '../deep-link';
+import { toJson } from '../format';
+import { useHandleUpdates, useIsomorphicLayoutEffect } from '../hooks';
+import { findInstance, leavesOf, planLink, toggleLeaf, type InstanceEntry, type MachineGroup } from '../model';
+import { isTyping } from '../shortcut';
 import { ContextView } from './ContextView';
 import { EventLog } from './EventLog';
-import { toJson } from './format';
-import { useHandleUpdates, useIsomorphicLayoutEffect } from './hooks';
 import { CloseIcon, CornerIcon } from './icons';
-import { findInstance, leavesOf, planLink, toggleLeaf, type InstanceEntry, type MachineGroup } from './model';
-import { isTyping } from './shortcut';
 import { DataMark, StateTree } from './StateTree';
 
 const EMPTY_DATA: DataAvailability = { recorded: new Set(), fixture: new Set() };

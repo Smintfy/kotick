@@ -1,8 +1,8 @@
 // The event log: events the UI sent during a preview, newest first, with the state it showed and when.
 
 import { useId } from 'react';
-import type { EventLogEntry } from '../core/types';
-import { formatTime, summarizePayload } from './format';
+import type { EventLogEntry } from '../../core/types';
+import { formatTime, summarizePayload } from '../format';
 
 // Entries have no id, and the ring buffer shifts their positions; React keys come from the objects themselves.
 const entryKeys = new WeakMap<EventLogEntry, number>();

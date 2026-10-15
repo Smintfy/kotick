@@ -1,7 +1,7 @@
 // Loading `<StateViewer fixtures>`: sets given directly, or a loader such as `() => import('./debug/fixtures')`.
 
 import type { FixtureSet } from '../core/types';
-import type { FixturesInput } from './types';
+import type { FixturesInput } from './props';
 
 /** The sets the input gives, or none with a warning when it gives something else or the loader fails. */
 export async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {

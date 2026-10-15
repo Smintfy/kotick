@@ -1,8 +1,8 @@
 // Deep links: ?debug-state=<machineId>:<leaf>[;<leaf>…][,<machineId>:…]
 
-import type { DeepLinkTarget } from './types';
+import type { DeepLinkTarget } from '../core/types';
 
-export type { DeepLinkTarget } from './types';
+export type { DeepLinkTarget } from '../core/types';
 
 export const DEFAULT_URL_PARAM = 'debug-state';
 
