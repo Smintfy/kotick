@@ -1,5 +1,5 @@
-// What the observer given to useActorRef has been told is kept per hook and real actor, whatever `debug.disabled` says
-// (spec §10.2, "Observers and the actor's ending" and "Lifecycle"; R13). A dev toggle that takes a machine out of the
+// What the observer given to useActorRef has been told is kept per hook and real actor, whatever `debug.disabled` says.
+// A dev toggle that takes a machine out of the
 // debugger and puts it back leaves the actor the same, so the observer isn't new to it when debug is turned on:
 // - An actor that finished while debug was disabled, from mount or after it was turned off, has told the observer how
 //   it ended. Turning debug on and previewing the machine shows the observer no preview, and releasing the preview

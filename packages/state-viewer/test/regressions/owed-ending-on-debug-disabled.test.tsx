@@ -1,7 +1,7 @@
 // When @xstate/react replaces a hook's actor (a new config: Fast Refresh, a machine built from props) after the old
-// actor finished during a preview, the old actor's ending is owed: the observer given to useActorRef hears it "once the
-// hook's actor is no longer previewed ..., before anything about the new actor" (spec §10.2, "Observers and the actor's
-// ending"). An inline observer, which @xstate/react subscribes to the new actor, also hears the new actor's ending
+// actor finished during a preview, the old actor's ending is owed: the observer given to useActorRef hears it once the
+// hook's actor is no longer previewed, before anything about the new actor.
+// An inline observer, which @xstate/react subscribes to the new actor, also hears the new actor's ending
 // (XState repeats a finished actor's ending when it's started from a done snapshot), held back by the same preview.
 //
 // Turning `debug.disabled` on stops previewing the actor for the observer, as a release does, and delivers in the same

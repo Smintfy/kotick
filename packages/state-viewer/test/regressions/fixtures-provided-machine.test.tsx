@@ -1,7 +1,8 @@
 // A component that injects implementations with machine.provide() and names the instance with debug.id: the actor's
 // logic is the clone provide() returns, not the machine the fixtures were defined for, and its registry id differs from
-// machine.id. R18 says fixtures match "the same machine object first, then the same machine id, so debug.id ... need[s]
-// no extra setup"; @xstate/react itself treats a provide() clone as the same machine (it keys its actor on
+// machine.id. A fixture set matches instances of the same machine definition first (its config, which provide() clones
+// share), then of the same machine id. Thus debug.id needs no extra setup.
+// @xstate/react itself treats a provide() clone as the same machine (it keys its actor on
 // logic.config, which provide() shares).
 
 import { act, render, screen } from '@testing-library/react';

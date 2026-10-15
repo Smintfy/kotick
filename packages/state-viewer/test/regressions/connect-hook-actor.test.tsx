@@ -1,9 +1,9 @@
 // connect() on the real actor behind a hook, reached the way XState apps look actors up (system.get with a systemId),
-// returns the hook's proxy without registering the actor again (spec §10.2: "Connecting the same actor again returns
-// the same proxy"; R10). The hook's instance stays the only one listed for the actor, and previewing it shows in the
+// returns the hook's proxy without registering the actor again. connect() given the same actor again returns
+// the same proxy. The hook's instance stays the only one listed for the actor, and previewing it shows in the
 // component, before and after the hook re-renders. The hook keeps its id and label: connect() given an id or a label
-// for such an actor warns once and ignores them. connect() given the hook's proxy, which is what apps hold (§7.1),
-// does the same ("Passing the hook's proxy works the same way"): one warning per hook actor, whether the app passes
+// for such an actor warns once and ignores them. connect() given the hook's proxy, which is what apps hold,
+// does the same: one warning per hook actor, whether the app passes
 // the proxy, the real actor, or both. A proxy connect() made itself comes back as it is, without a warning.
 
 import { act, render, screen } from '@testing-library/react';

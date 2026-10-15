@@ -1,8 +1,8 @@
-// A Fast Refresh edit that adds a region to a previewed parallel state keeps the preview (spec §10.1: the new handle's
+// A Fast Refresh edit that adds a region to a previewed parallel state keeps the preview (the new handle's
 // normalizeTarget keeps every previewed leaf and adds one for the new region), and the app shows the new region. The
-// override's `leaves`, "the full configuration: requested first, then filled-in regions" (§9), name that leaf too, so
-// the event log entry of an event the app sends then records "the state the UI showed when it sent the event" (§9,
-// R12), and fixtures registering afterwards are looked up against the leaves normalizeTarget filled in (§10.3).
+// override's `leaves` are the full configuration: the requested leaves first, then the filled-in regions.
+// They name that leaf too, so the event log entry of an event the app sends then records the state the UI showed when
+// it sent the event, and fixtures registering afterwards are looked up against the leaves normalizeTarget filled in.
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';

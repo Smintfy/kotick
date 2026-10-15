@@ -1,5 +1,5 @@
 // A child machine that reaches its final state has its final configuration recorded before it leaves the registry, at
-// any depth (spec §10.2 "Child discovery": each one's last snapshot is recorded first; §10.3, R17). That includes a
+// any depth (each one's last snapshot is recorded first). That includes a
 // grandchild whose finish ends its parent: XState relays the grandchild's done event to the parent, which finishes and
 // takes the grandchild out of the tree, before the grandchild's own done snapshot reaches the inspector. It also
 // includes the child of a connect()ed actor that finishes because its child finished: the root's done snapshot

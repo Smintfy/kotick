@@ -3,7 +3,7 @@
 // module that defines the machine and the component's debug options) and turns `debug.disabled` on.
 //
 // @xstate/react subscribes this render's inline observer to the new actor and starts it, so the observer hears the new
-// actor's real snapshot (spec §10.2: an inline observer follows the new actor; "It never hears the replaced actor's
+// actor's real snapshot (an inline observer follows the new actor; "It never hears the replaced actor's
 // real snapshot and the new one's both", test/regressions/stable-observer-left-on-preview.test.tsx). Leaving the
 // preview, as on a release, is decided for the observer of this render, which follows the new actor, rather than for
 // the previous render's, which is still subscribed to the replaced one until the passive effects.

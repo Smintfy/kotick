@@ -2,7 +2,7 @@
 // observer any more, as with @xstate/react, which subscribes it to the actor as is. With an error callback the
 // observer gets the error last; without one it gets nothing for the failure, and XState reports the error as
 // unhandled, once, as it does with @xstate/react. Previews of the failed actor, which hooks keep registered while the
-// component is mounted, don't reach the observer either way (spec §10.2).
+// component is mounted, don't reach the observer either way.
 
 import { act, render } from '@testing-library/react';
 import * as xstateReact from '@xstate/react';

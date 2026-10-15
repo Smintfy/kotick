@@ -1,7 +1,7 @@
 // A connect()ed actor that finishes while a preview shows holds its ending back from the proxy's subscribers until the
 // preview ends, through registry().release() or the registry dropping the preview of the unregistered actor at its
-// next flush; each subscriber then gets the done snapshot and complete, in the order they subscribed (spec §10.2
-// "Observers and the actor's ending", "connect()"; R13). A subscriber may subscribe to the proxy again from inside its
+// next flush; each subscriber then gets the done snapshot and complete, in the order they subscribed.
+// A subscriber may subscribe to the proxy again from inside its
 // next or complete while that ending is delivered (subscribe, select().subscribe, waitFor): every subscriber after it
 // still hears the done snapshot and complete, wherever the one that subscribes again sits among them, and a waitFor
 // created before the preview resolves with the output, as on a plain actor. The binding stops listening to the
@@ -176,7 +176,7 @@ describe.each<[name: string, end: () => Promise<void>]>([
       const calls: string[] = [];
       const finished = subscribeAll(job, calls, where, position, resubscribe);
       registry().preview(keyOf(onlyHandle('job')), { leaves: ['waiting'] });
-      // The real actor finishes: the proxy blocks events during a preview (R12).
+      // The real actor finishes: the proxy blocks events during a preview.
       actor.send({ type: 'FINISH' });
       expect(actor.getSnapshot().status).toBe('done');
       expect(calls).toEqual(['a:active', 'b:active', 'c:active']);
@@ -212,13 +212,13 @@ describe('a connect()ed job that finished during a preview, with subscriptions n
         const job = connect(actor);
         void subscribeAll(job, [], where, 'first', resubscribe).then((settled) => heard.push(settled));
         registry().preview(keyOf(registry().getSnapshot().machines.at(-1)!), { leaves: ['waiting'] });
-        // The real actor: the proxy blocks events during a preview (R12).
+        // The real actor: the proxy blocks events during a preview.
         actor.send({ type: 'FINISH' });
         return new WeakRef(actor);
       };
       const refs = Array.from({ length: 3 }, finishDuringPreview);
 
-      // The flush sweeps the unregistered instances and releases their previews (R13).
+      // The flush sweeps the unregistered instances and releases their previews.
       await flush();
       expect(registry().getSnapshot().machines).toEqual([]);
       expect(registry().getSnapshot().overrides).toEqual({});

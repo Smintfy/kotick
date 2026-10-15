@@ -4,7 +4,7 @@
 // @xstate/react.
 //
 // When the endpoint changes, @xstate/react replaces the actor and leaves the stable observer subscribed to the old one,
-// which it then stops (spec §10.2, "Observers and the actor's ending"). Between the layout phase of that commit and its
+// which it then stops. Between the layout phase of that commit and its
 // passive effects the old upload still runs, and its socket reports there (here from a layout effect): the observer
 // hears it straight from XState. The hook moves what the observer was told to the new actor in that commit's layout
 // phase, debug.disabled or not, and what XState tells the observer about the old actor leaves it owed nothing about

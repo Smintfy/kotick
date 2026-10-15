@@ -1,5 +1,5 @@
-// toPromise(proxy) resolves with the output the real actor finished with, whatever a preview shows (spec §10.2, G3,
-// R13). XState's toPromise subscribes an observer with only complete and error, and reads `actor.getSnapshot().output`
+// toPromise(proxy) resolves with the output the real actor finished with, whatever a preview shows.
+// XState's toPromise subscribes an observer with only complete and error, and reads `actor.getSnapshot().output`
 // inside complete; while that observer hears how the actor ended, the proxy shows the real snapshot. This holds for
 // connect()ed and hook actors, whether the preview is of a non-final state or of another final state with other
 // context, and when toPromise is called on an actor that is already done while a preview shows. A preview alone,
@@ -100,7 +100,7 @@ describe('toPromise on a proxy whose actor finishes during a preview', () => {
     const done = toPromise(proxy);
     registry().preview(keyOf(onlyHandle('job')), { leaves: ['waiting'] });
 
-    // The real actor keeps running underneath (R13) and finishes.
+    // The real actor keeps running underneath and finishes.
     actor.send({ type: 'FINISH' });
     expect(actor.getSnapshot().output).toBe(42);
     // The preview ends later, which changes nothing here.

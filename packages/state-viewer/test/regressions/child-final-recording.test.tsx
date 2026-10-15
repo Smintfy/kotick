@@ -1,5 +1,5 @@
 // A child machine that reaches a final state has its final configuration recorded before it leaves the registry, as
-// a root has (spec §10.3: "On each real snapshot, keep { leaves, context } per configuration key"; R17). Recordings
+// a root has. On each real snapshot, the registry keeps { leaves, context } per configuration key. Recordings
 // are kept per machine id, so another instance of the same machine can then preview that state with the context a
 // real actor reached. Both ways the adapter learns a child ended record it: the child's own done snapshot, when the
 // inspector sees it first (an event sent through the parent), and the root-snapshot backstop, when the parent moves

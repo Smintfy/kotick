@@ -1,8 +1,8 @@
-// Spec §10.2, "Previews after the actor is done": subscribers, including useSelector and the hooks' own store, keep
+// Subscribers, including useSelector and the hooks' own store, keep
 // receiving previews once the actor is done, and stop once it's stopped. A hook actor stays registered until its
-// component unmounts (R1), so it can still be previewed after the app stops it (actorRef.stop(), the third element
+// component unmounts, so it can still be previewed after the app stops it (actorRef.stop(), the third element
 // useMachine and useActor return). From then on, useMachine's and useActor's own store shows previews no more than a
-// useSelector consumer of the same actor does, so every consumer of the actor shows the same thing (R10).
+// useSelector consumer of the same actor does, so every consumer of the actor shows the same thing.
 
 import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';

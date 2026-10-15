@@ -1,5 +1,5 @@
-// @xstate/react subscribes the observer given to useActorRef in an effect keyed only on the observer (spec §10.2,
-// "Observers and the actor's ending"). When the component gets a new machine config (an edit to the machine's module
+// @xstate/react subscribes the observer given to useActorRef in an effect keyed only on the observer.
+// When the component gets a new machine config (an edit to the machine's module
 // that Fast Refresh applies, a machine built from props), @xstate/react replaces the actor, carrying its snapshot over,
 // and stops the old one. An inline observer, a new one on every render, is subscribed to each new actor and follows
 // it: it hears the new actor's real updates, and state-viewer shows it the new actor's previews (none once it has

@@ -1,6 +1,6 @@
 // A subscription made through a hook's proxy, such as a waitFor an event handler starts, hears how the actor ended even
-// when a preview held that back and the component goes away before the preview ends (spec §10.2, "Observers and the
-// actor's ending", R13). When the hook's actor finishes or fails while a preview shows, the subscription keeps following
+// when a preview held that back and the component goes away before the preview ends.
+// When the hook's actor finishes or fails while a preview shows, the subscription keeps following
 // the preview and is owed the ending. If the component then unmounts, or an <Activity> hides it, the hook ends the
 // proxy's subscriptions along with @xstate/react's stop, but not one still owed the ending: that one gets the done
 // snapshot, then complete (or error), when the preview ends, which is at the registry's next flush, where it drops the
@@ -23,7 +23,7 @@ const Activity = (
 
 type Answer = 'SAVED' | 'REJECTED';
 
-/** What the invoked save request uses to answer, as a server response would, past the proxy (R12 blocks its send). */
+/** What the invoked save request uses to answer, as a server response would, past the proxy (previews block sends). */
 let respond: ((type: Answer) => void) | undefined;
 
 const formMachine = setup({
@@ -177,7 +177,7 @@ async function submitAndAnswerDuringPreview(
   await flush();
   if (answer) {
     log.push('answer');
-    // The real actor keeps running underneath the preview (R13).
+    // The real actor keeps running underneath the preview.
     act(() => respond!(answer));
     await flush();
   }

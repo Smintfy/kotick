@@ -1,6 +1,6 @@
 // When a component turns `debug.disabled` on while a preview shows (a dev toggle that takes the actor out of the
 // debugger), the hook stops previewing the actor in that render, and the observer given to useActorRef leaves the
-// preview as it would on a release (spec §10.2, "Lifecycle" and "Observers and the actor's ending"; R13). It is shown
+// preview as it would on a release. It is shown
 // the real snapshot when the actor is still running; when the actor finished while the preview hid its ending, it
 // gets the done snapshot, then complete, in XState's order and once. Nothing is left owed to a registry flush that
 // no longer reaches the observer, so an app's "on done" side effect still runs. From then on the observer follows the
@@ -137,7 +137,7 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, hooks, previews) => {
         const { take, disable } = await mount('listener', stable);
 
         await previewFailed();
-        // The real actor keeps running underneath (R13) and finishes; the preview hides the ending.
+        // The real actor keeps running underneath and finishes; the preview hides the ending.
         act(() => finishUpload?.());
         await flush();
         expect(distinct(take())).toEqual(previews ? ['active:failed'] : ['done:uploaded']);

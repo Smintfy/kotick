@@ -1,5 +1,5 @@
 // A child machine that fails (an action throws) is stopped by XState without a final '@xstate.snapshot' inspection
-// event. It must still leave the registry, like a child that finishes or is stopped (spec §10.2, R5).
+// event. It must still leave the registry, like a child that finishes or is stopped.
 import { act, render } from '@testing-library/react';
 import { beforeEach, describe, expect, test } from 'vitest';
 import { createMachine, sendTo, setup, type AnyActorRef } from 'xstate';
@@ -80,7 +80,7 @@ beforeEach(() => {
   resetRegistry();
 });
 
-describe('a child machine that errors (R5)', () => {
+describe('a child machine that errors', () => {
   test('is listed while running and unregistered once its error stops it', async () => {
     const supervisor = await mountSupervisor();
     const job = (supervisor.proxy.getSnapshot() as { children: Record<string, AnyActorRef> }).children.job;

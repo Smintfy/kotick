@@ -1,5 +1,5 @@
 // The observer given to useActorRef hears how the real actor ended, as with @xstate/react, even when the actor
-// finished while a preview hid it and the component re-rendered before the preview was released (spec §10.2; R13).
+// finished while a preview hid it and the component re-rendered before the preview was released.
 // Apps usually pass an inline listener, a new function on every render, which @xstate/react subscribes again each
 // time: the done snapshot the preview held back reaches the listener of the latest render once the preview is
 // released, once. That holds whatever re-renders the component meanwhile, a parent or a prop, or a useSelector of the
@@ -97,7 +97,7 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, hooks, previews) => {
     await flush();
 
     preview(['failed']);
-    // The real actor keeps running underneath (R13) and finishes.
+    // The real actor keeps running underneath and finishes.
     act(() => finishUpload?.());
     rerender(<Upload hint="Still uploading" />);
     await flush();

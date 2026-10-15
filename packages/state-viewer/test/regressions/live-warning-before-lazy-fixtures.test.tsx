@@ -1,7 +1,7 @@
 // A deep link to a state that has a fixture, with `<StateViewer fixtures={() => import(...)}>`.
 // The link previews the instance as it registers, before the loader is done, so the preview starts on the live context.
-// The registry warned at that time that the state has no recorded or fixture context (R19).
-// Then the fixtures registered, and the preview changed to the fixture (D13), so the warning was false.
+// The registry warned at that time that the state has no recorded or fixture context.
+// Then the fixtures registered, and the preview changed to the fixture, so the warning was false.
 // Now a preview on the default order holds that warning while a fixture load is pending.
 // It warns when the last load ends, and only if it still uses the live context then.
 // A preview with a source that the caller chose is not resolved again, so it warns at once, as before.

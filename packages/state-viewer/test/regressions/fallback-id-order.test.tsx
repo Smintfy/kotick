@@ -1,5 +1,5 @@
-// The generated fallback id of an anonymous machine (R4) changes only when states are added, removed, renamed or
-// change type, or context keys come and go (spec §10.2), not when states are reordered, at the top level or inside a
+// The generated fallback id of an anonymous machine changes only when states are added, removed, renamed or
+// change type, or context keys come and go, not when states are reordered, at the top level or inside a
 // compound state. HMR recreates the machine, and previews and id-matched fixtures follow the registry id, so an HMR
 // edit that only moves a state up or down keeps the preview showing and the fixtures applying, as an edit that
 // changes a transition or a context value does (the control).

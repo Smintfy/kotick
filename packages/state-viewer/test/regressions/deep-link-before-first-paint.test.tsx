@@ -1,5 +1,5 @@
-// A deep link previews a machine the moment its instance registers, which the hooks do in a layout effect (spec §10.2,
-// "Lifecycle"), and the first paint already shows the previewed state:
+// A deep link previews a machine the moment its instance registers, which the hooks do in a layout effect,
+// and the first paint already shows the previewed state:
 // - the observer given to useActorRef hears the preview there, following the previews of the actor it's passed with
 //   from the render that passes it, before @xstate/react subscribes it in a passive effect; a state update it makes
 //   in the layout phase is synchronous;

@@ -2,12 +2,12 @@
 // calls waitFor, actorRef.subscribe or actorRef.select(...).subscribe on the actor it kept) joins the stopped actor's
 // observers, as with @xstate/react, and nothing page-wide holds on to it. The hook unregistered the actor, so the
 // registry refuses previews of its key, and the proxy listens to the registry only while one of its registrations is
-// connected or the registry still keeps a preview for it (spec §10.2, "Lifecycle" and "Observers and the actor's
-// ending"). The subscription adds no registry override listener and hears no preview, and the actor can be
+// connected or the registry still keeps a preview for it.
+// The subscription adds no registry override listener and hears no preview, and the actor can be
 // garbage-collected with it pending, as @xstate/react's can. The same holds for a subscription made while an <Activity>
 // hides the component, when the hidden Activity is then removed: React doesn't run the hidden tree's passive cleanups
 // again, so the hook never gets to end that subscription. When the Activity is revealed instead, the hook registers the
-// actor again, and the subscription follows the real actor and its previews (R11), as it follows the real actor with
+// actor again, and the subscription follows the real actor and its previews, as it follows the real actor with
 // @xstate/react. Under StrictMode the reveal's simulated unmount stops the actor and ends it, for both.
 
 import { act, render } from '@testing-library/react';

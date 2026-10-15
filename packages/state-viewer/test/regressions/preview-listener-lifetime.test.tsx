@@ -99,7 +99,7 @@ describe('an observer that XState completed', () => {
     });
     registry().preview(keyOf(onlyHandle('job')), { leaves: ['running'] });
 
-    // The preview hides the stop, so complete waits for it to end (R13).
+    // The preview hides the stop, so complete waits for it to end.
     proxy.stop();
     expect(calls).toEqual(['next:active']);
 

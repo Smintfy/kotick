@@ -1,7 +1,7 @@
 // XState sends an observer the done snapshot before complete. When the real actor finishes while a preview shows, the
 // proxy holds the done snapshot back (it isn't what the proxy shows), so complete waits too: once the preview ends,
 // through a release or the registry dropping the preview of an unregistered actor, observers with next get the done
-// snapshot and then complete (R13). waitFor(proxy, ...) therefore resolves when the actor finishes as awaited, as it
+// snapshot and then complete. waitFor(proxy, ...) therefore resolves when the actor finishes as awaited, as it
 // does on a plain actor, whether the actor finishes from an event sent to it or through its own invoke.
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -142,7 +142,7 @@ describe('an actor finished by its own invoke during a preview', () => {
     await vi.waitFor(() => expect(actor.getSnapshot().status).toBe('done'));
     await flush();
 
-    // The preview shows again when the live children it carries over change (R15); after it, the actor's ending
+    // The preview shows again when the live children it carries over change; after it, the actor's ending
     // comes in XState's order, once each.
     expect(calls.slice(-2)).toEqual(['next:done:finished', 'complete']);
     expect(calls.slice(0, -2).every((call) => call === 'next:active:failed')).toBe(true);

@@ -1,5 +1,5 @@
-// Spec §10.2 ("Lifecycle"): when `debug.disabled` turns on, the observer given to useActorRef "leaves the preview as on
-// a release". With nothing previewed there is nothing to leave: a release of an instance without a preview tells no one
+// When `debug.disabled` turns on, the observer given to useActorRef leaves the preview as on a release.
+// With nothing previewed there is nothing to leave: a release of an instance without a preview tells no one
 // anything, and @xstate/react, which has no notion of debug options, sends the observer nothing either. Here the
 // component only passes its observer while a panel is open (a common way to listen conditionally), so @xstate/react
 // subscribes it to an actor that already moved, and it hears nothing until the next transition, debug.disabled or not:

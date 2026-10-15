@@ -1,6 +1,6 @@
 // When a child machine fails, XState stops it but leaves its own children running, out of reach of the tree. Those
 // children leave the registry along with the failed child and aren't listed again, not even when they keep emitting
-// snapshots (a delayed transition, here), since a child is only listed under a parent that is (spec §10.2, R5). A
+// snapshots (a delayed transition, here), since a child is only listed under a parent that is. A
 // child that fails while starting, after its own invoked child started, isn't listed, and neither is that child.
 
 import { act, render } from '@testing-library/react';

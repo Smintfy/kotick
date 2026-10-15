@@ -1,9 +1,9 @@
 // Suspense hiding content it already showed is not an unmount: when a sibling suspends on an update outside a
 // transition (a React.lazy dialog opening, a suspense query given a new key), React shows the fallback and keeps the
 // hidden tree, its state and its passive effects, so the actor @xstate/react started keeps running. The hooks keep
-// that actor registered (R1: hooks unregister on unmount), in its place in the list (R3), previewed, and recorded
-// (R17) while the content is hidden (spec §10.2 "Lifecycle"). A preview started, changed or released while the content
-// is hidden shows once it is revealed, in the component and in the observer given to useActorRef (R10, R13). This
+// that actor registered (hooks unregister on unmount), in its place in the list, previewed, and recorded
+// while the content is hidden. A preview started, changed or released while the content
+// is hidden shows once it is revealed, in the component and in the observer given to useActorRef. This
 // holds with and without StrictMode, whose extra effect pass on revealed content restarts the actor. A label change,
 // which registers the instance again, keeps it listed in place and previewed; a real unmount still unregisters it.
 
@@ -181,7 +181,7 @@ describe.each(STRICT_MODES)('hook actors whose content Suspense hides, %s', (_na
     expect(shownIn('hidden')).toBe('on');
   });
 
-  test('record the configurations their actor goes through while hidden (R17)', async () => {
+  test('record the configurations their actor goes through while hidden', async () => {
     await mount({ withLoader: true });
     expect(shownIn('loader')).toBe('loading');
 

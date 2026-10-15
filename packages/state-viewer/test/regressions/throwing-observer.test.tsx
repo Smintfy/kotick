@@ -1,5 +1,5 @@
 // What an observer's callback throws is isolated as XState isolates it: it is reported from a timer, and the view
-// carries on with the bookkeeping that follows the call (spec §10.2, "Observers and the actor's ending", R13):
+// carries on with the bookkeeping that follows the call:
 //
 // - When the actor finishes while a preview shows, the view holds the done snapshot and complete back until the
 //   preview ends, then delivers both. A next that throws on the done snapshot still has complete follow it, so the
@@ -28,7 +28,7 @@ type Outcome = 'FINISH' | 'FAIL';
 
 /**
  * The real actor of the job started last, which the machine's own actions get as `self`. Events sent to it go past the
- * proxy, which blocks them during a preview (R12), as the job's own invoke or a timer would.
+ * proxy, which blocks them during a preview, as the job's own invoke or a timer would.
  */
 let realJob: AnyActorRef | undefined;
 
@@ -254,7 +254,7 @@ describe.each(HOOKS)('%s: a proxy.subscribe() observer of a hook actor', (_name,
       const { actorRef, calls, reported } = await mountJob();
       const preview = previews ? ['next:active:waiting'] : [];
       await previewWaiting();
-      // The real actor keeps running underneath the preview (R13), which holds its ending back.
+      // The real actor keeps running underneath the preview, which holds its ending back.
       act(() => realJob!.send({ type: outcome }));
       await flush();
       expect(calls).toEqual(previews ? preview : heard);

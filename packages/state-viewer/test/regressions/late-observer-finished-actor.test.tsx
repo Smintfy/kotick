@@ -4,12 +4,13 @@
 // actor listed), the user opens the panel, the developer clicks another state, and closes the overlay.
 //
 // @xstate/react subscribes the observer to an actor XState has already stopped: XState calls the observer's complete
-// (or error) at once and nothing else, and calls nothing at all on a listener function. Spec §10.2 ("Observers and the
-// actor's ending"): "An observer passed to useActorRef gets no previews once the actor is done, fails or stops, as
-// with @xstate/react. It still hears what XState sends it afterwards". The hook holds back no such ending (R13 is for
-// an observer following the preview as the actor ends), so the observer is shown no preview of the finished machine
-// and no done snapshot on the release: an onChange that toasts on `status === 'done'` doesn't fire when the overlay
-// closes.
+// (or error) at once and nothing else, and calls nothing at all on a listener function.
+// An observer passed to useActorRef gets no previews once the actor is done, fails or stops, as with @xstate/react.
+// It still hears what XState sends it afterwards.
+// The hook holds back no such ending.
+// It holds back an ending only from an observer that follows the preview as the actor ends.
+// So the observer is shown no preview of the finished machine and no done snapshot on the release: an onChange that
+// toasts on `status === 'done'` doesn't fire when the overlay closes.
 
 import { act, render } from '@testing-library/react';
 import * as xstateReact from '@xstate/react';

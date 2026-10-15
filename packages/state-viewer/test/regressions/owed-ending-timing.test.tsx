@@ -5,7 +5,7 @@
 // subscribes to the new actor, hears the ending again when @xstate/react starts that actor from the done snapshot. If
 // the old actor finished while a preview showed, state-viewer holds its ending back, and the replacement doesn't
 // cancel it: the ending is owed, and the observer hears it once the hook's actor is no longer previewed, before
-// anything about the new actor (spec §10.2, "Observers and the actor's ending"). When that is depends on where the
+// anything about the new actor. When that is depends on where the
 // preview goes:
 // - The new actor registers under another id (a machine whose id follows a prop, or an anonymous machine whose
 //   fallback id changes when Fast Refresh adds a state): at once. The registry drops the old id's preview, and

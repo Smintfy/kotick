@@ -1,5 +1,5 @@
 // An observer that unsubscribes from inside next gets nothing more, as with XState, which drops it from its observers
-// at once (spec §10.2 "Observers and the actor's ending": unsubscribing, even from inside next, ends all of it). When
+// at once (unsubscribing, even from inside next, ends all of it). When
 // the actor finished during a preview, the proxy sends the done snapshot and then complete once the preview ends; an
 // observer that unsubscribes in next on that done snapshot, having got what it waited for, gets no complete, whether
 // the preview ends through a release or through the registry dropping the preview of the unregistered actor.
