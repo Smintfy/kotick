@@ -42,20 +42,24 @@ test file that is not on the legacy list.
 | Path | Contents |
 |---|---|
 | `test/<feature>.test.tsx` | One user-visible feature, such as `preview`, `keyboard` or `server` |
+| `test/<feature>/<condition>.test.tsx` | A feature whose conditions outgrow one file, such as `observers`. Each condition gets a file, with its plainest case first |
 | `test/<feature>.test-d.ts` | Type tests of the public API |
 | `test/support/` | Helpers. They use the public entries, React, XState, Testing Library, Node built-ins and the DOM, never `src/` or the registry |
 | `test/setup.ts` | StrictMode for every render, and a clean page for every test |
 
-Before you add a file, look for the feature's file. Add the test there.
+Before you add a file, look for the feature's file or folder. Add the test there.
 
 ## Hard cases
 
 These techniques replace a mock. Each one was tried in this package.
 
 - **Console output.** `watchConsole()` subscribes to Node's `console.warn` and `console.error` diagnostics channels.
-- **React errors in an error boundary.** Pass `onCaughtError` to `render()`, and record the errors it receives.
-- **Errors that XState throws from a timer.** Add a `process.on('uncaughtException')` listener in the test, wait one
-  real tick, and remove the listener.
+- **React errors in an error boundary.** Pass `onCaughtError` to `render()`, and record the errors it receives. React
+  18's `render()` has no `onCaughtError`, so a test that also runs on React 18 wraps the component in `Boundary` from
+  `test/support/boundary.tsx`, and reads what it caught with `alerts()`.
+- **Errors that XState throws from a timer.** Call `uncaught(run)` from `test/support/console.ts`. It adds a
+  `process.on('uncaughtException')` listener, runs `run`, waits one real tick, removes the listener, and returns the
+  errors.
 - **Recordings in sessionStorage.** Dispatch a `pagehide` event on `window` to write them at once, under
   `state-viewer:recorded:<machine id>` as `{"v":1,"entries":[{"leaves","at","context"}]}`. Assert that `at` lies
   between two `Date.now()` reads. Dispatch one in `afterEach` too, so a pending write can't land in the next test. To
@@ -82,8 +86,9 @@ These techniques replace a mock. Each one was tried in this package.
 - **The first paint.** Mount with `createRoot` and without `act`: set `IS_REACT_ACT_ENVIRONMENT` to false for the
   mount. Read the DOM in a microtask that a layout effect queues, at the end of the task that commits the mount, where
   the browser paints. StrictMode can hide a late update, so also mount without it.
-- **`<Activity>`.** React 18 has no `React.Activity`, so put its tests in `describe.runIf('Activity' in React)`. A hidden
-  Activity runs the cleanup of its components' effects, so their instances unregister until it shows them again.
+- **`<Activity>`.** React 18 has no `React.Activity`, so put its tests in `describeWithActivity` from
+  `test/support/hooks.ts`, and read `React.Activity` as a property, so the file loads on React 18. A hidden Activity runs
+  the cleanup of its components' effects, so their instances unregister until it shows them again.
 - **The real actor moves on during a preview.** A preview blocks the events that the app sends through the hook's
   actor. Send to the real actor instead: give `useMachine` a `systemId` and call `actor.system.get(systemId).send()`,
   or start the actor in the test, show `connect(actor)`, and send to `actor`.

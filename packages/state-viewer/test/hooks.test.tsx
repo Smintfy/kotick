@@ -14,6 +14,8 @@ import {
   type AnyActorRef,
   type AnyMachineSnapshot,
 } from 'xstate';
+import { press } from './support/app';
+import { alerts, Boundary } from './support/boundary';
 import { uncaught } from './support/console';
 import { IMPLEMENTATIONS, REACT_MAJOR } from './support/hooks';
 import { blockedEvents, flush, freshId, header, overlay, panel, preview, release } from './support/panel';
@@ -87,34 +89,8 @@ function useCommits<T>(commits: Commits<T>, value: T): void {
   });
 }
 
-/**
- * Shows the message of the error that it caught.
- * React 18's render() has no onCaughtError, so a class component catches the error.
- */
-class Boundary extends React.Component<{ children: React.ReactNode }, { error: unknown }> {
-  override state: { error: unknown } = { error: undefined };
-
-  static getDerivedStateFromError(error: unknown) {
-    return { error };
-  }
-
-  override render() {
-    if (this.state.error === undefined) return this.props.children;
-    return <p role="alert">{this.state.error instanceof Error ? this.state.error.message : String(this.state.error)}</p>;
-  }
-}
-
-function alerts(): (string | null)[] {
-  return screen.queryAllByRole('alert').map((alert) => alert.textContent);
-}
-
 function shown(name = 'toggle') {
   return JSON.parse(screen.getByRole('status', { name }).textContent ?? 'null');
-}
-
-async function press(name: string): Promise<void> {
-  fireEvent.click(screen.getByRole('button', { name }));
-  await flush();
 }
 
 /** Clears the blocked-event log, which the page keeps for the whole file. */
