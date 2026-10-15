@@ -2,6 +2,9 @@
 // components and actors are never started.
 
 import * as xstateReact from '@xstate/react';
+import type { FixtureSet } from 'state-viewer';
+import * as stateViewer from 'state-viewer/xstate';
+import { connect, defineFixtures, type DebugOptions, type FixtureStates, type LeafIdFrom } from 'state-viewer/xstate';
 import { describe, expectTypeOf, test } from 'vitest';
 import {
   createActor,
@@ -13,9 +16,6 @@ import {
   type AnyStateMachine,
   type SnapshotFrom,
 } from 'xstate';
-import type { FixtureSet } from '../src/core/types';
-import * as stateViewer from '../src/xstate';
-import { connect, defineFixtures, type DebugOptions, type FixtureStates, type LeafIdFrom } from '../src/xstate';
 
 type CheckoutContext = { items: string[]; total: number; error?: string; receiptId?: string };
 type CheckoutEvent = { type: 'PAY' } | { type: 'RETRY' } | { type: 'UPDATE_CARD'; cardNumber: string };

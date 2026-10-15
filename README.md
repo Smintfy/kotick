@@ -42,3 +42,6 @@ pnpm install
 
 `test:matrix` and `check:bundles` install packages in temporary directories, so they need network access and take a
 few minutes. Both accept `--only <name>` to run part of the work, and `--keep` to keep the temporary directories.
+
+Tests use the package the way an app does, with no mocks. The rules are in
+[writing-tests](packages/state-viewer/.claude/skills/writing-tests/SKILL.md), and `pnpm lint` enforces most of them.
