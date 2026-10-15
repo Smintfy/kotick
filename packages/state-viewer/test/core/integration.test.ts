@@ -221,7 +221,7 @@ describe('core integration', () => {
       leaves: ['paying.shipping.express', 'paying.card.idle'],
       context: { fixture: 'express' },
     });
-    // Copy link writes the requested leaves (§10.4).
+    // Copy link writes the requested leaves.
     const search = writeDeepLink('', [{ machineId: 'checkout', leaves: [...(override?.requested ?? [])] }]);
 
     // The untouched region follows the instance's own state after the reload.

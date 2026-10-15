@@ -1,4 +1,4 @@
-// What state-viewer adds in development while the panel is closed (Milestone 4).
+// What state-viewer adds in development while the panel is closed.
 // Each case runs the same work with @xstate/react and with state-viewer/xstate.
 // The state-viewer rows run without <StateViewer />, and with it mounted and its panel closed.
 // The benchmarks run in jsdom under StrictMode, as the tests do, so compare the rows of a case, not absolute times.

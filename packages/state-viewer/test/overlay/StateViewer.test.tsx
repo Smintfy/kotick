@@ -1,5 +1,5 @@
 // <StateViewer /> with the XState adapter: the overlay reads the page's registry, previews through it, and renders in
-// a shadow root (spec §6.5, §10.6). Every test renders under StrictMode (test/setup.ts).
+// a shadow root. Every test renders under StrictMode (test/setup.ts).
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import * as React from 'react';
@@ -189,7 +189,7 @@ afterEach(() => {
 });
 
 describe('host', () => {
-  test('renders into an open shadow root appended to document.body, not into the React tree (R20)', async () => {
+  test('renders into an open shadow root appended to document.body, not into the React tree', async () => {
     const { container } = render(<StateViewer />);
     await flush();
 
@@ -232,7 +232,7 @@ describe('host', () => {
 });
 
 describe('toolbar', () => {
-  test('shows a badge with the number of previews while any is active (R21)', async () => {
+  test('shows a badge with the number of previews while any is active', async () => {
     render(
       <>
         <Toggle />
@@ -276,7 +276,7 @@ describe('toolbar', () => {
 });
 
 describe('panel', () => {
-  test('lists machines in registration order, and instances as "machine · n" (R3, R22)', async () => {
+  test('lists machines in registration order, and instances as "machine · n"', async () => {
     const actor = createActor(toggleMachine).start();
     const app = connect(actor, { id: 'app' });
     render(
@@ -306,7 +306,7 @@ describe('panel', () => {
     app.stop();
   });
 
-  test('shows the selected instance’s tree: every state but history, with descriptions and tags (R6, R8)', async () => {
+  test('shows the selected instance’s tree: every state but history, with descriptions and tags', async () => {
     render(
       <>
         <Checkout />
@@ -332,7 +332,7 @@ describe('panel', () => {
     expect(leaf('payment.success').querySelector('.sv-type')?.textContent).toBe('final');
   });
 
-  test('marks the live leaves and which data a preview of each leaf would use (R7, R19)', async () => {
+  test('marks the live leaves and which data a preview of each leaf would use', async () => {
     render(
       <>
         <Checkout />
@@ -362,7 +362,7 @@ describe('panel', () => {
     expect(marks('shipping.express')).toEqual(['recorded']);
   });
 
-  test('clicking a leaf previews it on the selected instance, without remounting the component (R9, R10)', async () => {
+  test('clicking a leaf previews it on the selected instance, without remounting the component', async () => {
     render(
       <>
         <Checkout />
@@ -387,7 +387,7 @@ describe('panel', () => {
     expect($('.sv-title-count')?.textContent).toBe('1 previewing');
   });
 
-  test('a leaf in another region joins the preview, a previewed leaf leaves it, and the last one releases (R9)', async () => {
+  test('a leaf in another region joins the preview, a previewed leaf leaves it, and the last one releases', async () => {
     render(
       <>
         <Checkout />
@@ -415,7 +415,7 @@ describe('panel', () => {
     expect(checkoutMounts).toBe(1);
   });
 
-  test('lists events sent during a preview, newest first, and Clear empties the log (R12)', async () => {
+  test('lists events sent during a preview, newest first, and Clear empties the log', async () => {
     render(
       <>
         <Checkout />
@@ -442,7 +442,7 @@ describe('panel', () => {
     expect(logEntries()).toEqual([]);
   });
 
-  test('Release ends the instance’s preview, Release all ends every one, and the real state shows again (R13, R14)', async () => {
+  test('Release ends the instance’s preview, Release all ends every one, and the real state shows again', async () => {
     render(
       <>
         <Checkout />
@@ -468,7 +468,7 @@ describe('panel', () => {
     expect(button('Release all').disabled).toBe(true);
   });
 
-  test('shows live context, or the preview’s with its source, and switches the source (R16)', async () => {
+  test('shows live context, or the preview’s with its source, and switches the source', async () => {
     render(
       <>
         <Checkout />
@@ -505,7 +505,7 @@ describe('panel', () => {
     expect($('.sv-section .sv-warning')?.textContent).toMatch(/No recording or fixture for this state/);
   });
 
-  test('lists child machines read-only under their parent (R5)', async () => {
+  test('lists child machines read-only under their parent', async () => {
     render(
       <>
         <Parent />
@@ -565,7 +565,7 @@ describe('panel', () => {
 });
 
 describe('fixtures', () => {
-  test('a lazy loader’s sets register once, and a preview made before they loaded picks them up (R16, R18)', async () => {
+  test('a lazy loader’s sets register once, and a preview made before they loaded picks them up', async () => {
     let resolve!: (module: { default: unknown[] }) => void;
     const loader = vi.fn(() => new Promise<{ default: unknown[] }>((done) => (resolve = done)));
     const registerFixtures = vi.spyOn(registry(), 'registerFixtures');
@@ -596,7 +596,7 @@ describe('deep links', () => {
   test.each([
     ['with', React.StrictMode],
     ['without', React.Fragment],
-  ])('previews linked machines as they register, so the first paint shows the preview, %s StrictMode (R27, §10.2)', async (_, Wrapper) => {
+  ])('previews linked machines as they register, so the first paint shows the preview, %s StrictMode', async (_, Wrapper) => {
     window.history.replaceState(null, '', '/?debug-state=checkout:payment.error;shipping.express');
     const container = document.createElement('div');
     document.body.append(container);
@@ -675,7 +675,7 @@ describe('deep links', () => {
 });
 
 describe('keyboard', () => {
-  test('Alt+S toggles the panel from anywhere except while typing (R23)', async () => {
+  test('Alt+S toggles the panel from anywhere except while typing', async () => {
     render(
       <>
         <Checkout />
@@ -818,7 +818,7 @@ describe('keyboard', () => {
 });
 
 describe('persistence', () => {
-  test('remembers whether the panel is open, its corner and the selected machine (R24)', async () => {
+  test('remembers whether the panel is open, its corner and the selected machine', async () => {
     const { unmount } = render(
       <>
         <Checkout />
@@ -889,7 +889,7 @@ describe('copying', () => {
     delete (navigator as { clipboard?: unknown }).clipboard;
   });
 
-  test('copies a link with each previewed machine’s requested leaves (R26, §10.4)', async () => {
+  test('copies a link with each previewed machine’s requested leaves', async () => {
     window.history.replaceState(null, '', '/shop?tab=1#top');
     render(
       <>
@@ -915,7 +915,7 @@ describe('copying', () => {
     expect($('.sv-status')?.textContent).toBe('Link copied');
   });
 
-  test('copies the selected instance as JSON (R26)', async () => {
+  test('copies the selected instance as JSON', async () => {
     render(
       <>
         <Checkout />
@@ -942,7 +942,7 @@ describe('copying', () => {
   });
 });
 
-test('the theme prop sets the overlay’s color scheme (R25)', async () => {
+test('the theme prop sets the overlay’s color scheme', async () => {
   const { rerender } = render(<StateViewer />);
   await flush();
   expect($('.sv-root')?.dataset.theme).toBe('system');

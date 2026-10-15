@@ -10,7 +10,7 @@ import {
 const CHECKOUT: DeepLinkTarget[] = [{ machineId: 'checkout', leaves: ['payment.error'] }];
 const CART = { machineId: 'cart', leaves: ['empty'] };
 
-const SPEC_EXAMPLES: [string, DeepLinkTarget[]][] = [
+const FORMAT_EXAMPLES: [string, DeepLinkTarget[]][] = [
   ['checkout:payment.error', CHECKOUT],
   [
     'checkout:payment.error;shipping.express,cart:empty',
@@ -29,12 +29,12 @@ const AWKWARD: DeepLinkTarget[] = [
   { machineId: "it's!~*", leaves: ['done'] },
 ];
 
-describe('spec examples', () => {
-  test.each(SPEC_EXAMPLES)('parses %s', (raw, targets) => {
+describe('format examples', () => {
+  test.each(FORMAT_EXAMPLES)('parses %s', (raw, targets) => {
     expect(parseDeepLink(raw)).toEqual({ targets, errors: [] });
   });
 
-  test.each(SPEC_EXAMPLES)('serializes back to %s', (raw, targets) => {
+  test.each(FORMAT_EXAMPLES)('serializes back to %s', (raw, targets) => {
     expect(serializeDeepLink(targets)).toBe(raw);
   });
 });
@@ -199,7 +199,7 @@ describe('readDeepLink', () => {
   });
 
   test('stays readable in the address bar', () => {
-    const [raw, targets] = SPEC_EXAMPLES[1];
+    const [raw, targets] = FORMAT_EXAMPLES[1];
     const url = new URL(`https://example.test/page${writeDeepLink('', targets)}`);
     expect(url.search).toBe(`?debug-state=${raw}`);
   });
@@ -214,7 +214,7 @@ describe('readDeepLink', () => {
       expect(readDeepLink(search)).toEqual(AWKWARD);
     });
 
-    test.each(SPEC_EXAMPLES)('reads the spec example %s', (raw, targets) => {
+    test.each(FORMAT_EXAMPLES)('reads the format example %s', (raw, targets) => {
       const params = new URLSearchParams();
       params.set('debug-state', raw);
       expect(readDeepLink(`?${params.toString()}`)).toEqual(targets);
@@ -237,8 +237,8 @@ describe('readDeepLink', () => {
   }
 
   describe('after a router parsed and rebuilt the query', () => {
-    test('reads the spec example', () => {
-      const [, targets] = SPEC_EXAMPLES[1];
+    test('reads a format example', () => {
+      const [, targets] = FORMAT_EXAMPLES[1];
       const search = rebuildQuery(writeDeepLink('?a=1', targets));
       expect(search).toBe('?a=1&debug-state=checkout%3Apayment.error%3Bshipping.express%2Ccart%3Aempty&page=2');
       expect(readDeepLink(search)).toEqual(targets);
@@ -267,7 +267,7 @@ describe('readDeepLink', () => {
       expect(console.warn).not.toHaveBeenCalled();
     });
 
-    // Known limitation, spec §11: the rebuild turns our %3B back into ';' before encoding the whole value, so a ';'
+    // Known limitation: the rebuild turns our %3B back into ';' before encoding the whole value, so a ';'
     // inside a leaf id reads as a leaf separator. A format that survives this should change this test on purpose.
     test("splits a leaf id containing ';'", () => {
       const search = rebuildQuery(writeDeepLink('', [{ machineId: 'checkout', leaves: ['step;2'] }]));

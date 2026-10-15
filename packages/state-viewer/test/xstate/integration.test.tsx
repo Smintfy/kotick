@@ -214,7 +214,7 @@ interface MountedCheckout {
   shown(): Shown;
   /** Sends through the proxy, as the app does; blocked while previewed. */
   send(event: CheckoutEvent): void;
-  /** Sends to the real actor, which keeps running underneath a preview (R13). */
+  /** Sends to the real actor, which keeps running underneath a preview. */
   sendToRealActor(event: CheckoutEvent): void;
   unmount(): void;
 }
@@ -522,7 +522,7 @@ describe('recording', () => {
     next.stop();
   });
 
-  test('recordings persist to sessionStorage and feed previews after a reload (R17)', async () => {
+  test('recordings persist to sessionStorage and feed previews after a reload', async () => {
     const before = await mountCheckout();
     before.send({ type: 'START' });
     before.send({ type: 'FAIL', note: 'Card declined' });
@@ -549,7 +549,7 @@ describe('recording', () => {
     });
   });
 
-  test('a context holding spawned actor refs is recorded in memory but never persisted (D14)', async () => {
+  test('a context holding spawned actor refs is recorded in memory but never persisted', async () => {
     const spawner = await mountActor(spawnerMachine);
     spawner.send({ type: 'ASSIGN_SPAWN' });
     const withRef = spawner.proxy.getSnapshot().context;
@@ -586,7 +586,7 @@ describe('fixtures', () => {
     expect(checkout.shown()).toEqual({ value: 'done', context: { step: 99, note: 'done fixture' } });
     expect(checkout.proxy.getSnapshot().status).toBe('done');
 
-    // The initial state was recorded on mount, and recordings come first (R16).
+    // The initial state was recorded on mount, and recordings come first.
     preview(checkout.key, ['idle']);
     expect(registry().getOverride(checkout.key)).toMatchObject({
       source: 'recorded',
@@ -644,7 +644,7 @@ describe('fixtures', () => {
     expect(registry().getOverride(checkout.key)).toMatchObject({ source: 'fixture', context: { note: 'by id' } });
   });
 
-  test('after HMR swaps the machine object, the instance keeps its key, preview and fixtures (D15)', async () => {
+  test('after HMR swaps the machine object, the instance keeps its key, preview and fixtures', async () => {
     act(() =>
       registry().registerFixtures([defineFixtures(checkoutMachine, { done: { context: fixtureContext('kept') } })]),
     );
@@ -708,7 +708,7 @@ describe('fixtures', () => {
     expect(registry().getOverride(checkout.key)?.source).toBe('live');
   });
 
-  test('fixtures registering after a live preview re-resolve it to the fixture (R16, D13)', async () => {
+  test('fixtures registering after a live preview re-resolve it to the fixture', async () => {
     const first = await mountCheckout({ testId: 'first' });
     const second = await mountCheckout({ testId: 'second' });
     preview(first.key, ['done']);
@@ -848,7 +848,7 @@ describe('fixtures', () => {
   });
 });
 
-describe('live fallback (R19)', () => {
+describe('live fallback', () => {
   test('a state with neither a recording nor a fixture previews with live context and a warning', async () => {
     const checkout = await mountCheckout();
     checkout.send({ type: 'START' });
@@ -870,7 +870,7 @@ describe('live fallback (R19)', () => {
   });
 });
 
-describe('parallel previews (R9)', () => {
+describe('parallel previews', () => {
   test('previewing one region keeps the current leaf of the other', async () => {
     const checkout = await mountCheckout();
     checkout.send({ type: 'START' });
@@ -919,7 +919,7 @@ describe('parallel previews (R9)', () => {
     ]);
   });
 
-  test('fixture lookup tries the requested leaves in order, then the filled-in ones (D11)', async () => {
+  test('fixture lookup tries the requested leaves in order, then the filled-in ones', async () => {
     act(() =>
       registry().registerFixtures([
         defineFixtures(checkoutMachine, {
@@ -947,7 +947,7 @@ describe('parallel previews (R9)', () => {
   });
 });
 
-describe('child machines (R5)', () => {
+describe('child machines', () => {
   test('an invoked child is listed read-only under its parent while the invoking state is active', async () => {
     const parent = await mountActor(parentMachine);
     expect(registeredKeys()).toEqual([parent.key]);

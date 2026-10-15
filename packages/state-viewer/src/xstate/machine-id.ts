@@ -1,9 +1,9 @@
-// Machine ids in the registry (R4, §10.2).
+// Machine ids in the registry.
 
 import type { AnyStateMachine } from 'xstate';
 import type { AnyStateNode } from './tree';
 
-/** The id XState gives a machine created without one (§10.5). */
+/** The id XState gives a machine created without one. */
 export const DEFAULT_MACHINE_ID = '(machine)';
 
 const fallbackIds = new WeakMap<AnyStateMachine, string>();
@@ -16,14 +16,14 @@ export function resolveMachineId(machine: AnyStateMachine, debugId?: string): st
   return fallbackMachineId(machine);
 }
 
-/** True when `machineId` is the id generated for this machine, which deserves a warning (R4). */
+/** True when `machineId` is the id generated for this machine, which deserves a warning. */
 export function isFallbackId(machine: AnyStateMachine, machineId: string): boolean {
   return fallbackIds.get(machine) === machineId;
 }
 
 /**
  * An id derived from the shape of the machine: its state tree and the keys of its initial context. HMR recreates the
- * machine object, and fixtures follow the registry id once it changes (§10.3), so the id has to come out the same for
+ * machine object, and fixtures follow the registry id once it changes, so the id has to come out the same for
  * the recreated machine: it changes only when states are added, removed, renamed or change type, or context keys
  * come and go, not when states or keys are reordered. The context keys tell apart machines with the same states, such as two fetch machines, which would
  * otherwise share recordings and fixtures.

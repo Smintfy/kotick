@@ -1,4 +1,4 @@
-// Fixtures for XState machines (R18, §8.3).
+// Fixtures for XState machines.
 
 import type { AnyStateMachine, ContextFrom, SnapshotFrom } from 'xstate';
 import type { FixtureSet } from '../core/types';
@@ -40,7 +40,7 @@ export type FixtureStates<TMachine extends AnyStateMachine> = {
  * Hand-written context for a machine's states, keyed by leaf id. Register the result through
  * `<StateViewer fixtures>`. The set carries the machine's config as its source, which `machine.provide()` copies
  * share, so it matches instances of this machine whatever their registry id, and falls back to the machine id once
- * HMR replaces the config (§10.3).
+ * HMR replaces the config.
  */
 export function defineFixtures<TMachine extends AnyStateMachine>(
   machine: TMachine,

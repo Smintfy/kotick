@@ -1,4 +1,4 @@
-// R28: in production builds <StateViewer /> renders nothing. src/index.tsx reads process.env.NODE_ENV when it's
+// In production builds <StateViewer /> renders nothing. src/index.tsx reads process.env.NODE_ENV when it's
 // evaluated, so each test imports a fresh copy under the environment it needs.
 
 import { render } from '@testing-library/react';

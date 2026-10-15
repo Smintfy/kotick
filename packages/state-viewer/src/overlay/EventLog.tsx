@@ -1,4 +1,4 @@
-// The event log (R12, R22): events the UI sent during a preview, newest first, with the state it showed and when.
+// The event log: events the UI sent during a preview, newest first, with the state it showed and when.
 
 import { useId } from 'react';
 import type { EventLogEntry } from '../core/types';

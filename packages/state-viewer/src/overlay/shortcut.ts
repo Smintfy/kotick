@@ -1,4 +1,4 @@
-// Keyboard shortcuts (R23, §10.6). The toggle is configurable, such as 'alt+s' or 'ctrl+shift+d', and every shortcut
+// Keyboard shortcuts. The toggle is configurable, such as 'alt+s' or 'ctrl+shift+d', and every shortcut
 // is ignored while the user types.
 
 export interface Shortcut {

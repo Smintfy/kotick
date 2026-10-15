@@ -1,4 +1,4 @@
-// Actors created outside React (R2, §10.2).
+// Actors created outside React.
 
 import type { AnyActorRef } from 'xstate';
 import { findBinding, getBinding, isMachineActor, isProxy } from './binding';

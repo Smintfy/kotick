@@ -1,4 +1,4 @@
-// Styles injected into the overlay's shadow root (R20, §10.6). Page styles can still reach the host element itself,
+// Styles injected into the overlay's shadow root. Page styles can still reach the host element itself,
 // so `:host` resets it with !important, which beats the page's own !important declarations across the shadow
 // boundary. Sizes are in px, never rem, since the page sets the root font size.
 
@@ -60,7 +60,7 @@ const MONO = `ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", 
 
 /**
  * The overlay's style sheet.
- * It is a function, so production builds can remove it (spec §10.7).
+ * It is a function, so production builds can remove it.
  * Minifiers keep a top-level template literal with `${…}` parts, because they can't be sure it has no side effects.
  */
 export function overlayStyles(): string {

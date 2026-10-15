@@ -1,4 +1,4 @@
-// The context section (R16, R22): a read-only JSON viewer, and while previewing, which source the context came from
+// The context section: a read-only JSON viewer, and while previewing, which source the context came from
 // with a switcher for it.
 
 import { useId, useState } from 'react';

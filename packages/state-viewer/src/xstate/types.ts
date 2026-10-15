@@ -9,7 +9,7 @@ export type DebugOptions = {
   disabled?: boolean;
 };
 
-/** The one option the hooks add to XState's; it's stripped before the options reach XState (§8.2). */
+/** The one option the hooks add to XState's; it's stripped before the options reach XState. */
 export interface WithDebug {
   debug?: DebugOptions;
 }

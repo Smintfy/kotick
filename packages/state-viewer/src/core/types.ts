@@ -1,4 +1,4 @@
-// Core protocol (spec §9). Adapter-neutral: nothing in src/core may import xstate or @xstate/react.
+// Core protocol. Adapter-neutral: nothing in src/core may import xstate or @xstate/react.
 
 export type StateNodeType = 'atomic' | 'compound' | 'parallel' | 'final';
 
@@ -93,7 +93,7 @@ export interface PreviewTarget {
   source?: DataSource;
 }
 
-/** One machine of a deep link (§10.4): every instance of the machine previews these leaves. */
+/** One machine of a deep link: every instance of the machine previews these leaves. */
 export interface DeepLinkTarget {
   machineId: string;
   leaves: string[];
@@ -115,17 +115,17 @@ export interface Registry {
   record(instanceKey: string, leaves: string[], context: unknown): void;
   registerFixtures(sets: FixtureSet[]): void;
   /**
-   * Starts a fixture load, such as a lazy loader of `<StateViewer fixtures>` (R18), and returns the function that ends
+   * Starts a fixture load, such as a lazy loader of `<StateViewer fixtures>`, and returns the function that ends
    * it, which the caller calls after it registers the sets or when the load fails.
-   * While a load is pending, a preview on the default order that finds only live context holds its warning (R19).
-   * It warns when the last load ends, and only if no fixture that registered gave it context (D13).
+   * While a load is pending, a preview on the default order that finds only live context holds its warning.
+   * It warns when the last load ends, and only if no fixture that registered gave it context.
    */
   expectFixtures(): () => void;
   logEvent(entry: EventLogEntry): void;
   clearLog(): void;
 
   /**
-   * Applies a deep link (R27, §10.4): previews each target machine's instances with the default context order, each
+   * Applies a deep link: previews each target machine's instances with the default context order, each
    * one that registers from now on as it registers, and the ones registered already at the next microtask. A machine's
    * link ends once preview() or release() is called for one of its instances, or release() releases everything.
    */

@@ -1,6 +1,6 @@
-// The React hooks of state-viewer/xstate (spec §7.1, §8.2, §10.2) against @xstate/react, under StrictMode (see
-// test/setup.ts): previews in place without remounts, registration, debug options, blocked sends, observers,
-// non-machine logic, errors and Fast Refresh.
+// The React hooks of state-viewer/xstate against @xstate/react, under StrictMode (see test/setup.ts).
+// The tests cover previews in place without remounts, registration, debug options, blocked sends and observers.
+// They also cover non-machine logic, errors and Fast Refresh.
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import * as xstateReact from '@xstate/react';
@@ -1099,7 +1099,7 @@ describe('debug options', () => {
     await flush();
 
     expect(actors.size).toBe(1);
-    // @xstate/react hands out one ref for the life of the actor, and the spec memoizes the proxy per real actor.
+    // @xstate/react gives one ref for the life of the actor, and the adapter keeps one proxy per real actor.
     expect(actorRefs.size).toBe(1);
   });
 

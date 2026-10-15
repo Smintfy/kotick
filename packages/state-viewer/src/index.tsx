@@ -1,6 +1,6 @@
 'use client';
 
-// state-viewer: the <StateViewer /> overlay (spec §8.1).
+// state-viewer: the <StateViewer /> overlay.
 
 import type { ReactNode } from 'react';
 import { StateViewer as DevStateViewer } from './overlay/StateViewer';
@@ -12,10 +12,10 @@ export type { FixturesInput, FixturesResult, Position, StateViewerProps, Theme }
 // As in xstate.ts: declared here rather than through @types/node, for apps that typecheck this source without it.
 declare const process: { env: { NODE_ENV?: string } };
 
-// R28: bundlers replace process.env.NODE_ENV and remove the branch that production builds don't use.
+// Bundlers replace process.env.NODE_ENV and remove the branch that production builds don't use.
 // Production builds then keep only the component that renders nothing.
 // The overlay and the registry go with the import that is no longer used.
-// Write the condition at each use, as in xstate.ts (spec §10.7).
+// Write the condition at each use, as in xstate.ts.
 // esbuild, webpack and Turbopack don't copy the value of a `const DEV = …` into its uses, so they keep both branches.
 
 function ProductionStateViewer(_props: StateViewerProps): null {

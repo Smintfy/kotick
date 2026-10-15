@@ -968,7 +968,7 @@ describe('passthrough', () => {
   });
 });
 
-describe('children carry-over (R15)', () => {
+describe('children carry-over', () => {
   test('a preview of another state carries over the live children', () => {
     const actor = track(createActor(parentMachine).start());
     const proxy = connect(actor);

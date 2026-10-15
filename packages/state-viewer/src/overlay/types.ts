@@ -7,7 +7,7 @@ export type Theme = 'system' | 'light' | 'dark';
 /** What a fixtures loader gives: the sets, or a module whose default export is them, as `import()` resolves. */
 export type FixturesResult = readonly FixtureSet[] | { default: readonly FixtureSet[] };
 
-/** Sets from `defineFixtures`, or a loader for them such as `() => import('./debug/fixtures')` (R18). */
+/** Sets from `defineFixtures`, or a loader for them such as `() => import('./debug/fixtures')`. */
 export type FixturesInput = readonly FixtureSet[] | (() => FixturesResult | PromiseLike<FixturesResult>);
 
 export interface StateViewerProps {

@@ -1,4 +1,4 @@
-// The state tree (R6–R8, R19, §10.6): every non-history state, the real active leaves, the previewed ones and which
+// The state tree: every non-history state, the real active leaves, the previewed ones and which
 // data a preview of each leaf would use.
 
 import type { CSSProperties } from 'react';
@@ -14,7 +14,7 @@ export interface StateTreeProps {
   data: DataAvailability;
   /** The leaf keyboard navigation is on; the only one in the tab order. */
   cursor: string | undefined;
-  /** Child machines are listed but can't be previewed (R5). */
+  /** Child machines are listed but can't be previewed. */
   readOnly: boolean;
   onSelect(leaf: string): void;
 }

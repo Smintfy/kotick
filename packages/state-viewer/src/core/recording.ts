@@ -1,4 +1,4 @@
-// Recording store (spec §10.3): the latest context per state configuration, in memory and in sessionStorage.
+// Recording store: the latest context per state configuration, in memory and in sessionStorage.
 
 export const STORAGE_PREFIX = 'state-viewer:recorded:';
 

@@ -22,7 +22,7 @@ function override(instanceKey: string, requested: string[], leaves = requested):
 }
 
 describe('groupMachines', () => {
-  test('groups by machine id in first-registration order, numbering instances from 1 (R3)', () => {
+  test('groups by machine id in first-registration order, numbering instances from 1', () => {
     const groups = groupMachines([
       handle('checkout', '1'),
       handle('upload', '2'),
