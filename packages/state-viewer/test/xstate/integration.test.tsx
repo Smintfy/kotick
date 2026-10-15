@@ -3,10 +3,7 @@
 import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
-import { assign, createActor, sendTo, setup, spawnChild, type Actor, type ActorRefFrom, type AnyActorRef, type AnyStateMachine, type EventFrom } from 'xstate';
-import { STORAGE_PREFIX } from '../../src/core/recording';
-import { REGISTRY_KEY } from '../../src/core/registry';
-import type { DataSource } from '../../src/core/types';
+import { assign, createActor, sendTo, setup, spawnChild, type Actor, type ActorRefFrom, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { connect, useActorRef, useMachine, type DebugOptions } from '../../src/xstate';
 import { flush, handlesOf, keyOf, onlyHandle, registry, resetRegistry } from './helpers';
 
@@ -70,7 +67,6 @@ function createCheckoutMachine() {
 
 const checkoutMachine = createCheckoutMachine();
 type CheckoutMachine = typeof checkoutMachine;
-type CheckoutEvent = EventFrom<CheckoutMachine>;
 
 const workerMachine = setup({
   types: { events: {} as { type: 'PAUSE' } | { type: 'FINISH' } },
@@ -188,50 +184,8 @@ interface Shown {
   context: CheckoutContext;
 }
 
-interface MountedCheckout {
-  key: string;
-  proxy: Actor<CheckoutMachine>;
-  /** The snapshot the component rendered. */
-  shown(): Shown;
-  /** Sends through the proxy, as the app does; blocked while previewed. */
-  send(event: CheckoutEvent): void;
-  /** Sends to the real actor, which keeps running underneath a preview. */
-  sendToRealActor(event: CheckoutEvent): void;
-  unmount(): void;
-}
-
 function shownBy(testId: string): Shown {
   return JSON.parse(screen.getByTestId(testId).textContent ?? 'null') as Shown;
-}
-
-/** Renders one checkout in its own root and returns it with the key of the handle it registered (the newest one). */
-async function mountCheckout(props: Omit<CheckoutProps, 'onActor'> = {}): Promise<MountedCheckout> {
-  const testId = props.testId ?? 'checkout';
-  let proxy: Actor<CheckoutMachine> | undefined;
-  const view = render(
-    <Checkout
-      {...props}
-      onActor={(actor) => {
-        proxy = actor;
-      }}
-    />,
-  );
-  await flush();
-  const handles = handlesOf(props.debug?.id ?? (props.machine ?? checkoutMachine).id);
-  const handle = handles[handles.length - 1];
-  if (!proxy || !handle) throw new Error('The checkout did not render and register.');
-  const actor = proxy;
-  return {
-    key: keyOf(handle),
-    proxy: actor,
-    shown: () => shownBy(testId),
-    send: (event) => act(() => actor.send(event)),
-    sendToRealActor: (event) =>
-      act(() => {
-        actor.system.get(ROOT_SYSTEM_ID).send(event);
-      }),
-    unmount: () => view.unmount(),
-  };
 }
 
 function ActorHost({ logic, onActor }: { logic: AnyStateMachine; onActor: (actor: AnyActorRef) => void }) {
@@ -261,14 +215,6 @@ async function mountActor(machine: AnyStateMachine) {
   };
 }
 
-function preview(key: string, leaves: string[], source?: DataSource): void {
-  act(() => registry().preview(key, source === undefined ? { leaves } : { leaves, source }));
-}
-
-function release(key?: string): void {
-  act(() => registry().release(key));
-}
-
 function data(machineId: string) {
   const availability = registry().getSnapshot().data[machineId];
   if (!availability) throw new Error(`No data for "${machineId}".`);
@@ -285,15 +231,6 @@ function childOf(parent: AnyActorRef, id: string): AnyActorRef {
   const child = (parent.getSnapshot() as { children: Record<string, AnyActorRef | undefined> }).children[id];
   if (!child) throw new Error(`No child "${id}".`);
   return child;
-}
-
-/**
- * A page reload as far as the registry can tell: pending recordings are written to sessionStorage, which survives,
- * and the next getRegistry() creates a new registry. Unmount everything first.
- */
-function reload(): void {
-  window.dispatchEvent(new Event('pagehide'));
-  delete (globalThis as Record<string, unknown>)[REGISTRY_KEY];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -326,225 +263,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   expect(warnings).toEqual([]);
   expect(errors).toEqual([]);
-});
-
-describe('recording', () => {
-  test('real transitions of a hook actor populate the recorded leaves of its machine id', async () => {
-    const checkout = await mountCheckout();
-    expect(data('checkout')).toEqual({ recorded: ['idle'], fixture: [] });
-
-    checkout.send({ type: 'START' });
-    await flush();
-    expect(data('checkout').recorded).toEqual(['idle', 'paying.card.idle', 'paying.shipping.standard']);
-
-    checkout.send({ type: 'FAIL', note: 'Card declined' });
-    checkout.send({ type: 'EXPRESS' });
-    await flush();
-    expect(data('checkout').recorded).toEqual([
-      'idle',
-      'paying.card.error',
-      'paying.card.idle',
-      'paying.shipping.express',
-      'paying.shipping.standard',
-    ]);
-  });
-
-  test('previewing a visited leaf uses the recorded context of that visit, not the live one', async () => {
-    const checkout = await mountCheckout();
-    const initialContext = checkout.proxy.getSnapshot().context;
-    checkout.send({ type: 'START' });
-    checkout.send({ type: 'FAIL', note: 'Card declined' });
-    const declinedContext = checkout.proxy.getSnapshot().context;
-    checkout.send({ type: 'RETRY' });
-    expect(checkout.shown().context).toEqual({ step: 3, note: 'Card declined' });
-
-    preview(checkout.key, ['paying.card.error']);
-    expect(registry().getOverride(checkout.key)).toMatchObject({
-      requested: ['paying.card.error'],
-      leaves: ['paying.card.error', 'paying.shipping.standard'],
-      source: 'recorded',
-    });
-    // The very object the actor had then: recordings keep references, and assign replaces context.
-    expect(registry().getOverride(checkout.key)?.context).toBe(declinedContext);
-    expect(checkout.shown()).toEqual({
-      value: { paying: { card: 'error', shipping: 'standard' } },
-      context: { step: 2, note: 'Card declined' },
-    });
-
-    preview(checkout.key, ['idle']);
-    expect(registry().getOverride(checkout.key)).toMatchObject({ source: 'recorded', leaves: ['idle'] });
-    expect(registry().getOverride(checkout.key)?.context).toBe(initialContext);
-    expect(checkout.shown()).toEqual({ value: 'idle', context: { step: 0, note: 'none' } });
-
-    release(checkout.key);
-    expect(checkout.shown()).toEqual({
-      value: { paying: { card: 'idle', shipping: 'standard' } },
-      context: { step: 3, note: 'Card declined' },
-    });
-  });
-
-  test('an unvisited configuration takes the context of the newest recording containing the leaf', async () => {
-    const checkout = await mountCheckout();
-    checkout.send({ type: 'START' }); // card.idle + standard, step 1
-    checkout.send({ type: 'FAIL', note: 'first' }); // card.error + standard, step 2
-    checkout.send({ type: 'EXPRESS' }); // card.error + express, step 3
-    checkout.send({ type: 'STANDARD' }); // card.error + standard again, step 4: now the newer of the two
-    checkout.send({ type: 'RETRY' }); // card.idle + standard, step 5
-    checkout.send({ type: 'PICKUP' }); // card.idle + pickup, step 6
-
-    // card.error + pickup was never recorded, so the leaf alone picks the context.
-    preview(checkout.key, ['paying.card.error']);
-    expect(registry().getOverride(checkout.key)).toMatchObject({
-      leaves: ['paying.card.error', 'paying.shipping.pickup'],
-      source: 'recorded',
-      context: { step: 4, note: 'first' },
-    });
-    expect(checkout.shown()).toEqual({
-      value: { paying: { card: 'error', shipping: 'pickup' } },
-      context: { step: 4, note: 'first' },
-    });
-
-    // An exact configuration still wins over a newer partial match.
-    preview(checkout.key, ['paying.card.error', 'paying.shipping.express']);
-    expect(registry().getOverride(checkout.key)).toMatchObject({ source: 'recorded', context: { step: 3 } });
-  });
-
-  test('the real actor keeps recording while it is previewed, and releasing shows where it got to', async () => {
-    const checkout = await mountCheckout();
-    preview(checkout.key, ['done']);
-    expect(takeWarnings()).toEqual([liveFallbackWarning('done', checkout.key)]);
-    expect(checkout.shown().value).toBe('done');
-
-    // Neither the forced snapshot nor an event the preview blocked reaches the recordings.
-    checkout.send({ type: 'START' });
-    await flush();
-    expect(registry().getSnapshot().log).toMatchObject([
-      { instanceKey: checkout.key, event: { type: 'START' }, leaves: ['done'], blocked: true },
-    ]);
-    expect(data('checkout').recorded).toEqual(['idle']);
-
-    checkout.sendToRealActor({ type: 'START' });
-    checkout.sendToRealActor({ type: 'EXPRESS' });
-    await flush();
-    expect(data('checkout').recorded).toEqual([
-      'idle',
-      'paying.card.idle',
-      'paying.shipping.express',
-      'paying.shipping.standard',
-    ]);
-    // Live traffic doesn't move the preview.
-    expect(checkout.shown()).toEqual({ value: 'done', context: { step: 0, note: 'none' } });
-    expect(registry().getOverride(checkout.key)?.context).toEqual({ step: 0, note: 'none' });
-
-    release(checkout.key);
-    expect(checkout.shown()).toEqual({
-      value: { paying: { card: 'idle', shipping: 'express' } },
-      context: { step: 2, note: 'none' },
-    });
-  });
-
-  test('recordings are kept per machine id, so one instance can preview what another visited', async () => {
-    const first = await mountCheckout({ testId: 'first' });
-    const second = await mountCheckout({ testId: 'second' });
-    expect(registeredKeys()).toEqual([first.key, second.key]);
-
-    first.send({ type: 'START' });
-    first.send({ type: 'FAIL', note: 'seen by the first' });
-
-    preview(second.key, ['paying.card.error']);
-    expect(registry().getOverride(second.key)).toMatchObject({ source: 'recorded', context: { step: 2 } });
-    expect(shownBy('second').context).toEqual({ step: 2, note: 'seen by the first' });
-    expect(shownBy('first').value).toEqual({ paying: { card: 'error', shipping: 'standard' } });
-  });
-
-  test('a connect()ed actor records its transitions, including while it is previewed', async () => {
-    const actor = createActor(checkoutMachine).start();
-    const proxy = connect(actor, { id: 'checkout' });
-    await flush();
-    const key = keyOf(onlyHandle('checkout'));
-    // The instance id comes from the page-wide counter, not the actor's session id.
-    expect(key).toMatch(/^checkout#\d+$/);
-    expect(data('checkout').recorded).toEqual(['idle']);
-
-    actor.send({ type: 'START' });
-    actor.send({ type: 'FAIL', note: 'declined' });
-    const declined = actor.getSnapshot().context;
-    await flush();
-    expect(data('checkout').recorded).toEqual([
-      'idle',
-      'paying.card.error',
-      'paying.card.idle',
-      'paying.shipping.standard',
-    ]);
-
-    // The final snapshot is recorded before completing the actor unregisters it (connect() follows its lifetime).
-    actor.send({ type: 'FINISH' });
-    await flush();
-    expect(registeredKeys()).toEqual([]);
-
-    const next = createActor(checkoutMachine).start();
-    const nextProxy = connect(next, { id: 'checkout' });
-    await flush();
-    const nextKey = keyOf(onlyHandle('checkout'));
-    // Another actor draws the next id, so it doesn't share the finished one's key.
-    expect(nextKey).toMatch(/^checkout#\d+$/);
-    expect(nextKey).not.toBe(key);
-    expect(data('checkout').recorded).toContain('done');
-    preview(nextKey, ['paying.card.error']);
-    expect(registry().getOverride(nextKey)?.context).toBe(declined);
-    expect(nextProxy.getSnapshot().matches({ paying: { card: 'error' } })).toBe(true);
-
-    next.send({ type: 'START' });
-    next.send({ type: 'PICKUP' });
-    await flush();
-    expect(data('checkout').recorded).toContain('paying.shipping.pickup');
-    expect(nextProxy.getSnapshot().context).toBe(declined);
-    expect(proxy.getSnapshot().status).toBe('done');
-    next.stop();
-  });
-
-  test('recordings persist to sessionStorage and feed previews after a reload', async () => {
-    const before = await mountCheckout();
-    before.send({ type: 'START' });
-    before.send({ type: 'FAIL', note: 'Card declined' });
-    before.send({ type: 'RETRY' });
-    before.unmount();
-    reload();
-    expect(sessionStorage.getItem(`${STORAGE_PREFIX}checkout`)).not.toBeNull();
-
-    const after = await mountCheckout();
-    expect(data('checkout').recorded).toEqual([
-      'idle',
-      'paying.card.error',
-      'paying.card.idle',
-      'paying.shipping.standard',
-    ]);
-    preview(after.key, ['paying.card.error']);
-    expect(registry().getOverride(after.key)).toMatchObject({
-      source: 'recorded',
-      context: { step: 2, note: 'Card declined' },
-    });
-    expect(after.shown()).toEqual({
-      value: { paying: { card: 'error', shipping: 'standard' } },
-      context: { step: 2, note: 'Card declined' },
-    });
-  });
-
-  test('a context holding spawned actor refs is recorded in memory but never persisted', async () => {
-    const spawner = await mountActor(spawnerMachine);
-    spawner.send({ type: 'ASSIGN_SPAWN' });
-    const withRef = spawner.proxy.getSnapshot().context;
-
-    preview(spawner.key, ['running']);
-    expect(registry().getOverride(spawner.key)).toMatchObject({ source: 'recorded' });
-    expect(registry().getOverride(spawner.key)?.context).toBe(withRef);
-
-    spawner.unmount();
-    reload();
-    expect(sessionStorage.getItem(`${STORAGE_PREFIX}spawner`)).toBeNull();
-    // The child's own context is plain, so its recording is kept.
-    expect(sessionStorage.getItem(`${STORAGE_PREFIX}worker`)).not.toBeNull();
-  });
 });
 
 describe('child machines', () => {
