@@ -60,6 +60,15 @@ export function toInstanceKey(machineId: string, instanceId: string): string {
   return `${machineId}#${instanceId}`;
 }
 
+/** Atomic and final states in document order, the ones a preview can select. */
+export function leavesOf(nodes: readonly StateNodeInfo[], into: string[] = []): string[] {
+  for (const node of nodes) {
+    if (node.type === 'atomic' || node.type === 'final') into.push(node.id);
+    leavesOf(node.children ?? [], into);
+  }
+  return into;
+}
+
 export function createRegistry(options: RegistryOptions = {}): Registry {
   const now = options.now ?? Date.now;
   const registrations = new Map<string, Registration>();
@@ -283,7 +292,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   function validLeaves(handle: MachineHandle): ReadonlySet<string> {
     let leaves = leafSets.get(handle);
     if (!leaves) {
-      leaves = collectLeaves(handle.describe(), new Set());
+      leaves = new Set(leavesOf(handle.describe()));
       leafSets.set(handle, leaves);
     }
     return leaves;
@@ -687,14 +696,6 @@ function isLinkTarget(target: unknown): target is DeepLinkTarget {
     leaves.length > 0 &&
     leaves.every((leaf) => typeof leaf === 'string')
   );
-}
-
-function collectLeaves(nodes: StateNodeInfo[], into: Set<string>): Set<string> {
-  for (const node of nodes) {
-    if (node.type === 'atomic' || node.type === 'final') into.add(node.id);
-    collectLeaves(node.children ?? [], into);
-  }
-  return into;
 }
 
 // Keys come from machine ids, so a null prototype keeps ids like "constructor" or "__proto__" from misbehaving.
