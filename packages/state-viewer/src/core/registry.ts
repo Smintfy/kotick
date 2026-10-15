@@ -120,7 +120,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     if (current === notified) return;
     notified = current;
     for (const listener of [...listeners]) {
-      if (listeners.has(listener)) call(listener, 'A registry listener threw.');
+      if (listeners.has(listener)) callListener(listener, 'A registry listener threw.');
     }
   }
 
@@ -190,7 +190,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     const set = overrideListeners.get(instanceKey);
     if (!set) return;
     for (const listener of [...set]) {
-      if (set.has(listener)) call(listener, `An override listener for "${instanceKey}" threw.`);
+      if (set.has(listener)) callListener(listener, `An override listener for "${instanceKey}" threw.`);
     }
   }
 
@@ -718,7 +718,8 @@ function freeze<T extends object>(value: T): T {
   return value;
 }
 
-function call(listener: () => void, message: string): void {
+/** Calls the listener. When it throws, logs the error with the message, and returns. */
+export function callListener(listener: () => void, message: string): void {
   try {
     listener();
   } catch (error) {

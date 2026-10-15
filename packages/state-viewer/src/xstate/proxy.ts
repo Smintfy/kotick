@@ -1,7 +1,7 @@
 // Actor proxy and machine handle: what consumers hold, and what the registry sees.
 
 import { toObserver, type AnyActorRef, type AnyMachineSnapshot, type AnyStateMachine, type Observer } from 'xstate';
-import { getRegistry, toInstanceKey } from '../core/registry';
+import { callListener, getRegistry, toInstanceKey } from '../core/registry';
 import type { Capabilities, MachineHandle, Override, Registry, StateNodeInfo } from '../core/types';
 import { isFallbackId, resolveMachineId, warnFallbackId } from './machine-id';
 import { getTree, isMachine, leavesOfSnapshot, normalizeLeaves, resolveSnapshot } from './tree';
@@ -122,7 +122,7 @@ function createBinding(actor: MachineActor): Binding {
     emitting++;
     try {
       for (const listener of [...previewListeners]) {
-        if (previewListeners.has(listener)) call(listener, `A subscriber of "${key}" threw.`);
+        if (previewListeners.has(listener)) callListener(listener, `A subscriber of "${key}" threw.`);
       }
     } finally {
       emitting--;
@@ -299,7 +299,7 @@ function createBinding(actor: MachineActor): Binding {
     stop: () => {
       actor.stop();
       // An actor stopped before it started sends nothing XState can observe, so connect() hears about it here.
-      if (stopListeners) for (const listener of [...stopListeners]) call(listener, `Stopping "${key}" threw.`);
+      if (stopListeners) for (const listener of [...stopListeners]) callListener(listener, `Stopping "${key}" threw.`);
       return proxy;
     },
     [observableKey()]: () => proxy,
@@ -439,7 +439,7 @@ function createHandle(
     notify() {
       if (!listeners || listeners.size === 0) return;
       for (const listener of [...listeners]) {
-        if (listeners.has(listener)) call(listener, `A listener of "${key}" threw.`);
+        if (listeners.has(listener)) callListener(listener, `A listener of "${key}" threw.`);
       }
     },
     record(snapshot) {
@@ -592,12 +592,4 @@ function sameChildren(a: object, b: object): boolean {
 
 function isEventObject(event: unknown): event is { type: string; [key: string]: unknown } {
   return typeof event === 'object' && event !== null && typeof (event as { type?: unknown }).type === 'string';
-}
-
-function call(listener: () => void, message: string): void {
-  try {
-    listener();
-  } catch (error) {
-    console.error(`[state-viewer] ${message}`, error);
-  }
 }
