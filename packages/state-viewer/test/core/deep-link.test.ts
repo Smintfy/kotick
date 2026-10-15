@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { DeepLinkTarget } from '../../src/core/types';
 import {
   parseDeepLink,
   readDeepLink,
   serializeDeepLink,
   writeDeepLink,
-  type DeepLinkTarget,
 } from '../../src/overlay/deep-link';
 
 const CHECKOUT: DeepLinkTarget[] = [{ machineId: 'checkout', leaves: ['payment.error'] }];

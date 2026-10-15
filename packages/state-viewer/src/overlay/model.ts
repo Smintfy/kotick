@@ -1,5 +1,5 @@
-// What the panel derives from the registry snapshot: machines grouped by id, instance labels, the leaves a click
-// previews and the targets "Copy link" writes. Pure, so it's tested without rendering.
+// What the panel derives from the registry snapshot, as pure functions.
+// It groups machines by id, labels instances, finds the leaves a click previews, and plans the targets of "Copy link".
 
 import { toInstanceKey } from '../core/registry';
 import type { DeepLinkTarget, MachineHandle, Override, StateNodeInfo } from '../core/types';
