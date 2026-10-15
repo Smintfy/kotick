@@ -16,8 +16,7 @@ import {
   type SnapshotFrom,
   type StateFrom,
 } from 'xstate';
-import { nextInstanceId } from './instance-id';
-import { resolveMachineId } from './machine-id';
+import { nextInstanceId, resolveMachineId } from './identity';
 import type { HookActorOptions, WithDebug } from './options';
 import { findBinding, getBinding, isMachineActor, isProxy, type Binding, type Registration } from './proxy';
 import { createView, createViewMemory, type View, type ViewLifetime, type ViewMemory } from './view';

@@ -7,7 +7,7 @@ import {
   isFallbackId,
   resolveMachineId,
   warnFallbackId,
-} from '../../src/xstate/machine-id';
+} from '../../src/xstate/identity';
 import {
   getTree,
   isMachine,

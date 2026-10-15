@@ -1,11 +1,18 @@
-// Machine ids in the registry.
+// What names an actor in the registry: its machine id, its instance id, and an optional label.
 
 import type { AnyStateMachine } from 'xstate';
 import type { AnyStateNode } from './tree';
 
+export interface Identity {
+  machineId: string;
+  instanceId: string;
+  label?: string;
+}
+
 /** The id XState gives a machine created without one. */
 export const DEFAULT_MACHINE_ID = '(machine)';
 
+const COUNTER_KEY = '__STATE_VIEWER_LAST_INSTANCE__';
 const fallbackIds = new WeakMap<AnyStateMachine, string>();
 const warned = new Set<string>();
 
@@ -45,6 +52,18 @@ export function warnFallbackId(id: string): void {
     `[state-viewer] A machine has no id, so it's listed as "${id}". ` +
       `Give it one with createMachine({ id }) or with the debug option: { debug: { id } }.`,
   );
+}
+
+/**
+ * A page-unique instance id. The counter lives on globalThis, so every React root and every copy of the
+ * package draw from one sequence. React's useId isn't enough: separately hydrated roots each start from the same
+ * tree-position ids, so two islands rendering one machine would share a key.
+ */
+export function nextInstanceId(): string {
+  const scope = globalThis as typeof globalThis & { [COUNTER_KEY]?: number };
+  const next = (scope[COUNTER_KEY] ?? 0) + 1;
+  scope[COUNTER_KEY] = next;
+  return String(next);
 }
 
 /** Children sorted by key, as context keys are: moving a state up or down doesn't change the machine. */
