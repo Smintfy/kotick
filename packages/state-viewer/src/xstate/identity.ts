@@ -10,7 +10,7 @@ export interface Identity {
 }
 
 /** The id XState gives a machine created without one. */
-export const DEFAULT_MACHINE_ID = '(machine)';
+const DEFAULT_MACHINE_ID = '(machine)';
 
 const COUNTER_KEY = '__STATE_VIEWER_LAST_INSTANCE__';
 const fallbackIds = new WeakMap<AnyStateMachine, string>();
@@ -36,7 +36,7 @@ export function isFallbackId(machine: AnyStateMachine, machineId: string): boole
  * The context keys tell apart machines with the same states, such as two fetch machines.
  * Without them, those machines would share recordings and fixtures.
  */
-export function fallbackMachineId(machine: AnyStateMachine): string {
+function fallbackMachineId(machine: AnyStateMachine): string {
   let id = fallbackIds.get(machine);
   if (id === undefined) {
     id = `machine-${hash(`${signature(machine.root)}|${contextKeys(machine)}`)}`;
