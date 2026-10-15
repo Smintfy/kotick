@@ -8,15 +8,8 @@ import {
   resolveMachineId,
   warnFallbackId,
 } from '../../src/xstate/identity';
-import {
-  getTree,
-  isMachine,
-  leavesOfSnapshot,
-  leavesOfValue,
-  nodeId,
-  normalizeLeaves,
-  resolveSnapshot,
-} from '../../src/xstate/tree';
+import { normalizeLeaves, resolveSnapshot } from '../../src/xstate/preview-snapshot';
+import { getTree, isMachine, leavesOfSnapshot, leavesOfValue, nodeId } from '../../src/xstate/tree';
 
 /** A compound root with descriptions, tags, a final state and history nodes at two depths. */
 function createCheckout() {

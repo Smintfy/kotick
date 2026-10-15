@@ -6,7 +6,7 @@ import type { MachineHandle, Override } from '../core/types';
 import { EMPTY_CHILDREN, liveChildren, statusOf, type MachineActor } from './actor';
 import { createHandle, inspect } from './handle';
 import { isFallbackId, warnFallbackId, type Identity } from './identity';
-import { resolveSnapshot } from './tree';
+import { resolveSnapshot } from './preview-snapshot';
 import { createView, type View, type ViewSource } from './view';
 
 /** One identity of an actor in the registry. A new label or id makes a new one; the proxy stays the same. */

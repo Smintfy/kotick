@@ -5,7 +5,7 @@ import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
 import { createMachine, type AnyStateMachine } from 'xstate';
 import { useMachine } from '../../src/xstate';
-import { resolveSnapshot } from '../../src/xstate/tree';
+import { resolveSnapshot } from '../../src/xstate/preview-snapshot';
 import { flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
 
 function createCheckout(paying: 'parallel' | 'compound') {
