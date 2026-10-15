@@ -17,7 +17,7 @@ function keyOf(entry: EventLogEntry): number {
   return key;
 }
 
-export interface EventLogProps {
+interface EventLogProps {
   entries: readonly EventLogEntry[];
   /** `checkout · 1` for an instance key; the key itself once the instance is gone. */
   labelOf(instanceKey: string): string;

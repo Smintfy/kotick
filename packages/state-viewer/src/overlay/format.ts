@@ -2,7 +2,7 @@
 // functions, Maps, cycles; none of it may throw.
 
 /** One value as the JSON viewer shows it: a leaf with its text, or a branch with entries to expand. */
-export type Inspected =
+type Inspected =
   | { kind: 'leaf'; type: 'string' | 'number' | 'boolean' | 'null' | 'undefined' | 'special'; text: string }
   | { kind: 'branch'; summary: string; entries: () => [string, unknown][]; size: number };
 

@@ -28,7 +28,7 @@ export interface RecordingStoreOptions {
   onAvailabilityChange?: (machineId: string) => void;
 }
 
-export interface RecordingStore {
+interface RecordingStore {
   /** Hot path: keeps a reference to `context` and schedules a write. */
   record(machineId: string, leaves: string[], context: unknown): void;
   /** The exact configuration first, then the most recent configuration containing a requested leaf. */

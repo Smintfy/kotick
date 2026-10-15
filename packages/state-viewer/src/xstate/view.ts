@@ -71,7 +71,7 @@ interface Owed {
 }
 
 /** How a hook's observer stands with @xstate/react, which subscribes it to an actor in an effect of its own. */
-export interface Attachment {
+interface Attachment {
   /**
    * False from the commit that passes a new observer until @xstate/react subscribes it and starts the actor, which
    * sends the real snapshot. It's shown previews meanwhile, from the layout phase where a deep link applies one.

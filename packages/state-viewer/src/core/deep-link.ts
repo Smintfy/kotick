@@ -6,7 +6,7 @@ export type { DeepLinkTarget } from './types';
 
 export const DEFAULT_URL_PARAM = 'debug-state';
 
-export interface ParsedDeepLink {
+interface ParsedDeepLink {
   targets: DeepLinkTarget[];
   /** One message per segment, or whole value, that was skipped or replaced. */
   errors: string[];

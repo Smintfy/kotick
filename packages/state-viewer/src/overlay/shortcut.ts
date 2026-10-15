@@ -1,7 +1,7 @@
 // Keyboard shortcuts. The toggle is configurable, such as 'alt+s' or 'ctrl+shift+d', and every shortcut
 // is ignored while the user types.
 
-export interface Shortcut {
+interface Shortcut {
   /** `KeyboardEvent.key`, lowercased: 's', 'escape', 'f2'. */
   key: string;
   /** The physical key for letters and digits, which Alt changes the `key` of on macOS (Alt+S types 'ß'). */

@@ -11,7 +11,7 @@ const SOURCES: readonly { source: DataSource; label: string; missing: string }[]
   { source: 'live', label: 'Live', missing: '' },
 ];
 
-export interface ContextViewProps {
+interface ContextViewProps {
   context: unknown;
   /** Set while the instance is previewed. */
   override: Override | undefined;
@@ -65,7 +65,7 @@ export function ContextView({ context, override, available, onSource }: ContextV
 /** Entries shown per object before "… n more", so a huge context doesn't stall the panel. */
 const ENTRY_LIMIT = 100;
 
-export function JsonView({ value }: { value: unknown }) {
+function JsonView({ value }: { value: unknown }) {
   const inspected = inspect(value);
   return (
     <div className="sv-json" data-testid="sv-json">

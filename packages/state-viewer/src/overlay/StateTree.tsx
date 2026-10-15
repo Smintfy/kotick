@@ -4,7 +4,7 @@
 import type { CSSProperties } from 'react';
 import type { DataAvailability, Override, StateNodeInfo } from '../core/types';
 
-export interface StateTreeProps {
+interface StateTreeProps {
   nodes: readonly StateNodeInfo[];
   /** Names the tree for assistive technology, such as the instance label. */
   label: string;
