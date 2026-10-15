@@ -2,7 +2,7 @@
 
 import type { Position } from './props';
 
-export const SETTINGS_KEY = 'state-viewer:ui';
+const SETTINGS_KEY = 'state-viewer:ui';
 
 export interface Settings {
   open?: boolean;
@@ -16,7 +16,7 @@ export interface Settings {
   machine?: string;
 }
 
-export const POSITIONS: readonly Position[] = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
+const POSITIONS: readonly Position[] = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 
 export function isPosition(value: unknown): value is Position {
   return POSITIONS.includes(value as Position);
@@ -32,7 +32,8 @@ function defaultStorage(): Storage | null {
 }
 
 /** The stored settings, leaving out whatever is missing or invalid. */
-export function readSettings(storage: Storage | null = defaultStorage()): Settings {
+export function readSettings(): Settings {
+  const storage = defaultStorage();
   if (!storage) return {};
   let payload: unknown;
   try {
@@ -55,7 +56,8 @@ export function readSettings(storage: Storage | null = defaultStorage()): Settin
 }
 
 /** Best effort: settings that can't be stored last until the page reloads. */
-export function writeSettings(settings: Settings, storage: Storage | null = defaultStorage()): void {
+export function writeSettings(settings: Settings): void {
+  const storage = defaultStorage();
   if (!storage) return;
   try {
     storage.setItem(SETTINGS_KEY, JSON.stringify({ v: 1, ...settings }));

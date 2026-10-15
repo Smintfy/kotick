@@ -65,7 +65,8 @@ These techniques replace a mock. Each one was tried in this package.
 - **A full storage.** Fill `sessionStorage` with app data up to the 5,000,000-character quota of jsdom, or set
   `// @vitest-environment-options {"storageQuota":0}` for the whole file.
 - **No storage at all.** Call `window.jsdom.reconfigure({ url: 'about:blank' })` before the first render. Both
-  storages then throw.
+  storages then throw. `test/setup.ts` clears the storage before each test, which then throws too, so such a file
+  holds one test, as `test/blocked-storage.test.tsx` does.
 - **Copy link and Copy JSON.** jsdom has no clipboard and no `execCommand`, so the overlay copies through a textarea in
   its shadow root and shows "Copy failed". `copy()` in `test/support/panel.ts` observes the shadow root with a
   `MutationObserver` and returns the value of each textarea the overlay adds.

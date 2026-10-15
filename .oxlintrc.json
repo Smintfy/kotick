@@ -181,8 +181,6 @@
       // These files were written before the test rules. Never add a file to this list.
       // When black-box tests replace a file, delete the file and its line.
       "files": [
-        "packages/state-viewer/test/core/recording.test.ts",
-        "packages/state-viewer/test/overlay/settings.test.ts",
         "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
         "packages/state-viewer/test/regressions/child-final-recording.test.tsx",
         "packages/state-viewer/test/regressions/complete-during-preview.test.ts",

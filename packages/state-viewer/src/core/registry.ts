@@ -87,7 +87,7 @@ function createRegistry(): Registry {
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
   const eventLog = createEventLog();
   const fixtures = createFixtureStore();
-  const recording = createRecordingStore({ onAvailabilityChange: () => markDirty('data') });
+  const recording = createRecordingStore(() => markDirty('data'));
 
   const dirty: Record<SnapshotPart, boolean> = { machines: false, overrides: false, log: false, data: false };
   let snapshot: RegistrySnapshot = freeze({

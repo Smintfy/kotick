@@ -1,31 +1,23 @@
 // Recording store: the latest context per state configuration, in memory and in sessionStorage.
 
-export const STORAGE_PREFIX = 'state-viewer:recorded:';
+const STORAGE_PREFIX = 'state-viewer:recorded:';
+/** Configurations kept per machine. */
+const MAX_CONFIGURATIONS = 50;
+/** Largest serialized context that gets persisted, in UTF-16 code units (what storage quotas count). */
+const MAX_ENTRY_SIZE = 100_000;
+/**
+ * Largest combined size of every machine's stored recordings (key plus value of each `state-viewer:recorded:` key),
+ * in UTF-16 code units, so recordings leave room for the app's own data in storage.
+ */
+const MAX_TOTAL_SIZE = 1_000_000;
+/** Delay before pending changes are written, in milliseconds. */
+const PERSIST_DELAY = 500;
 
-export interface RecordedEntry {
+interface RecordedEntry {
   /** Sorted leaf ids. */
   leaves: string[];
   context: unknown;
   at: number;
-}
-
-export interface RecordingStoreOptions {
-  /** Defaults to `sessionStorage` when available; `null` keeps recordings in memory only. */
-  storage?: Storage | null;
-  /** Configurations kept per machine. */
-  maxConfigurations?: number;
-  /** Largest serialized context that gets persisted, in UTF-16 code units (what storage quotas count). */
-  maxEntrySize?: number;
-  /**
-   * Largest combined size of every machine's stored recordings (key plus value of each `state-viewer:recorded:` key),
-   * in UTF-16 code units, so recordings leave room for the app's own data in storage.
-   */
-  maxTotalSize?: number;
-  /** Delay before pending changes are written, in milliseconds. */
-  persistDelay?: number;
-  now?: () => number;
-  /** Called when the set of recorded leaves for a machine changes. */
-  onAvailabilityChange?: (machineId: string) => void;
 }
 
 interface RecordingStore {
@@ -39,8 +31,6 @@ interface RecordingStore {
   hydrate(machineId: string): void;
   /** Writes pending changes now. */
   flush(): void;
-  /** Cancels pending writes. */
-  dispose(): void;
 }
 
 interface MachineRecordings {
@@ -66,13 +56,13 @@ const UNSERIALIZABLE = Symbol('unserializable');
  * Functions held by objects are dropped. An actor ref anywhere keeps the whole context in memory, because a context
  * restored without it would crash the components that read it.
  */
-export function serializeContext(context: unknown, maxSize = 100_000): string | undefined {
+function serializeContext(context: unknown): string | undefined {
   const seen = new Set<object>();
   try {
     const json = JSON.stringify(context, function (this: Record<string, unknown>, key: string) {
       return replaceValue(this, key, seen);
     });
-    return json !== undefined && json.length <= maxSize ? json : undefined;
+    return json !== undefined && json.length <= MAX_ENTRY_SIZE ? json : undefined;
   } catch {
     return undefined;
   }
@@ -174,23 +164,15 @@ function readStoredSizes(storage: Storage): Map<string, number> {
 
 const EMPTY_PAYLOAD = '{"v":1,"entries":[]}';
 
-export function createRecordingStore(options: RecordingStoreOptions = {}): RecordingStore {
-  const {
-    storage = defaultStorage(),
-    maxConfigurations = 50,
-    maxEntrySize = 100_000,
-    maxTotalSize = 1_000_000,
-    persistDelay = 500,
-    now = Date.now,
-    onAvailabilityChange,
-  } = options;
+/** `onAvailabilityChange` is called when the set of recorded leaves for a machine changes. */
+export function createRecordingStore(onAvailabilityChange: (machineId: string) => void): RecordingStore {
+  const storage = defaultStorage();
   const machines = new Map<string, MachineRecordings>();
   // Persisted form of each entry, or null when its context stays in memory. Entries are never mutated.
   const serialized = new WeakMap<RecordedEntry, string | null>();
   // Sizes of the stored recordings keys, read on the first write and kept current by this store's writes.
   let storedSizes: Map<string, number> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let disposed = false;
 
   function machineFor(machineId: string): MachineRecordings {
     let machine = machines.get(machineId);
@@ -237,14 +219,7 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
 
   function availabilityChanged(machineId: string, machine: MachineRecordings): void {
     machine.leaves = undefined;
-    onAvailabilityChange?.(machineId);
-  }
-
-  function cancelWrite(): void {
-    if (timer !== undefined) {
-      clearTimeout(timer);
-      timer = undefined;
-    }
+    onAvailabilityChange(machineId);
   }
 
   function record(machineId: string, leaves: string[], context: unknown): void {
@@ -254,7 +229,7 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
     const key = sorted.join('|');
     const previous = machine.entries.get(key);
     let changed = false;
-    const entry: RecordedEntry = { leaves: sorted, context, at: now() };
+    const entry: RecordedEntry = { leaves: sorted, context, at: Date.now() };
     // The newest entry is replaced in place, as a delete makes the Map rehash.
     // The instances of a list record the same configuration one after the other.
     if (previous && previous !== machine.newest) machine.entries.delete(key);
@@ -263,9 +238,9 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
 
     if (!previous) {
       changed = addLeaves(machine, sorted);
-      if (machine.entries.size > maxConfigurations) {
+      if (machine.entries.size > MAX_CONFIGURATIONS) {
         for (const [oldestKey, oldest] of machine.entries) {
-          if (machine.entries.size <= maxConfigurations) break;
+          if (machine.entries.size <= MAX_CONFIGURATIONS) break;
           machine.entries.delete(oldestKey);
           changed = removeLeaves(machine, oldest.leaves) || changed;
         }
@@ -277,8 +252,8 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
     }
 
     machine.dirty = true;
-    // Never postponed, so a machine that transitions constantly still gets written every persistDelay.
-    if (storage && !disposed && timer === undefined) timer = setTimeout(flush, persistDelay);
+    // Never postponed, so a machine that transitions constantly still gets written every PERSIST_DELAY.
+    if (storage && timer === undefined) timer = setTimeout(flush, PERSIST_DELAY);
     if (changed) availabilityChanged(machineId, machine);
   }
 
@@ -322,7 +297,7 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
       restored.set(key, entry);
     }
     // Stored entries come from an earlier page load, so they rank older than everything in memory.
-    const room = Math.max(0, maxConfigurations - machine.entries.size);
+    const room = Math.max(0, MAX_CONFIGURATIONS - machine.entries.size);
     const kept = [...restored].slice(Math.max(0, restored.size - room));
     if (kept.length === 0) return;
 
@@ -339,7 +314,7 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
     for (const entry of machine.entries.values()) {
       let item = serialized.get(entry);
       if (item === undefined) {
-        const context = serializeContext(entry.context, maxEntrySize);
+        const context = serializeContext(entry.context);
         item =
           context === undefined || !Number.isFinite(entry.at)
             ? null
@@ -351,7 +326,7 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
 
     const key = STORAGE_PREFIX + machineId;
     const sizes = (storedSizes ??= readStoredSizes(target));
-    let budget = maxTotalSize;
+    let budget = MAX_TOTAL_SIZE;
     for (const [storedKey, size] of sizes) if (storedKey !== key) budget -= size;
 
     // The newest items that fit what the other keys leave of the budget.
@@ -389,7 +364,7 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
       const reason =
         count < withinBudget
           ? 'Storage is full or unavailable'
-          : `Recordings are limited to ${maxTotalSize.toLocaleString('en-US')} characters of storage in total`;
+          : `Recordings are limited to ${MAX_TOTAL_SIZE.toLocaleString('en-US')} characters of storage in total`;
       console.warn(
         `[state-viewer] ${reason}, so ${saved} of the ${items.length} recordings ` +
           `for "${machineId}" were saved. All of them stay available until the page reloads.`,
@@ -398,7 +373,8 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
   }
 
   function flush(): void {
-    cancelWrite();
+    clearTimeout(timer);
+    timer = undefined;
     if (!storage) return;
     for (const [machineId, machine] of machines) {
       if (!machine.dirty) continue;
@@ -409,10 +385,5 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
     }
   }
 
-  function dispose(): void {
-    disposed = true;
-    cancelWrite();
-  }
-
-  return { record, lookup, recordedLeaves, hydrate, flush, dispose };
+  return { record, lookup, recordedLeaves, hydrate, flush };
 }

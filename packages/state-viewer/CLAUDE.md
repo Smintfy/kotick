@@ -14,7 +14,7 @@ A development overlay for React apps that use XState v5. The README says what it
 | `src/xstate/` | The adapter. The hooks and `connect()` give the app a proxy of each actor, and give the registry a handle |
 | `test/<feature>.test.tsx` | Black-box tests, one feature per file |
 | `test/support/` | Helpers for those tests |
-| `test/core/`, `test/overlay/`, `test/xstate/`, `test/regressions/` | Legacy tests. They move into feature files |
+| `test/xstate/`, `test/regressions/` | Legacy tests. They move into feature files |
 
 The overlay and the adapter never import each other.
 `pnpm lint` enforces the layers and what each entry exports. Its message says where an import belongs.
