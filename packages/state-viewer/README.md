@@ -322,8 +322,7 @@ actor less than 1 µs more. Production builds do not have this cost.
 - **Functions in context are not recorded across reloads.** After a reload, a recorded preview does not have them.
 - **A transform on `body` moves the overlay.** If `body` has a `transform`, a `filter` or `contain`, it becomes the
   containing block of the overlay. Use `portalTarget={document.documentElement}` on such pages.
-- **A `connect()`ed actor that fails stays in the panel until the page reloads.** So does one that you stop through
-  the actor itself, not its proxy, before it starts. XState reports nothing in that case.
+- **A `connect()`ed actor that fails stays in the panel until the page reloads.**
 - **The arrow keys move through leaves only.** Compound and parallel states cannot get focus.
 - **The state tree shows the fixtures of the first instance of a machine id.** Another instance with the same id, but
   with a changed machine config, for example after a Fast Refresh edit, can get other fixtures.
