@@ -70,7 +70,7 @@ export function leavesOf(nodes: readonly StateNodeInfo[], into: string[] = []): 
   return into;
 }
 
-export interface LinkPlan {
+interface LinkPlan {
   targets: DeepLinkTarget[];
   /** Machine ids whose instances aren't all previewed the same way, which a machine-level link can't reproduce. */
   partial: string[];

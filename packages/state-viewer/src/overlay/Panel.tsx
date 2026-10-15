@@ -26,7 +26,7 @@ const MOVES: Readonly<Record<'ArrowDown' | 'ArrowUp' | 'Home' | 'End', Move>> = 
 };
 const NO_NODES: StateNodeInfo[] = [];
 
-export interface PanelProps {
+interface PanelProps {
   id: string;
   registry: Registry;
   snapshot: RegistrySnapshot;

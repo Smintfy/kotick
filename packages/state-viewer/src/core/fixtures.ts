@@ -4,7 +4,7 @@ import type { FixtureSet, MachineHandle } from './types';
 
 export type FixtureTarget = Pick<MachineHandle, 'machineId' | 'source'>;
 
-export interface FixtureMatch {
+interface FixtureMatch {
   leaf: string;
   context: unknown;
 }

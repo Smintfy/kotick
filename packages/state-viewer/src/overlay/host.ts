@@ -3,7 +3,7 @@
 
 import { overlayStyles } from './styles';
 
-export const HOST_ATTRIBUTE = 'data-state-viewer-root';
+const HOST_ATTRIBUTE = 'data-state-viewer-root';
 
 export interface OverlayHost {
   host: HTMLElement;
