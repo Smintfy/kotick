@@ -7,6 +7,7 @@ import { connect, defineFixtures, useActor, useActorRef, useMachine } from 'stat
 import { describe, expect, test } from 'vitest';
 import { createActor, createMachine, setup, type AnyStateMachine } from 'xstate';
 import { watchConsole } from './support/console';
+import { describeWithActivity } from './support/hooks';
 import {
   blockedEvents,
   copy,
@@ -826,7 +827,7 @@ describe('when the link ends', () => {
 
   // A hidden <Activity> unmounts the effects of its components.
   // So the instance unregisters until the Activity shows it again.
-  describe.runIf('Activity' in React)('in an <Activity>', () => {
+  describeWithActivity('in an <Activity>', () => {
     test('an instance that the Activity hides and reveals again shows the link again', async () => {
       const machine = createCheckoutMachine();
       const app = (mode: 'visible' | 'hidden') => (

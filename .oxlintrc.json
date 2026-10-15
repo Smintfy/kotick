@@ -212,7 +212,6 @@
         "packages/state-viewer/test/regressions/owed-error-across-replacement.test.tsx",
         "packages/state-viewer/test/regressions/preview-final-output.test.tsx",
         "packages/state-viewer/test/regressions/preview-listener-lifetime.test.tsx",
-        "packages/state-viewer/test/regressions/proxy-identity.test.tsx",
         "packages/state-viewer/test/regressions/reentrant-subscribe-during-release.test.ts",
         "packages/state-viewer/test/regressions/replaced-actor-commit-window.test.tsx",
         "packages/state-viewer/test/regressions/replaced-actor-ends-before-passive.test.tsx",
