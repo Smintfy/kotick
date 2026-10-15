@@ -185,7 +185,6 @@
         "packages/state-viewer/test/core/fixtures.test.ts",
         "packages/state-viewer/test/core/integration.test.ts",
         "packages/state-viewer/test/core/recording.test.ts",
-        "packages/state-viewer/test/core/registry.server.test.ts",
         "packages/state-viewer/test/core/registry.test.ts",
         "packages/state-viewer/test/overlay/StateViewer.test.tsx",
         "packages/state-viewer/test/overlay/fixtures.test.ts",
