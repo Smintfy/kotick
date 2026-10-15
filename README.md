@@ -33,7 +33,7 @@ pnpm install
 | `pnpm dev:hostile-css` | Starts the hostile-css example on port 5174 |
 | `pnpm dev:next` | Starts the Next.js example on port 3100 |
 | `pnpm build` | Builds the package and the examples |
-| `pnpm test` | Runs the unit, adapter and type tests with Vitest |
+| `pnpm test` | Runs `pnpm lint`, then the unit, adapter and type tests with Vitest |
 | `pnpm typecheck` | Checks the types of the package and the examples |
 | `pnpm lint` | Runs oxlint over the repository with the rules in `.oxlintrc.json` |
 | `pnpm test:matrix` | Runs the tests on React 18 and 19, each with the minimum and the latest XState |
