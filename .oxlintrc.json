@@ -182,7 +182,6 @@
       // When black-box tests replace a file, delete the file and its line.
       "files": [
         "packages/state-viewer/test/core/deep-link.test.ts",
-        "packages/state-viewer/test/core/event-log.test.ts",
         "packages/state-viewer/test/core/fixtures.test.ts",
         "packages/state-viewer/test/core/integration.test.ts",
         "packages/state-viewer/test/core/recording.test.ts",
@@ -190,7 +189,6 @@
         "packages/state-viewer/test/core/registry.test.ts",
         "packages/state-viewer/test/overlay/StateViewer.test.tsx",
         "packages/state-viewer/test/overlay/fixtures.test.ts",
-        "packages/state-viewer/test/overlay/format.test.ts",
         "packages/state-viewer/test/overlay/model.test.ts",
         "packages/state-viewer/test/overlay/settings.test.ts",
         "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
@@ -218,7 +216,6 @@
         "packages/state-viewer/test/regressions/hook-start-recording.test.tsx",
         "packages/state-viewer/test/regressions/hook-stop-ends-proxy-subscriptions.test.tsx",
         "packages/state-viewer/test/regressions/instance-ids-across-roots.test.tsx",
-        "packages/state-viewer/test/regressions/internal-send-blocking.test.tsx",
         "packages/state-viewer/test/regressions/late-observer-finished-actor.test.tsx",
         "packages/state-viewer/test/regressions/late-subscriber-after-unmount.test.tsx",
         "packages/state-viewer/test/regressions/leaf-id-type.test.tsx",

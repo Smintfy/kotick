@@ -20,7 +20,6 @@ export const REGISTRY_KEY = '__STATE_VIEWER_REGISTRY__';
 
 export interface RegistryOptions {
   recording?: Omit<RecordingStoreOptions, 'onAvailabilityChange' | 'now'>;
-  logCapacity?: number;
   now?: () => number;
   /** Writes pending recordings when the page is hidden or unloaded. Defaults to true in browsers. */
   flushOnPageHide?: boolean;
@@ -94,7 +93,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   const heldWarnings = new Map<string, () => void>();
   const listeners = new Set<() => void>();
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
-  const eventLog = createEventLog(options.logCapacity ?? 200);
+  const eventLog = createEventLog();
   const fixtures = createFixtureStore();
   const recording = createRecordingStore({
     ...options.recording,
