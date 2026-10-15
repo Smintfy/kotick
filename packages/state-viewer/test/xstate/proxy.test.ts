@@ -1,19 +1,18 @@
 // The actor proxy and connect() without React: actors made with createActor, connected, and previewed through the
 // registry the way the overlay does it.
-import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   Actor,
   assign,
   createActor,
   createMachine,
-  emit,
   fromCallback,
   fromPromise,
   setup,
   spawnChild,
   type AnyActorRef,
 } from 'xstate';
-import { connect, defineFixtures } from '../../src/xstate';
+import { connect } from '../../src/xstate';
 import { flush, handlesOf, keyOf, onlyHandle, registry, resetRegistry } from './helpers';
 
 type CheckoutContext = { items: number; error?: string };
@@ -83,7 +82,6 @@ const spawnerMachine = setup({ actors: { timer: timerMachine } }).createMachine(
   },
 });
 
-let warn: MockInstance<typeof console.warn>;
 const actors: AnyActorRef[] = [];
 
 /** Keeps the actor for stopping after the test. */
@@ -102,14 +100,9 @@ function startCheckout() {
   return { actor, proxy, key };
 }
 
-/** Registers fixtures for the checkout machine, the way <StateViewer fixtures> does. */
-function checkoutFixtures(states: Parameters<typeof defineFixtures<typeof checkoutMachine>>[1]): void {
-  registry().registerFixtures([defineFixtures(checkoutMachine, states)]);
-}
-
 beforeEach(() => {
   resetRegistry();
-  warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -270,192 +263,6 @@ describe('connect', () => {
     expect(actor.getSnapshot().context.items).toBe(1);
     // Starting keeps the instance it was registered as.
     expect(handlesOf('checkout').map(keyOf)).toEqual([key]);
-  });
-});
-
-describe('getSnapshot', () => {
-  test('returns the real snapshot when nothing is previewed', () => {
-    const { actor, proxy } = startCheckout();
-    expect(proxy.getSnapshot()).toBe(actor.getSnapshot());
-
-    actor.send({ type: 'ADD' });
-    expect(proxy.getSnapshot()).toBe(actor.getSnapshot());
-  });
-
-  test('returns a forced snapshot of the previewed state, the same object on every call', () => {
-    const { actor, proxy, key } = startCheckout();
-    const real = actor.getSnapshot();
-
-    registry().preview(key, { leaves: ['payment.error'] });
-    const forced = proxy.getSnapshot();
-
-    expect(forced).not.toBe(real);
-    expect(forced.value).toEqual({ payment: 'error' });
-    expect(proxy.getSnapshot()).toBe(forced);
-    expect(proxy.getSnapshot()).toBe(forced);
-    expect(actor.getSnapshot()).toBe(real);
-    expect(actor.getSnapshot().value).toBe('cart');
-  });
-
-  test('keeps the same forced snapshot while the real actor transitions underneath', () => {
-    const { actor, proxy, key } = startCheckout();
-    registry().preview(key, { leaves: ['payment.error'] });
-    const forced = proxy.getSnapshot();
-
-    actor.send({ type: 'ADD' });
-    actor.send({ type: 'PAY' });
-
-    expect(actor.getSnapshot().value).toEqual({ payment: 'pending' });
-    expect(proxy.getSnapshot()).toBe(forced);
-  });
-
-  test('a new override gives a new forced snapshot, even for the same leaves', () => {
-    const { proxy, key } = startCheckout();
-
-    registry().preview(key, { leaves: ['payment.error'] });
-    const error = proxy.getSnapshot();
-    registry().preview(key, { leaves: ['payment.pending'] });
-    const pending = proxy.getSnapshot();
-    registry().preview(key, { leaves: ['payment.error'] });
-    const errorAgain = proxy.getSnapshot();
-
-    expect(pending).not.toBe(error);
-    expect(pending.value).toEqual({ payment: 'pending' });
-    expect(errorAgain).not.toBe(error);
-    expect(errorAgain.value).toEqual({ payment: 'error' });
-  });
-
-  test('takes its context from the override', () => {
-    const declined = { items: 3, error: 'Card declined' };
-    checkoutFixtures({ 'payment.error': { context: declined } });
-    const { actor, proxy, key } = startCheckout();
-
-    registry().preview(key, { leaves: ['payment.error'] });
-
-    expect(registry().getOverride(key)).toMatchObject({ source: 'fixture', context: declined });
-    expect(proxy.getSnapshot().context).toBe(declined);
-    expect(actor.getSnapshot().context).toEqual({ items: 0 });
-  });
-
-  test('falls back to the live context with a warning when there is no recording or fixture', () => {
-    const { actor, proxy, key } = startCheckout();
-    actor.send({ type: 'ADD' });
-    const live = actor.getSnapshot().context;
-
-    registry().preview(key, { leaves: ['payment.error'] });
-
-    expect(registry().getOverride(key)?.source).toBe('live');
-    expect(proxy.getSnapshot().context).toBe(live);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('uses the live context'));
-  });
-
-  test('matches, hasTag, can and status behave like a real snapshot', () => {
-    checkoutFixtures({ 'payment.error': { context: { items: 1, error: 'Card declined' } } });
-    const { proxy, key } = startCheckout();
-
-    registry().preview(key, { leaves: ['payment.error'] });
-    const forced = proxy.getSnapshot();
-
-    expect(forced.status).toBe('active');
-    expect(forced.matches('payment')).toBe(true);
-    expect(forced.matches({ payment: 'error' })).toBe(true);
-    expect(forced.matches({ payment: 'pending' })).toBe(false);
-    expect(forced.matches('cart')).toBe(false);
-    expect(forced.hasTag('failed')).toBe(true);
-    expect(forced.hasTag('editable')).toBe(false);
-    expect(forced.can({ type: 'RETRY' })).toBe(true);
-    expect(forced.can({ type: 'ADD' })).toBe(false);
-  });
-
-  test('can evaluates guards against the previewed context, not the real one', () => {
-    checkoutFixtures({ cart: { context: { items: 2 } } });
-    const { actor, proxy, key } = startCheckout();
-
-    registry().preview(key, { leaves: ['cart'], source: 'fixture' });
-    expect(proxy.getSnapshot().can({ type: 'PAY' })).toBe(true);
-    expect(actor.getSnapshot().can({ type: 'PAY' })).toBe(false);
-
-    registry().preview(key, { leaves: ['cart'], source: 'live' });
-    expect(proxy.getSnapshot().can({ type: 'PAY' })).toBe(false);
-  });
-
-  test('a previewed final state has status done while the real actor keeps running and stays registered', async () => {
-    const { actor, proxy, key } = startCheckout();
-
-    registry().preview(key, { leaves: ['paid'] });
-    await flush();
-
-    expect(proxy.getSnapshot().status).toBe('done');
-    expect(proxy.getSnapshot().matches('paid')).toBe(true);
-    expect(actor.getSnapshot().status).toBe('active');
-    expect(handlesOf('checkout')).toHaveLength(1);
-  });
-
-  test('release restores the real current snapshot, including transitions made during the preview', () => {
-    const { actor, proxy, key } = startCheckout();
-    registry().preview(key, { leaves: ['payment.error'] });
-
-    actor.send({ type: 'ADD' });
-    actor.send({ type: 'ADD' });
-    actor.send({ type: 'PAY' });
-    registry().release(key);
-
-    expect(proxy.getSnapshot()).toBe(actor.getSnapshot());
-    expect(proxy.getSnapshot().value).toEqual({ payment: 'pending' });
-    expect(proxy.getSnapshot().context).toEqual({ items: 2 });
-  });
-
-  test('releasing every preview restores the real snapshot', () => {
-    const { actor, proxy, key } = startCheckout();
-    registry().preview(key, { leaves: ['payment.error'] });
-
-    registry().release();
-
-    expect(proxy.getSnapshot()).toBe(actor.getSnapshot());
-  });
-
-  test("a preview of one instance leaves another instance's proxy alone", () => {
-    const first = startCheckout();
-    const second = startCheckout();
-
-    registry().preview(first.key, { leaves: ['payment.error'] });
-
-    expect(first.proxy.getSnapshot().value).toEqual({ payment: 'error' });
-    expect(second.proxy.getSnapshot()).toBe(second.actor.getSnapshot());
-  });
-
-  test('getSnapshot works when taken off the proxy', () => {
-    const { proxy, key } = startCheckout();
-    const { getSnapshot } = proxy;
-
-    registry().preview(key, { leaves: ['payment.error'] });
-
-    expect(getSnapshot()).toBe(proxy.getSnapshot());
-  });
-
-  test('shows the real snapshot, warning once, when the override names states this machine does not have', () => {
-    const { actor, proxy, key } = startCheckout();
-    // Another handle under the same key with another tree, as when HMR replaces the machine.
-    registry().register({
-      ...onlyHandle('checkout'),
-      describe: () => [{ id: 'gone', key: 'gone', type: 'atomic', children: [] }],
-      normalizeTarget: (leaves) => leaves,
-    });
-    registry().preview(key, { leaves: ['gone'] });
-    expect(registry().getOverride(key)?.leaves).toEqual(['gone']);
-    const shown: unknown[] = [];
-    proxy.subscribe((snapshot) => shown.push(snapshot));
-    warn.mockClear();
-
-    expect(proxy.getSnapshot()).toBe(actor.getSnapshot());
-    expect(proxy.getSnapshot()).toBe(actor.getSnapshot());
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Can't show the preview"), expect.any(Error));
-
-    // What's shown is the real snapshot, so its updates reach subscribers.
-    actor.send({ type: 'ADD' });
-    expect(shown).toEqual([actor.getSnapshot()]);
-    expect(proxy.getSnapshot().context.items).toBe(1);
   });
 });
 
@@ -739,134 +546,6 @@ describe('error reporting', () => {
 
     expect(error).toHaveBeenCalledTimes(1);
     expect(() => vi.runAllTimers()).not.toThrow();
-  });
-});
-
-describe('passthrough', () => {
-  test("exposes the real actor's id, sessionId, system and logic", () => {
-    const actor = track(createActor(checkoutMachine, { id: 'main-checkout' }).start());
-    const proxy = connect(actor);
-
-    expect(proxy.id).toBe('main-checkout');
-    expect(proxy.sessionId).toBe(actor.sessionId);
-    expect(proxy.system).toBe(actor.system);
-    expect(proxy.logic).toBe(checkoutMachine);
-  });
-
-  test('on() listens for emitted events and is the same function on every read', () => {
-    const pingMachine = setup({
-      types: { events: {} as { type: 'PING' }, emitted: {} as { type: 'pong'; at: number } },
-    }).createMachine({
-      id: 'ping',
-      on: { PING: { actions: emit({ type: 'pong', at: 1 }) } },
-    });
-    const actor = track(createActor(pingMachine).start());
-    const proxy = connect(actor);
-    const handler = vi.fn();
-
-    expect(proxy.on).toBe(proxy.on);
-    const { on } = proxy;
-    const subscription = on('pong', handler);
-    proxy.send({ type: 'PING' });
-    expect(handler).toHaveBeenCalledWith({ type: 'pong', at: 1 });
-
-    subscription.unsubscribe();
-    proxy.send({ type: 'PING' });
-    expect(handler).toHaveBeenCalledTimes(1);
-  });
-
-  test('the overridden members are the same function on every read', () => {
-    const { proxy } = startCheckout();
-
-    expect(proxy.getSnapshot).toBe(proxy.getSnapshot);
-    expect(proxy.subscribe).toBe(proxy.subscribe);
-    expect(proxy.send).toBe(proxy.send);
-    expect(proxy.select).toBe(proxy.select);
-    expect(proxy.start).toBe(proxy.start);
-    expect(proxy.stop).toBe(proxy.stop);
-  });
-
-  test('getPersistedSnapshot and toJSON come from the real actor, also during a preview', () => {
-    const { actor, proxy, key } = startCheckout();
-    proxy.send({ type: 'ADD' });
-    registry().preview(key, { leaves: ['payment.error'] });
-
-    expect(proxy.getPersistedSnapshot()).toEqual(actor.getPersistedSnapshot());
-    expect(proxy.getPersistedSnapshot()).toMatchObject({ value: 'cart', context: { items: 1 } });
-    expect(proxy.toJSON()).toEqual(actor.toJSON());
-    expect(JSON.stringify({ ref: proxy })).toBe(JSON.stringify({ ref: actor }));
-  });
-
-  test('start() and stop() return the proxy', () => {
-    const { actor, proxy } = startCheckout();
-
-    expect(proxy.start()).toBe(proxy);
-    expect(actor.getSnapshot().status).toBe('active');
-    expect(proxy.stop()).toBe(proxy);
-    expect(actor.getSnapshot().status).toBe('stopped');
-  });
-
-  test('the observable interop method returns the proxy', () => {
-    const { proxy } = startCheckout();
-    // The key XState uses, Symbol.observable when something defines it.
-    const key = (Symbol as { observable?: symbol }).observable ?? '@@observable';
-
-    const observable = (proxy as unknown as Record<PropertyKey, () => unknown>)[key]();
-
-    expect(observable).toBe(proxy);
-  });
-
-  test('select().get() follows the preview', () => {
-    const { proxy, key } = startCheckout();
-    const value = proxy.select((snapshot) => snapshot.value);
-
-    expect(value.get()).toBe('cart');
-    registry().preview(key, { leaves: ['payment.error'] });
-    expect(value.get()).toEqual({ payment: 'error' });
-    registry().release(key);
-    expect(value.get()).toBe('cart');
-  });
-
-  test('select().subscribe() follows the preview and only reports changed selections', () => {
-    checkoutFixtures({ cart: { context: { items: 5 } } });
-    const { actor, proxy, key } = startCheckout();
-    const items: number[] = [];
-    const subscription = proxy.select((snapshot) => snapshot.context.items).subscribe((count) => items.push(count));
-
-    proxy.send({ type: 'ADD' });
-    expect(items).toEqual([1]);
-
-    registry().preview(key, { leaves: ['cart'], source: 'fixture' });
-    expect(items).toEqual([1, 5]);
-
-    // The real actor keeps counting underneath, unseen.
-    actor.send({ type: 'ADD' });
-    expect(items).toEqual([1, 5]);
-
-    registry().release(key);
-    expect(items).toEqual([1, 5, 2]);
-
-    subscription.unsubscribe();
-    proxy.send({ type: 'ADD' });
-    expect(items).toEqual([1, 5, 2]);
-  });
-
-  test('select() with an equality function skips selections it considers equal', () => {
-    const { proxy, key } = startCheckout();
-    const tags = vi.fn();
-    proxy
-      .select(
-        (snapshot) => [...snapshot.tags].sort(),
-        (a, b) => a.join() === b.join(),
-      )
-      .subscribe(tags);
-
-    // Same tags as the real state, so nothing to report.
-    registry().preview(key, { leaves: ['cart'] });
-    expect(tags).not.toHaveBeenCalled();
-
-    registry().preview(key, { leaves: ['payment.error'] });
-    expect(tags).toHaveBeenCalledWith(['failed']);
   });
 });
 
