@@ -194,7 +194,6 @@
         "packages/state-viewer/test/regressions/hook-stop-ends-proxy-subscriptions.test.tsx",
         "packages/state-viewer/test/regressions/late-observer-finished-actor.test.tsx",
         "packages/state-viewer/test/regressions/late-subscriber-after-unmount.test.tsx",
-        "packages/state-viewer/test/regressions/leaf-id-type.test.tsx",
         "packages/state-viewer/test/regressions/owed-ending-on-debug-disabled.test.tsx",
         "packages/state-viewer/test/regressions/owed-ending-timing.test.tsx",
         "packages/state-viewer/test/regressions/owed-error-across-replacement.test.tsx",
