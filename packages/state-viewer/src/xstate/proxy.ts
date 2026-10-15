@@ -266,8 +266,6 @@ function createBinding(actor: MachineActor): Binding {
     },
     stop: () => {
       actor.stop();
-      // An actor stopped before it started sends nothing XState can observe, so connect() hears about it here.
-      if (stopListeners) for (const listener of [...stopListeners]) callListener(listener, `Stopping "${key}" threw.`);
       return proxy;
     },
     [observableKey()]: () => proxy,
@@ -291,6 +289,21 @@ function createBinding(actor: MachineActor): Binding {
     },
   });
   proxies.add(proxy);
+
+  // When an actor stops before it starts, XState sends nothing that the adapter can observe.
+  // Thus connect() wraps stop() on the actor itself. The proxy's stop() calls it too.
+  function onStop(listener: () => void): void {
+    if (!stopListeners) {
+      const listeners = (stopListeners = new Set());
+      const { stop } = actor;
+      actor.stop = () => {
+        stop.call(actor);
+        for (const stopped of [...listeners]) callListener(stopped, `Stopping "${key}" threw.`);
+        return actor;
+      };
+    }
+    stopListeners.add(listener);
+  }
 
   function createRegistration(identity: Identity, registrationKey: string): Registration {
     const { handle, notify, record } = createHandle(actor, machine, identity, undefined, true, registry);
@@ -323,7 +336,7 @@ function createBinding(actor: MachineActor): Binding {
           notify();
           if (untilStopped && statusOf(snapshot) !== 'active') disconnect();
         });
-        if (untilStopped) (stopListeners ??= new Set()).add(disconnect);
+        if (untilStopped) onStop(disconnect);
         return disconnect;
       },
     };

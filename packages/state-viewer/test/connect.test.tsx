@@ -285,14 +285,18 @@ describe('an actor connected before it starts', () => {
     });
   });
 
-  test('leaves the overlay when it is stopped through the returned actor without starting', async () => {
+  test.each<[string, (actor: Checkout, checkout: Checkout) => void]>([
+    ['through the actor that connect() returned', (_, checkout) => checkout.stop()],
+    ['through the actor itself', (actor) => actor.stop()],
+  ])('leaves the overlay when it is stopped %s without starting', async (_, stop) => {
     const machine = createCheckoutMachine();
-    const checkout = connect(createActor(machine));
+    const actor = createActor(machine);
+    const checkout = connect(actor);
     await mount(null);
     const before = header().machine?.options;
 
     await act(async () => {
-      checkout.stop();
+      stop(actor, checkout);
     });
     expect({ before, after: header().machine }).toEqual({ before: [machine.id], after: null });
   });
