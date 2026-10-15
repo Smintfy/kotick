@@ -141,10 +141,6 @@ function marks(id: string): string[] {
   return [...leaf(id).querySelectorAll<HTMLElement>('.sv-data')].map((mark) => mark.dataset.kind!);
 }
 
-function logEntries(): string[] {
-  return $$('.sv-log-entry').map((entry) => entry.textContent ?? '');
-}
-
 async function click(element: HTMLElement): Promise<void> {
   fireEvent.click(element);
   await flush();
@@ -262,33 +258,6 @@ describe('panel', () => {
     expect(registry().getOverride(key)).toBeUndefined();
     expect(screen.getByTestId('checkout').textContent).toBe('{"shipping":"standard","payment":"editing"}');
     expect(checkoutMounts).toBe(1);
-  });
-
-  test('lists events sent during a preview, newest first, and Clear empties the log', async () => {
-    render(
-      <>
-        <Checkout />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-    await openPanel();
-    expect(button('Clear').disabled).toBe(true);
-
-    await click(leaf('payment.error'));
-    await click(screen.getByRole('button', { name: 'Retry' }));
-    await click(screen.getByRole('button', { name: 'Express' }));
-
-    // Blocked: the preview still shows, and the real actor didn't move.
-    expect(screen.getByTestId('checkout').textContent).toBe('{"shipping":"standard","payment":"error"}');
-    const entries = logEntries();
-    expect(entries).toHaveLength(2);
-    expect(entries[0]).toMatch(/^EXPRESS\d\d:\d\d:\d\d\.\d{3}checkout · 1 · in payment\.error, shipping\.standard$/);
-    expect(entries[1]).toMatch(/^RETRY/);
-    expect($$('.sv-section-title').map((title) => title.textContent)).toContain('Blocked events (2)');
-
-    await click(button('Clear'));
-    expect(logEntries()).toEqual([]);
   });
 
   test('Release ends the instance’s preview, Release all ends every one, and the real state shows again', async () => {

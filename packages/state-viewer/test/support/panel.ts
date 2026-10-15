@@ -111,6 +111,16 @@ export function marks(): Record<string, string[]> {
   );
 }
 
+/** The rows of the blocked-event log, newest first, as `EVENT · instance · in leaves`, then the payload if any. */
+export function blockedEvents(): string[] {
+  return all('.sv-log-entry').map((row) => {
+    const event = row.querySelector('.sv-event')?.textContent;
+    const where = row.querySelector('.sv-log-meta')?.textContent;
+    const payload = row.querySelector('.sv-payload')?.textContent;
+    return [event, where, payload].filter((part) => part !== undefined).join(' · ');
+  });
+}
+
 /**
  * Clicks Copy link or Copy JSON, and returns the text it copied and the status it showed.
  * jsdom has no clipboard and no execCommand, so the overlay copies through a textarea in its shadow root and

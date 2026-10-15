@@ -1672,52 +1672,6 @@ describe('fixtures and event log', () => {
     await settle();
     expect(listener).toHaveBeenCalledTimes(1);
   });
-
-  test('logEvent keeps entries oldest first, as given, and respects logCapacity', () => {
-    const registry = setup({ logCapacity: 3 });
-    const entries = ['A', 'B', 'C', 'D', 'E'].map((type) => logEntry(type));
-    for (const entry of entries) registry.logEvent(entry);
-
-    const { log } = registry.getSnapshot();
-    expect(log).toHaveLength(3);
-    expect(log[0]).toBe(entries[2]);
-    expect(log[2]).toBe(entries[4]);
-    expect(Object.isFrozen(log[0])).toBe(false);
-  });
-
-  test('keeps 200 entries by default', () => {
-    const registry = setup();
-    for (let i = 0; i < 201; i++) registry.logEvent(logEntry(`E${i}`));
-
-    const { log } = registry.getSnapshot();
-    expect(log).toHaveLength(200);
-    expect(log[0].event.type).toBe('E1');
-  });
-
-  test('clearLog empties the log and notifies', async () => {
-    const registry = setup();
-    registry.logEvent(logEntry('A'));
-    await settle();
-    const listener = vi.fn();
-    registry.subscribe(listener);
-
-    registry.clearLog();
-    expect(registry.getSnapshot().log).toEqual([]);
-    await settle();
-    expect(listener).toHaveBeenCalledTimes(1);
-  });
-
-  test('clearLog on an empty log does not notify', async () => {
-    const registry = setup();
-    const snapshot = registry.getSnapshot();
-    const listener = vi.fn();
-    registry.subscribe(listener);
-
-    registry.clearLog();
-    await settle();
-    expect(listener).not.toHaveBeenCalled();
-    expect(registry.getSnapshot()).toBe(snapshot);
-  });
 });
 
 describe('data', () => {
