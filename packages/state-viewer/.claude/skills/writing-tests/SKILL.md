@@ -34,7 +34,7 @@ test file that is not on the legacy list.
    case in the file of its feature. Name it after the behavior, never after the bug or an issue number.
 7. **Keep tests apart with fresh ids.** The page keeps one registry for each test file, so give each machine
    `id: freshId('name')`. `test/setup.ts` clears the storage and the URL before each test. Never read or reset the
-   registry.
+   registry. A warning prints once per page for each id or value, so a test that expects one uses a value of its own.
 
 ## Where tests go
 
@@ -42,7 +42,7 @@ test file that is not on the legacy list.
 |---|---|
 | `test/<feature>.test.tsx` | One user-visible feature, such as `preview`, `keyboard` or `server` |
 | `test/<feature>.test-d.ts` | Type tests of the public API |
-| `test/support/` | Helpers. They use the public entries and the DOM, and nothing else |
+| `test/support/` | Helpers. They use the public entries, React, XState, Testing Library, Node built-ins and the DOM, never `src/` or the registry |
 | `test/setup.ts` | StrictMode for every render, and a clean page for every test |
 
 Before you add a file, look for the feature's file. Add the test there.

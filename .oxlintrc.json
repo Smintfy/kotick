@@ -139,6 +139,21 @@
             "object": "globalThis",
             "property": "__STATE_VIEWER_REGISTRY__",
             "message": "The registry is private. Read what the overlay shows."
+          },
+          {
+            "object": "window",
+            "property": "__STATE_VIEWER_REGISTRY__",
+            "message": "The registry is private. Read what the overlay shows."
+          },
+          {
+            "object": "globalThis",
+            "property": "__STATE_VIEWER_LAST_INSTANCE__",
+            "message": "The instance counter is private. Read the Instance options that the overlay shows."
+          },
+          {
+            "object": "window",
+            "property": "__STATE_VIEWER_LAST_INSTANCE__",
+            "message": "The instance counter is private. Read the Instance options that the overlay shows."
           }
         ],
         "vitest/no-restricted-matchers": [
