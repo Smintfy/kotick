@@ -5,7 +5,7 @@ import {
   serializeDeepLink,
   writeDeepLink,
   type DeepLinkTarget,
-} from '../../src/core/deep-link';
+} from '../../src/overlay/deep-link';
 
 const CHECKOUT: DeepLinkTarget[] = [{ machineId: 'checkout', leaves: ['payment.error'] }];
 const CART = { machineId: 'cart', leaves: ['empty'] };

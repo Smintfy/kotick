@@ -1,6 +1,6 @@
 // Panel UI state kept in localStorage: whether the panel is open, its corner, and the selected machine.
 
-import type { Position } from './types';
+import type { Position } from './props';
 
 export const SETTINGS_KEY = 'state-viewer:ui';
 

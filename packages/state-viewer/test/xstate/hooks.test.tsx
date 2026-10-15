@@ -21,8 +21,8 @@ import {
 import type { MachineHandle } from '../../src/core/types';
 import * as stateViewer from '../../src/xstate';
 import { createActorContext, shallowEqual, useActor, useActorRef, useMachine, useSelector } from '../../src/xstate';
-import { isProxy } from '../../src/xstate/binding';
 import { nextInstanceId } from '../../src/xstate/instance-id';
+import { isProxy } from '../../src/xstate/proxy';
 import { flush, handlesOf, keyOf, onlyHandle, REACT_MAJOR, registry, resetRegistry } from './helpers';
 
 // ---------------------------------------------------------------------------------------------------------------------

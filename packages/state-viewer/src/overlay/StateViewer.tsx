@@ -3,18 +3,18 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { DEFAULT_URL_PARAM, readDeepLink } from '../core/deep-link';
 import { getRegistry } from '../core/registry';
 import type { FixtureSet, Registry } from '../core/types';
+import { LogoIcon } from './components/icons';
+import { Panel } from './components/Panel';
+import { DEFAULT_URL_PARAM, readDeepLink } from './deep-link';
 import { loadFixtures } from './fixtures';
 import { useIsomorphicLayoutEffect, useLatest, useRegistrySnapshot } from './hooks';
 import { createHost, type OverlayHost } from './host';
-import { LogoIcon } from './icons';
 import { findInstance, groupMachines } from './model';
-import { Panel } from './Panel';
+import type { FixturesInput, StateViewerProps, Theme } from './props';
 import { isPosition, nextPosition, readSettings, resolvePosition, writeSettings, type Settings } from './settings';
 import { eventOrigin, isTyping, matchesShortcut, parseShortcut } from './shortcut';
-import type { FixturesInput, StateViewerProps, Theme } from './types';
 
 const THEMES: readonly Theme[] = ['system', 'light', 'dark'];
 

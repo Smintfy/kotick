@@ -8,8 +8,8 @@ import { connect as connectActor } from './xstate/connect';
 import * as hooks from './xstate/hooks';
 
 export { shallowEqual, useSelector } from '@xstate/react';
-export { defineFixtures, type FixtureStates, type LeafIdFrom } from './xstate/fixtures';
-export type { DebugOptions } from './xstate/types';
+export { defineFixtures, type FixtureStates, type LeafIdFrom } from './xstate/define-fixtures';
+export type { DebugOptions } from './xstate/options';
 
 // Declared here rather than through @types/node, so apps that typecheck this source without Node types still compile.
 declare const process: { env: { NODE_ENV?: string } };

@@ -1,4 +1,4 @@
-// Verifies the claim that the adapter's own subscriptions to the real actor (binding.ts connect(), connect.ts) have no
+// Verifies the claim that the adapter's own subscriptions to the real actor (proxy.ts connect(), connect.ts) have no
 // error callback, so XState reports an error the app already handles as unhandled, which @xstate/react doesn't.
 
 import { act, fireEvent, render, screen } from '@testing-library/react';

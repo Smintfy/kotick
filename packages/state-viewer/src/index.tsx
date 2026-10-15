@@ -3,11 +3,11 @@
 // state-viewer: the <StateViewer /> overlay.
 
 import type { ReactNode } from 'react';
+import type { StateViewerProps } from './overlay/props';
 import { StateViewer as DevStateViewer } from './overlay/StateViewer';
-import type { StateViewerProps } from './overlay/types';
 
 export type { FixtureSet } from './core/types';
-export type { FixturesInput, FixturesResult, Position, StateViewerProps, Theme } from './overlay/types';
+export type { FixturesInput, FixturesResult, Position, StateViewerProps, Theme } from './overlay/props';
 
 // As in xstate.ts: declared here rather than through @types/node, for apps that typecheck this source without it.
 declare const process: { env: { NODE_ENV?: string } };

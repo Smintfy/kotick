@@ -2,7 +2,7 @@
 // data a preview of each leaf would use.
 
 import type { CSSProperties } from 'react';
-import type { DataAvailability, Override, StateNodeInfo } from '../core/types';
+import type { DataAvailability, Override, StateNodeInfo } from '../../core/types';
 
 interface StateTreeProps {
   nodes: readonly StateNodeInfo[];

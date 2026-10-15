@@ -2,8 +2,8 @@
 // with a switcher for it.
 
 import { useId, useState } from 'react';
-import type { DataSource, Override } from '../core/types';
-import { inspect } from './format';
+import type { DataSource, Override } from '../../core/types';
+import { inspect } from '../format';
 
 const SOURCES: readonly { source: DataSource; label: string; missing: string }[] = [
   { source: 'recorded', label: 'Recorded', missing: 'Nothing recorded for this state yet' },
