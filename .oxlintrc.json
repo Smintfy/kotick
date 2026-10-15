@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "unicorn", "oxc", "import"],
+  "plugins": ["typescript", "unicorn", "oxc", "import", "vitest"],
   "categories": {
     "correctness": "error"
   },
@@ -25,5 +25,161 @@
         ]
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      // Tests use the package the way an app does.
+      // The rules are in packages/state-viewer/.claude/skills/writing-tests/SKILL.md.
+      "files": ["packages/state-viewer/test/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              { "regex": "(^|/)src(/|$)", "message": "Import state-viewer and state-viewer/xstate by name." },
+              { "regex": "(^|/)xstate/helpers$", "message": "These helpers read private state. Use test/support." }
+            ]
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          { "object": "vi", "property": "mock", "message": "No module mocks. Test through the real modules." },
+          { "object": "vi", "property": "doMock", "message": "No module mocks. Test through the real modules." },
+          { "object": "vi", "property": "hoisted", "message": "No module mocks. Test through the real modules." },
+          { "object": "vi", "property": "fn", "message": "No mock functions. Push each call into an array, then assert the array." },
+          { "object": "vi", "property": "mocked", "message": "No mock functions. Push each call into an array, then assert the array." },
+          { "object": "vi", "property": "spyOn", "message": "No spies. Assert what the code does. Read console output with watchConsole() from test/support/console.ts." },
+          { "object": "vi", "property": "stubGlobal", "message": "No stubbed globals. Set up the environment the way a page would." },
+          { "object": "vi", "property": "stubEnv", "message": "No stubbed globals. Set up the environment the way a page would." },
+          { "object": "vi", "property": "useFakeTimers", "message": "No fake clock. Fire the real event that starts the work, or wait for real time." },
+          { "object": "vi", "property": "setSystemTime", "message": "No fake clock. Fire the real event that starts the work, or wait for real time." },
+          { "object": "expect", "property": "anything", "message": "Assert the value itself." },
+          {
+            "object": "globalThis",
+            "property": "__STATE_VIEWER_REGISTRY__",
+            "message": "The registry is private. Read what the overlay shows."
+          }
+        ],
+        "vitest/no-restricted-matchers": [
+          "error",
+          {
+            "toBeDefined": "Assert the value itself.",
+            "toBeTruthy": "Assert the value itself.",
+            "not.toBeTruthy": "Assert the value itself.",
+            "toBeFalsy": "Assert the value itself.",
+            "not.toBeFalsy": "Assert the value itself."
+          }
+        ]
+      }
+    },
+    {
+      // A type test asserts with @ts-expect-error, which expect-expect can't see.
+      "files": ["packages/state-viewer/test/**/*.test-d.ts"],
+      "rules": { "vitest/expect-expect": "off" }
+    },
+    {
+      // A benchmark measures. It has nothing to assert.
+      "files": ["packages/state-viewer/bench/**"],
+      "rules": { "vitest/expect-expect": "off" }
+    },
+    {
+      // These files were written before the test rules. Never add a file to this list.
+      // When black-box tests replace a file, delete the file and its line.
+      "files": [
+        "packages/state-viewer/test/core/deep-link.test.ts",
+        "packages/state-viewer/test/core/event-log.test.ts",
+        "packages/state-viewer/test/core/fixtures.test.ts",
+        "packages/state-viewer/test/core/integration.test.ts",
+        "packages/state-viewer/test/core/recording.test.ts",
+        "packages/state-viewer/test/core/registry.server.test.ts",
+        "packages/state-viewer/test/core/registry.test.ts",
+        "packages/state-viewer/test/overlay/StateViewer.test.tsx",
+        "packages/state-viewer/test/overlay/fixtures.test.ts",
+        "packages/state-viewer/test/overlay/format.test.ts",
+        "packages/state-viewer/test/overlay/model.test.ts",
+        "packages/state-viewer/test/overlay/settings.test.ts",
+        "packages/state-viewer/test/production.test.tsx",
+        "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
+        "packages/state-viewer/test/regressions/child-final-recording.test.tsx",
+        "packages/state-viewer/test/regressions/complete-during-preview.test.ts",
+        "packages/state-viewer/test/regressions/connect-hook-actor.test.tsx",
+        "packages/state-viewer/test/regressions/connect-non-root.test.tsx",
+        "packages/state-viewer/test/regressions/connect-unstarted-stop.test.tsx",
+        "packages/state-viewer/test/regressions/debug-disabled-during-preview.test.tsx",
+        "packages/state-viewer/test/regressions/debug-disabled-while-hidden.test.tsx",
+        "packages/state-viewer/test/regressions/debug-disabled-without-preview.test.tsx",
+        "packages/state-viewer/test/regressions/debug-toggle-observer-memory.test.tsx",
+        "packages/state-viewer/test/regressions/deep-link-before-first-paint.test.tsx",
+        "packages/state-viewer/test/regressions/errored-child.test.tsx",
+        "packages/state-viewer/test/regressions/failed-child-descendants.test.tsx",
+        "packages/state-viewer/test/regressions/fallback-id-collision.test.tsx",
+        "packages/state-viewer/test/regressions/fallback-id-order.test.tsx",
+        "packages/state-viewer/test/regressions/finished-connect-subscriber-retention.test.ts",
+        "packages/state-viewer/test/regressions/fixtures-provided-machine.test.tsx",
+        "packages/state-viewer/test/regressions/grandchild-final-recording.test.tsx",
+        "packages/state-viewer/test/regressions/held-ending-across-actor-replacement.test.tsx",
+        "packages/state-viewer/test/regressions/held-ending-dropped-after-told.test.tsx",
+        "packages/state-viewer/test/regressions/held-ending-survives-hook-stop.test.tsx",
+        "packages/state-viewer/test/regressions/hmr-added-region.test.tsx",
+        "packages/state-viewer/test/regressions/hook-start-recording.test.tsx",
+        "packages/state-viewer/test/regressions/hook-stop-ends-proxy-subscriptions.test.tsx",
+        "packages/state-viewer/test/regressions/instance-ids-across-roots.test.tsx",
+        "packages/state-viewer/test/regressions/internal-send-blocking.test.tsx",
+        "packages/state-viewer/test/regressions/late-observer-finished-actor.test.tsx",
+        "packages/state-viewer/test/regressions/late-subscriber-after-unmount.test.tsx",
+        "packages/state-viewer/test/regressions/leaf-id-type.test.tsx",
+        "packages/state-viewer/test/regressions/live-warning-before-lazy-fixtures.test.tsx",
+        "packages/state-viewer/test/regressions/non-orthogonal-leaves.test.tsx",
+        "packages/state-viewer/test/regressions/owed-ending-on-debug-disabled.test.tsx",
+        "packages/state-viewer/test/regressions/owed-ending-timing.test.tsx",
+        "packages/state-viewer/test/regressions/owed-error-across-replacement.test.tsx",
+        "packages/state-viewer/test/regressions/preview-final-output.test.tsx",
+        "packages/state-viewer/test/regressions/preview-listener-lifetime.test.tsx",
+        "packages/state-viewer/test/regressions/proxy-identity.test.tsx",
+        "packages/state-viewer/test/regressions/reentrant-subscribe-during-release.test.ts",
+        "packages/state-viewer/test/regressions/replaced-actor-commit-window.test.tsx",
+        "packages/state-viewer/test/regressions/replaced-actor-ends-before-passive.test.tsx",
+        "packages/state-viewer/test/regressions/replaced-and-disabled-in-one-render.test.tsx",
+        "packages/state-viewer/test/regressions/selector-failed-during-preview.test.tsx",
+        "packages/state-viewer/test/regressions/stable-observer-actor-replacement.test.tsx",
+        "packages/state-viewer/test/regressions/stable-observer-left-on-preview.test.tsx",
+        "packages/state-viewer/test/regressions/stable-observer-replaced-while-disabled.test.tsx",
+        "packages/state-viewer/test/regressions/stopped-during-preview.test.tsx",
+        "packages/state-viewer/test/regressions/stopped-hook-store.test.tsx",
+        "packages/state-viewer/test/regressions/stopped-unseen-wake.test.tsx",
+        "packages/state-viewer/test/regressions/suspense-hidden-hooks.test.tsx",
+        "packages/state-viewer/test/regressions/throwing-observer.test.tsx",
+        "packages/state-viewer/test/regressions/topromise-during-preview.test.tsx",
+        "packages/state-viewer/test/regressions/uncommitted-render-observers.test.tsx",
+        "packages/state-viewer/test/regressions/unhandled-errors.test.tsx",
+        "packages/state-viewer/test/regressions/unshowable-preview-released.test.tsx",
+        "packages/state-viewer/test/regressions/unsubscribe-on-done-after-preview.test.ts",
+        "packages/state-viewer/test/regressions/useactorref-app-stop-during-preview.test.tsx",
+        "packages/state-viewer/test/regressions/useactorref-inline-listener-done.test.tsx",
+        "packages/state-viewer/test/regressions/useactorref-observer-after-done-previews.test.tsx",
+        "packages/state-viewer/test/regressions/useactorref-observer-after-error.test.tsx",
+        "packages/state-viewer/test/regressions/useactorref-observer-done.test.tsx",
+        "packages/state-viewer/test/regressions/useactorref-observer-restart.test.tsx",
+        "packages/state-viewer/test/regressions/waitfor-done-during-preview.test.tsx",
+        "packages/state-viewer/test/xstate/helpers.ts",
+        "packages/state-viewer/test/xstate/hooks.test.tsx",
+        "packages/state-viewer/test/xstate/integration.test.tsx",
+        "packages/state-viewer/test/xstate/production.test.ts",
+        "packages/state-viewer/test/xstate/proxy.test.ts",
+        "packages/state-viewer/test/xstate/tree.test.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": "off",
+        "no-restricted-properties": "off",
+        "vitest/no-restricted-matchers": "off",
+        "vitest/expect-expect": "off",
+        "vitest/no-conditional-expect": "off",
+        "vitest/no-standalone-expect": "off",
+        "vitest/require-mock-type-parameters": "off",
+        "vitest/require-to-throw-message": "off",
+        "vitest/valid-describe-callback": "off",
+        "vitest/valid-title": "off"
+      }
+    }
+  ]
 }

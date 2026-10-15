@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useMachine } from 'state-viewer/xstate';
 import { expect, test } from 'vitest';
 import { setup } from 'xstate';
-import { useMachine } from '../src/xstate';
 
 const toggleMachine = setup({}).createMachine({
   id: 'toggle',

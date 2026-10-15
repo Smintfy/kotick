@@ -92,11 +92,13 @@ function prepare(combo, catalog) {
   }
 
   const copy = {
-    name: 'state-viewer-matrix',
+    // Tests import the package by its name, which resolves through exports.
+    name: pkg.name,
     // src/core/version.ts reads it.
     version: pkg.version,
     private: true,
     type: 'module',
+    exports: pkg.exports,
     devDependencies,
     // Keeps @xstate/react's nested copy of use-sync-external-store and others on the pinned React.
     pnpm: { overrides: { react: devDependencies.react, 'react-dom': devDependencies['react-dom'] } },
