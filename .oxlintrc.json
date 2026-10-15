@@ -84,6 +84,33 @@
       }
     },
     {
+      // An entry exports the public API and nothing else, so a test can't reach a private function through it.
+      // Overrides replace each other's rules, so this one repeats the overlay's.
+      "files": ["packages/state-viewer/src/index.tsx"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through core/types. Only the adapter imports XState." },
+          {
+            "group": ["./*", "./**", "!./overlay/StateViewer", "!./overlay/props", "!./core/types"],
+            "message": "state-viewer exports <StateViewer /> and its types. Test a private function through them."
+          }
+        ] }]
+      }
+    },
+    {
+      // This one repeats the adapter's.
+      "files": ["packages/state-viewer/src/xstate.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^react-dom(/|$)", "message": "The adapter renders nothing. The overlay owns the DOM." },
+          {
+            "group": ["./*", "./**", "!./xstate/connect", "!./xstate/define-fixtures", "!./xstate/hooks", "!./xstate/options"],
+            "message": "state-viewer/xstate exports the hooks, connect(), defineFixtures() and their types. Test a private function through them."
+          }
+        ] }]
+      }
+    },
+    {
       // Tests use the package the way an app does.
       // The rules are in packages/state-viewer/.claude/skills/writing-tests/SKILL.md.
       "files": ["packages/state-viewer/test/**"],
