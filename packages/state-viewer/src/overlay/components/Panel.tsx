@@ -12,7 +12,7 @@ import { isTyping } from '../shortcut';
 import { ContextView } from './ContextView';
 import { EventLog } from './EventLog';
 import { CloseIcon, CornerIcon } from './icons';
-import { DataMark, StateTree } from './StateTree';
+import { StatesSection } from './StatesSection';
 
 const EMPTY_DATA: DataAvailability = { recorded: new Set(), fixture: new Set() };
 
@@ -325,88 +325,6 @@ export function Panel(props: PanelProps) {
           </p>
         )}
       </footer>
-    </section>
-  );
-}
-
-interface StatesSectionProps {
-  instance: InstanceEntry;
-  nodes: readonly StateNodeInfo[];
-  active: ReadonlySet<string>;
-  cursor: string | undefined;
-  canPreview: boolean;
-  parentLabel: string | undefined;
-  childInstances: InstanceEntry[];
-  snapshot: RegistrySnapshot;
-  data: DataAvailability;
-  onRelease: (() => void) | undefined;
-  onSelectLeaf(leaf: string): void;
-  onSelectInstance(instanceKey: string): void;
-}
-
-function StatesSection(props: StatesSectionProps) {
-  const titleId = React.useId();
-  const { instance, canPreview, parentLabel, childInstances } = props;
-  return (
-    <section className="sv-section" aria-labelledby={titleId}>
-      <div className="sv-section-head">
-        <h3 className="sv-section-title" id={titleId}>
-          States
-        </h3>
-        {props.onRelease && (
-          <button type="button" className="sv-button" onClick={props.onRelease}>
-            Release
-          </button>
-        )}
-      </div>
-      {!canPreview && (
-        <p className="sv-hint">
-          {parentLabel ? `Child of ${parentLabel}. ` : ''}Child machines are listed read-only.
-        </p>
-      )}
-      {props.nodes.length === 0 ? (
-        <p className="sv-hint">This machine has no states to list.</p>
-      ) : (
-        <StateTree
-          nodes={props.nodes}
-          label={`States of ${instance.label}`}
-          active={props.active}
-          override={props.snapshot.overrides[instance.key]}
-          data={props.data}
-          cursor={props.cursor}
-          readOnly={!canPreview}
-          onSelect={props.onSelectLeaf}
-        />
-      )}
-      <div className="sv-legend" aria-hidden="true">
-        <span>
-          <span className="sv-live" data-on="" /> live
-        </span>
-        <span>
-          <DataMark kind="recorded" /> recorded
-        </span>
-        <span>
-          <DataMark kind="fixture" /> fixture
-        </span>
-        <span>
-          <DataMark kind="none" /> no data
-        </span>
-      </div>
-      {childInstances.length > 0 && (
-        <div className="sv-children">
-          <span className="sv-hint">Children:</span>
-          {childInstances.map((child) => (
-            <button
-              key={child.key}
-              type="button"
-              className="sv-button"
-              onClick={() => props.onSelectInstance(child.key)}
-            >
-              {child.label}
-            </button>
-          ))}
-        </div>
-      )}
     </section>
   );
 }
