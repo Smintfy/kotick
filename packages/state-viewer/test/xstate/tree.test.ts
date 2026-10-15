@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
 import { createActor, createMachine, fromPromise, setup, type StateValue } from 'xstate';
-import type { StateNodeInfo, StateNodeType } from '../../src/core/types';
 import {
   DEFAULT_MACHINE_ID,
   fallbackMachineId,
@@ -9,7 +8,7 @@ import {
   warnFallbackId,
 } from '../../src/xstate/identity';
 import { normalizeLeaves, resolveSnapshot } from '../../src/xstate/preview-snapshot';
-import { getTree, isMachine, leavesOfSnapshot, leavesOfValue, nodeId } from '../../src/xstate/tree';
+import { isMachine, leavesOfSnapshot, leavesOfValue } from '../../src/xstate/tree';
 
 /** A compound root with descriptions, tags, a final state and history nodes at two depths. */
 function createCheckout() {
@@ -120,179 +119,11 @@ function createPayment() {
   });
 }
 
-function allNodes(nodes: readonly StateNodeInfo[]): StateNodeInfo[] {
-  return nodes.flatMap((node) => [node, ...allNodes(node.children)]);
-}
-
 /** Requested leaves first, in order; the filled-in leaves after them in no particular order. */
 function expectNormalized(actual: string[], requested: string[], filled: string[]): void {
   expect(actual.slice(0, requested.length)).toEqual(requested);
   expect([...actual.slice(requested.length)].sort()).toEqual([...filled].sort());
 }
-
-describe('getTree', () => {
-  test('describes the root children with path ids, keys and types, leaving out history nodes at every depth', () => {
-    const { nodes } = getTree(createCheckout());
-
-    expect(nodes).toStrictEqual([
-      {
-        id: 'cart',
-        key: 'cart',
-        type: 'atomic',
-        description: 'Items waiting to be paid for',
-        tags: ['editable'],
-        children: [],
-      },
-      {
-        id: 'payment',
-        key: 'payment',
-        type: 'compound',
-        tags: ['busy'],
-        children: [
-          { id: 'payment.idle', key: 'idle', type: 'atomic', children: [] },
-          {
-            id: 'payment.error',
-            key: 'error',
-            type: 'atomic',
-            description: 'The card was declined',
-            tags: ['error', 'retryable'],
-            children: [],
-          },
-        ],
-      },
-      {
-        id: 'shipping',
-        key: 'shipping',
-        type: 'parallel',
-        description: 'Speed and wrapping are chosen independently',
-        children: [
-          {
-            id: 'shipping.speed',
-            key: 'speed',
-            type: 'compound',
-            children: [
-              { id: 'shipping.speed.standard', key: 'standard', type: 'atomic', children: [] },
-              { id: 'shipping.speed.express', key: 'express', type: 'atomic', children: [] },
-            ],
-          },
-          { id: 'shipping.gift', key: 'gift', type: 'atomic', children: [] },
-        ],
-      },
-      { id: 'done', key: 'done', type: 'final', children: [] },
-    ]);
-  });
-
-  test('leaves out description and tags when a node has none, including an empty description or tag list', () => {
-    const byId = new Map(allNodes(getTree(createCheckout()).nodes).map((node) => [node.id, node]));
-
-    expect(byId.get('payment.idle')).not.toHaveProperty('description');
-    expect(byId.get('payment.idle')).not.toHaveProperty('tags');
-    expect(byId.get('shipping.gift')).not.toHaveProperty('tags');
-    expect(byId.get('shipping')).not.toHaveProperty('tags');
-    expect(byId.get('payment')).not.toHaveProperty('description');
-  });
-
-  test('uses the path from the root as the id, not the XState state node id', () => {
-    const machine = createMachine({
-      id: 'custom',
-      initial: 'outer',
-      states: { outer: { id: 'renamed', initial: 'inner', states: { inner: { id: 'deep' } } } },
-    });
-
-    const [outer] = getTree(machine).nodes;
-    expect(outer.id).toBe('outer');
-    expect(outer.children[0].id).toBe('outer.inner');
-    expect(nodeId(machine.getStateNodeById('deep'))).toBe('outer.inner');
-  });
-
-  test('covers every node type, nested parallel states included', () => {
-    const types = allNodes(getTree(createEditor()).nodes).map((node): [string, StateNodeType] => [node.id, node.type]);
-
-    expect(types).toEqual([
-      ['document', 'compound'],
-      ['document.clean', 'atomic'],
-      ['document.dirty', 'atomic'],
-      ['document.saving', 'parallel'],
-      ['document.saving.upload', 'compound'],
-      ['document.saving.upload.failed', 'atomic'],
-      ['document.saving.upload.pending', 'atomic'],
-      ['document.saving.progress', 'compound'],
-      ['document.saving.progress.full', 'atomic'],
-      ['document.saving.progress.zero', 'atomic'],
-      ['document.saving.spinner', 'atomic'],
-      ['sidebar', 'compound'],
-      ['sidebar.closed', 'atomic'],
-      ['sidebar.open', 'atomic'],
-      ['theme', 'compound'],
-      ['theme.light', 'atomic'],
-      ['theme.dark', 'atomic'],
-    ]);
-  });
-
-  test('freezes the node list, every node, every children list and every tag list', () => {
-    const { nodes } = getTree(createCheckout());
-
-    expect(Object.isFrozen(nodes)).toBe(true);
-    for (const node of allNodes(nodes)) {
-      expect(Object.isFrozen(node)).toBe(true);
-      expect(Object.isFrozen(node.children)).toBe(true);
-      if (node.tags) expect(Object.isFrozen(node.tags)).toBe(true);
-    }
-    expect(() => {
-      (nodes as StateNodeInfo[]).push({ id: 'x', key: 'x', type: 'atomic', children: [] });
-    }).toThrow(TypeError);
-  });
-
-  test('copies tags, so freezing them leaves the state node alone', () => {
-    const machine = createCheckout();
-    getTree(machine);
-
-    const error = machine.getStateNodeById('checkout.payment.error');
-    expect(Object.isFrozen(error.tags)).toBe(false);
-    expect(error.tags).toEqual(['error', 'retryable']);
-  });
-
-  test('builds the tree once per machine object', () => {
-    const machine = createCheckout();
-    const recreated = createCheckout();
-
-    expect(getTree(machine)).toBe(getTree(machine));
-    expect(getTree(machine).nodes).toBe(getTree(machine).nodes);
-    // A recreated machine (HMR) gets its own tree with the same content.
-    expect(getTree(recreated)).not.toBe(getTree(machine));
-    expect(getTree(recreated).nodes).toStrictEqual(getTree(machine).nodes);
-  });
-
-  test('maps exactly the atomic and final nodes to their state nodes', () => {
-    const machine = createCheckout();
-    const { nodes, leaves } = getTree(machine);
-
-    const expected = allNodes(nodes)
-      .filter((node) => node.type === 'atomic' || node.type === 'final')
-      .map((node) => node.id);
-    expect([...leaves.keys()].sort()).toEqual([...expected].sort());
-    expect([...leaves.keys()].sort()).toEqual([
-      'cart',
-      'done',
-      'payment.error',
-      'payment.idle',
-      'shipping.gift',
-      'shipping.speed.express',
-      'shipping.speed.standard',
-    ]);
-    expect(leaves.get('payment.error')).toBe(machine.getStateNodeById('checkout.payment.error'));
-    expect(leaves.get('done')).toBe(machine.getStateNodeById('checkout.done'));
-    expect(leaves.has('payment.previous')).toBe(false);
-    expect(leaves.has('resume')).toBe(false);
-  });
-
-  test('gives a machine without states an empty tree', () => {
-    const tree = getTree(createMachine({ id: 'empty' }));
-
-    expect(tree.nodes).toEqual([]);
-    expect(tree.leaves.size).toBe(0);
-  });
-});
 
 describe('isMachine', () => {
   test('accepts state machines and rejects other logic and values', () => {

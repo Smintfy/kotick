@@ -6,9 +6,7 @@ import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
 import { createActor, createMachine, setup } from 'xstate';
-import type { MachineHandle } from '../../src/core/types';
 import { StateViewer } from '../../src/index';
-import { SETTINGS_KEY } from '../../src/overlay/settings';
 import { connect, defineFixtures, useMachine } from '../../src/xstate';
 import { flush, handlesOf, keyOf, registry, resetRegistry } from '../xstate/helpers';
 
@@ -139,10 +137,6 @@ function leaf(id: string): HTMLElement {
   return found;
 }
 
-function leafIds(): string[] {
-  return $$('[data-leaf]').map((item) => item.dataset.leaf!);
-}
-
 function marks(id: string): string[] {
   return [...leaf(id).querySelectorAll<HTMLElement>('.sv-data')].map((mark) => mark.dataset.kind!);
 }
@@ -186,93 +180,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('host', () => {
-  test('renders into an open shadow root appended to document.body, not into the React tree', async () => {
-    const { container } = render(<StateViewer />);
-    await flush();
-
-    expect(container.innerHTML).toBe('');
-    const element = host();
-    expect(element.parentElement).toBe(document.body);
-    expect(element.shadowRoot?.mode).toBe('open');
-    expect(document.querySelectorAll('[data-state-viewer-root]')).toHaveLength(1);
-    // The styles live in the shadow root, and reset the host itself against page styles.
-    expect(document.head.querySelector('style')).toBeNull();
-    expect($('style')?.textContent).toMatch(/:host \{\s*all: initial !important;/);
-    expect(bubble()).not.toBeNull();
-  });
-
-  test('appends the host to portalTarget, an element or a shadow root', async () => {
-    const element = document.createElement('section');
-    document.body.append(element);
-    const { rerender } = render(<StateViewer portalTarget={element} />);
-    await flush();
-    expect(host().parentNode).toBe(element);
-
-    const outer = document.createElement('div');
-    document.body.append(outer);
-    const shadowTarget = outer.attachShadow({ mode: 'open' });
-    rerender(<StateViewer portalTarget={shadowTarget} />);
-    await flush();
-    expect(element.children).toHaveLength(0);
-    expect(shadowTarget.querySelector('[data-state-viewer-root]')).not.toBeNull();
-
-    element.remove();
-    outer.remove();
-  });
-
-  test('removes the host on unmount', async () => {
-    const { unmount } = render(<StateViewer />);
-    await flush();
-    unmount();
-    expect(document.querySelector('[data-state-viewer-root]')).toBeNull();
-  });
-});
-
-describe('toolbar', () => {
-  test('shows a badge with the number of previews while any is active', async () => {
-    render(
-      <>
-        <Toggle />
-        <Toggle />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-    expect($('.sv-badge')).toBeNull();
-    expect(bubble().getAttribute('aria-label')).toBe('State viewer');
-
-    const [first, second] = handlesOf('toggle').map(keyOf);
-    act(() => {
-      registry().preview(first, { leaves: ['on'] });
-      registry().preview(second, { leaves: ['on'] });
-    });
-    await flush();
-    expect($('.sv-badge')?.textContent).toBe('2');
-    expect(bubble().getAttribute('aria-label')).toBe('State viewer, 2 previews active');
-    expect(bubble().hasAttribute('data-previewing')).toBe(true);
-
-    act(() => registry().release());
-    await flush();
-    expect($('.sv-badge')).toBeNull();
-  });
-
-  test('opens and closes the panel', async () => {
-    render(<StateViewer />);
-    await flush();
-    expect(panel()).toBeNull();
-    expect(bubble().getAttribute('aria-expanded')).toBe('false');
-
-    await click(bubble());
-    expect(panel()).not.toBeNull();
-    expect(bubble().getAttribute('aria-expanded')).toBe('true');
-    expect(bubble().getAttribute('aria-controls')).toBe(panel()!.id);
-
-    await click(button('Close'));
-    expect(panel()).toBeNull();
-  });
-});
-
 describe('panel', () => {
   test('lists machines in registration order, and instances as "machine · n"', async () => {
     const actor = createActor(toggleMachine).start();
@@ -302,62 +209,6 @@ describe('panel', () => {
     expect(options('Machine')).toEqual(['app', 'checkout', 'toggle (2) ●']);
     expect(options('Instance')).toEqual(['toggle · 1', 'Second toggle · 2 ●']);
     app.stop();
-  });
-
-  test('shows the selected instance’s tree: every state but history, with descriptions and tags', async () => {
-    render(
-      <>
-        <Checkout />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-    await openPanel();
-
-    expect(leafIds()).toEqual([
-      'shipping.standard',
-      'shipping.express',
-      'payment.editing',
-      'payment.processing',
-      'payment.error',
-      'payment.success',
-    ]);
-    const groups = $$('.sv-group > .sv-node .sv-key').map((key) => key.textContent);
-    expect(groups).toEqual(['shipping', 'payment']);
-    expect($('[role="tree"]')?.getAttribute('aria-label')).toBe('States of checkout · 1');
-    expect(leaf('shipping.standard').querySelector('.sv-description')?.textContent).toBe('Free, 3 to 5 days');
-    expect(leaf('payment.processing').querySelector('.sv-tag')?.textContent).toBe('busy');
-    expect(leaf('payment.success').querySelector('.sv-type')?.textContent).toBe('final');
-  });
-
-  test('marks the live leaves and which data a preview of each leaf would use', async () => {
-    render(
-      <>
-        <Checkout />
-        <StateViewer
-          fixtures={[defineFixtures(checkoutMachine, { 'payment.error': { context: { note: 'fixture' } } })]}
-        />
-      </>,
-    );
-    await flush();
-    await openPanel();
-
-    const live = $$('[data-leaf][data-active]').map((item) => item.dataset.leaf);
-    expect(live).toEqual(['shipping.standard', 'payment.editing']);
-    // The initial configuration was recorded as the actor started.
-    expect(marks('shipping.standard')).toEqual(['recorded']);
-    expect(marks('payment.error')).toEqual(['fixture']);
-    expect(marks('payment.success')).toEqual(['none']);
-    expect(leaf('payment.success').textContent).toContain('no recorded or fixture context');
-
-    // Live changes follow without anything in the registry snapshot changing.
-    fireEvent.click(screen.getByRole('button', { name: 'Express' }));
-    await flush();
-    expect($$('[data-leaf][data-active]').map((item) => item.dataset.leaf)).toEqual([
-      'shipping.express',
-      'payment.editing',
-    ]);
-    expect(marks('shipping.express')).toEqual(['recorded']);
   });
 
   test('clicking a leaf previews it on the selected instance, without remounting the component', async () => {
@@ -522,44 +373,6 @@ describe('panel', () => {
     await click(leaf('failed'));
     expect(registry().getSnapshot().overrides).toEqual({});
   });
-
-  test('keeps rendering when an adapter throws', async () => {
-    const broken: MachineHandle = {
-      machineId: 'broken',
-      instanceId: 'b1',
-      adapter: 'test',
-      capabilities: { preview: true, live: false, children: false },
-      describe: () => {
-        throw new Error('describe');
-      },
-      getActiveLeaves: () => {
-        throw new Error('leaves');
-      },
-      getContext: () => {
-        throw new Error('context');
-      },
-      subscribe: () => {
-        throw new Error('subscribe');
-      },
-      normalizeTarget: (leaves) => leaves,
-    };
-    act(() => {
-      registry().register(broken);
-    });
-    render(<StateViewer />);
-    await flush();
-    await openPanel();
-
-    expect(select('Machine').value).toBe('broken');
-    expect($('.sv-body')?.textContent).toContain('This machine has no states to list.');
-  });
-
-  test('says so when no machine is registered', async () => {
-    render(<StateViewer defaultOpen />);
-    await flush();
-    expect($('.sv-empty')?.textContent).toMatch(/^No machines yet/);
-    expect(select('Machine')).toBeNull();
-  });
 });
 
 describe('fixtures', () => {
@@ -672,66 +485,6 @@ describe('deep links', () => {
   });
 });
 
-describe('persistence', () => {
-  test('remembers whether the panel is open, its corner and the selected machine', async () => {
-    const { unmount } = render(
-      <>
-        <Checkout />
-        <Toggle />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-    expect($('.sv-root')?.dataset.position).toBe('bottom-right');
-    await openPanel();
-    await chooseMachine('toggle');
-    await click(button('Move to the next corner'));
-    expect($('.sv-root')?.dataset.position).toBe('bottom-left');
-    expect(JSON.parse(localStorage.getItem(SETTINGS_KEY)!)).toEqual({
-      v: 1,
-      open: true,
-      machine: 'toggle',
-      position: 'bottom-left',
-      positionDefault: 'bottom-right',
-    });
-    unmount();
-
-    render(
-      <>
-        <Checkout />
-        <Toggle />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-    expect(panel()).not.toBeNull();
-    expect(select('Machine').value).toBe('toggle');
-    expect($('.sv-root')?.dataset.position).toBe('bottom-left');
-  });
-
-  test('a stored corner gives way when the position prop changes', async () => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ v: 1, position: 'top-left', positionDefault: 'bottom-right' }));
-    const { rerender } = render(<StateViewer />);
-    await flush();
-    expect($('.sv-root')?.dataset.position).toBe('top-left');
-    rerender(<StateViewer position="top-right" />);
-    expect($('.sv-root')?.dataset.position).toBe('top-right');
-  });
-
-  test('defaultOpen applies until the user opens or closes the panel', async () => {
-    const { unmount } = render(<StateViewer defaultOpen />);
-    await flush();
-    expect(panel()).not.toBeNull();
-    expect(localStorage.getItem(SETTINGS_KEY)).toBeNull();
-    await click(button('Close'));
-    unmount();
-
-    render(<StateViewer defaultOpen />);
-    await flush();
-    expect(panel()).toBeNull();
-  });
-});
-
 describe('copying', () => {
   let writeText: MockInstance<(text: string) => Promise<void>>;
 
@@ -769,40 +522,4 @@ describe('copying', () => {
     );
     expect($('.sv-status')?.textContent).toBe('Link copied');
   });
-
-  test('copies the selected instance as JSON', async () => {
-    render(
-      <>
-        <Checkout />
-        <StateViewer defaultOpen />
-      </>,
-    );
-    await flush();
-    await click(button('Copy JSON'));
-    expect(JSON.parse(writeText.mock.calls[0][0])).toEqual({
-      machine: 'checkout',
-      instance: 'checkout · 1',
-      leaves: ['shipping.standard', 'payment.editing'],
-      preview: null,
-      context: { note: 'live' },
-    });
-
-    await click(leaf('payment.error'));
-    await click(button('Copy JSON'));
-    expect(JSON.parse(writeText.mock.calls[1][0])).toMatchObject({
-      leaves: ['payment.error', 'shipping.standard'],
-      preview: { requested: ['payment.error'], source: 'live' },
-    });
-    expect($('.sv-status')?.textContent).toBe('JSON copied');
-  });
-});
-
-test('the theme prop sets the overlay’s color scheme', async () => {
-  const { rerender } = render(<StateViewer />);
-  await flush();
-  expect($('.sv-root')?.dataset.theme).toBe('system');
-  rerender(<StateViewer theme="dark" />);
-  expect($('.sv-root')?.dataset.theme).toBe('dark');
-  rerender(<StateViewer theme={'neon' as never} />);
-  expect($('.sv-root')?.dataset.theme).toBe('system');
 });

@@ -95,6 +95,44 @@ export async function release(machineId: string, nth = 1): Promise<void> {
   await click(found);
 }
 
+export async function releaseAll(): Promise<void> {
+  const found = button('Release all');
+  if (!found) throw new Error('The panel has no Release all button.');
+  await click(found);
+}
+
+/** The data marks of each leaf in the shown tree, by leaf id: `recorded`, `fixture` or `none`. */
+export function marks(): Record<string, string[]> {
+  return Object.fromEntries(
+    all('[data-leaf]').map((leaf) => [
+      leaf.dataset.leaf,
+      [...leaf.querySelectorAll<HTMLElement>('.sv-data[data-kind]')].map((mark) => mark.dataset.kind),
+    ]),
+  );
+}
+
+/**
+ * Clicks Copy link or Copy JSON, and returns the text it copied and the status it showed.
+ * jsdom has no clipboard and no execCommand, so the overlay copies through a textarea in its shadow root and
+ * shows "Copy failed". A MutationObserver reads the textarea before the overlay removes it.
+ */
+export async function copy(label: 'Copy link' | 'Copy JSON'): Promise<{ copied: string[]; status: string }> {
+  const found = button(label);
+  if (!found) throw new Error(`The panel has no ${label} button.`);
+  const copied: string[] = [];
+  const read = (records: MutationRecord[]) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) if (node instanceof HTMLTextAreaElement) copied.push(node.value);
+    }
+  };
+  const observer = new MutationObserver(read);
+  observer.observe(overlay(), { childList: true, subtree: true });
+  await click(found);
+  read(observer.takeRecords());
+  observer.disconnect();
+  return { copied, status: one('[role="status"]').textContent ?? '' };
+}
+
 /** The key of the shown instance. Warnings name an instance by its key. */
 export function shownKey(): string {
   return one<HTMLSelectElement>('select[aria-label="Instance"]').value;
