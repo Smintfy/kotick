@@ -1,4 +1,4 @@
-// Loading `<StateViewer fixtures>` (R18): sets given directly, or a loader such as `() => import('./debug/fixtures')`.
+// Loading `<StateViewer fixtures>`: sets given directly, or a loader such as `() => import('./debug/fixtures')`.
 
 import type { FixtureSet } from '../core/types';
 import type { FixturesInput } from './types';

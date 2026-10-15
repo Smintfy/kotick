@@ -1,4 +1,4 @@
-// State tree, leaves and state values for XState machines (spec §10.2).
+// State tree, leaves and state values for XState machines.
 
 import type { AnyMachineSnapshot, AnyStateMachine, StateValue } from 'xstate';
 import type { StateNodeInfo, StateNodeType } from '../core/types';
@@ -6,7 +6,7 @@ import type { StateNodeInfo, StateNodeType } from '../core/types';
 export type AnyStateNode = AnyStateMachine['root'];
 
 export interface MachineTree {
-  /** The root's children as protocol nodes, frozen. History nodes are left out (R6). */
+  /** The root's children as protocol nodes, frozen. History nodes are left out. */
   nodes: readonly StateNodeInfo[];
   /** Leaf id to its state node, for every atomic and final node. */
   leaves: ReadonlyMap<string, AnyStateNode>;
@@ -143,7 +143,7 @@ function orthogonal(a: AnyStateNode, b: AnyStateNode): boolean {
 }
 
 /**
- * Completes a preview target (R9): requested leaves in order, skipping any that conflict with an earlier one, then
+ * Completes a preview target: requested leaves in order, skipping any that conflict with an earlier one, then
  * the current leaves of regions the request leaves alone, then the initial leaves of regions neither covers, the way
  * XState enters them. The requested leaves that were kept come first.
  */
@@ -165,8 +165,8 @@ export function normalizeLeaves(machine: AnyStateMachine, requested: readonly st
 }
 
 /**
- * A real snapshot of the machine in the given configuration (R11), through `resolveState`. Context is always passed:
- * without it XState uses `{}`, not the initial context (§10.5). Throws when a leaf isn't part of the machine, or when
+ * A real snapshot of the machine in the given configuration, through `resolveState`. Context is always passed:
+ * without it XState uses `{}`, not the initial context. Throws when a leaf isn't part of the machine, or when
  * two leaves can't be active together, which an override kept across an HMR edit can ask for.
  */
 export function resolveSnapshot(machine: AnyStateMachine, leaves: readonly string[], context: unknown, self?: unknown) {

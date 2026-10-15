@@ -1,6 +1,6 @@
 // @vitest-environment node
-// §10.7: <StateViewer /> renders on the server like any client component, and does nothing there: no markup, no
-// fixtures loaded, no registry on the shared globalThis.
+// <StateViewer /> renders on the server like any client component, and does nothing there.
+// It renders no markup, loads no fixtures, and creates no registry on the shared globalThis.
 
 import { renderToString } from 'react-dom/server';
 import { afterEach, expect, test, vi } from 'vitest';

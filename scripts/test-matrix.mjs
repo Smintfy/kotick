@@ -1,4 +1,4 @@
-// Runs the state-viewer test suite against other versions of React, XState and @xstate/react (spec §13, Milestone 4).
+// Runs the state-viewer test suite against other versions of React, XState and @xstate/react.
 // The workspace installs one version of each, so every combination gets a copy of the package in a temporary
 // directory with its own install.
 //

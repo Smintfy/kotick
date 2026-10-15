@@ -1,5 +1,5 @@
-// What the panel derives from the registry snapshot: machines grouped by id, instance labels (R3), the leaves a click
-// previews (R9) and the targets "Copy link" writes (§10.4). Pure, so it's tested without rendering.
+// What the panel derives from the registry snapshot: machines grouped by id, instance labels, the leaves a click
+// previews and the targets "Copy link" writes. Pure, so it's tested without rendering.
 
 import { toInstanceKey } from '../core/registry';
 import type { DeepLinkTarget, MachineHandle, Override, StateNodeInfo } from '../core/types';
@@ -16,7 +16,7 @@ export interface InstanceEntry {
 export interface MachineGroup {
   machineId: string;
   instances: InstanceEntry[];
-  /** Every instance is a child machine, listed read-only (R5). */
+  /** Every instance is a child machine, listed read-only. */
   child: boolean;
 }
 
@@ -52,7 +52,7 @@ export function findInstance(groups: readonly MachineGroup[], key: string | unde
 
 /**
  * The leaves to preview after selecting `leaf`, or an empty array to release. A requested leaf is taken out again;
- * any other goes first, so the registry resolves its fixture first (§10.3) and normalizeTarget drops the requested
+ * any other goes first, so the registry resolves its fixture first and normalizeTarget drops the requested
  * leaves it can't be active with, while leaves in other parallel regions stay.
  */
 export function toggleLeaf(requested: readonly string[] | undefined, leaf: string): string[] {
@@ -77,7 +77,7 @@ export interface LinkPlan {
 }
 
 /**
- * One target per previewed machine (§10.4): the selected instance's preview if it has one, otherwise that of the
+ * One target per previewed machine: the selected instance's preview if it has one, otherwise that of the
  * first-registered previewed instance. The override's requested leaves, so after a reload untouched regions follow
  * each instance's own state.
  */

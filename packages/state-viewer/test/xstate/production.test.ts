@@ -1,4 +1,4 @@
-// R28 and §10.7: production builds keep @xstate/react's hooks and drop the debugger. src/xstate.ts reads
+// Production builds keep @xstate/react's hooks and drop the debugger. src/xstate.ts reads
 // process.env.NODE_ENV when it's evaluated, so each test imports a fresh copy under the environment it needs.
 
 import { act, fireEvent, render, screen } from '@testing-library/react';

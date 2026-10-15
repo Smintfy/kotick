@@ -824,7 +824,7 @@ describe('preview', () => {
     const first = registry.getOverride('checkout#1');
     expect(first).toMatchObject({ requested: [EXPRESS], leaves: [EXPRESS, IDLE], source: 'fixture', context: express });
 
-    // What switching the data source does (D16).
+    // What switching the data source does.
     registry.preview('checkout#1', { leaves: [...(first?.requested ?? [])], source: 'live' });
     expect(registry.getOverride('checkout#1')).toMatchObject({
       requested: [EXPRESS],
@@ -1776,7 +1776,7 @@ describe('data', () => {
     const unregisterFirst = registry.register(fakeHandle({ source: first }));
     registry.register(fakeHandle({ instanceId: '2', source: second }));
 
-    // A known limitation (§11): the marker misses the fixture the second instance previews with.
+    // A known limitation: the marker misses the fixture the second instance previews with.
     expect([...registry.getSnapshot().data.checkout.fixture]).toEqual([ERROR]);
     registry.preview('checkout#2', { leaves: [SUCCESS] });
     expect(registry.getOverride('checkout#2')).toMatchObject({ source: 'fixture', context: fixture });

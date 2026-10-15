@@ -8,9 +8,9 @@ const common: UserConfig = {
   checks: { moduleLevelDirective: false },
 };
 
-// Each entry is built on its own, so the core modules are in both files and no chunk is shared (spec §10.7).
+// Each entry is built on its own, so the core modules are in both files and no chunk is shared.
 // Turbopack keeps a shared chunk when a module imports it, also when only code that production builds remove uses it.
-// Two copies of the core are safe: the registry is on globalThis, so both entries use the same one (§10.1).
+// Two copies of the core are safe: the registry is on globalThis, so both entries use the same one.
 export default defineConfig([
   { ...common, entry: ['src/index.tsx'] },
   { ...common, entry: ['src/xstate.ts'] },

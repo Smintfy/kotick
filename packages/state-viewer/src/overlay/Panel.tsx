@@ -1,4 +1,4 @@
-// The panel (R22, §10.6): header with the machine and instance pickers, the state tree, context, the event log, and
+// The panel: header with the machine and instance pickers, the state tree, context, the event log, and
 // a footer to copy a link or the state as JSON. Keyboard shortcuts that need focus in the panel are handled here.
 
 import * as React from 'react';

@@ -378,7 +378,6 @@ describe('defineFixtures', () => {
     });
   });
 
-  // SUSPECTED BUG: LeafIdsOf (src/xstate/fixtures.ts:13) checks `string extends TValue` first, which is true for an atomic region's `{}`, so the whole union collapses to `string`.
   test('atomic regions of a parallel state are leaf ids', () => {
     expectTypeOf<LeafIdFrom<typeof editorMachine>>().toEqualTypeOf<EditorLeaf>();
     expectTypeOf<keyof FixtureStates<typeof editorMachine>>().toEqualTypeOf<EditorLeaf>();

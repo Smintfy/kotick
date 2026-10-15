@@ -1,4 +1,4 @@
-// Actor proxy and machine handle (spec §7.1, §10.2): what consumers hold, and what the registry sees.
+// Actor proxy and machine handle: what consumers hold, and what the registry sees.
 
 import { toObserver, type AnyActorRef, type AnyMachineSnapshot, type AnyStateMachine, type Observer } from 'xstate';
 import { getRegistry, toInstanceKey } from '../core/registry';
@@ -47,7 +47,7 @@ type MachineActor = AnyActorRef & {
   _send(event: unknown): void;
 };
 
-// The /* @__PURE__ */ marks and the observableKey() function let production builds remove these (spec §10.7).
+// The /* @__PURE__ */ marks and the observableKey() function let production builds remove these.
 const EMPTY_CHILDREN: Readonly<Record<string, AnyActorRef>> = /* @__PURE__ */ Object.freeze({});
 // Shared by every handle: the registry and the overlay only read them.
 const PREVIEW_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
@@ -168,7 +168,7 @@ function createBinding(actor: MachineActor): Binding {
     emitPreviewChange();
   }
 
-  // The forced snapshot for the current override (R11), kept until the override or the carried-over children change,
+  // The forced snapshot for the current override, kept until the override or the carried-over children change,
   // so getSnapshot() returns the same object for useSyncExternalStore.
   let forced:
     | { override: Override; base: AnyMachineSnapshot | undefined; children: object; snapshot: AnyMachineSnapshot | undefined }
@@ -187,7 +187,7 @@ function createBinding(actor: MachineActor): Binding {
       forced = { override, base, children: EMPTY_CHILDREN, snapshot: base };
     }
     if (!forced.base) return undefined;
-    // R15: children don't survive resolveState (§10.5), so the live ones are carried over for components reading them.
+    // Children don't survive resolveState, so the live ones are carried over for components reading them.
     const children = liveChildren(live);
     if (!sameChildren(forced.children, children)) {
       forced.children = children;
@@ -248,7 +248,7 @@ function createBinding(actor: MachineActor): Binding {
     };
   }
 
-  /** Logs and drops an event sent during a preview (R12). Returns false when there's no preview. */
+  /** Logs and drops an event sent during a preview. Returns false when there's no preview. */
   function blocked(event: unknown): boolean {
     const override = currentOverride();
     if (!override) return false;
@@ -312,7 +312,7 @@ function createBinding(actor: MachineActor): Binding {
       if (Object.hasOwn(members, property)) return members[property];
       if (property === 'ref') return proxy;
       const value: unknown = Reflect.get(target, property, target);
-      // Everything else is the real actor's, bound to it (§7.1). Constructors stay as they are for instanceof checks.
+      // Everything else is the real actor's, bound to it. Constructors stay as they are for instanceof checks.
       if (typeof value !== 'function' || property === 'constructor') return value;
       bound ??= new Map();
       let entry = bound.get(property);
@@ -391,7 +391,7 @@ function createBinding(actor: MachineActor): Binding {
 interface ObservedHandle {
   handle: MachineHandle;
   notify(): void;
-  /** Hot path: keeps a reference to the context; serialization happens later (§10.3). */
+  /** Hot path: keeps a reference to the context; serialization happens later. */
   record(snapshot: unknown): void;
 }
 
@@ -416,7 +416,7 @@ function createHandle(
     adapter: 'xstate',
     capabilities: preview ? PREVIEW_CAPABILITIES : READ_ONLY_CAPABILITIES,
     // The config, not the machine: machine.provide() makes a new machine around the same config, and fixtures
-    // defined for the machine should still match (D10).
+    // defined for the machine should still match.
     source: machine.config,
     describe: () => getTree(machine).nodes as StateNodeInfo[],
     getActiveLeaves: () => leavesOfSnapshot(machine, actor.getSnapshot()),
@@ -458,7 +458,7 @@ function createHandle(
 const childHandles = new WeakMap<AnyActorRef, ObservedHandle>();
 
 /**
- * Watches an actor's system: snapshots of the actor itself go to `onRootSnapshot`, and its child machines (R5, P1)
+ * Watches an actor's system: snapshots of the actor itself go to `onRootSnapshot`, and its child machines
  * are listed read-only under it. The system takes an inspector after creation, which covers hooks and connect()
  * alike; children that already exist are found through the snapshot.
  */
@@ -501,7 +501,7 @@ function inspect(
 
   /**
    * Unlists a child and its descendants, recording each one's last snapshot first: a final configuration can still
-   * be unseen, as when a grandchild's finish ends its parent before its own snapshot comes in (R17).
+   * be unseen, as when a grandchild's finish ends its parent before its own snapshot comes in.
    */
   function remove(ref: AnyActorRef): void {
     const entry = connected?.get(ref);

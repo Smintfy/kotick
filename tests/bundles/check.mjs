@@ -1,4 +1,4 @@
-// Confirms that production builds keep none of the debugger (R28, G6, Milestone 4).
+// Confirms that production builds keep none of the debugger.
 //
 // The fixture app in this directory uses every public export. The script packs state-viewer as npm publishes it,
 // installs the tarball into a copy of the fixture in a temporary directory, and builds the copy for production with
@@ -34,7 +34,7 @@ const root = join(import.meta.dirname, '../..');
 const fixtureDir = import.meta.dirname;
 
 /** Strings that only debug code contains, and the part of the package each one stands for. */
-/** The most that the startup JavaScript may grow against the same app with @xstate/react, in gzip bytes (§13). */
+/** The most that the startup JavaScript may grow against the same app with @xstate/react, in gzip bytes. */
 const STARTUP_BUDGET = 512;
 
 const MARKERS = {

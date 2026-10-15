@@ -1,4 +1,4 @@
-// Fixture registry (spec §10.3, D10, D11).
+// Fixture registry.
 
 import type { FixtureSet, MachineHandle } from './types';
 

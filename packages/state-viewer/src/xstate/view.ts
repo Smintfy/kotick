@@ -1,4 +1,4 @@
-// What an observer of a proxied actor sees (spec §7.1, §10.2): the proxy's snapshot, and the real actor's ending.
+// What an observer of a proxied actor sees: the proxy's snapshot, and the real actor's ending.
 
 import type { Observer } from 'xstate';
 
@@ -86,7 +86,7 @@ export interface Attachment {
   replaced(): { source?: ViewSource } | undefined;
   /**
    * True when @xstate/react subscribed the observer to an actor that had already ended and stopped: XState completes
-   * or fails it inside subscribe() and tells it nothing more. It followed none of the actor's previews (§10.2).
+   * or fails it inside subscribe() and tells it nothing more. It followed none of the actor's previews.
    */
   late(): boolean;
 }
@@ -108,7 +108,7 @@ export interface ViewMemory {
   /** Whether the target has heard how the actor ended. */
   told: boolean;
   /**
-   * How the real actor ended, held back while a preview hides the real snapshot (R13). The target hears it once the
+   * How the real actor ended, held back while a preview hides the real snapshot. The target hears it once the
    * preview ends, after the real snapshot, as XState sends the done snapshot before complete.
    */
   ending?: Ending;

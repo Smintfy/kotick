@@ -1,4 +1,4 @@
-// The @xstate/react hooks, built on the actor proxy (spec §7.1, §8.2). Same names and signatures, plus `debug`.
+// The @xstate/react hooks, built on the actor proxy. Same names and signatures, plus `debug`.
 
 import { useActorRef as useXStateActorRef, useSelector } from '@xstate/react';
 import * as React from 'react';
@@ -130,7 +130,7 @@ const connectRegistration = (registration: Registration): (() => void) => regist
  * Creates and starts the actor through @xstate/react, then hands out its proxy. Machines are registered while the
  * component is mounted; other actor logic, and actors with `debug.disabled`, come back as they are.
  *
- * `observer` sees what the proxy shows (§10.2). It goes to @xstate/react, which subscribes it before starting the
+ * `observer` sees what the proxy shows. It goes to @xstate/react, which subscribes it before starting the
  * actor, so an error on start reaches it and isn't also reported as unhandled. It's subscribed again when
  * `observerKey` changes.
  */
@@ -199,7 +199,7 @@ function useProxiedActorRef(
     // replaced actor tells the observer anything more.
     if (!listening) view?.settle();
     // Before @xstate/react starts the actor, as with connect(createActor(m)).start(): the registry records the
-    // snapshot the component first rendered and everything start() goes through (R17).
+    // snapshot the component first rendered and everything start() goes through.
     ensureConnection(hook.registration, registration, connectRegistration);
   }, [actor, binding, view, listening, registration]);
   useConnection(hook.listening, listening, connectListening);

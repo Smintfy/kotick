@@ -4,7 +4,7 @@ import type { MachineHandle, Registry, RegistrySnapshot } from '../core/types';
 // Layout effects don't run on the server, and React 18 warns when they're used there.
 export const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
 
-/** The registry's snapshot, which changes only when machines, previews, the log or data markers do (D9). */
+/** The registry's snapshot, which changes only when machines, previews, the log or data markers do. */
 export function useRegistrySnapshot(registry: Registry): RegistrySnapshot {
   return React.useSyncExternalStore(registry.subscribe, registry.getSnapshot, registry.getSnapshot);
 }

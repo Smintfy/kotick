@@ -1,4 +1,4 @@
-// Deep links (spec §10.4): ?debug-state=<machineId>:<leaf>[;<leaf>…][,<machineId>:…]
+// Deep links: ?debug-state=<machineId>:<leaf>[;<leaf>…][,<machineId>:…]
 
 import type { DeepLinkTarget } from './types';
 
@@ -19,7 +19,7 @@ export function parseDeepLink(raw: string): ParsedDeepLink {
   // A valid value always contains ':', so one without it went through URLSearchParams, which encodes ':' as %3A.
   // If code passed our value to set(), that added one encoding and one decode restores what we wrote. If a router
   // parsed and rebuilt the query, our value was decoded before being encoded, so one decode gives the fully decoded
-  // value: ids without reserved characters come back intact, ids with ':' ';' ',' or '%' don't (spec §11).
+  // value: ids without reserved characters come back intact, ids with ':' ';' ',' or '%' don't.
   if (!value.includes(':')) {
     try {
       value = decodeURIComponent(value);

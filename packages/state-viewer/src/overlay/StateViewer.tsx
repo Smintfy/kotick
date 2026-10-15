@@ -1,4 +1,4 @@
-// <StateViewer /> in development builds (spec §8.1, §10.6): applies the page's deep link, registers fixtures, and
+// <StateViewer /> in development builds: applies the page's deep link, registers fixtures, and
 // renders the toolbar and panel into a shadow root.
 
 import * as React from 'react';
@@ -31,9 +31,9 @@ export function StateViewer(props: StateViewerProps): React.ReactNode {
 const appliedLinks = new WeakMap<Registry, Set<string>>();
 
 /**
- * Applies the URL's deep link (R27). In an insertion effect, which React runs before every layout effect of the
+ * Applies the URL's deep link. In an insertion effect, which React runs before every layout effect of the
  * commit: the app's hooks register in layout effects, so instances that mount along with the overlay are previewed
- * as they register and show the preview in their first paint (§10.2). Earlier ones, like a connect()ed module-level
+ * as they register and show the preview in their first paint. Earlier ones, like a connect()ed module-level
  * actor, are previewed at the registry's next microtask.
  */
 function useDeepLink(registry: Registry, param: string): void {
@@ -56,10 +56,10 @@ function useDeepLink(registry: Registry, param: string): void {
 const registeredSets = new WeakMap<Registry, WeakSet<FixtureSet>>();
 
 /**
- * Registers fixtures given directly or by a lazy loader (R18). Previews made before they load pick them up (R16).
+ * Registers fixtures given directly or by a lazy loader. Previews made before they load pick them up.
  * In an insertion effect, like the deep link: then the registry expects the fixtures before the app's hooks register in
  * layout effects and the link previews them.
- * Thus, a linked preview that starts on the live context warns only if the fixtures don't give it context (R19).
+ * Thus, a linked preview that starts on the live context warns only if the fixtures don't give it context.
  */
 function useFixtures(registry: Registry, input: FixturesInput | undefined): void {
   React.useInsertionEffect(() => {
@@ -89,7 +89,7 @@ function useFixtures(registry: Registry, input: FixturesInput | undefined): void
   }, [registry, input]);
 }
 
-/** The host element, appended to `target` or `document.body` on the client (R20). Nothing renders on the server. */
+/** The host element, appended to `target` or `document.body` on the client. Nothing renders on the server. */
 function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   const [host, setHost] = React.useState<OverlayHost | null>(null);
   useIsomorphicLayoutEffect(() => {
@@ -117,7 +117,7 @@ function Overlay(props: OverlayProps) {
   const snapshot = useRegistrySnapshot(registry);
   const panelId = React.useId();
 
-  // R24: read once, written only when the user changes something.
+  // Read once, written only when the user changes something.
   const [settings, setSettings] = React.useState(readSettings);
   const initialSettings = React.useRef(settings);
   React.useEffect(() => {

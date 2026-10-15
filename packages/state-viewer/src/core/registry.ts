@@ -1,4 +1,4 @@
-// Registry (spec §9, §10.1): one per page, shared by every copy of the package through globalThis.
+// Registry: one per page, shared by every copy of the package through globalThis.
 
 import { createEventLog } from './event-log';
 import { createFixtureStore } from './fixtures';
@@ -38,7 +38,7 @@ interface ResolvedContext {
   context: unknown;
 }
 
-/** Context resolution order when no source is asked for (R16). */
+/** Context resolution order when no source is asked for. */
 const SOURCES: readonly DataSource[] = ['recorded', 'fixture', 'live'];
 /**
  * The default order as a preview found it, by its source, for when fixtures register. A recording that arrived since
@@ -73,7 +73,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   // the mark goes with it when it's released, dropped or replaced.
   const chosenSource = new WeakSet<Override>();
   const overrideListeners = new Map<string, Set<() => void>>();
-  // Deep links (R27): machine id to the leaves its link previews. A link ends when preview() or release() is called for
+  // Deep links: machine id to the leaves its link previews. A link ends when preview() or release() is called for
   // one of the machine's instances, or release() releases everything, so one the user moved on from doesn't come back
   // on the machine's next instance (a new list row, a remount).
   const links = new Map<string, readonly string[]>();
@@ -81,8 +81,8 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   const linkWarned = new Set<string>();
   // Fixture loads that expectFixtures() started and that are not done yet.
   let pendingFixtureLoads = 0;
-  // Instance key to the live-context warning (R19) that its preview holds until no fixture load is pending.
-  // The fixtures that load can still give the preview context (D13), so the preview warns only if they don't.
+  // Instance key to the live-context warning that its preview holds until no fixture load is pending.
+  // The fixtures that load can still give the preview context, so the preview warns only if they don't.
   const heldWarnings = new Map<string, () => void>();
   const listeners = new Set<() => void>();
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
@@ -209,7 +209,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
       // Map.set keeps an existing key's position, so a replacement stays where the first registration was.
       registrations.set(key, registration);
       recording.hydrate(handle.machineId);
-      // Matching by source now records the id's alias for its machine object, so fixtures survive HMR (D10).
+      // Matching by source now records the id's alias for its machine object, so fixtures survive HMR.
       fixtures.fixtureLeaves(handle);
       markDirty('machines');
       markDirty('data');
@@ -407,7 +407,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     let held: (() => void) | undefined;
     if (source === 'live' && explicit !== 'live') {
       const message = `[state-viewer] No recorded or fixture context for ${shown}, so the preview uses the live context.`;
-      // Only a preview on the default order takes the fixtures that register later (D13).
+      // Only a preview on the default order takes the fixtures that register later.
       if (explicit === undefined && pendingFixtureLoads > 0) held = () => warn(message);
       else warn(message);
     } else if (explicit !== undefined && source !== explicit) {
@@ -456,7 +456,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   }
 
   /**
-   * Tells the registry that a fixture load starts (R18), and returns the function that ends it.
+   * Tells the registry that a fixture load starts, and returns the function that ends it.
    * When the last pending load ends, each preview that holds its live-context warning gives it, if it still uses the
    * live context.
    */
@@ -476,7 +476,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     const held = [...heldWarnings];
     heldWarnings.clear();
     for (const [key, warn] of held) {
-      // A fixture that registered moved the preview off the live context (D13).
+      // A fixture that registered moved the preview off the live context.
       if (overrides.get(key)?.source === 'live') warn();
     }
   }
@@ -615,7 +615,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   };
 }
 
-// Marked pure, so that production builds can remove it (spec §10.7).
+// Marked pure, so that production builds can remove it.
 const EMPTY_SNAPSHOT: RegistrySnapshot = /* @__PURE__ */ freeze({
   machines: /* @__PURE__ */ freeze([]),
   overrides: /* @__PURE__ */ freeze(/* @__PURE__ */ emptyRecord()),
