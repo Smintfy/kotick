@@ -15,7 +15,6 @@ A development overlay for React apps that use XState v5. The README says what it
 | `test/<feature>.test.tsx` | Black-box tests, one feature per file |
 | `test/<feature>/` | A feature whose conditions outgrow one file, one file per condition, such as `test/observers/` |
 | `test/support/` | Helpers for those tests |
-| `test/xstate/`, `test/regressions/` | Legacy tests. They move into feature files |
 
 The overlay and the adapter never import each other.
 `pnpm lint` enforces the layers and what each entry exports. Its message says where an import belongs.
