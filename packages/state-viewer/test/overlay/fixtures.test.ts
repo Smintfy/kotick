@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { FixtureSet } from '../../src/core/types';
-import { loadFixtures } from '../../src/overlay/fixtures';
+import { loadFixtures } from '../../src/overlay/StateViewer';
 
 const set: FixtureSet = { machineId: 'checkout', states: { idle: { context: {} } } };
 
