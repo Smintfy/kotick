@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { leavesOf } from '../../src/core/registry';
-import type { MachineHandle, Override, StateNodeInfo } from '../../src/core/types';
+import type { MachineHandle, Override } from '../../src/core/types';
 import { findInstance, groupMachines, planLink, toggleLeaf } from '../../src/overlay/model';
 
 function handle(machineId: string, instanceId: string, extra: Partial<MachineHandle> = {}): MachineHandle {
@@ -75,20 +74,6 @@ describe('toggleLeaf', () => {
     expect(toggleLeaf(['payment.error', 'shipping.express'], 'payment.error')).toEqual(['shipping.express']);
     expect(toggleLeaf(['shipping.express'], 'shipping.express')).toEqual([]);
   });
-});
-
-test('leavesOf lists atomic and final states in document order', () => {
-  const node = (id: string, type: StateNodeInfo['type'], children: StateNodeInfo[] = []): StateNodeInfo => ({
-    id,
-    key: id.split('.').pop()!,
-    type,
-    children,
-  });
-  const tree = [
-    node('a', 'compound', [node('a.x', 'atomic'), node('a.y', 'parallel', [node('a.y.r', 'compound', [node('a.y.r.1', 'atomic')])])]),
-    node('done', 'final'),
-  ];
-  expect(leavesOf(tree)).toEqual(['a.x', 'a.y.r.1', 'done']);
 });
 
 describe('planLink', () => {

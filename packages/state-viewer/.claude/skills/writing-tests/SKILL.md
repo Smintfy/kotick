@@ -59,6 +59,12 @@ These techniques replace a mock. Each one was tried in this package.
   `// @vitest-environment-options {"storageQuota":0}` for the whole file.
 - **No storage at all.** Call `window.jsdom.reconfigure({ url: 'about:blank' })` before the first render. Both
   storages then throw.
+- **Copy link and Copy JSON.** jsdom has no clipboard and no `execCommand`, so the overlay copies through a textarea in
+  its shadow root and shows "Copy failed". `copy()` in `test/support/panel.ts` observes the shadow root with a
+  `MutationObserver` and returns the value of each textarea the overlay adds.
+- **Stored panel settings.** Fill localStorage `state-viewer:ui` before the render, such as
+  `{"v":1,"open":true,"position":"top-left","positionDefault":"bottom-right","machine":"checkout"}`. The overlay reads
+  it when it mounts.
 - **A second copy of the package.** `vi.resetModules()` replaces nothing, so it is allowed. Import the entry again.
 - **Production builds.** `test/production.test.tsx` runs in its own Vitest project, `production` in
   `vitest.config.ts`, with `test.env.NODE_ENV` set to `'production'`. Vite's `define` doesn't change `NODE_ENV` in
