@@ -11,7 +11,7 @@
 // that actor, so turning debug back on, or an Activity hiding and revealing the component, doesn't repeat it: a "done"
 // handler runs once.
 
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import * as xstateReact from '@xstate/react';
 import * as React from 'react';
 import { useCallback } from 'react';
