@@ -20,10 +20,11 @@ test file that is not on the legacy list.
    - To read console output, call `watchConsole()` from `test/support/console.ts`. It replaces nothing.
    - To start delayed work, fire the real trigger, such as a `pagehide` event, or wait for real time.
    - To change the environment, configure it as a page or a server would, such as `// @vitest-environment node`.
-3. **Drive it like a developer.** Render components that call the hooks, click their buttons, and drive the overlay
-   with `test/support/panel.ts`: `show()`, `preview()`, `pickSource()` and `release()`. Read the result from the DOM:
-   what the components render, `panel()` and `isOpen()`. When a hook must behave like the `@xstate/react` hook of the
-   same name, run the test against both with `describe.each`.
+3. **Drive it like a developer.** Render components that call the hooks next to the overlay with `page()` or `mount()`
+   from `test/support/app.tsx`, and click their buttons with `press()`. Drive the overlay with `test/support/panel.ts`:
+   `show()`, `preview()`, `pickSource()` and `release()`. Read the result from the DOM: what the components render,
+   `panel()` and `isOpen()`. When a hook must behave like the `@xstate/react` hook of the same name, run the test against
+   both with `describe.each(IMPLEMENTATIONS)` from `test/support/hooks.ts`.
 4. **Assert exact values.** Collect what one step shows into one object, and compare it with `toEqual` against a
    literal. Never use `toBeDefined`, `toBeTruthy`, `toBeFalsy` or `expect.anything()`. Prefer a whole value to
    `toMatchObject`, `toContain` or `stringContaining`.
@@ -65,6 +66,11 @@ These techniques replace a mock. Each one was tried in this package.
   between two `Date.now()` reads. Dispatch one in `afterEach` too, so a pending write can't land in the next test. To
   test the 500 ms delay, wait for real time. The page counts the stored recordings
   against the 1,000,000-character budget once per test file, so put the tests at the storage limits last.
+- **An actor that the page must let go.** Hold it only in a `WeakRef`, and call `collected()` from
+  `test/support/gc.ts`. It runs three rounds of one real tick and a full collection, then tells which targets are gone.
+  Never call `deref()` before it, because a `WeakRef` keeps the target it gave back alive until the task ends. The
+  overlay keeps its last render until it renders again, so unmount it before the check. A check that expects `true`
+  passes when nothing holds the actor, so break the release in `src/` once, and watch it fail.
 - **A reload.** Store a payload for a machine id that has not mounted yet, then render it. The page reads the stored
   recordings when the machine first registers.
 - **A full storage.** Fill `sessionStorage` with app data up to the 5,000,000-character quota of jsdom, or set

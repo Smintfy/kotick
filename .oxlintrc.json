@@ -182,7 +182,6 @@
       // When black-box tests replace a file, delete the file and its line.
       "files": [
         "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
-        "packages/state-viewer/test/regressions/complete-during-preview.test.ts",
         "packages/state-viewer/test/regressions/debug-disabled-during-preview.test.tsx",
         "packages/state-viewer/test/regressions/debug-disabled-while-hidden.test.tsx",
         "packages/state-viewer/test/regressions/debug-disabled-without-preview.test.tsx",
@@ -195,7 +194,6 @@
         "packages/state-viewer/test/regressions/owed-ending-timing.test.tsx",
         "packages/state-viewer/test/regressions/owed-error-across-replacement.test.tsx",
         "packages/state-viewer/test/regressions/preview-listener-lifetime.test.tsx",
-        "packages/state-viewer/test/regressions/reentrant-subscribe-during-release.test.ts",
         "packages/state-viewer/test/regressions/replaced-actor-commit-window.test.tsx",
         "packages/state-viewer/test/regressions/replaced-actor-ends-before-passive.test.tsx",
         "packages/state-viewer/test/regressions/replaced-and-disabled-in-one-render.test.tsx",
@@ -205,11 +203,8 @@
         "packages/state-viewer/test/regressions/stopped-during-preview.test.tsx",
         "packages/state-viewer/test/regressions/stopped-hook-store.test.tsx",
         "packages/state-viewer/test/regressions/stopped-unseen-wake.test.tsx",
-        "packages/state-viewer/test/regressions/topromise-during-preview.test.tsx",
         "packages/state-viewer/test/regressions/uncommitted-render-observers.test.tsx",
-        "packages/state-viewer/test/regressions/unsubscribe-on-done-after-preview.test.ts",
         "packages/state-viewer/test/regressions/useactorref-app-stop-during-preview.test.tsx",
-        "packages/state-viewer/test/regressions/waitfor-done-during-preview.test.tsx",
         "packages/state-viewer/test/xstate/helpers.ts"
       ],
       "rules": {
