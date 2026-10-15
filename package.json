@@ -7,7 +7,7 @@
     "dev": "pnpm --filter vite-react dev",
     "dev:hostile-css": "pnpm --filter hostile-css dev",
     "dev:next": "pnpm --filter next-app dev",
-    "test": "pnpm -r test",
+    "test": "pnpm lint && pnpm -r test",
     "test:matrix": "node scripts/test-matrix.mjs",
     "check:bundles": "node tests/bundles/check.mjs",
     "typecheck": "pnpm -r typecheck",

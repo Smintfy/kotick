@@ -25,6 +25,7 @@ Read the writing-tests skill in `.claude/skills/` before you write, change or re
 
 ## Checks
 
-The repository has no CI. Before a commit, run `pnpm typecheck`, `pnpm lint` and `pnpm test` from its root.
+The repository has no CI. Before a commit, run `pnpm typecheck` and `pnpm test` from its root.
+`pnpm test` runs `pnpm lint` first.
 After a change to `src/`, also run `pnpm test:matrix` and `pnpm check:bundles`.
 They need network access and take a few minutes.
