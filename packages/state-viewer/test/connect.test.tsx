@@ -1,5 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { act, screen } from '@testing-library/react';
 import { connect, useMachine, useSelector } from 'state-viewer/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import {
@@ -12,13 +11,11 @@ import {
   sendTo,
   setup,
   type AnyActorRef,
-  type AnyStateMachine,
   type EventFrom,
-  type SnapshotFrom,
 } from 'xstate';
-import { page } from './support/app';
-import { uncaught, watchConsole } from './support/console';
-import { clickLeaf, flush, freshId, header, instanceKeys, panel, preview, release, shownKey } from './support/panel';
+import { mount, page, start } from './support/app';
+import { watchConsole } from './support/console';
+import { flush, freshId, header, instanceKeys, panel, preview, release, shownKey } from './support/panel';
 
 function createCheckoutMachine() {
   return setup({
@@ -61,25 +58,10 @@ function createToggleMachine() {
   });
 }
 
-/** Starts an actor outside React, as a module that owns it does. The actor stops when the test ends. */
-function start<TMachine extends AnyStateMachine>(machine: TMachine): Actor<TMachine> {
-  const actor = createActor(machine).start();
-  onTestFinished(() => {
-    actor.stop();
-  });
-  return actor;
-}
-
 /** Shows what a component reads from the actor that connect() returns. */
 function CheckoutView({ actor }: { actor: Checkout }) {
   const snapshot = useSelector(actor, (current) => current);
   return <output aria-label="checkout">{JSON.stringify({ value: snapshot.value, items: snapshot.context.items })}</output>;
-}
-
-async function mount(app: ReactNode) {
-  const view = render(page(app));
-  await flush();
-  return view;
 }
 
 function shown(name = 'checkout') {
@@ -90,11 +72,6 @@ async function send(actor: Checkout, ...events: EventFrom<CheckoutMachine>[]) {
   await act(async () => {
     for (const event of events) actor.send(event);
   });
-}
-
-/** A snapshot as a subscriber of the checkout records it: its value, then its item count. */
-function summary(snapshot: SnapshotFrom<CheckoutMachine>): string {
-  return `${JSON.stringify(snapshot.value)} ${snapshot.context.items}`;
 }
 
 test('an actor started outside React and connected is listed, and its preview shows in the component', async () => {
@@ -407,198 +384,5 @@ describe('an actor that is not the root of its system', () => {
       steps.push(machines());
     }
     expect(steps).toEqual([[auth.id], [auth.id], [auth.id]]);
-  });
-});
-
-describe('subscribing to the actor that connect() returns', () => {
-  test('without a preview, a subscriber gets each snapshot that the actor sends, repeats included', async () => {
-    const machine = createCheckoutMachine();
-    const actor = start(machine);
-    const checkout = connect(actor);
-    const real: SnapshotFrom<CheckoutMachine>[] = [];
-    const proxied: SnapshotFrom<CheckoutMachine>[] = [];
-    actor.subscribe((snapshot) => real.push(snapshot));
-    checkout.subscribe((snapshot) => proxied.push(snapshot));
-
-    // NOOP changes nothing, and XState sends the same snapshot again.
-    await send(checkout, { type: 'ADD' }, { type: 'NOOP' }, { type: 'PAY' });
-    const same = proxied.map((snapshot, index) => snapshot === real[index]);
-    expect({ proxied: proxied.map(summary), same }).toEqual({
-      proxied: ['"cart" 1', '"cart" 1', '{"payment":"pending"} 1'],
-      same: [true, true, true],
-    });
-  });
-
-  test('subscribe() takes an observer object, called with itself as this, or next, error and complete callbacks', async () => {
-    const machine = createCheckoutMachine();
-    const checkout = connect(start(machine));
-    const calls: string[] = [];
-    const observer = {
-      name: 'observer',
-      next(snapshot: SnapshotFrom<CheckoutMachine>) {
-        calls.push(`${this.name} next ${summary(snapshot)}`);
-      },
-      complete() {
-        calls.push(`${this.name} complete`);
-      },
-    };
-    checkout.subscribe(observer);
-    checkout.subscribe(
-      (snapshot) => calls.push(`callbacks next ${summary(snapshot)}`),
-      () => calls.push('callbacks error'),
-      () => calls.push('callbacks complete'),
-    );
-
-    await send(checkout, { type: 'ADD' }, { type: 'PAY' }, { type: 'SUCCEED' });
-    expect(calls).toEqual([
-      'observer next "cart" 1',
-      'callbacks next "cart" 1',
-      'observer next {"payment":"pending"} 1',
-      'callbacks next {"payment":"pending"} 1',
-      'observer next "paid" 1',
-      'callbacks next "paid" 1',
-      'observer complete',
-      'callbacks complete',
-    ]);
-  });
-
-  test('a subscriber hears each change of the preview, also to the leaves the actor is in, and the release', async () => {
-    const machine = createCheckoutMachine();
-    const checkout = connect(start(machine));
-    const calls: string[] = [];
-    checkout.subscribe((snapshot) => calls.push(summary(snapshot)));
-    await mount(null);
-
-    await preview(machine.id, ['cart']);
-    await clickLeaf('payment.error');
-    await release(machine.id);
-    expect(calls).toEqual(['"cart" 0', '{"payment":"error"} 0', '"cart" 0']);
-  });
-
-  test('during a preview, subscribers get the previewed snapshot once, and the real one only on release', async () => {
-    const machine = createCheckoutMachine();
-    const actor = start(machine);
-    const checkout = connect(actor);
-    const early: string[] = [];
-    const late: string[] = [];
-    checkout.subscribe((snapshot) => early.push(summary(snapshot)));
-    await mount(null);
-
-    await preview(machine.id, ['payment.error']);
-    checkout.subscribe((snapshot) => late.push(summary(snapshot)));
-    await send(actor, { type: 'ADD' }, { type: 'NOOP' }, { type: 'PAY' });
-    const previewing = { early: [...early], late: [...late] };
-    await release(machine.id);
-    expect({ previewing, released: { early, late } }).toEqual({
-      previewing: { early: ['{"payment":"error"} 0'], late: ['{"payment":"error"} 0'] },
-      released: {
-        early: ['{"payment":"error"} 0', '{"payment":"pending"} 1'],
-        late: ['{"payment":"error"} 0', '{"payment":"pending"} 1'],
-      },
-    });
-  });
-
-  test('unsubscribe() ends real updates and previews, and a second call leaves a later subscription of the same function alone', async () => {
-    const machine = createCheckoutMachine();
-    const checkout = connect(start(machine));
-    const calls: string[] = [];
-    const listener = (snapshot: SnapshotFrom<CheckoutMachine>) => calls.push(summary(snapshot));
-    await mount(null);
-
-    const first = checkout.subscribe(listener);
-    first.unsubscribe();
-    await send(checkout, { type: 'ADD' });
-    const second = checkout.subscribe(listener);
-    first.unsubscribe();
-    await preview(machine.id, ['payment.error']);
-    await release(machine.id);
-    second.unsubscribe();
-    await preview(machine.id, ['payment.error']);
-    expect(calls).toEqual(['{"payment":"error"} 1', '"cart" 1']);
-  });
-
-  test('an actor stopped during a preview completes its subscribers, and sends them no snapshot', async () => {
-    const machine = createCheckoutMachine();
-    const actor = start(machine);
-    const checkout = connect(actor);
-    const observe = (calls: string[]) =>
-      checkout.subscribe({
-        next: (snapshot) => calls.push(`next ${summary(snapshot)}`),
-        complete: () => calls.push('complete'),
-      });
-    const early: string[] = [];
-    const late: string[] = [];
-    observe(early);
-    await mount(null);
-
-    await preview(machine.id, ['payment.error']);
-    observe(late);
-    await act(async () => {
-      actor.stop();
-    });
-    expect({ early, late }).toEqual({ early: ['next {"payment":"error"} 0', 'complete'], late: ['complete'] });
-  });
-});
-
-describe('an error in the actor', () => {
-  function startFaulty() {
-    const machine = createMachine({
-      id: freshId('faulty'),
-      initial: 'idle',
-      states: {
-        idle: {
-          on: {
-            BOOM: {
-              actions: () => {
-                throw new Error('boom');
-              },
-            },
-          },
-        },
-      },
-    });
-    return start(machine);
-  }
-
-  const messages = (errors: unknown[]) => errors.map((error) => (error as Error).message);
-
-  // XState reports an error as uncaught unless each observer of the actor has an error callback.
-  // connect() adds no observer, so the observers of the app decide, as without connect().
-  test.each<[string, (actor: AnyActorRef, calls: string[]) => void]>([
-    ['no subscriber', () => {}],
-    ['a next callback', (actor, calls) => actor.subscribe(() => calls.push('next'))],
-    [
-      'an observer object without error',
-      (actor, calls) => actor.subscribe({ next: () => calls.push('next'), complete: () => calls.push('complete') }),
-    ],
-  ])('reaches the page uncaught when the returned actor has %s', async (_, observe) => {
-    const faulty = connect(startFaulty());
-    const calls: string[] = [];
-    observe(faulty, calls);
-
-    const errors = await uncaught(() => faulty.send({ type: 'BOOM' }));
-    expect({ uncaught: messages(errors), calls }).toEqual({ uncaught: ['boom'], calls: [] });
-  });
-
-  test('goes to the error callback of a subscriber of the returned actor, and not to complete or the page', async () => {
-    const faulty = connect(startFaulty());
-    const calls: string[] = [];
-    faulty.subscribe({
-      error: (error) => calls.push(`error ${(error as Error).message}`),
-      complete: () => calls.push('complete'),
-    });
-
-    const errors = await uncaught(() => faulty.send({ type: 'BOOM' }));
-    expect({ uncaught: messages(errors), calls }).toEqual({ uncaught: [], calls: ['error boom'] });
-  });
-
-  test('goes to the error callback of a subscriber of the actor itself, and not to the page, after connect()', async () => {
-    const actor = startFaulty();
-    connect(actor);
-    const calls: string[] = [];
-    actor.subscribe({ error: (error) => calls.push(`error ${(error as Error).message}`) });
-
-    const errors = await uncaught(() => actor.send({ type: 'BOOM' }));
-    expect({ uncaught: messages(errors), calls }).toEqual({ uncaught: [], calls: ['error boom'] });
   });
 });
