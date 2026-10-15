@@ -2,7 +2,7 @@
 
 import { createEventLog } from './event-log';
 import { createFixtureStore } from './fixtures';
-import { createRecordingStore, type RecordingStoreOptions } from './recording';
+import { createRecordingStore } from './recording';
 import type {
   DataAvailability,
   DataSource,
@@ -17,13 +17,6 @@ import type {
 import { VERSION } from './version';
 
 export const REGISTRY_KEY = '__STATE_VIEWER_REGISTRY__';
-
-export interface RegistryOptions {
-  recording?: Omit<RecordingStoreOptions, 'onAvailabilityChange' | 'now'>;
-  now?: () => number;
-  /** Writes pending recordings when the page is hidden or unloaded. Defaults to true in browsers. */
-  flushOnPageHide?: boolean;
-}
 
 type SnapshotPart = 'machines' | 'overrides' | 'log' | 'data';
 
@@ -68,8 +61,7 @@ export function leavesOf(nodes: readonly StateNodeInfo[], into: string[] = []): 
   return into;
 }
 
-export function createRegistry(options: RegistryOptions = {}): Registry {
-  const now = options.now ?? Date.now;
+function createRegistry(): Registry {
   const registrations = new Map<string, Registration>();
   // Keys unregistered since the last flush. Fast Refresh, StrictMode and actor swaps run an effect's cleanup and
   // then its setup in the same tick, so the registration stays in place until the flush, and a key that registers
@@ -95,11 +87,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
   const eventLog = createEventLog();
   const fixtures = createFixtureStore();
-  const recording = createRecordingStore({
-    ...options.recording,
-    now,
-    onAvailabilityChange: () => markDirty('data'),
-  });
+  const recording = createRecordingStore({ onAvailabilityChange: () => markDirty('data') });
 
   const dirty: Record<SnapshotPart, boolean> = { machines: false, overrides: false, log: false, data: false };
   let snapshot: RegistrySnapshot = freeze({
@@ -433,7 +421,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
       leaves: freeze(leaves),
       context,
       source,
-      createdAt: now(),
+      createdAt: Date.now(),
     });
     if (explicit !== undefined) chosenSource.add(override);
     overrides.set(instanceKey, override);
@@ -459,7 +447,10 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
         continue;
       }
       if (!resolved || (resolved.source === override.source && Object.is(resolved.context, override.context))) continue;
-      overrides.set(key, freeze({ ...override, source: resolved.source, context: resolved.context, createdAt: now() }));
+      overrides.set(
+        key,
+        freeze({ ...override, source: resolved.source, context: resolved.context, createdAt: Date.now() }),
+      );
       markDirty('overrides');
       notifyOverride(key);
     }
@@ -570,7 +561,7 @@ export function createRegistry(options: RegistryOptions = {}): Registry {
     };
   }
 
-  if ((options.flushOnPageHide ?? true) && typeof window !== 'undefined' && typeof document !== 'undefined') {
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     window.addEventListener('pagehide', () => recording.flush());
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') recording.flush();

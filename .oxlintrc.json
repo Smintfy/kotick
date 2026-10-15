@@ -181,9 +181,7 @@
       // These files were written before the test rules. Never add a file to this list.
       // When black-box tests replace a file, delete the file and its line.
       "files": [
-        "packages/state-viewer/test/core/integration.test.ts",
         "packages/state-viewer/test/core/recording.test.ts",
-        "packages/state-viewer/test/core/registry.test.ts",
         "packages/state-viewer/test/overlay/settings.test.ts",
         "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
         "packages/state-viewer/test/regressions/child-final-recording.test.tsx",
@@ -205,7 +203,6 @@
         "packages/state-viewer/test/regressions/held-ending-dropped-after-told.test.tsx",
         "packages/state-viewer/test/regressions/held-ending-survives-hook-stop.test.tsx",
         "packages/state-viewer/test/regressions/hmr-added-region.test.tsx",
-        "packages/state-viewer/test/regressions/hook-start-recording.test.tsx",
         "packages/state-viewer/test/regressions/hook-stop-ends-proxy-subscriptions.test.tsx",
         "packages/state-viewer/test/regressions/instance-ids-across-roots.test.tsx",
         "packages/state-viewer/test/regressions/late-observer-finished-actor.test.tsx",

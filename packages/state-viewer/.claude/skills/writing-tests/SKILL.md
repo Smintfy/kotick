@@ -55,6 +55,13 @@ These techniques replace a mock. Each one was tried in this package.
 - **React errors in an error boundary.** Pass `onCaughtError` to `render()`, and record the errors it receives.
 - **Errors that XState throws from a timer.** Add a `process.on('uncaughtException')` listener in the test, wait one
   real tick, and remove the listener.
+- **Recordings in sessionStorage.** Dispatch a `pagehide` event on `window` to write them at once, under
+  `state-viewer:recorded:<machine id>` as `{"v":1,"entries":[{"leaves","at","context"}]}`. Assert that `at` lies
+  between two `Date.now()` reads. Dispatch one in `afterEach` too, so a pending write can't land in the next test. To
+  test the 500 ms delay, wait for real time. The page counts the stored recordings
+  against the 1,000,000-character budget once per test file, so put the tests at the storage limits last.
+- **A reload.** Store a payload for a machine id that has not mounted yet, then render it. The page reads the stored
+  recordings when the machine first registers.
 - **A full storage.** Fill `sessionStorage` with app data up to the 5,000,000-character quota of jsdom, or set
   `// @vitest-environment-options {"storageQuota":0}` for the whole file.
 - **No storage at all.** Call `window.jsdom.reconfigure({ url: 'about:blank' })` before the first render. Both
