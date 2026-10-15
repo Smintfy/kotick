@@ -2,7 +2,7 @@
 // It groups machines by id, labels instances, finds the leaves a click previews, and plans the targets of "Copy link".
 
 import { toInstanceKey } from '../core/registry';
-import type { DeepLinkTarget, MachineHandle, Override, StateNodeInfo } from '../core/types';
+import type { DeepLinkTarget, MachineHandle, Override } from '../core/types';
 
 export interface InstanceEntry {
   key: string;
@@ -59,15 +59,6 @@ export function toggleLeaf(requested: readonly string[] | undefined, leaf: strin
   if (!requested) return [leaf];
   if (requested.includes(leaf)) return requested.filter((other) => other !== leaf);
   return [leaf, ...requested];
-}
-
-/** Atomic and final states in document order, the ones a preview can select. */
-export function leavesOf(nodes: readonly StateNodeInfo[], into: string[] = []): string[] {
-  for (const node of nodes) {
-    if (node.type === 'atomic' || node.type === 'final') into.push(node.id);
-    leavesOf(node.children ?? [], into);
-  }
-  return into;
 }
 
 interface LinkPlan {

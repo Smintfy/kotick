@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
+import { leavesOf } from '../../src/core/registry';
 import type { MachineHandle, Override, StateNodeInfo } from '../../src/core/types';
-import { findInstance, groupMachines, leavesOf, planLink, toggleLeaf } from '../../src/overlay/model';
+import { findInstance, groupMachines, planLink, toggleLeaf } from '../../src/overlay/model';
 
 function handle(machineId: string, instanceId: string, extra: Partial<MachineHandle> = {}): MachineHandle {
   return {
