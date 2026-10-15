@@ -13,6 +13,7 @@ A development overlay for React apps that use XState v5. The README says what it
 | `src/overlay/components/` | The React components in the shadow root |
 | `src/xstate/` | The adapter. The hooks and `connect()` give the app a proxy of each actor, and give the registry a handle |
 | `test/<feature>.test.tsx` | Black-box tests, one feature per file |
+| `test/<feature>/` | A feature whose conditions outgrow one file, one file per condition, such as `test/observers/` |
 | `test/support/` | Helpers for those tests |
 | `test/xstate/`, `test/regressions/` | Legacy tests. They move into feature files |
 

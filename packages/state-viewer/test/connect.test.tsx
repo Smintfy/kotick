@@ -1,6 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { StateViewer } from 'state-viewer';
 import { connect, useMachine, useSelector } from 'state-viewer/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import {
@@ -17,6 +16,7 @@ import {
   type EventFrom,
   type SnapshotFrom,
 } from 'xstate';
+import { page } from './support/app';
 import { uncaught, watchConsole } from './support/console';
 import { clickLeaf, flush, freshId, header, instanceKeys, panel, preview, release, shownKey } from './support/panel';
 
@@ -74,15 +74,6 @@ function start<TMachine extends AnyStateMachine>(machine: TMachine): Actor<TMach
 function CheckoutView({ actor }: { actor: Checkout }) {
   const snapshot = useSelector(actor, (current) => current);
   return <output aria-label="checkout">{JSON.stringify({ value: snapshot.value, items: snapshot.context.items })}</output>;
-}
-
-function page(app: ReactNode) {
-  return (
-    <>
-      {app}
-      <StateViewer defaultOpen />
-    </>
-  );
 }
 
 async function mount(app: ReactNode) {

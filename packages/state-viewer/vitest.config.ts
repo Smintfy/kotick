@@ -7,7 +7,6 @@ const REACT_19_ONLY = [
   'test/regressions/app-stop-held-across-activity.test.tsx',
   'test/regressions/debug-disabled-while-hidden.test.tsx',
   'test/regressions/held-ending-across-actor-replacement.test.tsx',
-  'test/regressions/held-ending-dropped-after-told.test.tsx',
   'test/regressions/owed-ending-timing.test.tsx',
   'test/regressions/stable-observer-actor-replacement.test.tsx',
   'test/regressions/stable-observer-left-on-preview.test.tsx',
