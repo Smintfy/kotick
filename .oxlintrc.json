@@ -117,8 +117,7 @@
           "error",
           {
             "patterns": [
-              { "regex": "(^|/)src(/|$)", "message": "Import state-viewer and state-viewer/xstate by name." },
-              { "regex": "(^|/)xstate/helpers$", "message": "These helpers read private state. Use test/support." }
+              { "regex": "(^|/)src(/|$)", "message": "Import state-viewer and state-viewer/xstate by name." }
             ]
           }
         ],
@@ -176,29 +175,6 @@
     {
       "files": ["packages/state-viewer/bench/**"],
       "rules": { "vitest/expect-expect": "off" }
-    },
-    {
-      // These files were written before the test rules. Never add a file to this list.
-      // When black-box tests replace a file, delete the file and its line.
-      "files": [
-        "packages/state-viewer/test/regressions/finished-connect-subscriber-retention.test.ts",
-        "packages/state-viewer/test/regressions/hook-stop-ends-proxy-subscriptions.test.tsx",
-        "packages/state-viewer/test/regressions/late-subscriber-after-unmount.test.tsx",
-        "packages/state-viewer/test/regressions/preview-listener-lifetime.test.tsx",
-        "packages/state-viewer/test/xstate/helpers.ts"
-      ],
-      "rules": {
-        "no-restricted-imports": "off",
-        "no-restricted-properties": "off",
-        "vitest/no-restricted-matchers": "off",
-        "vitest/expect-expect": "off",
-        "vitest/no-conditional-expect": "off",
-        "vitest/no-standalone-expect": "off",
-        "vitest/require-mock-type-parameters": "off",
-        "vitest/require-to-throw-message": "off",
-        "vitest/valid-describe-callback": "off",
-        "vitest/valid-title": "off"
-      }
     }
   ]
 }

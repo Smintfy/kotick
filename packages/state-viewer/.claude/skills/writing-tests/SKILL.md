@@ -1,13 +1,13 @@
 ---
 name: writing-tests
-description: This skill should be used when writing, changing, porting or reviewing a test in packages/state-viewer, or when oxlint flags a test file there. It covers black-box tests through the public entries, the ban on mocks, exact assertions, file layout, and the legacy list.
+description: This skill should be used when writing, changing, porting or reviewing a test in packages/state-viewer, or when oxlint flags a test file there. It covers black-box tests through the public entries, the ban on mocks, exact assertions and file layout.
 ---
 
 # Writing tests for state-viewer
 
 A test uses state-viewer the way an app does, and asserts what a developer sees. It fails when the behavior breaks,
 and it passes through any refactor that keeps the behavior. oxlint enforces the mechanical part of these rules on every
-test file that is not on the legacy list.
+test file.
 
 ## Rules
 
@@ -106,9 +106,3 @@ These techniques replace a mock. Each one was tried in this package.
   tests. The project also sets `oxc: { jsx: { development: false } }`, because production React has no `jsxDEV`. React
   has no `act` in production, so render with `createRoot`, wait for real time, and click with `element.click()`, because
   Testing Library's events go through `act`.
-
-## The legacy list
-
-The last override in `.oxlintrc.json` lists test files written before these rules. They read private state and use
-mocks. Never add a file to that list. When you change a legacy test, move the behavior it covers into the feature's
-file under these rules, and delete the old test. When a legacy file is empty, delete the file and its line.
