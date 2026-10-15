@@ -5,7 +5,8 @@ import { callListener, toInstanceKey } from '../core/registry';
 import type { Capabilities, MachineHandle, Registry, StateNodeInfo } from '../core/types';
 import { isMachineActor, liveChildren, statusOf, type MachineActor } from './actor';
 import { isFallbackId, resolveMachineId, warnFallbackId, type Identity } from './identity';
-import { getTree, leavesOfSnapshot, normalizeLeaves } from './tree';
+import { normalizeLeaves } from './preview-snapshot';
+import { getTree, leavesOfSnapshot } from './tree';
 
 const PREVIEW_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
   preview: true,
