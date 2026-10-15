@@ -1,6 +1,7 @@
 // What an observer of a proxied actor sees: the proxy's snapshot, and the real actor's ending.
 
 import type { Observer } from 'xstate';
+import { statusOf } from './actor';
 
 /** What a view reads from the actor's binding. */
 export interface ViewSource {
@@ -373,8 +374,4 @@ function isolate(fn: () => void): void {
       throw error;
     });
   }
-}
-
-function statusOf(snapshot: unknown): unknown {
-  return (snapshot as { status?: unknown } | null | undefined)?.status;
 }
