@@ -16,9 +16,10 @@ import {
   type SnapshotFrom,
   type StateFrom,
 } from 'xstate';
+import { isMachineActor } from './actor';
 import { nextInstanceId, resolveMachineId } from './identity';
 import type { HookActorOptions, WithDebug } from './options';
-import { findBinding, getBinding, isMachineActor, isProxy, type Binding, type Registration } from './proxy';
+import { findBinding, getBinding, isProxy, type Binding, type Registration } from './proxy';
 import { createView, createViewMemory, type View, type ViewLifetime, type ViewMemory } from './view';
 
 type ObserverOrListener<T> = Observer<T> | ((value: T) => void);
