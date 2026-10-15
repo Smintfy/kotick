@@ -45,7 +45,7 @@ describe('the shortcut prop', () => {
     await flush();
 
     await press(ALT_S);
-    expect({ open: isOpen(), warnings: [...new Set(output.warn)] }).toEqual({
+    expect({ open: isOpen(), warnings: output.warn }).toEqual({
       open: false,
       warnings: [
         '[state-viewer] Ignoring the shortcut "hyper+s": expected something like "alt+s".',

@@ -159,13 +159,19 @@ export function Overlay(props: OverlayProps) {
   );
 }
 
+// StrictMode and Fast Refresh run the memo again, so each invalid shortcut warns once per page.
+const warnedShortcuts = new Set<string>();
+
 function useShortcut(value: string | false | undefined) {
   const source = value === undefined ? 'alt+s' : value;
   return React.useMemo(() => {
     if (source === false) return undefined;
     const parsed = parseShortcut(source);
     if (!parsed) {
-      console.warn(`[state-viewer] Ignoring the shortcut "${String(source)}": expected something like "alt+s".`);
+      if (!warnedShortcuts.has(source)) {
+        warnedShortcuts.add(source);
+        console.warn(`[state-viewer] Ignoring the shortcut "${String(source)}": expected something like "alt+s".`);
+      }
       return undefined;
     }
     const label = source
