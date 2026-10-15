@@ -181,15 +181,10 @@
       // These files were written before the test rules. Never add a file to this list.
       // When black-box tests replace a file, delete the file and its line.
       "files": [
-        "packages/state-viewer/test/regressions/debug-disabled-during-preview.test.tsx",
-        "packages/state-viewer/test/regressions/debug-disabled-while-hidden.test.tsx",
-        "packages/state-viewer/test/regressions/debug-disabled-without-preview.test.tsx",
-        "packages/state-viewer/test/regressions/debug-toggle-observer-memory.test.tsx",
         "packages/state-viewer/test/regressions/finished-connect-subscriber-retention.test.ts",
         "packages/state-viewer/test/regressions/held-ending-across-actor-replacement.test.tsx",
         "packages/state-viewer/test/regressions/hook-stop-ends-proxy-subscriptions.test.tsx",
         "packages/state-viewer/test/regressions/late-subscriber-after-unmount.test.tsx",
-        "packages/state-viewer/test/regressions/owed-ending-on-debug-disabled.test.tsx",
         "packages/state-viewer/test/regressions/owed-ending-timing.test.tsx",
         "packages/state-viewer/test/regressions/owed-error-across-replacement.test.tsx",
         "packages/state-viewer/test/regressions/preview-listener-lifetime.test.tsx",
