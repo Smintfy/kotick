@@ -181,12 +181,9 @@
       // These files were written before the test rules. Never add a file to this list.
       // When black-box tests replace a file, delete the file and its line.
       "files": [
-        "packages/state-viewer/test/core/deep-link.test.ts",
         "packages/state-viewer/test/core/integration.test.ts",
         "packages/state-viewer/test/core/recording.test.ts",
         "packages/state-viewer/test/core/registry.test.ts",
-        "packages/state-viewer/test/overlay/StateViewer.test.tsx",
-        "packages/state-viewer/test/overlay/model.test.ts",
         "packages/state-viewer/test/overlay/settings.test.ts",
         "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
         "packages/state-viewer/test/regressions/child-final-recording.test.tsx",
@@ -198,7 +195,6 @@
         "packages/state-viewer/test/regressions/debug-disabled-while-hidden.test.tsx",
         "packages/state-viewer/test/regressions/debug-disabled-without-preview.test.tsx",
         "packages/state-viewer/test/regressions/debug-toggle-observer-memory.test.tsx",
-        "packages/state-viewer/test/regressions/deep-link-before-first-paint.test.tsx",
         "packages/state-viewer/test/regressions/errored-child.test.tsx",
         "packages/state-viewer/test/regressions/failed-child-descendants.test.tsx",
         "packages/state-viewer/test/regressions/fallback-id-collision.test.tsx",
