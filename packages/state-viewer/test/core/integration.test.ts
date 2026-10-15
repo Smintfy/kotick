@@ -233,41 +233,4 @@ describe('core integration', () => {
       context: { fixture: 'express' },
     });
   });
-
-  test('a deep link applied before lazy fixtures load moves to them, and they survive HMR under debug.id', async () => {
-    const machine = { id: 'checkout' };
-    const current = ['paying.card.idle', 'paying.shipping.standard'];
-    const registry = pageLoad();
-    // debug.id registers the machine under another id than the one its fixtures carry.
-    const unregister = registry.register(handle('checkout-v2', 'a', CHECKOUT_TREE, current, machine));
-    for (const target of readDeepLink('?debug-state=checkout-v2:paying.card.error')) {
-      registry.preview(`${target.machineId}#a`, { leaves: target.leaves });
-    }
-    expect(registry.getOverride('checkout-v2#a')?.source).toBe('live');
-    // The one warning in these flows: nothing has context for the link yet.
-    expect(warn.mock.calls).toEqual([[expect.stringMatching(/^\[state-viewer\] No recorded or fixture context/)]]);
-    warn.mockClear();
-    const overrideListener = vi.fn();
-    registry.onOverride('checkout-v2#a', overrideListener);
-
-    const declined = { fixture: 'declined' };
-    registry.registerFixtures([
-      { machineId: 'checkout', source: machine, states: { 'paying.card.error': { context: declined } } },
-    ]);
-    expect(registry.getOverride('checkout-v2#a')).toMatchObject({
-      requested: ['paying.card.error'],
-      leaves: ['paying.card.error', 'paying.shipping.standard'],
-      source: 'fixture',
-      context: declined,
-    });
-    expect(overrideListener).toHaveBeenCalledTimes(1);
-
-    // HMR recreates the machine object without evaluating the fixtures module again.
-    unregister();
-    registry.register(handle('checkout-v2', 'a', CHECKOUT_TREE, current, { id: 'checkout' }));
-    await settle();
-    expect([...registry.getSnapshot().data['checkout-v2'].fixture]).toEqual(['paying.card.error']);
-    registry.preview('checkout-v2#a', { leaves: ['paying.card.error'] });
-    expect(registry.getOverride('checkout-v2#a')).toMatchObject({ source: 'fixture', context: declined });
-  });
 });

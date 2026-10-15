@@ -1,13 +1,13 @@
 import type { FixtureSet, MachineHandle } from './types';
 
-export type FixtureTarget = Pick<MachineHandle, 'machineId' | 'source'>;
+type FixtureTarget = Pick<MachineHandle, 'machineId' | 'source'>;
 
 interface FixtureMatch {
   leaf: string;
   context: unknown;
 }
 
-export interface FixtureStore {
+interface FixtureStore {
   /** Adds sets; for the same machine, a later set wins per leaf id. */
   register(sets: FixtureSet[]): void;
   /** The first fixture found: requested leaves in order, then the other normalized leaves. */

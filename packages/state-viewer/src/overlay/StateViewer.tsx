@@ -87,7 +87,7 @@ function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   return host;
 }
 
-export async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
+async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
   let result: unknown;
   try {
     result = typeof input === 'function' ? await input() : input;

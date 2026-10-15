@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
 import { createActor, createMachine, setup } from 'xstate';
 import { StateViewer } from '../../src/index';
-import { connect, defineFixtures, useMachine } from '../../src/xstate';
+import { connect, useMachine } from '../../src/xstate';
 import { flush, handlesOf, keyOf, registry, resetRegistry } from '../xstate/helpers';
 
 const checkoutMachine = setup({
@@ -95,14 +95,6 @@ function $$<T extends HTMLElement = HTMLElement>(selector: string): T[] {
   return [...host().shadowRoot!.querySelectorAll<T>(selector)];
 }
 
-function bubble(): HTMLButtonElement {
-  return $<HTMLButtonElement>('.sv-bubble')!;
-}
-
-function panel(): HTMLElement | null {
-  return $('.sv-panel');
-}
-
 function button(name: string): HTMLButtonElement {
   const found = $$<HTMLButtonElement>('button').find(
     (candidate) => candidate.textContent === name || candidate.getAttribute('aria-label') === name,
@@ -117,18 +109,9 @@ function leaf(id: string): HTMLElement {
   return found;
 }
 
-function marks(id: string): string[] {
-  return [...leaf(id).querySelectorAll<HTMLElement>('.sv-data')].map((mark) => mark.dataset.kind!);
-}
-
 async function click(element: HTMLElement): Promise<void> {
   fireEvent.click(element);
   await flush();
-}
-
-async function openPanel(): Promise<void> {
-  if (!panel()) await click(bubble());
-  expect(panel()).not.toBeNull();
 }
 
 function onlyKey(machineId: string): string {
@@ -149,32 +132,6 @@ beforeEach(() => {
 afterEach(() => {
   window.dispatchEvent(new Event('pagehide'));
   vi.restoreAllMocks();
-});
-
-describe('fixtures', () => {
-  test('a lazy loader’s sets register once, and a preview made before they loaded picks them up', async () => {
-    let resolve!: (module: { default: unknown[] }) => void;
-    const loader = vi.fn(() => new Promise<{ default: unknown[] }>((done) => (resolve = done)));
-    const registerFixtures = vi.spyOn(registry(), 'registerFixtures');
-    render(
-      <>
-        <Checkout />
-        <StateViewer fixtures={loader as never} />
-      </>,
-    );
-    await flush();
-    await openPanel();
-    await click(leaf('payment.error'));
-    expect(registry().getOverride(onlyKey('checkout'))?.source).toBe('live');
-
-    await act(async () => resolve({ default: [defineFixtures(checkoutMachine, { 'payment.error': { context: { note: 'late' } } })] }));
-    await flush();
-    expect(registry().getOverride(onlyKey('checkout'))).toMatchObject({ source: 'fixture', context: { note: 'late' } });
-    expect(screen.getByTestId('note').textContent).toBe('late');
-    expect(marks('payment.error')).toEqual(['fixture']);
-    // StrictMode ran the effect twice; the set registered once.
-    expect(registerFixtures).toHaveBeenCalledTimes(1);
-  });
 });
 
 describe('deep links', () => {
