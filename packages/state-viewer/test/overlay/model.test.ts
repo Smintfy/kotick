@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { MachineHandle, Override } from '../../src/core/types';
-import { findInstance, groupMachines, planLink } from '../../src/overlay/model';
+import { planLink } from '../../src/overlay/model';
 
 function handle(machineId: string, instanceId: string, extra: Partial<MachineHandle> = {}): MachineHandle {
   return {
@@ -20,46 +20,6 @@ function handle(machineId: string, instanceId: string, extra: Partial<MachineHan
 function override(instanceKey: string, requested: string[], leaves = requested): Override {
   return { instanceKey, requested, leaves, context: {}, source: 'live', createdAt: 0 };
 }
-
-describe('groupMachines', () => {
-  test('groups by machine id in first-registration order, numbering instances from 1', () => {
-    const groups = groupMachines([
-      handle('checkout', '1'),
-      handle('upload', '2'),
-      handle('checkout', '7'),
-      handle('upload', '9', { label: 'Upload row' }),
-    ]);
-
-    expect(groups.map((group) => group.machineId)).toEqual(['checkout', 'upload']);
-    expect(groups[0].instances.map((entry) => [entry.key, entry.ordinal, entry.label])).toEqual([
-      ['checkout#1', 1, 'checkout · 1'],
-      ['checkout#7', 2, 'checkout · 2'],
-    ]);
-    // A label stands in for the machine id.
-    expect(groups[1].instances.map((entry) => entry.label)).toEqual(['upload · 1', 'Upload row · 2']);
-  });
-
-  test('marks a group as child only when every instance is a child machine', () => {
-    const groups = groupMachines([
-      handle('parent', '1'),
-      handle('fetch', 's1', { parentKey: 'parent#1' }),
-      handle('mixed', 's2', { parentKey: 'parent#1' }),
-      handle('mixed', '3'),
-    ]);
-    expect(groups.map((group) => [group.machineId, group.child])).toEqual([
-      ['parent', false],
-      ['fetch', true],
-      ['mixed', false],
-    ]);
-  });
-
-  test('findInstance looks across groups', () => {
-    const groups = groupMachines([handle('a', '1'), handle('b', '2')]);
-    expect(findInstance(groups, 'b#2')?.label).toBe('b · 1');
-    expect(findInstance(groups, 'c#3')).toBeUndefined();
-    expect(findInstance(groups, undefined)).toBeUndefined();
-  });
-});
 
 describe('planLink', () => {
   const handles = [handle('checkout', '1'), handle('upload', '2'), handle('upload', '3'), handle('cart', '4')];

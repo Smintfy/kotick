@@ -627,7 +627,7 @@ const EMPTY_SNAPSHOT: RegistrySnapshot = /* @__PURE__ */ freeze({
 });
 
 /** A registry that does nothing, for the server. */
-export function createNoopRegistry(): Registry {
+function createNoopRegistry(): Registry {
   return {
     version: VERSION,
     register: () => noop,

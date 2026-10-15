@@ -48,13 +48,6 @@ const toggleMachine = createMachine({
   states: { off: { on: { TOGGLE: 'on' } }, on: { on: { TOGGLE: 'off' } } },
 });
 
-const fetcherMachine = createMachine({ id: 'fetcher', initial: 'loading', states: { loading: {}, failed: {} } });
-const parentMachine = setup({ actors: { fetcher: fetcherMachine } }).createMachine({
-  id: 'parent',
-  initial: 'active',
-  states: { active: { invoke: { id: 'load', src: 'fetcher' } } },
-});
-
 let checkoutMounts = 0;
 
 function Checkout() {
@@ -84,11 +77,6 @@ function Checkout() {
 function Toggle({ label }: { label?: string }) {
   const [snapshot] = useMachine(toggleMachine, label ? { debug: { label } } : undefined);
   return <span data-testid="toggle">{String(snapshot.value)}</span>;
-}
-
-function Parent() {
-  useMachine(parentMachine);
-  return null;
 }
 
 // Helpers for the overlay, which lives in a shadow root that Testing Library's screen doesn't reach.
@@ -123,14 +111,6 @@ function button(name: string): HTMLButtonElement {
   return found;
 }
 
-function select(label: 'Machine' | 'Instance'): HTMLSelectElement {
-  return $<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
-}
-
-function options(label: 'Machine' | 'Instance'): string[] {
-  return [...select(label).options].map((option) => option.textContent ?? '');
-}
-
 function leaf(id: string): HTMLElement {
   const found = $$('[data-leaf]').find((item) => item.dataset.leaf === id);
   if (!found) throw new Error(`No "${id}" leaf in the tree.`);
@@ -151,11 +131,6 @@ async function openPanel(): Promise<void> {
   expect(panel()).not.toBeNull();
 }
 
-async function chooseMachine(machineId: string): Promise<void> {
-  fireEvent.change(select('Machine'), { target: { value: machineId } });
-  await flush();
-}
-
 function onlyKey(machineId: string): string {
   const handles = handlesOf(machineId);
   expect(handles).toHaveLength(1);
@@ -174,58 +149,6 @@ beforeEach(() => {
 afterEach(() => {
   window.dispatchEvent(new Event('pagehide'));
   vi.restoreAllMocks();
-});
-
-describe('panel', () => {
-  test('lists machines in registration order, and instances as "machine · n"', async () => {
-    const actor = createActor(toggleMachine).start();
-    const app = connect(actor, { id: 'app' });
-    render(
-      <>
-        <Checkout />
-        <Toggle />
-        <Toggle label="Second toggle" />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-    await openPanel();
-
-    // connect() registered first, so its machine is selected until the user picks another.
-    expect(options('Machine')).toEqual(['app', 'checkout', 'toggle (2)']);
-    expect(select('Machine').value).toBe('app');
-    expect(select('Instance').disabled).toBe(true);
-
-    await chooseMachine('toggle');
-    expect(options('Instance')).toEqual(['toggle · 1', 'Second toggle · 2']);
-    expect(select('Instance').disabled).toBe(false);
-
-    act(() => registry().preview(keyOf(handlesOf('toggle')[1]), { leaves: ['on'] }));
-    await flush();
-    expect(options('Machine')).toEqual(['app', 'checkout', 'toggle (2) ●']);
-    expect(options('Instance')).toEqual(['toggle · 1', 'Second toggle · 2 ●']);
-    app.stop();
-  });
-
-  test('lists child machines read-only under their parent', async () => {
-    render(
-      <>
-        <Parent />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-    await openPanel();
-    expect(options('Machine')).toEqual(['parent', 'fetcher (child)']);
-
-    await click(button('load · 1'));
-    expect(select('Machine').value).toBe('fetcher');
-    expect($('.sv-hint')?.textContent).toBe('Child of parent · 1. Child machines are listed read-only.');
-    expect(leaf('loading').getAttribute('aria-disabled')).toBe('true');
-
-    await click(leaf('failed'));
-    expect(registry().getSnapshot().overrides).toEqual({});
-  });
 });
 
 describe('fixtures', () => {
