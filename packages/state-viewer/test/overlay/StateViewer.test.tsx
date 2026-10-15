@@ -172,15 +172,13 @@ function onlyKey(machineId: string): string {
   return keyOf(handles[0]);
 }
 
-let warn: MockInstance<typeof console.warn>;
-
 beforeEach(() => {
   resetRegistry();
   localStorage.clear();
   window.history.replaceState(null, '', '/');
   checkoutMounts = 0;
   // Previews of states without a recording or fixture warn about falling back to live context.
-  warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -671,149 +669,6 @@ describe('deep links', () => {
     );
     await flush();
     expect(screen.getByTestId('toggle').textContent).toBe('off');
-  });
-});
-
-describe('keyboard', () => {
-  test('Alt+S toggles the panel from anywhere except while typing', async () => {
-    render(
-      <>
-        <Checkout />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-
-    fireEvent.keyDown(screen.getByLabelText('Card number'), { key: 's', code: 'KeyS', altKey: true });
-    await flush();
-    expect(panel()).toBeNull();
-
-    const outside = screen.getByRole('button', { name: 'Retry' });
-    outside.focus();
-    fireEvent.keyDown(outside, { key: 'ß', code: 'KeyS', altKey: true });
-    await flush();
-    expect(panel()).not.toBeNull();
-    // Focus moves into the panel, on the tree's tab stop, so its keys work at once.
-    expect(host().shadowRoot!.activeElement).toBe(leaf('shipping.standard'));
-
-    fireEvent.keyDown(host().shadowRoot!.activeElement!, { key: 's', code: 'KeyS', altKey: true });
-    await flush();
-    expect(panel()).toBeNull();
-    // Back where the shortcut was pressed.
-    expect(document.activeElement).toBe(outside);
-  });
-
-  test('the shortcut can be changed or turned off', async () => {
-    const { rerender } = render(<StateViewer shortcut="ctrl+shift+d" />);
-    await flush();
-    fireEvent.keyDown(window, { key: 's', code: 'KeyS', altKey: true });
-    await flush();
-    expect(panel()).toBeNull();
-    fireEvent.keyDown(window, { key: 'D', code: 'KeyD', ctrlKey: true, shiftKey: true });
-    await flush();
-    expect(panel()).not.toBeNull();
-    expect(button('Close').title).toBe('Close (Ctrl+Shift+D)');
-
-    rerender(<StateViewer shortcut={false} />);
-    fireEvent.keyDown(window, { key: 'D', code: 'KeyD', ctrlKey: true, shiftKey: true });
-    await flush();
-    expect(panel()).not.toBeNull();
-
-    rerender(<StateViewer shortcut="hyper+x" />);
-    await flush();
-    expect(warn).toHaveBeenCalledWith('[state-viewer] Ignoring the shortcut "hyper+x": expected something like "alt+s".');
-  });
-
-  test('arrows move through the leaves, Enter previews or releases, Escape releases all', async () => {
-    render(
-      <>
-        <Checkout />
-        <Toggle />
-        <StateViewer />
-      </>,
-    );
-    await flush();
-    act(() => registry().preview(onlyKey('toggle'), { leaves: ['on'] }));
-    fireEvent.keyDown(window, { key: 's', code: 'KeyS', altKey: true });
-    await flush();
-    const focused = () => host().shadowRoot!.activeElement as HTMLElement;
-    expect(focused().dataset.leaf).toBe('shipping.standard');
-
-    fireEvent.keyDown(focused(), { key: 'ArrowDown' });
-    fireEvent.keyDown(focused(), { key: 'ArrowDown' });
-    fireEvent.keyDown(focused(), { key: 'ArrowUp' });
-    await flush();
-    expect(focused().dataset.leaf).toBe('shipping.express');
-    expect(focused().tabIndex).toBe(0);
-    expect(leaf('shipping.standard').tabIndex).toBe(-1);
-
-    fireEvent.keyDown(focused(), { key: 'End' });
-    await flush();
-    expect(focused().dataset.leaf).toBe('payment.success');
-    fireEvent.keyDown(focused(), { key: 'Enter' });
-    await flush();
-    expect(registry().getOverride(onlyKey('checkout'))?.requested).toEqual(['payment.success']);
-    fireEvent.keyDown(focused(), { key: 'Enter' });
-    await flush();
-    expect(registry().getOverride(onlyKey('checkout'))).toBeUndefined();
-
-    // Keys that a control handles itself stay with it.
-    fireEvent.keyDown(select('Machine'), { key: 'ArrowDown' });
-    fireEvent.keyDown(button('Close'), { key: 'Enter' });
-    await flush();
-    expect(registry().getOverride(onlyKey('checkout'))).toBeUndefined();
-
-    fireEvent.keyDown(focused(), { key: 'Home' });
-    fireEvent.keyDown(focused(), { key: 'Enter' });
-    await flush();
-    expect(Object.keys(registry().getSnapshot().overrides)).toHaveLength(2);
-    fireEvent.keyDown(focused(), { key: 'Escape' });
-    await flush();
-    expect(registry().getSnapshot().overrides).toEqual({});
-  });
-
-  test('[ and ] switch to the previous and next machine', async () => {
-    render(
-      <>
-        <Checkout />
-        <Toggle />
-        <Parent />
-        <StateViewer defaultOpen />
-      </>,
-    );
-    await flush();
-    expect(select('Machine').value).toBe('checkout');
-
-    fireEvent.keyDown(panel()!, { key: ']' });
-    await flush();
-    expect(select('Machine').value).toBe('toggle');
-    fireEvent.keyDown(panel()!, { key: '[' });
-    fireEvent.keyDown(panel()!, { key: '[' });
-    await flush();
-    expect(select('Machine').value).toBe('fetcher');
-  });
-
-  test('switching machines from the tree keeps focus in the new tree', async () => {
-    render(
-      <>
-        <Checkout />
-        <Toggle />
-        <StateViewer defaultOpen />
-      </>,
-    );
-    await flush();
-    leaf('payment.error').focus();
-
-    fireEvent.keyDown(leaf('payment.error'), { key: ']' });
-    await flush();
-    expect(select('Machine').value).toBe('toggle');
-    // The live leaf is the new tab stop.
-    expect(host().shadowRoot!.activeElement).toBe(leaf('off'));
-
-    fireEvent.keyDown(leaf('off'), { key: '[' });
-    await flush();
-    expect(select('Machine').value).toBe('checkout');
-    expect(host().shadowRoot!.activeElement).toBe(leaf('shipping.standard'));
   });
 });
 

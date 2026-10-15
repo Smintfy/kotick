@@ -1,14 +1,72 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { StateViewer } from 'state-viewer';
+import { useMachine } from 'state-viewer/xstate';
 import { describe, expect, test } from 'vitest';
+import { createMachine, setup, type AnyStateMachine } from 'xstate';
 import { watchConsole } from './support/console';
-import { flush, isOpen } from './support/panel';
+import { flush, freshId, isOpen, overlay, panel, preview, show } from './support/panel';
 
 const ALT_S = { key: 's', code: 'KeyS', altKey: true };
 
 async function press(init: KeyboardEventInit, target: Window | Element = window) {
   fireEvent.keyDown(target, init);
   await flush();
+}
+
+function createCheckoutMachine() {
+  return createMachine({
+    id: freshId('checkout'),
+    type: 'parallel',
+    states: {
+      shipping: { initial: 'standard', states: { standard: {}, express: {} } },
+      payment: { initial: 'editing', states: { editing: {}, processing: {}, error: {}, success: { type: 'final' } } },
+    },
+  });
+}
+
+function createToggleMachine() {
+  return createMachine({ id: freshId('toggle'), initial: 'off', states: { off: {}, on: {} } });
+}
+
+function Run({ machine }: { machine: AnyStateMachine }) {
+  useMachine(machine);
+  return null;
+}
+
+/** The element that has focus inside the overlay. */
+function focusedInOverlay(): HTMLElement {
+  const focused = overlay().activeElement;
+  if (!(focused instanceof HTMLElement)) throw new Error('Nothing in the overlay has focus.');
+  return focused;
+}
+
+/** The leaf that has focus, or `none`. */
+function focusedLeaf(): string {
+  return (overlay().activeElement as HTMLElement | null)?.dataset.leaf ?? 'none';
+}
+
+/** The leaf in the tab order. Tab moves into the tree there. */
+function tabStop(): HTMLElement {
+  const stop = overlay().querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+  if (!stop) throw new Error('The tree has no tab stop.');
+  return stop;
+}
+
+/** Every leaf in the tab order. The tree has one. */
+function tabStops(): string {
+  return [...overlay().querySelectorAll<HTMLElement>('[role="treeitem"][tabindex="0"]')]
+    .map((stop) => stop.dataset.leaf)
+    .join(', ');
+}
+
+function control(selector: string): HTMLElement {
+  const found = overlay().querySelector<HTMLElement>(selector);
+  if (!found) throw new Error(`Nothing in the overlay matches ${selector}.`);
+  return found;
+}
+
+function shownMachine(): string | null | undefined {
+  return overlay().querySelector<HTMLSelectElement>('select[aria-label="Machine"]')?.selectedOptions[0]?.textContent;
 }
 
 test('Alt+S opens the panel, and closes it again', async () => {
@@ -62,6 +120,176 @@ describe('the shortcut prop', () => {
 
     await press(ALT_S);
     expect({ open: isOpen(), warnings: output.warn }).toEqual({ open: false, warnings: [] });
+  });
+
+  test('the tooltips of the bubble and the Close button name the shortcut', async () => {
+    const tooltips = () => ({
+      bubble: control('button[aria-expanded]').title,
+      close: control('button[aria-label="Close"]').title,
+    });
+    const { rerender } = render(<StateViewer defaultOpen />);
+    await flush();
+
+    const seen = [tooltips()];
+    rerender(<StateViewer defaultOpen shortcut="ctrl+shift+d" />);
+    seen.push(tooltips());
+    rerender(<StateViewer defaultOpen shortcut={false} />);
+    seen.push(tooltips());
+    expect(seen).toEqual([
+      { bubble: 'State viewer (Alt+S)', close: 'Close (Alt+S)' },
+      { bubble: 'State viewer (Ctrl+Shift+D)', close: 'Close (Ctrl+Shift+D)' },
+      { bubble: 'State viewer', close: 'Close' },
+    ]);
+  });
+});
+
+describe('focus', () => {
+  test('opening with the shortcut puts focus on the tree, and closing gives it back where the shortcut was pressed', async () => {
+    const machine = createCheckoutMachine();
+    render(
+      <>
+        <Run machine={machine} />
+        <button type="button">Pay</button>
+        <StateViewer />
+      </>,
+    );
+    await flush();
+    const pay = screen.getByRole('button', { name: 'Pay' });
+    pay.focus();
+
+    await press(ALT_S, pay);
+    const opened = { open: isOpen(), focus: focusedLeaf() };
+    await press(ALT_S, focusedInOverlay());
+    expect({ opened, closed: { open: isOpen(), focus: document.activeElement?.textContent } }).toEqual({
+      opened: { open: true, focus: 'shipping.standard' },
+      closed: { open: false, focus: 'Pay' },
+    });
+  });
+
+  test('[ and ] from the tree keep focus in the tree of the machine they show, on its tab stop', async () => {
+    const checkout = createCheckoutMachine();
+    const toggle = createToggleMachine();
+    render(
+      <>
+        <Run machine={checkout} />
+        <Run machine={toggle} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    tabStop().focus();
+
+    const seen: { machine: unknown; focus: string }[] = [];
+    for (const key of [']', '[']) {
+      await press({ key }, overlay().activeElement ?? document.body);
+      seen.push({ machine: shownMachine(), focus: focusedLeaf() });
+    }
+    expect(seen).toEqual([
+      { machine: toggle.id, focus: 'off' },
+      { machine: checkout.id, focus: 'shipping.standard' },
+    ]);
+  });
+});
+
+describe('in the panel', () => {
+  test('arrows, Home and End move through the leaves, Enter previews or releases one, and Escape releases all', async () => {
+    const checkout = createCheckoutMachine();
+    const toggle = createToggleMachine();
+    render(
+      <>
+        <Run machine={checkout} />
+        <Run machine={toggle} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    await preview(toggle.id, ['on']);
+    await show(checkout.id);
+    tabStop().focus();
+
+    // The bubble names the number of previews on the page.
+    const none = 'State viewer';
+    const one = 'State viewer, 1 preview active';
+    const two = 'State viewer, 2 previews active';
+    const step = (key: string) => ({
+      key,
+      focus: focusedLeaf(),
+      stops: tabStops(),
+      previewed: panel().previewed,
+      bubble: control('button[aria-expanded]').getAttribute('aria-label'),
+    });
+    const steps = [step('start')];
+    // A control keeps the keys it handles itself: arrows change a select, and Enter clicks a button.
+    const keys: [string, HTMLElement?][] = [
+      ['ArrowDown'],
+      ['ArrowDown'],
+      ['ArrowUp'],
+      ['ArrowDown', control('select[aria-label="Machine"]')],
+      ['Enter', control('button[aria-label="Close"]')],
+      ['End'],
+      ['Enter'],
+      ['Enter'],
+      ['Home'],
+      ['Enter'],
+      ['Escape'],
+    ];
+    for (const [key, target] of keys) {
+      await press({ key }, target ?? focusedInOverlay());
+      steps.push(step(target ? `${key} on ${target.localName}` : key));
+    }
+    expect(steps).toEqual([
+      { key: 'start', focus: 'shipping.standard', stops: 'shipping.standard', previewed: [], bubble: one },
+      { key: 'ArrowDown', focus: 'shipping.express', stops: 'shipping.express', previewed: [], bubble: one },
+      { key: 'ArrowDown', focus: 'payment.editing', stops: 'payment.editing', previewed: [], bubble: one },
+      { key: 'ArrowUp', focus: 'shipping.express', stops: 'shipping.express', previewed: [], bubble: one },
+      { key: 'ArrowDown on select', focus: 'shipping.express', stops: 'shipping.express', previewed: [], bubble: one },
+      { key: 'Enter on button', focus: 'shipping.express', stops: 'shipping.express', previewed: [], bubble: one },
+      { key: 'End', focus: 'payment.success', stops: 'payment.success', previewed: [], bubble: one },
+      {
+        key: 'Enter',
+        focus: 'payment.success',
+        stops: 'payment.success',
+        previewed: ['payment.success'],
+        bubble: two,
+      },
+      { key: 'Enter', focus: 'payment.success', stops: 'payment.success', previewed: [], bubble: one },
+      { key: 'Home', focus: 'shipping.standard', stops: 'shipping.standard', previewed: [], bubble: one },
+      {
+        key: 'Enter',
+        focus: 'shipping.standard',
+        stops: 'shipping.standard',
+        previewed: ['shipping.standard'],
+        bubble: two,
+      },
+      { key: 'Escape', focus: 'shipping.standard', stops: 'shipping.standard', previewed: [], bubble: none },
+    ]);
+  });
+
+  test('[ and ] show the previous and next machine, and wrap around', async () => {
+    const checkout = createCheckoutMachine();
+    const toggle = createToggleMachine();
+    const fetcher = createMachine({ id: freshId('fetcher'), initial: 'loading', states: { loading: {}, failed: {} } });
+    const parent = setup({ actors: { fetcher } }).createMachine({
+      id: freshId('parent'),
+      initial: 'active',
+      states: { active: { invoke: { id: 'load', src: 'fetcher' } } },
+    });
+    render(
+      <>
+        <Run machine={checkout} />
+        <Run machine={toggle} />
+        <Run machine={parent} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+
+    const shown = [shownMachine()];
+    for (const key of [']', '[', '[']) {
+      await press({ key }, control('.sv-panel'));
+      shown.push(shownMachine());
+    }
+    expect(shown).toEqual([checkout.id, toggle.id, checkout.id, `${fetcher.id} (child)`]);
   });
 });
 
