@@ -15,7 +15,7 @@ interface ParsedDeepLink {
 }
 
 /** Parses a raw parameter value, before any percent-decoding. */
-export function parseDeepLink(raw: string): ParsedDeepLink {
+function parseDeepLink(raw: string): ParsedDeepLink {
   const errors: string[] = [];
   let value = raw.replace(/\+/g, ' ');
   // A valid value always contains ':', so one without it went through URLSearchParams, which encodes ':' as %3A.
@@ -77,7 +77,7 @@ export function parseDeepLink(raw: string): ParsedDeepLink {
 }
 
 /** Serializes targets into a raw parameter value that is safe to put in a query string. */
-export function serializeDeepLink(targets: DeepLinkTarget[]): string {
+function serializeDeepLink(targets: DeepLinkTarget[]): string {
   // encodeURIComponent keeps dots and parentheses readable but escapes the separators ':' ';' ','.
   return targets
     .filter((target) => target.leaves.length > 0)

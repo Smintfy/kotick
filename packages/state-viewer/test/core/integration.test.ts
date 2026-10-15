@@ -2,9 +2,8 @@
 // sessionStorage-like storage shared across page loads, and deep links driving previews.
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
 import { STORAGE_PREFIX } from '../../src/core/recording';
-import { createRegistry, toInstanceKey, type RegistryOptions } from '../../src/core/registry';
+import { createRegistry, type RegistryOptions } from '../../src/core/registry';
 import type { MachineHandle, Registry, StateNodeInfo, StateNodeType } from '../../src/core/types';
-import { readDeepLink, writeDeepLink } from '../../src/overlay/deep-link';
 
 function node(id: string, type: StateNodeType, children: StateNodeInfo[] = []): StateNodeInfo {
   return { id, key: id.slice(id.lastIndexOf('.') + 1), type, children };
@@ -21,8 +20,6 @@ const CHECKOUT_TREE: StateNodeInfo[] = [
   ]),
   node('done', 'final'),
 ];
-
-const CART_TREE: StateNodeInfo[] = [node('empty', 'atomic'), node('filled', 'atomic')];
 
 /** Fills an untouched parallel region with the actor's current leaf there, as the XState adapter does. */
 function fillRegions(target: string[], current: string[]): string[] {
@@ -138,99 +135,6 @@ describe('core integration', () => {
       leaves: ['paying.card.error', 'paying.shipping.standard'],
       source: 'recorded',
       context: { attempt: 3 },
-    });
-  });
-
-  test('a deep link previews every instance of each machine, following the normal resolution order', async () => {
-    const checkout = { definition: 'checkout' };
-    const registry = pageLoad();
-    // Fixtures written with defineFixtures match the machine object even under another id (debug.id).
-    registry.registerFixtures([
-      { machineId: 'checkout-machine', source: checkout, states: { 'paying.card.error': { context: { fixture: 1 } } } },
-    ]);
-    const current = ['paying.card.idle', 'paying.shipping.standard'];
-    registry.register(handle('checkout', 'a', CHECKOUT_TREE, current, checkout));
-    registry.register(handle('checkout', 'b', CHECKOUT_TREE, ['browsing'], checkout));
-    registry.register(handle('cart', 'a', CART_TREE, ['filled']));
-    registry.record('cart#a', ['empty'], { items: [] });
-    await settle();
-
-    const search = writeDeepLink('?tab=2', [
-      { machineId: 'checkout', leaves: ['paying.card.error', 'paying.shipping.express'] },
-      { machineId: 'cart', leaves: ['empty'] },
-    ]);
-    expect(search).toBe('?tab=2&debug-state=checkout:paying.card.error;paying.shipping.express,cart:empty');
-
-    const listener = vi.fn();
-    registry.subscribe(listener);
-    for (const target of readDeepLink(search)) {
-      for (const machine of registry.getSnapshot().machines) {
-        if (machine.machineId !== target.machineId) continue;
-        registry.preview(toInstanceKey(machine.machineId, machine.instanceId), { leaves: target.leaves });
-      }
-    }
-
-    const { overrides } = registry.getSnapshot();
-    expect(Object.keys(overrides)).toEqual(['checkout#a', 'checkout#b', 'cart#a']);
-    for (const key of ['checkout#a', 'checkout#b']) {
-      expect(overrides[key]).toMatchObject({
-        requested: ['paying.card.error', 'paying.shipping.express'],
-        leaves: ['paying.card.error', 'paying.shipping.express'],
-        source: 'fixture',
-        context: { fixture: 1 },
-      });
-    }
-    expect(overrides['cart#a']).toMatchObject({ leaves: ['empty'], source: 'recorded', context: { items: [] } });
-    await settle();
-    expect(listener).toHaveBeenCalledTimes(1);
-
-    const blocked = {
-      instanceKey: 'cart#a',
-      event: { type: 'ADD_ITEM' },
-      leaves: ['empty'],
-      blocked: true,
-      at: 99,
-    };
-    registry.logEvent(blocked);
-    registry.release();
-    await settle();
-    expect(listener).toHaveBeenCalledTimes(2);
-    expect(registry.getSnapshot().overrides).toEqual({});
-    expect(registry.getSnapshot().log).toEqual([blocked]);
-  });
-
-  test('a link copied from a preview reproduces it after a reload, whatever order normalizeTarget returns', () => {
-    const states = {
-      'paying.card.idle': { context: { fixture: 'idle' } },
-      'paying.shipping.express': { context: { fixture: 'express' } },
-    };
-    const load = (current: string[]) => {
-      const registry = pageLoad();
-      registry.registerFixtures([{ machineId: 'checkout', states }]);
-      // Document order (alphabetical here), as an adapter that converts through a state value returns it.
-      const normalizeTarget = (target: string[]) => fillRegions(target, current).sort();
-      registry.register({ ...handle('checkout', 'a', CHECKOUT_TREE, current), normalizeTarget });
-      return registry;
-    };
-
-    const first = load(['paying.card.idle', 'paying.shipping.standard']);
-    first.preview('checkout#a', { leaves: ['paying.shipping.express'] });
-    const override = first.getOverride('checkout#a');
-    expect(override).toMatchObject({
-      requested: ['paying.shipping.express'],
-      leaves: ['paying.shipping.express', 'paying.card.idle'],
-      context: { fixture: 'express' },
-    });
-    // Copy link writes the requested leaves.
-    const search = writeDeepLink('', [{ machineId: 'checkout', leaves: [...(override?.requested ?? [])] }]);
-
-    // The untouched region follows the instance's own state after the reload.
-    const second = load(['paying.card.error', 'paying.shipping.standard']);
-    for (const target of readDeepLink(search)) second.preview(`${target.machineId}#a`, { leaves: target.leaves });
-    expect(second.getOverride('checkout#a')).toMatchObject({
-      requested: override?.requested,
-      leaves: ['paying.shipping.express', 'paying.card.error'],
-      context: { fixture: 'express' },
     });
   });
 });

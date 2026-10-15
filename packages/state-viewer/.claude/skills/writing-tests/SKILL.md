@@ -68,6 +68,13 @@ These techniques replace a mock. Each one was tried in this package.
 - **An edit to a machine, as Fast Refresh makes it.** jsdom has no React Refresh. Make the machine in a function, and
   `rerender()` the app with a machine that the function makes again, with the same id. @xstate/react starts the new
   actor from the old one's snapshot, so the live state carries over, as it does in the browser.
+- **A deep link.** Call `history.replaceState(null, '', '/?debug-state=<id>:<leaf>')` before the render, and give the
+  machine a fresh id. The overlay applies each search once per page, so a test never reuses another test's link.
+- **The first paint.** Mount with `createRoot` and without `act`: set `IS_REACT_ACT_ENVIRONMENT` to false for the
+  mount. Read the DOM in a microtask that a layout effect queues, at the end of the task that commits the mount, where
+  the browser paints. StrictMode can hide a late update, so also mount without it.
+- **`<Activity>`.** React 18 has no `React.Activity`, so put its tests in `describe.runIf('Activity' in React)`. A hidden
+  Activity runs the cleanup of its components' effects, so their instances unregister until it shows them again.
 - **The real actor moves on during a preview.** A preview blocks the events that the app sends through the hook's
   actor. Send to the real actor instead: give `useMachine` a `systemId` and call `actor.system.get(systemId).send()`,
   or start the actor in the test, show `connect(actor)`, and send to `actor`.
