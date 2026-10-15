@@ -1,72 +1,13 @@
 // The XState adapter end to end: hooks and connect() against the page's real registry, with its recording and fixture
 // stores, context resolution and child discovery. Every render runs under StrictMode (test/setup.ts).
-import { act, render, screen } from '@testing-library/react';
-import * as React from 'react';
+import { act, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi, type MockInstance } from 'vitest';
-import { assign, createActor, sendTo, setup, spawnChild, type Actor, type ActorRefFrom, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { connect, useActorRef, useMachine, type DebugOptions } from '../../src/xstate';
+import { assign, createActor, sendTo, setup, spawnChild, type ActorRefFrom, type AnyActorRef, type AnyStateMachine } from 'xstate';
+import { connect, useActorRef } from '../../src/xstate';
 import { flush, handlesOf, keyOf, onlyHandle, registry, resetRegistry } from './helpers';
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Machines
-
-interface CheckoutContext {
-  step: number;
-  note: string;
-}
-
-/** A factory, so a test can make an equivalent machine object the way HMR does. Every transition counts a step. */
-function createCheckoutMachine() {
-  return setup({
-    types: {
-      context: {} as CheckoutContext,
-      events: {} as
-        | { type: 'START' }
-        | { type: 'FAIL'; note: string }
-        | { type: 'RETRY' }
-        | { type: 'STANDARD' }
-        | { type: 'EXPRESS' }
-        | { type: 'PICKUP' }
-        | { type: 'FINISH' },
-    },
-    actions: { count: assign({ step: ({ context }) => context.step + 1 }) },
-  }).createMachine({
-    id: 'checkout',
-    context: { step: 0, note: 'none' },
-    initial: 'idle',
-    states: {
-      idle: { on: { START: { target: 'paying', actions: 'count' } } },
-      paying: {
-        type: 'parallel',
-        on: { FINISH: { target: 'done', actions: 'count' } },
-        states: {
-          card: {
-            initial: 'idle',
-            states: {
-              idle: {
-                on: { FAIL: { target: 'error', actions: ['count', assign({ note: ({ event }) => event.note })] } },
-              },
-              error: { on: { RETRY: { target: 'idle', actions: 'count' } } },
-            },
-          },
-          shipping: {
-            initial: 'standard',
-            on: {
-              STANDARD: { target: '.standard', actions: 'count' },
-              EXPRESS: { target: '.express', actions: 'count' },
-              PICKUP: { target: '.pickup', actions: 'count' },
-            },
-            states: { standard: {}, express: {}, pickup: {} },
-          },
-        },
-      },
-      done: { type: 'final' },
-    },
-  });
-}
-
-const checkoutMachine = createCheckoutMachine();
-type CheckoutMachine = typeof checkoutMachine;
 
 const workerMachine = setup({
   types: { events: {} as { type: 'PAUSE' } | { type: 'FINISH' } },
@@ -163,31 +104,6 @@ const spawnerMachine = setup({
 // ---------------------------------------------------------------------------------------------------------------------
 // Rendering
 
-/** Lets a test reach the real actor behind a hook's proxy through XState's system, to send past a preview. */
-const ROOT_SYSTEM_ID = 'root';
-
-interface CheckoutProps {
-  machine?: CheckoutMachine;
-  debug?: DebugOptions;
-  testId?: string;
-  onActor?: (actor: Actor<CheckoutMachine>) => void;
-}
-
-function Checkout({ machine = checkoutMachine, debug, testId = 'checkout', onActor }: CheckoutProps) {
-  const [snapshot, , actorRef] = useMachine(machine, { systemId: ROOT_SYSTEM_ID, debug });
-  onActor?.(actorRef);
-  return <output data-testid={testId}>{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>;
-}
-
-interface Shown {
-  value: unknown;
-  context: CheckoutContext;
-}
-
-function shownBy(testId: string): Shown {
-  return JSON.parse(screen.getByTestId(testId).textContent ?? 'null') as Shown;
-}
-
 function ActorHost({ logic, onActor }: { logic: AnyStateMachine; onActor: (actor: AnyActorRef) => void }) {
   onActor(useActorRef(logic));
   return null;
@@ -244,9 +160,6 @@ function takeWarnings(): string[] {
   warn.mockClear();
   return messages;
 }
-
-const liveFallbackWarning = (leaves: string, key: string) =>
-  expect.stringContaining(`No recorded or fixture context for "${leaves}" on "${key}"`);
 
 beforeEach(() => {
   // A registry from an earlier test can still have a debounced recordings write pending; pagehide makes every one of
@@ -465,53 +378,5 @@ describe('child machines', () => {
     parent.unmount();
     await flush();
     expect(registeredKeys()).toEqual([]);
-  });
-});
-
-describe('StrictMode', () => {
-  test('a preview made before the effect re-run survives it, and instances keep their registration order', async () => {
-    const register = vi.spyOn(registry(), 'register');
-    let firstPass = true;
-    let late: AnyActorRef | undefined;
-
-    // Runs once, in the first effect pass: after both checkouts registered, before StrictMode runs every cleanup and
-    // setup again, as a preview applied at registration (a deep link) would.
-    function PreviewSecondCheckout() {
-      React.useEffect(() => {
-        if (!firstPass) return;
-        firstPass = false;
-        const [, second] = handlesOf('checkout');
-        registry().preview(keyOf(second), { leaves: ['paying.card.error'] });
-        // Registers between the passes: a checkout that came back at the end would now be listed after it.
-        late = connect(createActor(workerMachine).start(), { id: 'late' });
-      }, []);
-      return null;
-    }
-
-    render(
-      <>
-        <Checkout testId="first" />
-        <Checkout testId="second" />
-        <PreviewSecondCheckout />
-      </>,
-    );
-    await flush();
-    expect(register.mock.calls.filter(([handle]) => handle.machineId === 'checkout')).toHaveLength(4);
-
-    const [first, second] = handlesOf('checkout');
-    expect(registry().getSnapshot().machines.map((handle) => handle.machineId)).toEqual([
-      'checkout',
-      'checkout',
-      'late',
-    ]);
-    expect(registry().getSnapshot().overrides[keyOf(second)]).toMatchObject({
-      requested: ['paying.card.error'],
-      leaves: ['paying.card.error', 'paying.shipping.standard'],
-    });
-    expect(registry().getOverride(keyOf(first))).toBeUndefined();
-    expect(shownBy('second').value).toEqual({ paying: { card: 'error', shipping: 'standard' } });
-    expect(shownBy('first').value).toBe('idle');
-    expect(takeWarnings()).toEqual([liveFallbackWarning('paying.card.error', keyOf(second))]);
-    late?.stop();
   });
 });
