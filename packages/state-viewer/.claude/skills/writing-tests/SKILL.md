@@ -65,6 +65,9 @@ These techniques replace a mock. Each one was tried in this package.
 - **Stored panel settings.** Fill localStorage `state-viewer:ui` before the render, such as
   `{"v":1,"open":true,"position":"top-left","positionDefault":"bottom-right","machine":"checkout"}`. The overlay reads
   it when it mounts.
+- **An edit to a machine, as Fast Refresh makes it.** jsdom has no React Refresh. Make the machine in a function, and
+  `rerender()` the app with a machine that the function makes again, with the same id. @xstate/react starts the new
+  actor from the old one's snapshot, so the live state carries over, as it does in the browser.
 - **A second copy of the package.** `vi.resetModules()` replaces nothing, so it is allowed. Import the entry again.
 - **Production builds.** `test/production.test.tsx` runs in its own Vitest project, `production` in
   `vitest.config.ts`, with `test.env.NODE_ENV` set to `'production'`. Vite's `define` doesn't change `NODE_ENV` in
