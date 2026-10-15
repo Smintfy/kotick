@@ -35,6 +35,7 @@ pnpm install
 | `pnpm build` | Builds the package and the examples |
 | `pnpm test` | Runs the unit, adapter and type tests with Vitest |
 | `pnpm typecheck` | Checks the types of the package and the examples |
+| `pnpm lint` | Runs oxlint over the repository with the rules in `.oxlintrc.json` |
 | `pnpm test:matrix` | Runs the tests on React 18 and 19, each with the minimum and the latest XState |
 | `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, and looks for debug code |
 | `pnpm --filter state-viewer bench` | Measures the cost of the adapter in development, against `@xstate/react` |

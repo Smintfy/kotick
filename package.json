@@ -10,7 +10,8 @@
     "test": "pnpm -r test",
     "test:matrix": "node scripts/test-matrix.mjs",
     "check:bundles": "node tests/bundles/check.mjs",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "lint": "oxlint"
   },
   "devEngines": {
     "packageManager": {
@@ -19,5 +20,8 @@
       "onFail": "download"
     }
   },
-  "packageManager": "pnpm@12.11.2"
+  "packageManager": "pnpm@12.11.2",
+  "devDependencies": {
+    "oxlint": "^1.88.0"
+  }
 }

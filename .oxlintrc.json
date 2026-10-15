@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import"],
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": ["**/dist/**", "**/.next/**", ".claude/**"],
+  "rules": {
+    // The loops copy a set of listeners before they iterate it, so a listener can unsubscribe during the loop.
+    "unicorn/no-useless-spread": "off",
+    "import/no-cycle": "error"
+  }
+}

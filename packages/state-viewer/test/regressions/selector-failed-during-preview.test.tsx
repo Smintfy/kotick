@@ -10,7 +10,7 @@
 import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { SimulatedClock, createActor, createMachine, fromCallback, setup, type Actor } from 'xstate';
+import { SimulatedClock, createActor, fromCallback, setup, type Actor } from 'xstate';
 import { connect, createActorContext, useActorRef, useMachine, useSelector } from '../../src/xstate';
 import { flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
 
