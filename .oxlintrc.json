@@ -27,6 +27,62 @@
     ]
   },
   "overrides": [
+    // The three layers. Both entries bundle their own copy of the core, so it stays free of React and XState.
+    // The overlay and the adapter meet only in the core.
+    {
+      "files": ["packages/state-viewer/src/core/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^(react|react-dom|xstate|@xstate/react)(/|$)",
+                "message": "The core is in both bundles, so it imports no React and no XState."
+              },
+              { "regex": "^\\.\\./(overlay|xstate|index)(/|$)", "message": "The core imports no other layer." }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/state-viewer/src/overlay/**", "packages/state-viewer/src/index.tsx"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through core/types. Only the adapter imports XState." },
+          { "regex": "^\\.{1,2}/(\\.\\./)*xstate(/|$)", "message": "The overlay reads actors through core/types. Only the adapter imports XState." }
+        ] }]
+      }
+    },
+    {
+      // Overrides replace each other's rules, so this one repeats the overlay's.
+      "files": ["packages/state-viewer/src/overlay/*.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through core/types. Only the adapter imports XState." },
+          { "regex": "^\\.{1,2}/(\\.\\./)*xstate(/|$)", "message": "The overlay reads actors through core/types. Only the adapter imports XState." },
+          { "regex": "^\\./components(/|$)", "message": "Components import the overlay's modules, not the reverse." }
+        ] }]
+      }
+    },
+    {
+      "files": ["packages/state-viewer/src/xstate/**", "packages/state-viewer/src/xstate.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              { "regex": "^react-dom(/|$)", "message": "The adapter renders nothing. The overlay owns the DOM." },
+              {
+                "regex": "^\\.{1,2}/(\\.\\./)*(overlay(/|$)|index$)",
+                "message": "The adapter never imports the overlay. They meet only in the core."
+              }
+            ]
+          }
+        ]
+      }
+    },
     {
       // Tests use the package the way an app does.
       // The rules are in packages/state-viewer/.claude/skills/writing-tests/SKILL.md.
