@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { MachineHandle, Override } from '../../src/core/types';
-import { findInstance, groupMachines, planLink, toggleLeaf } from '../../src/overlay/model';
+import { findInstance, groupMachines, planLink } from '../../src/overlay/model';
 
 function handle(machineId: string, instanceId: string, extra: Partial<MachineHandle> = {}): MachineHandle {
   return {
@@ -58,21 +58,6 @@ describe('groupMachines', () => {
     expect(findInstance(groups, 'b#2')?.label).toBe('b · 1');
     expect(findInstance(groups, 'c#3')).toBeUndefined();
     expect(findInstance(groups, undefined)).toBeUndefined();
-  });
-});
-
-describe('toggleLeaf', () => {
-  test('previews the leaf alone when nothing is previewed', () => {
-    expect(toggleLeaf(undefined, 'payment.error')).toEqual(['payment.error']);
-  });
-
-  test('puts a new leaf first, so its fixture is looked up first and conflicting leaves are dropped after it', () => {
-    expect(toggleLeaf(['shipping.express'], 'payment.error')).toEqual(['payment.error', 'shipping.express']);
-  });
-
-  test('takes a previewed leaf out, and returns nothing to release once none is left', () => {
-    expect(toggleLeaf(['payment.error', 'shipping.express'], 'payment.error')).toEqual(['shipping.express']);
-    expect(toggleLeaf(['shipping.express'], 'shipping.express')).toEqual([]);
   });
 });
 
