@@ -2,8 +2,7 @@
 // that replaces the actor (a machine built from a prop), but @xstate/react moves the observer itself only in that
 // commit's passive effects: until then the observer is still subscribed to the replaced actor, which still runs. An
 // ending the replaced actor sends in between is about the replaced actor, not the new one: the observer hears the new
-// actor's previews afterwards, and the new actor's own ending is held back by a preview until the release (spec §10.2,
-// "Observers and the actor's ending"; R13).
+// actor's previews afterwards, and the new actor's own ending is held back by a preview until the release.
 //
 // Here the component cancels the previous upload when the endpoint changes, from a layout effect that runs after the
 // hook's (the previous upload's own socket message or timer landing in that window, which spans a task for a
@@ -119,7 +118,7 @@ describe.each([
         ? [
             '[new endpoint]', 'done:cancelled', 'complete', 'active:uploading',
             '[preview]', 'active:failed',
-            // The preview carries over the live children (R15): the finished upload's socket is gone.
+            // The preview carries over the live children: the finished upload's socket is gone.
             '[finish]', 'active:failed',
             '[release]', 'done:uploaded', 'complete',
           ]

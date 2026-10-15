@@ -1,7 +1,7 @@
-// The observer given to useActorRef hears how the real actor ended once no preview hides the real snapshot (spec §10.2,
-// "Observers and the actor's ending"; R13), and when @xstate/react replaces the actor (a new config: Fast Refresh, a
-// machine built from props), an ending a preview held back for the old actor is owed and heard "once the hook's actor
-// is no longer previewed ..., before anything about the new actor".
+// The observer given to useActorRef hears how the real actor ended once no preview hides the real snapshot,
+// and when @xstate/react replaces the actor (a new config: Fast Refresh, a
+// machine built from props), an ending a preview held back for the old actor is owed and heard once the hook's actor
+// is no longer previewed, before anything about the new actor.
 //
 // Here the upload fails while a preview of `failed` shows (the socket reports an error the machine doesn't handle), and
 // then a machine built from a new endpoint prop replaces the actor. The new actor is created from the old one's

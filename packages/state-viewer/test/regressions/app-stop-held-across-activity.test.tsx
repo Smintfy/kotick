@@ -1,6 +1,6 @@
 // When the app stops a hook's actor while a preview shows (actorRef.stop(), say a Cancel button; stop() isn't an
-// event, so the preview doesn't block it), the hook holds the ending back until no preview hides the real snapshot
-// (spec §10.2, "Observers and the actor's ending"; R13). If an <Activity> hides the component (a tab switch) before
+// event, so the preview doesn't block it), the hook holds the ending back until no preview hides the real snapshot.
+// If an <Activity> hides the component (a tab switch) before
 // then, @xstate/react stops the actor and drops its observers, the hook stops listening to previews and unregisters,
 // and the preview ends while nothing hears it: the registry drops the unregistered instance's preview at its next
 // flush, or the developer releases it first. When the Activity reveals the component, @xstate/react subscribes the

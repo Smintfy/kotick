@@ -1,5 +1,5 @@
-// The observer given to useActorRef hears how the real actor ended once no preview hides the real snapshot (spec §10.2,
-// "Observers and the actor's ending"; R13). When the app stops the actor while a preview shows (actorRef.stop(), say a
+// The observer given to useActorRef hears how the real actor ended once no preview hides the real snapshot.
+// When the app stops the actor while a preview shows (actorRef.stop(), say a
 // Cancel button; stop() isn't an event, so the preview doesn't block it), XState calls the observer's complete at once,
 // and the proxy holds it back until the preview is released: the observer hears complete then, exactly once. Apps
 // usually pass an inline observer, a new one on every render, which @xstate/react subscribes again each time, and XState

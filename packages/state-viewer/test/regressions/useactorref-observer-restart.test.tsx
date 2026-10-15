@@ -1,5 +1,5 @@
 // An observer given to useActorRef hears what @xstate/react delivers to it when @xstate/react restarts an actor that
-// already ended (spec §10.2, "Observers and the actor's ending"). An <Activity> that hides the component stops the
+// already ended. An <Activity> that hides the component stops the
 // actor with stopRootWithRehydration, which puts the done (or error) snapshot back, and starts it again when it
 // reveals the component; StrictMode's simulated remount does the same to a machine that is done as soon as it starts.
 // XState then sends every subscribed observer the done snapshot and complete again, or the error again, and the

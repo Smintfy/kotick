@@ -1,9 +1,9 @@
 // An actor stopped while a preview shows: once the preview ends, every consumer of the actor shows its real snapshot,
-// the last one it had before it stopped, as with @xstate/react (spec §10.2 "Observers and the actor's ending": a
-// consumer that only re-renders is woken to leave the preview when the actor stopped; R10, R13). The preview ends
+// the last one it had before it stopped, as with @xstate/react (a
+// consumer that only re-renders is woken to leave the preview when the actor stopped). The preview ends
 // through a release, or through the registry dropping it when a connect()ed actor unregisters on stopping. After that
 // nothing previews them: useSelector and the hooks' store stop hearing about previews once the actor is stopped, though
-// a hook keeps its stopped actor listed while the component is mounted (R1).
+// a hook keeps its stopped actor listed while the component is mounted.
 
 import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';

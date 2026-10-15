@@ -1,6 +1,6 @@
 // Verifies "proxy-identity-changes-with-label": the hooks must hand out one actor ref (and one send) for the life of
-// the actor, as @xstate/react does in production and as spec §10.2 says ("the proxy is memoized per real actor"),
-// even when debug.label or debug.id changes between renders. Each component runs against both packages, so the
+// the actor, as @xstate/react does in production, even when debug.label or debug.id changes between renders.
+// There is one proxy per real actor. Each component runs against both packages, so the
 // @xstate/react rows show the behavior the adapter has to match.
 
 import { render } from '@testing-library/react';

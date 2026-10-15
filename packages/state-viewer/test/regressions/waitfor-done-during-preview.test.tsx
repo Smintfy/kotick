@@ -1,5 +1,5 @@
 // waitFor(proxy, ...) called while a preview shows over an actor that already finished resolves with the done snapshot
-// once the preview ends, as it does on a plain actor (spec §10.2 "Observers and the actor's ending"; R13). XState
+// once the preview ends, as it does on a plain actor. XState
 // completes an observer that subscribes to an actor it already stopped at once; the proxy holds that back while the
 // preview hides the done snapshot, then sends the done snapshot and complete, so waitFor sees the awaited final state
 // rather than an actor ending without it. The preview ends through a release, which is how it ends for a hook actor

@@ -1,6 +1,6 @@
 // useSelector, on its own or through createActorContext, follows previews of an actor that failed while a preview hid
 // the failure, and once the preview is released it re-renders and throws the real error to the nearest error boundary,
-// as @xstate/react's useSelector does without a preview (spec §10.2 "Observers and the actor's ending"; R10, R13). A
+// as @xstate/react's useSelector does without a preview. A
 // consumer that mounts while the failed actor is previewed follows previews too: XState tells its observer about the
 // failure as it subscribes, and the proxy holds that back while the preview hides the real snapshot. Whether XState
 // reports the error as unhandled depends only on what was subscribed when the actor failed, as with @xstate/react:
@@ -284,7 +284,7 @@ describe('an app observer with next and error on the proxy, when no preview hide
     expect(await reports.settle()).toEqual([]);
     expect(calls).toEqual(['next:retrying', 'next:uploading', `error:${CRASH}`]);
 
-    // A failed connect()ed actor stays listed (spec §10.2), so it can still be previewed.
+    // A failed connect()ed actor stays listed, so it can still be previewed.
     expect(keyOf(onlyHandle('upload'))).toBe(key);
     act(() => registry().preview(key, { leaves: ['done'] }));
     await flush();

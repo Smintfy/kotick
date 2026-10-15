@@ -1,5 +1,5 @@
-// A consumer that only re-renders (the hooks' store, useSelector) is woken to leave a preview of an actor that stopped
-// (spec §10.2, "Observers and the actor's ending"; R10, R13), including one that subscribed after the stop, which XState
+// A consumer that only re-renders (the hooks' store, useSelector) is woken to leave a preview of an actor that stopped,
+// including one that subscribed after the stop, which XState
 // tells nothing. useMachine and useActor subscribe after the stop when Fast Refresh (a new logic.config) gives the hook a
 // new actor after the app stopped the old one during a preview: @xstate/react restores the stopped snapshot into it. A
 // useSelector consumer does when it mounts after the app stopped the actor during a preview (the "Cancelled" panel the

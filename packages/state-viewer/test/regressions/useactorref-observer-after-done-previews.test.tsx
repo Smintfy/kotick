@@ -1,5 +1,5 @@
 // An observer given to useActorRef hears nothing more once it heard the actor finish, as with @xstate/react, even when
-// the finished actor is previewed afterwards (spec §10.2, "Observers and the actor's ending"). Apps usually pass an
+// the finished actor is previewed afterwards. Apps usually pass an
 // inline observer, a new one on every render, which @xstate/react subscribes again each time: XState then only calls
 // the new observer's complete, and nothing at all for a listener function. A re-render while a preview shows over the
 // finished actor (a useSelector of the same actor following the preview, or a parent) doesn't hand the observer the

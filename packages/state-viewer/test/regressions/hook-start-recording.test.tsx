@@ -1,6 +1,6 @@
 // Hooks register the actor before @xstate/react starts it, as connect(createActor(m)).start() does, so the registry
-// records every configuration the actor goes through while starting (spec §10.3: "On each real snapshot, keep
-// { leaves, context } per configuration key"; R17). Here a callback child answers synchronously on start: the
+// records every configuration the actor goes through while starting. On each real snapshot, the registry keeps
+// { leaves, context } per configuration key. Here a callback child answers synchronously on start: the
 // component first renders 'restoring' with { user: null } and the actor is in 'ready' right after. Both are recorded,
 // so previewing 'restoring' shows the context the app really rendered it with, without a live-context warning.
 

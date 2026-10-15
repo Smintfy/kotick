@@ -1,5 +1,5 @@
 // The observer given to useActorRef hears how the real actor ended, as with @xstate/react, even when it finished
-// while a preview hid it (R13): once the preview is released, the observer gets the done snapshot, then complete if
+// while a preview hid it: once the preview is released, the observer gets the done snapshot, then complete if
 // it has one, and nothing after that, not even later previews of the finished actor, which hooks keep registered.
 // Apps react to the done snapshot in this observer (navigate, close a dialog, report a result).
 
@@ -75,7 +75,7 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, hooks, previews) => {
     await flush();
 
     preview(['failed']);
-    // The real actor keeps running underneath (R13) and finishes.
+    // The real actor keeps running underneath and finishes.
     act(() => finishUpload?.());
     if (previews) {
       const handle = onlyHandle('upload');

@@ -1,7 +1,7 @@
 // When @xstate/react stops a hook's actor (an <Activity> hides the component, StrictMode re-runs its effects), the hook
 // ends the subscriptions made through its proxy along with @xstate/react's muted observers, except one still owed how
-// the actor ended, which a preview held back. That one stays only until it hears the ending, then ends right there
-// (spec §10.2, "Observers and the actor's ending"; R13). This covers subscribers without complete (a listener function,
+// the actor ended, which a preview held back. That one stays only until it hears the ending, then ends right there.
+// This covers subscribers without complete (a listener function,
 // select().subscribe, an observer with next and error), which nothing else ends once they're told; one with complete
 // ends on its complete. The subscriber hears the done snapshot when the preview ends: at the registry's next flush,
 // which drops the preview of the instance that unregistered, or at the release, when the component registered again
@@ -18,7 +18,7 @@ import { fromCallback, setup, type Actor, type SnapshotFrom } from 'xstate';
 import * as stateViewer from '../../src/xstate';
 import { ACTOR_SELECT, flush, keyOf, onlyHandle, registry, resetRegistry } from '../xstate/helpers';
 
-/** What the invoked worker uses to report the job finished, past the proxy (R12 blocks sends during a preview). */
+/** What the invoked worker uses to report the job finished, past the proxy (previews block sends). */
 let finish: (() => void) | undefined;
 
 const jobMachine = setup({
@@ -150,7 +150,7 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, hooks, previews) => {
     await flush();
   }
 
-  /** Previews `waiting`, and the real actor finishes underneath it (R13): the preview holds back the ending. */
+  /** Previews `waiting`, and the real actor finishes underneath it: the preview holds back the ending. */
   async function finishUnderPreview(page: Page): Promise<void> {
     await previewWaiting();
     expect(page.take()).toEqual(previews ? ['active:waiting'] : []);

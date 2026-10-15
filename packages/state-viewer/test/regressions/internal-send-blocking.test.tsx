@@ -1,4 +1,4 @@
-// R12 / G3: an event that reaches the proxy through XState's own delivery path (sendTo, forwardTo, delayed sends all
+// An event that reaches the proxy through XState's own delivery path (sendTo, forwardTo, delayed sends all
 // end in system._relay -> target._send) has to be blocked during a preview, just like proxy.send().
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';

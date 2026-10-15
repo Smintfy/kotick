@@ -1,5 +1,5 @@
 // Verifies a reviewer's claim: previewing a top-level final state gives a snapshot with status 'done' but no output,
-// while the real actor in the same configuration and context has the machine's output (R11).
+// while the real actor in the same configuration and context has the machine's output.
 import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { beforeEach, describe, expect, test } from 'vitest';

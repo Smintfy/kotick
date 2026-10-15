@@ -2,7 +2,7 @@
 // builds its machine from a prop), @xstate/react replaces the hook's actor: it creates a new actor from the old one's
 // persisted snapshot, stops the old one and starts the new one. If the old actor ended while a preview showed (it
 // finished, or the app stopped it: stop() isn't an event, so the preview doesn't block it), the hook holds the ending
-// back until no preview hides the real snapshot (spec §10.2, "Observers and the actor's ending"; R13), and the
+// back until no preview hides the real snapshot, and the
 // replacement doesn't cancel that: the ending is still owed to the observer given to useActorRef, which hears it once
 // the preview ends, before anything about the new actor. With @xstate/react, which has no previews, the observer hears
 // the ending when the actor ends, and state-viewer delivers the same ending, later:

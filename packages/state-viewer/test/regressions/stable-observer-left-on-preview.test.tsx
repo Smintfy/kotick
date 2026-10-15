@@ -1,9 +1,9 @@
 // A component builds its upload machine from props and mirrors the upload's state (into React state, a store, the
 // URL) through the observer it gives useActorRef. When the props change during a preview, @xstate/react replaces the
-// actor (spec §10.2: "a machine built from props"): it creates a new actor from the old one's persisted snapshot,
+// actor: it creates a new actor from the old one's persisted snapshot,
 // stops the old one and starts the new one, and subscribes the observer again only when the observer changes or its
-// effects run again (spec §10.2, "Observers and the actor's ending"). The real actor never leaves `uploading`, so once
-// the preview ends the observer's last value is `uploading`, as with @xstate/react, which has no previews (R13):
+// effects run again. The real actor never leaves `uploading`, so once
+// the preview ends the observer's last value is `uploading`, as with @xstate/react, which has no previews:
 // - An inline observer, a new one on every render, follows the new actor. While the new actor registers under the
 //   same instance key the preview carries over, so it hears the new actor's preview, then that actor's real snapshot
 //   once when the preview ends: on the release, or when debug.disabled turns on. When the new machine registers under

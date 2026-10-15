@@ -1,6 +1,6 @@
 // connect() follows the actor's lifetime: an actor connected before it starts (`connect(createActor(m))`, which the
 // proxy's start() supports) and then stopped through the proxy without ever starting leaves the registry too. Stopping
-// the actor itself before start goes unnoticed, since XState reports nothing then (spec §11).
+// the actor itself before start goes unnoticed, since XState reports nothing then.
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createActor, createMachine } from 'xstate';
 import { connect } from '../../src/xstate';

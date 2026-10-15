@@ -1,5 +1,5 @@
-// Which actor and binding the observer given to useActorRef follows is decided in the commit phase (spec §10.2,
-// "Lifecycle"), because React also renders the hook in renders it throws away. Here the upload sits in a Suspense
+// Which actor and binding the observer given to useActorRef follows is decided in the commit phase,
+// because React also renders the hook in renders it throws away. Here the upload sits in a Suspense
 // boundary next to a list of files, and an update that makes the list load data it doesn't have yet suspends: a
 // transition stays pending, the committed UI staying on screen and interactive, and a plain update shows the fallback,
 // which hides the upload while its actor keeps running and the overlay keeps previewing it. The user can also abandon
@@ -10,9 +10,9 @@
 // keeps them on the committed actor, and state-viewer, which shows an observer the previews of the actor @xstate/react
 // subscribed it to, keeps them there too:
 // - They follow the committed actor: its previews, its real snapshot on the release, and its real updates.
-// - Once they heard the upload finish, they hear no preview and no done snapshot again (spec §10.2, "Observers and the
-//   actor's ending"), as @xstate/react tells them nothing more.
-// - An ending a preview held back reaches them once, at the release (R13): the done snapshot, then complete.
+// - Once they heard the upload finish, they hear no preview and no done snapshot again,
+//   as @xstate/react tells them nothing more.
+// - An ending a preview held back reaches them once, at the release: the done snapshot, then complete.
 // - A stable observer that a committed replacement left on the replaced actor, which tells it nothing more, gets none
 //   of the new actor's previews or real updates, while a render that passes a new observer is pending and after it's
 //   abandoned: @xstate/react subscribes an observer to the new actor only when an update that passes it commits.
@@ -306,7 +306,7 @@ describe.each(IMPLEMENTATIONS)('%s', (_name, hooks, previews) => {
       );
     });
 
-    describe('an ending a preview holds back (R13)', () => {
+    describe('an ending a preview holds back', () => {
       test.each(SUSPENDED)(
         '%s, then the upload finishes during a preview: it hears the ending once, at the release',
         async (_what, update, change) => {

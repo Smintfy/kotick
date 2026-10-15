@@ -1,6 +1,6 @@
 // When the app stops a hook's actor while a preview shows (actorRef.stop(), say a Cancel button), the hook holds the
-// ending back from the observer given to useActorRef until no preview hides the real snapshot (spec §10.2, "Observers
-// and the actor's ending" and "Lifecycle"; R13). An <Activity> then hides the component (a tab switch): @xstate/react
+// ending back from the observer given to useActorRef until no preview hides the real snapshot.
+// An <Activity> then hides the component (a tab switch): @xstate/react
 // stops the actor, the hook stops listening to previews and unregisters, and the registry drops the unregistered
 // instance's preview at its next flush, with nothing listening. A dev toggle then turns `debug.disabled` on, flipped
 // on another tab while the Activity hides the component, or in the render that reveals it. The hook no longer

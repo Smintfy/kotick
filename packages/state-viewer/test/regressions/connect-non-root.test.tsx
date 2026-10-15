@@ -1,5 +1,5 @@
 // connect() accepts any running machine actor, including one that isn't the root of its system, such as an invoked
-// child reached through `system.get()`. Its handle should list only its own descendants (spec §10.2, R5): the actor
+// child reached through `system.get()`. Its handle should list only its own descendants: the actor
 // system's inspection stream reports every actor in the system, so the root and the connected actor's siblings must
 // not show up as its children.
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';

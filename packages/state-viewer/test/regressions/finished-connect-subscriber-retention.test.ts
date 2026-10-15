@@ -1,7 +1,7 @@
 // XState drops an actor's observers once it's done, so apps routinely subscribe to a one-shot actor and never
 // unsubscribe: `const job = createActor(m).start(); job.subscribe((s) => ...)`. Through connect() the same code doesn't
 // keep the finished actor alive. A connect()ed actor unregisters when it ends and can never be previewed again, so once
-// its last preview is released its binding stops listening to the page-wide registry (spec §10.2, "connect()"). That
+// its last preview is released its binding stops listening to the page-wide registry. That
 // holds for subscribers without complete, which keep following previews of a finished machine until then (a listener
 // function, or { next, error } like useSelector's), for a subscriber that came after the actor finished, and for an
 // actor that finished while a preview showed.
@@ -96,14 +96,14 @@ describe('a connect()ed job that finishes while a preview shows', () => {
       const job = connect(actor);
       job.subscribe((snapshot) => seen.push((snapshot as { status: string }).status));
       registry().preview(keyOf(registry().getSnapshot().machines.at(-1)!), { leaves: ['running'] });
-      // The real actor: the proxy blocks events during a preview (R12).
+      // The real actor: the proxy blocks events during a preview.
       actor.send({ type: 'FINISH' });
       return new WeakRef(actor);
     };
     const refs = Array.from({ length: 3 }, finishDuringPreview);
     expect(seen).toEqual(['active', 'active', 'active']);
 
-    // The flush sweeps the unregistered instances and releases their previews (R13).
+    // The flush sweeps the unregistered instances and releases their previews.
     await flush();
     expect(seen).toEqual(['active', 'active', 'active', 'done', 'done', 'done']);
     expect(registry().getSnapshot().machines).toEqual([]);

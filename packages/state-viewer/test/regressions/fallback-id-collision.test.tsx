@@ -1,4 +1,4 @@
-// Two different machines without an id but with the same states: the generated fallback id (R4) is only a hash of the
+// Two different machines without an id but with the same states: the generated fallback id is only a hash of the
 // state tree's keys and types, so both register under one id and share recordings and fixtures.
 
 import { act, render, screen } from '@testing-library/react';

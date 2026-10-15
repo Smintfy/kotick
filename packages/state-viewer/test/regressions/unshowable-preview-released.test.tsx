@@ -1,8 +1,8 @@
 // After Fast Refresh turns a previewed parallel state into a compound one (same machine id and leaf ids), the
 // override's leaves can no longer be active together. Every leaf still exists, but the new handle's normalizeTarget
-// drops one, so the registry releases the override (spec §10.1), as it does one that names a leaf the new tree doesn't
+// drops one, so the registry releases the override, as it does one that names a leaf the new tree doesn't
 // have: the app is on screen in its real state, and the events it sends reach the actor rather than being logged as
-// blocked "in" a configuration that isn't shown (R12).
+// blocked "in" a configuration that isn't shown.
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';

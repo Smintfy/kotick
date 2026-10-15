@@ -4,11 +4,11 @@
 // it nothing). Here the old upload's socket reports in that window, from a layout effect of the component, as its own
 // message landing there would.
 //
-// - An update of the old actor while a preview is on is held back, as the preview hides real updates (R13): an
+// - An update of the old actor while a preview is on is held back, as the preview hides real updates: an
 //   inline observer, which follows the new actor, never hears it; a stable one, which stays with the old actor, hears
 //   its real snapshot when the preview ends (test/regressions/stable-observer-left-on-preview.test.tsx).
 // - The old actor failing is about the old actor: the observer hears the error, and still hears the new actor's
-//   previews, which it would not once told the new actor ended (spec §10.2, "Observers and the actor's ending").
+//   previews, which it would not once told the new actor ended.
 
 import { act, render } from '@testing-library/react';
 import * as xstateReact from '@xstate/react';
@@ -139,7 +139,7 @@ describe.each([
 
     expect(calls).toEqual(
       previews
-        ? // The new actor's preview once at the replacement (§10.2).
+        ? // The new actor's preview once at the replacement.
           ['[preview]', 'active:failed (old)', '[replace]', 'active:failed (new)', '[release]', 'active:uploading (new)']
         : ['[preview]', '[replace]', 'active:paused (old)', 'active:uploading (new)', '[release]'],
     );

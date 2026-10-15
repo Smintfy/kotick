@@ -1,7 +1,7 @@
 // When @xstate/react stops a hook's actor (unmount, StrictMode's simulated unmount, a hidden Activity, Fast Refresh),
 // it drops every XState observer of the actor and its descendants without telling them, then puts the last active
 // snapshot back. Subscriptions made through the proxy (waitFor, select().subscribe, actorRef.subscribe outside React)
-// end along with their XState observers (spec §10.2, "Observers and the actor's ending"): they hear neither the real
+// end along with their XState observers: they hear neither the real
 // actor nor its previews any more, as they would hear nothing from @xstate/react's actor, and they don't keep the
 // unmounted actor alive through the page-wide registry. Under StrictMode an effect that awaits waitFor runs twice, and
 // only the second run's subscription follows the actor, for a real transition and for a preview alike.
