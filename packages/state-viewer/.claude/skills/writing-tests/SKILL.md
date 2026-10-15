@@ -34,7 +34,8 @@ test file that is not on the legacy list.
    case in the file of its feature. Name it after the behavior, never after the bug or an issue number.
 7. **Keep tests apart with fresh ids.** The page keeps one registry for each test file, so give each machine
    `id: freshId('name')`. `test/setup.ts` clears the storage and the URL before each test. Never read or reset the
-   registry. A warning prints once per page for each id or value, so a test that expects one uses a value of its own.
+   registry. The fallback-id and shortcut warnings print once per page for each value, so a test that expects one
+   uses a value of its own.
 
 ## Where tests go
 
