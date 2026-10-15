@@ -1,5 +1,4 @@
 // @vitest-environment node
-// <StateViewer /> renders on the server like any client component, and does nothing there.
 
 import { renderToString } from 'react-dom/server';
 import { StateViewer } from 'state-viewer';

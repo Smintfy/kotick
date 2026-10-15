@@ -1,6 +1,6 @@
-// Styles injected into the overlay's shadow root. Page styles can still reach the host element itself,
-// so `:host` resets it with !important, which beats the page's own !important declarations across the shadow
-// boundary. Sizes are in px, never rem, since the page sets the root font size.
+// Page styles can reach the host element, so `:host` resets it with !important.
+// Across the shadow boundary, the shadow root's !important declarations beat the page's.
+// Sizes are in px, never rem, because the page sets the root font size.
 
 const LIGHT = `
   color-scheme: light;
@@ -59,9 +59,8 @@ const DARK = `
 const MONO = `ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace`;
 
 /**
- * The overlay's style sheet.
  * It is a function, so production builds can remove it.
- * Minifiers keep a top-level template literal with `${…}` parts, because they can't be sure it has no side effects.
+ * esbuild keeps a top-level template literal with `${…}` parts, because it can't prove they have no side effects.
  */
 export function overlayStyles(): string {
   return `

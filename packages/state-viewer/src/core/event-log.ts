@@ -8,7 +8,6 @@ export interface EventLog {
   readonly size: number;
 }
 
-/** Ring buffer that overwrites the oldest entry once full. */
 export function createEventLog(capacity = 200): EventLog {
   if (!Number.isInteger(capacity) || capacity < 1) {
     throw new RangeError(`[state-viewer] Event log capacity must be a positive integer, got ${String(capacity)}`);

@@ -23,17 +23,18 @@ export function resolveMachineId(machine: AnyStateMachine, debugId?: string): st
   return fallbackMachineId(machine);
 }
 
-/** True when `machineId` is the id generated for this machine, which deserves a warning. */
 export function isFallbackId(machine: AnyStateMachine, machineId: string): boolean {
   return fallbackIds.get(machine) === machineId;
 }
 
 /**
- * An id derived from the shape of the machine: its state tree and the keys of its initial context. HMR recreates the
- * machine object, and fixtures follow the registry id once it changes, so the id has to come out the same for
- * the recreated machine: it changes only when states are added, removed, renamed or change type, or context keys
- * come and go, not when states or keys are reordered. The context keys tell apart machines with the same states, such as two fetch machines, which would
- * otherwise share recordings and fixtures.
+ * An id derived from the shape of the machine: its state tree and the keys of its initial context.
+ * HMR recreates the machine object, and fixtures follow the registry id once it changes.
+ * So the id must come out the same for the recreated machine.
+ * It changes when states are added, removed, renamed or change type, or when context keys come and go.
+ * It doesn't change when states or keys are reordered.
+ * The context keys tell apart machines with the same states, such as two fetch machines.
+ * Without them, those machines would share recordings and fixtures.
  */
 export function fallbackMachineId(machine: AnyStateMachine): string {
   let id = fallbackIds.get(machine);
@@ -55,9 +56,10 @@ export function warnFallbackId(id: string): void {
 }
 
 /**
- * A page-unique instance id. The counter lives on globalThis, so every React root and every copy of the
- * package draw from one sequence. React's useId isn't enough: separately hydrated roots each start from the same
- * tree-position ids, so two islands rendering one machine would share a key.
+ * A page-unique instance id.
+ * The counter lives on globalThis, so every React root and every copy of the package draw from one sequence.
+ * React's useId isn't enough, because separately hydrated roots each start from the same tree-position ids.
+ * So two islands that render one machine would share a key.
  */
 export function nextInstanceId(): string {
   const scope = globalThis as typeof globalThis & { [COUNTER_KEY]?: number };

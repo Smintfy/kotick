@@ -6,7 +6,8 @@
   },
   "ignorePatterns": ["**/dist/**", "**/.next/**", ".claude/**"],
   "rules": {
-    // The loops copy a set of listeners before they iterate it, so a listener can unsubscribe during the loop.
+    // Some loops copy a set or a map before they iterate it, and this rule flags each copy.
+    // A loop over the live collection also visits the entries that its callbacks add.
     "unicorn/no-useless-spread": "off",
     "import/no-cycle": "error",
     // A comment states its reason itself. It does not cite the MVP spec, because the spec will be deleted.
@@ -27,8 +28,6 @@
     ]
   },
   "overrides": [
-    // The three layers. Both entries bundle their own copy of the core, so it stays free of React and XState.
-    // The overlay and the adapter meet only in the core.
     {
       "files": ["packages/state-viewer/src/core/**"],
       "rules": {
@@ -84,7 +83,6 @@
       }
     },
     {
-      // An entry exports the public API and nothing else, so a test can't reach a private function through it.
       // Overrides replace each other's rules, so this one repeats the overlay's.
       "files": ["packages/state-viewer/src/index.tsx"],
       "rules": {
@@ -98,7 +96,7 @@
       }
     },
     {
-      // This one repeats the adapter's.
+      // Overrides replace each other's rules, so this one repeats the adapter's.
       "files": ["packages/state-viewer/src/xstate.ts"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
@@ -161,7 +159,6 @@
       "rules": { "vitest/expect-expect": "off" }
     },
     {
-      // A benchmark measures. It has nothing to assert.
       "files": ["packages/state-viewer/bench/**"],
       "rules": { "vitest/expect-expect": "off" }
     },

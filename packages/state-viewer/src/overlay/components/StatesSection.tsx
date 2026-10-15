@@ -97,7 +97,6 @@ interface StateTreeProps {
   data: DataAvailability;
   /** The leaf keyboard navigation is on; the only one in the tab order. */
   cursor: string | undefined;
-  /** Child machines are listed but can't be previewed. */
   readOnly: boolean;
   onSelect(leaf: string): void;
 }

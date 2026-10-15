@@ -7,8 +7,6 @@ import { isMachineActor, liveChildren, statusOf, type MachineActor } from './act
 import { isFallbackId, resolveMachineId, warnFallbackId, type Identity } from './identity';
 import { getTree, leavesOfSnapshot, normalizeLeaves } from './tree';
 
-// Shared by every handle: the registry and the overlay only read them.
-// The /* @__PURE__ */ marks let production builds remove them.
 const PREVIEW_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
   preview: true,
   live: false,
@@ -111,8 +109,8 @@ export function inspect(
 
   function add(ref: AnyActorRef): void {
     if (connected?.has(ref) || !isMachineActor(ref)) return;
-    // Only under a listed parent. The system reports every actor in it, including the ancestors and siblings of an
-    // actor connect()ed below its root, and XState leaves the children of a failed actor running.
+    // The system reports all its actors, including the ancestors and siblings of an actor connect()ed below its root.
+    // XState also leaves the children of a failed actor running.
     const parentKey = ref._parent && keyOf(ref._parent);
     if (parentKey === undefined) return;
     if (statusOf(ref.getSnapshot()) !== 'active') return;
@@ -131,13 +129,11 @@ export function inspect(
     walk(ref);
   }
 
-  /**
-   * Unlists a child and its descendants, recording each one's last snapshot first: a final configuration can still
-   * be unseen, as when a grandchild's finish ends its parent before its own snapshot comes in.
-   */
   function remove(ref: AnyActorRef): void {
     const entry = connected?.get(ref);
     if (!connected || !entry) return;
+    // A final configuration can still be unseen here.
+    // For example, a grandchild that finishes can end its parent before the grandchild's own snapshot comes in.
     entry.child.record(ref.getSnapshot());
     connected.delete(ref);
     entry.unregister();
@@ -178,7 +174,6 @@ export function inspect(
         entry.child.notify();
       } else if (event.type === '@xstate.event' && event.sourceRef) {
         // A child that fails sends its parent an error event, and no last snapshot.
-        // The app can send anything, so the type isn't always a string.
         const type: unknown = event.event?.type;
         if (typeof type === 'string' && type.startsWith('xstate.error.actor')) remove(event.sourceRef as AnyActorRef);
       }

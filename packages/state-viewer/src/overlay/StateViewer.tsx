@@ -23,13 +23,9 @@ export function StateViewer(props: StateViewerProps): React.ReactNode {
 // change) doesn't bring back previews the user released.
 const appliedLinks = new WeakMap<Registry, Set<string>>();
 
-/**
- * Applies the URL's deep link. In an insertion effect, which React runs before every layout effect of the
- * commit: the app's hooks register in layout effects, so instances that mount along with the overlay are previewed
- * as they register and show the preview in their first paint. Earlier ones, like a connect()ed module-level
- * actor, are previewed at the registry's next microtask.
- */
 function useDeepLink(registry: Registry, param: string): void {
+  // React runs the insertion effects of a commit before all its layout effects, where the app's hooks register.
+  // So instances that mount with the overlay are previewed as they register, and their first paint shows the preview.
   React.useInsertionEffect(() => {
     const search = window.location.search;
     let applied = appliedLinks.get(registry);
@@ -48,13 +44,9 @@ function useDeepLink(registry: Registry, param: string): void {
 // Sets already registered, so a loader that runs again (an inline arrow on a re-render, StrictMode) adds nothing new.
 const registeredSets = new WeakMap<Registry, WeakSet<FixtureSet>>();
 
-/**
- * Registers fixtures given directly or by a lazy loader. Previews made before they load pick them up.
- * In an insertion effect, like the deep link: then the registry expects the fixtures before the app's hooks register in
- * layout effects and the link previews them.
- * Thus, a linked preview that starts on the live context warns only if the fixtures don't give it context.
- */
 function useFixtures(registry: Registry, input: FixturesInput | undefined): void {
+  // Like the deep link, this insertion effect runs before the app's hooks register in layout effects.
+  // So the registry expects the fixtures before the link previews the instances.
   React.useInsertionEffect(() => {
     if (input === undefined) return;
     let current = true;
@@ -82,7 +74,6 @@ function useFixtures(registry: Registry, input: FixturesInput | undefined): void
   }, [registry, input]);
 }
 
-/** The host element, appended to `target` or `document.body` on the client. Nothing renders on the server. */
 function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   const [host, setHost] = React.useState<OverlayHost | null>(null);
   useIsomorphicLayoutEffect(() => {
@@ -96,10 +87,6 @@ function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   return host;
 }
 
-/**
- * The sets `<StateViewer fixtures>` gives directly or through a loader, such as `() => import('@/debug/fixtures')`.
- * None, with a warning, when it gives something else or the loader fails.
- */
 export async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
   let result: unknown;
   try {
@@ -108,7 +95,6 @@ export async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> 
     console.warn('[state-viewer] The fixtures loader failed.', error);
     return [];
   }
-  // A module namespace from import(), whose default export is the sets.
   if (!Array.isArray(result) && typeof result === 'object' && result !== null && 'default' in result) {
     result = (result as { default: unknown }).default;
   }

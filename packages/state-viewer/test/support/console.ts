@@ -5,8 +5,8 @@ import { onTestFinished } from 'vitest';
 type ConsoleOutput = { warn: string[]; error: string[] };
 
 /**
- * Records each line written with console.warn and console.error until the test ends, as the console prints it.
- * Node publishes each call on a diagnostics channel, so nothing is replaced and the lines still print.
+ * Node publishes each console.warn and console.error call on a diagnostics channel.
+ * So the console methods stay as they are, and the lines still print.
  */
 export function watchConsole(): ConsoleOutput {
   const output: ConsoleOutput = { warn: [], error: [] };
