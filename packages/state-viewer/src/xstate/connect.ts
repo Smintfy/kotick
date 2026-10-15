@@ -1,8 +1,7 @@
 // Actors created outside React.
 
 import type { AnyActorRef } from 'xstate';
-import { nextInstanceId } from './instance-id';
-import { resolveMachineId } from './machine-id';
+import { nextInstanceId, resolveMachineId } from './identity';
 import type { DebugOptions } from './options';
 import { findBinding, getBinding, isMachineActor, isProxy } from './proxy';
 

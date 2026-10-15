@@ -3,15 +3,9 @@
 import { toObserver, type AnyActorRef, type AnyMachineSnapshot, type AnyStateMachine, type Observer } from 'xstate';
 import { callListener, getRegistry, toInstanceKey } from '../core/registry';
 import type { Capabilities, MachineHandle, Override, Registry, StateNodeInfo } from '../core/types';
-import { isFallbackId, resolveMachineId, warnFallbackId } from './machine-id';
+import { isFallbackId, resolveMachineId, warnFallbackId, type Identity } from './identity';
 import { getTree, isMachine, leavesOfSnapshot, normalizeLeaves, resolveSnapshot } from './tree';
 import { createView, type View, type ViewSource } from './view';
-
-export interface Identity {
-  machineId: string;
-  instanceId: string;
-  label?: string;
-}
 
 /** One identity of an actor in the registry. A new label or id makes a new one; the proxy stays the same. */
 export interface Registration {

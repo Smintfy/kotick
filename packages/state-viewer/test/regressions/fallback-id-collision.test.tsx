@@ -6,7 +6,7 @@ import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { assign, setup, type AnyActorRef } from 'xstate';
 import { defineFixtures, useMachine } from '../../src/xstate';
-import { resolveMachineId } from '../../src/xstate/machine-id';
+import { resolveMachineId } from '../../src/xstate/identity';
 import { flush, keyOf, registry, resetRegistry } from '../xstate/helpers';
 
 // Two everyday fetch machines, neither given an id: same states, different context.

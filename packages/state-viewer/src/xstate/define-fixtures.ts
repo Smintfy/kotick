@@ -2,7 +2,7 @@
 
 import type { AnyStateMachine, ContextFrom, SnapshotFrom } from 'xstate';
 import type { FixtureSet } from '../core/types';
-import { resolveMachineId } from './machine-id';
+import { resolveMachineId } from './identity';
 import { getTree } from './tree';
 
 // As in xstate.ts: bundlers replace process.env.NODE_ENV, and apps may typecheck this source without Node types.
