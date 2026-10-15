@@ -193,7 +193,6 @@
         "packages/state-viewer/test/overlay/format.test.ts",
         "packages/state-viewer/test/overlay/model.test.ts",
         "packages/state-viewer/test/overlay/settings.test.ts",
-        "packages/state-viewer/test/production.test.tsx",
         "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
         "packages/state-viewer/test/regressions/child-final-recording.test.tsx",
         "packages/state-viewer/test/regressions/complete-during-preview.test.ts",
@@ -259,7 +258,6 @@
         "packages/state-viewer/test/xstate/helpers.ts",
         "packages/state-viewer/test/xstate/hooks.test.tsx",
         "packages/state-viewer/test/xstate/integration.test.tsx",
-        "packages/state-viewer/test/xstate/production.test.ts",
         "packages/state-viewer/test/xstate/proxy.test.ts",
         "packages/state-viewer/test/xstate/tree.test.ts"
       ],
