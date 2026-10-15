@@ -60,9 +60,11 @@ These techniques replace a mock. Each one was tried in this package.
 - **No storage at all.** Call `window.jsdom.reconfigure({ url: 'about:blank' })` before the first render. Both
   storages then throw.
 - **A second copy of the package.** `vi.resetModules()` replaces nothing, so it is allowed. Import the entry again.
-- **Production builds.** Run the file in its own Vitest project with `test.env.NODE_ENV` set to `'production'`. Vite's
-  `define` doesn't change `NODE_ENV` in tests. React has no `act` in production, so render with `createRoot` and wait
-  for real time.
+- **Production builds.** `test/production.test.tsx` runs in its own Vitest project, `production` in
+  `vitest.config.ts`, with `test.env.NODE_ENV` set to `'production'`. Vite's `define` doesn't change `NODE_ENV` in
+  tests. The project also sets `oxc: { jsx: { development: false } }`, because production React has no `jsxDEV`. React
+  has no `act` in production, so render with `createRoot`, wait for real time, and click with `element.click()`, because
+  Testing Library's events go through `act`.
 
 ## The legacy list
 

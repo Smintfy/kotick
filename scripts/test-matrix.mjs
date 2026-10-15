@@ -107,8 +107,10 @@ function prepare(combo, catalog) {
 
   // Typechecks the library and the type tests only.
   // Other test files call APIs of the latest XState, such as Actor.select (5.29), in their @xstate/react controls.
-  const tsconfig = { extends: './tsconfig.json', include: ['src', 'test/**/*.test-d.ts'] };
-  writeFileSync(join(dir, 'tsconfig.matrix.json'), `${JSON.stringify(tsconfig, null, 2)}\n`);
+  // The copy's own tsconfig.json is narrowed, because Vitest doesn't pass --typecheck.tsconfig on to its projects.
+  const tsconfig = JSON.parse(readFileSync(join(packageDir, 'tsconfig.json'), 'utf8'));
+  tsconfig.include = ['src', 'test/**/*.test-d.ts'];
+  writeFileSync(join(dir, 'tsconfig.json'), `${JSON.stringify(tsconfig, null, 2)}\n`);
   return { dir, devDependencies };
 }
 
@@ -127,7 +129,7 @@ for (const combo of combosToRun()) {
 
   const ok =
     run('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--reporter=silent'], dir) &&
-    run('pnpm', ['exec', 'vitest', 'run', '--typecheck.tsconfig=tsconfig.matrix.json'], dir);
+    run('pnpm', ['exec', 'vitest', 'run'], dir);
   results.push({ label, ok });
 
   if (!values.keep) rmSync(dir, { recursive: true, force: true });
