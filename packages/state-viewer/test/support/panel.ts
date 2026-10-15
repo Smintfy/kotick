@@ -20,7 +20,8 @@ export function freshId(name: string): string {
   return `${name}-${count}`;
 }
 
-function overlay(): ShadowRoot {
+/** The overlay's shadow root, for what the other helpers don't read, such as focus, tooltips and the corner. */
+export function overlay(): ShadowRoot {
   const root = document.querySelector('[data-state-viewer-root]')?.shadowRoot;
   if (!root) throw new Error('Render <StateViewer /> first.');
   return root;
