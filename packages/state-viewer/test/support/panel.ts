@@ -84,6 +84,11 @@ export async function preview(
   if (source) await pickSource(source);
 }
 
+/** Clicks a leaf of the shown tree. The leaf joins the instance's preview, or leaves it when it is in it already. */
+export async function clickLeaf(leaf: string): Promise<void> {
+  await click(one(`[data-leaf="${leaf}"]`));
+}
+
 export async function pickSource(source: Source): Promise<void> {
   await click(one(`[aria-label="Context source"] input[value="${source}"]`));
 }
@@ -146,6 +151,30 @@ export async function copy(label: 'Copy link' | 'Copy JSON'): Promise<{ copied: 
 /** The key of the shown instance. Warnings name an instance by its key. */
 export function shownKey(): string {
   return one<HTMLSelectElement>('select[aria-label="Instance"]').value;
+}
+
+/**
+ * What the panel header shows: the count of previewed instances, whether Release all is enabled, and the Machine and
+ * Instance pickers. A picker is null while no machine is registered.
+ */
+export function header() {
+  const releaseAll = button('Release all');
+  if (!releaseAll) throw new Error('Open the panel first.');
+  const picker = (label: 'Machine' | 'Instance') => {
+    const select = overlay().querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`);
+    if (!select) return null;
+    return {
+      options: [...select.options].map((option) => option.textContent),
+      selected: select.selectedOptions[0]?.textContent,
+      disabled: select.disabled,
+    };
+  };
+  return {
+    previewing: overlay().querySelector('.sv-title-count')?.textContent ?? '',
+    releaseAll: releaseAll.disabled ? 'disabled' : 'enabled',
+    machine: picker('Machine'),
+    instance: picker('Instance'),
+  };
 }
 
 /** What the panel shows about the shown instance, as one value for one toEqual. */
