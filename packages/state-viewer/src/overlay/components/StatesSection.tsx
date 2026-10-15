@@ -1,8 +1,91 @@
-// The state tree: every non-history state, the real active leaves, the previewed ones and which
-// data a preview of each leaf would use.
+// The States section: the state tree, the legend of its marks, and buttons for the child machines.
+// The tree shows each non-history state, the active and previewed leaves, and the data a preview of each leaf uses.
 
-import type { CSSProperties } from 'react';
-import type { DataAvailability, Override, StateNodeInfo } from '../../core/types';
+import { useId, type CSSProperties } from 'react';
+import type { DataAvailability, Override, RegistrySnapshot, StateNodeInfo } from '../../core/types';
+import type { InstanceEntry } from '../model';
+
+interface StatesSectionProps {
+  instance: InstanceEntry;
+  nodes: readonly StateNodeInfo[];
+  active: ReadonlySet<string>;
+  cursor: string | undefined;
+  canPreview: boolean;
+  parentLabel: string | undefined;
+  childInstances: InstanceEntry[];
+  snapshot: RegistrySnapshot;
+  data: DataAvailability;
+  onRelease: (() => void) | undefined;
+  onSelectLeaf(leaf: string): void;
+  onSelectInstance(instanceKey: string): void;
+}
+
+export function StatesSection(props: StatesSectionProps) {
+  const titleId = useId();
+  const { instance, canPreview, parentLabel, childInstances } = props;
+  return (
+    <section className="sv-section" aria-labelledby={titleId}>
+      <div className="sv-section-head">
+        <h3 className="sv-section-title" id={titleId}>
+          States
+        </h3>
+        {props.onRelease && (
+          <button type="button" className="sv-button" onClick={props.onRelease}>
+            Release
+          </button>
+        )}
+      </div>
+      {!canPreview && (
+        <p className="sv-hint">
+          {parentLabel ? `Child of ${parentLabel}. ` : ''}Child machines are listed read-only.
+        </p>
+      )}
+      {props.nodes.length === 0 ? (
+        <p className="sv-hint">This machine has no states to list.</p>
+      ) : (
+        <StateTree
+          nodes={props.nodes}
+          label={`States of ${instance.label}`}
+          active={props.active}
+          override={props.snapshot.overrides[instance.key]}
+          data={props.data}
+          cursor={props.cursor}
+          readOnly={!canPreview}
+          onSelect={props.onSelectLeaf}
+        />
+      )}
+      <div className="sv-legend" aria-hidden="true">
+        <span>
+          <span className="sv-live" data-on="" /> live
+        </span>
+        <span>
+          <DataMark kind="recorded" /> recorded
+        </span>
+        <span>
+          <DataMark kind="fixture" /> fixture
+        </span>
+        <span>
+          <DataMark kind="none" /> no data
+        </span>
+      </div>
+      {childInstances.length > 0 && (
+        <div className="sv-children">
+          <span className="sv-hint">Children:</span>
+          {childInstances.map((child) => (
+            <button
+              key={child.key}
+              type="button"
+              className="sv-button"
+              onClick={() => props.onSelectInstance(child.key)}
+            >
+              {child.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 interface StateTreeProps {
   nodes: readonly StateNodeInfo[];
@@ -19,7 +102,7 @@ interface StateTreeProps {
   onSelect(leaf: string): void;
 }
 
-export function StateTree(props: StateTreeProps) {
+function StateTree(props: StateTreeProps) {
   return (
     <ul role="tree" aria-label={props.label} aria-multiselectable="true" className="sv-tree">
       {props.nodes.map((node) => (
@@ -124,7 +207,7 @@ const MARKS = {
   none: { text: '–', title: 'No recorded or fixture context; a preview uses the live context' },
 } as const;
 
-export function DataMark({ kind }: { kind: keyof typeof MARKS }) {
+function DataMark({ kind }: { kind: keyof typeof MARKS }) {
   return (
     <span className="sv-data" data-kind={kind} title={MARKS[kind].title} aria-hidden="true">
       {MARKS[kind].text}
