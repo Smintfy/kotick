@@ -61,11 +61,6 @@ const EMPTY_LEAVES: ReadonlySet<string> = new Set();
 
 const UNSERIALIZABLE = Symbol('unserializable');
 
-/** Sorted leaf ids joined with `|`. */
-export function configurationKey(leaves: string[]): string {
-  return [...leaves].sort().join('|');
-}
-
 /**
  * JSON for a context, or `undefined` when it can't be persisted faithfully and has to stay in memory.
  * Functions held by objects are dropped. An actor ref anywhere keeps the whole context in memory, because a context
@@ -254,7 +249,7 @@ export function createRecordingStore(options: RecordingStoreOptions = {}): Recor
 
   function record(machineId: string, leaves: string[], context: unknown): void {
     const machine = machineFor(machineId);
-    // configurationKey, keeping the sorted copy for the entry.
+    // Sorted, so the order of the leaves doesn't change the key. The entry keeps the sorted copy.
     const sorted = [...leaves].sort();
     const key = sorted.join('|');
     const previous = machine.entries.get(key);

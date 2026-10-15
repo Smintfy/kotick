@@ -2,8 +2,6 @@
 
 import type { DeepLinkTarget } from '../core/types';
 
-export type { DeepLinkTarget } from '../core/types';
-
 const DEFAULT_URL_PARAM = 'debug-state';
 
 /** The query parameter that `<StateViewer urlParam>` names, or the default when it names none. */

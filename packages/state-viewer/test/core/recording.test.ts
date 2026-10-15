@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   STORAGE_PREFIX,
-  configurationKey,
   createRecordingStore,
   serializeContext,
   type RecordedEntry,
@@ -91,14 +90,6 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   sessionStorage.clear();
-});
-
-describe('configurationKey', () => {
-  test('sorts a copy of the leaves and joins them with |', () => {
-    const leaves = ['shipping.express', 'payment.error', 'cart'];
-    expect(configurationKey(leaves)).toBe('cart|payment.error|shipping.express');
-    expect(leaves).toEqual(['shipping.express', 'payment.error', 'cart']);
-  });
 });
 
 describe('lookup', () => {
