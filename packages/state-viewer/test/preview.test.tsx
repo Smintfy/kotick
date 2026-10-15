@@ -2,13 +2,25 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { StateViewer, type FixturesInput } from 'state-viewer';
 import { connect, defineFixtures, useMachine, useSelector } from 'state-viewer/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
-import { assign, createActor, setup, type Actor, type EventFrom } from 'xstate';
-import { watchConsole } from './support/console';
 import {
+  assign,
+  createActor,
+  createMachine,
+  emit,
+  setup,
+  type Actor,
+  type AnyStateMachine,
+  type EventFrom,
+} from 'xstate';
+import { watchConsole } from './support/console';
+import { REACT_MAJOR } from './support/hooks';
+import {
+  blockedEvents,
   clickLeaf,
   flush,
   freshId,
   header,
+  instanceKeys,
   overlay,
   panel,
   pickSource,
@@ -130,6 +142,148 @@ const LIVE_WARNING = 'No recording or fixture for this state, so the preview use
 
 function liveWarning(leaves: string, key: string) {
   return `[state-viewer] No recorded or fixture context for "${leaves}" on "${key}", so the preview uses the live context.`;
+}
+
+function createCartMachine() {
+  return setup({
+    types: {
+      context: {} as { items: number[] },
+      events: {} as { type: 'ADD'; price: number } | { type: 'PAY' } | { type: 'RETRY' },
+      emitted: {} as { type: 'added'; price: number },
+      output: {} as { total: number },
+    },
+    guards: { hasItems: ({ context }) => context.items.length > 0 },
+  }).createMachine({
+    id: freshId('cart'),
+    context: { items: [] },
+    initial: 'shopping',
+    states: {
+      shopping: {
+        tags: ['editable'],
+        on: {
+          ADD: {
+            actions: [
+              assign({ items: ({ context, event }) => [...context.items, event.price] }),
+              emit(({ event }) => ({ type: 'added' as const, price: event.price })),
+            ],
+          },
+          PAY: { guard: 'hasItems', target: 'paying' },
+        },
+      },
+      paying: {
+        initial: 'pending',
+        states: { pending: { tags: ['busy'] }, declined: { tags: ['failed'], on: { RETRY: 'pending' } } },
+      },
+      paid: { type: 'final' },
+    },
+    output: ({ context }) => ({ total: context.items.reduce((sum, price) => sum + price, 0) }),
+  });
+}
+
+type CartMachine = ReturnType<typeof createCartMachine>;
+
+/** Starts a cart outside React and connects it, as a module that owns an actor does, next to the open overlay. */
+async function connectCart(machine: CartMachine, fixtures?: FixturesInput) {
+  const actor = createActor(machine, { id: 'main-cart' }).start();
+  onTestFinished(() => {
+    actor.stop();
+  });
+  const proxy = connect(actor);
+  render(<StateViewer defaultOpen fixtures={fixtures} />);
+  await flush();
+  return { actor, proxy };
+}
+
+/** Runs what a module does outside React, such as a send, and lets the overlay render what follows. */
+async function outsideReact(run: () => unknown) {
+  await act(async () => {
+    run();
+  });
+}
+
+/** A parallel root whose `document` region holds a nested parallel state, `saving`. */
+function createEditorMachine() {
+  return createMachine({
+    id: freshId('editor'),
+    type: 'parallel',
+    states: {
+      document: {
+        initial: 'clean',
+        on: { SAVE: '.saving' },
+        states: {
+          clean: {},
+          saving: {
+            type: 'parallel',
+            states: {
+              upload: { initial: 'pending', states: { pending: {}, failed: {} } },
+              // After PROGRESS, the current leaf is neither the initial leaf nor the first one.
+              progress: { initial: 'zero', on: { PROGRESS: '.full' }, states: { half: {}, zero: {}, full: {} } },
+              spinner: {},
+            },
+          },
+        },
+      },
+      theme: { initial: 'light', on: { DARK: '.dark' }, states: { light: {}, dark: {} } },
+    },
+  });
+}
+
+/**
+ * Shows the state value, context and status of any machine, with a button for each event in `events`.
+ * `rendered` collects the state value of each render.
+ */
+function MachineView({
+  machine,
+  events = [],
+  rendered,
+}: {
+  machine: AnyStateMachine;
+  events?: string[];
+  rendered?: string[];
+}) {
+  const [snapshot, send] = useMachine(machine);
+  rendered?.push(JSON.stringify(snapshot.value));
+  return (
+    <>
+      <output aria-label="app">
+        {JSON.stringify({ value: snapshot.value, context: snapshot.context, status: snapshot.status })}
+      </output>
+      <input aria-label="note" />
+      {events.map((type) => (
+        <button key={type} type="button" onClick={() => send({ type })}>
+          {type}
+        </button>
+      ))}
+    </>
+  );
+}
+
+type Edit = 'as written' | 'without paying.card.error' | 'with paying made compound' | 'with a gift region';
+
+/** A checkout edited in its source file. Fast Refresh evaluates the file again, so each call makes a new machine. */
+function createEditedMachine(id: string, edit: Edit = 'as written') {
+  const cardStates: Record<string, object> =
+    edit === 'without paying.card.error' ? { idle: {} } : { idle: {}, error: {} };
+  const card = { initial: 'idle', states: cardStates };
+  const shipping = { initial: 'standard', states: { standard: {}, express: {} } };
+  const gift = { initial: 'none', states: { none: {}, wrapped: {} } };
+  return createMachine({
+    id,
+    context: { note: 'live' },
+    initial: 'cart',
+    states: {
+      cart: { on: { PAY: 'paying' } },
+      paying:
+        edit === 'with paying made compound'
+          ? { initial: 'card', states: { card, shipping } }
+          : {
+              type: 'parallel',
+              on: { CONFIRM: 'done' },
+              states: edit === 'with a gift region' ? { card, shipping, gift } : { card, shipping },
+            },
+      done: { type: 'final' },
+    },
+  });
 }
 
 test('a previewed state shows in the component until it is released', async () => {
@@ -456,6 +610,46 @@ describe('parallel regions', () => {
       warnings: [liveWarning('paying.card.idle', key)],
     });
   });
+
+  test('inside a nested parallel state too, the regions that the click leaves alone keep their current leaves', async () => {
+    const machine = createEditorMachine();
+    render(
+      <>
+        <MachineView machine={machine} events={['SAVE', 'PROGRESS', 'DARK']} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    for (const event of ['SAVE', 'PROGRESS', 'DARK']) await press(event);
+
+    await preview(machine.id, ['document.saving.upload.failed']);
+    expect({ value: shown('app').value, filled: panel().filled }).toEqual({
+      value: { document: { saving: { upload: 'failed', progress: 'full', spinner: {} } }, theme: 'dark' },
+      filled: ['document.saving.progress.full', 'document.saving.spinner', 'theme.dark'],
+    });
+  });
+
+  test('the state value has its keys in the order that the machine declares them, whatever order the clicks came in', async () => {
+    const machine = createEditorMachine();
+    render(
+      <>
+        <MachineView machine={machine} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+
+    await preview(machine.id, [
+      'theme.dark',
+      'document.saving.spinner',
+      'document.saving.progress.full',
+      'document.saving.upload.failed',
+    ]);
+    expect(screen.getByRole('status', { name: 'app' }).textContent).toBe(
+      '{"value":{"document":{"saving":{"upload":"failed","progress":"full","spinner":{}}},"theme":"dark"},' +
+        '"context":{},"status":"active"}',
+    );
+  });
 });
 
 describe('an actor that moves on during a preview', () => {
@@ -503,6 +697,360 @@ describe('an actor that moves on during a preview', () => {
       warnings: [
         `[state-viewer] No fixture context for "paying.card.error" on "${key}", so the preview uses the recorded context.`,
       ],
+    });
+  });
+});
+
+describe('an actor read outside React', () => {
+  test('getSnapshot gives the real snapshot, one previewed snapshot while a preview lasts, then the real one again', async () => {
+    const machine = createCartMachine();
+    const { actor, proxy } = await connectCart(machine);
+    // useActor hands getSnapshot to useSyncExternalStore without the proxy.
+    const { getSnapshot } = proxy;
+    const isReal = () => getSnapshot() === actor.getSnapshot();
+    await outsideReact(() => actor.send({ type: 'ADD', price: 3 }));
+    const idle = { isReal: isReal(), value: getSnapshot().value };
+
+    await preview(machine.id, ['paying.declined']);
+    const previewed = getSnapshot();
+    await outsideReact(() => actor.send({ type: 'PAY' }));
+    // useSyncExternalStore needs the same object on every call while nothing that it shows changes.
+    const previewing = {
+      value: previewed.value,
+      context: previewed.context,
+      unchanged: proxy.getSnapshot() === previewed,
+      real: actor.getSnapshot().value,
+    };
+    await release(machine.id);
+    const released = { isReal: isReal(), value: getSnapshot().value };
+    await preview(machine.id, ['paid']);
+    const again = getSnapshot().value;
+    await releaseAll();
+    expect({ idle, previewing, released, again, releasedAll: isReal() }).toEqual({
+      idle: { isReal: true, value: 'shopping' },
+      previewing: {
+        value: { paying: 'declined' },
+        context: { items: [3] },
+        unchanged: true,
+        real: { paying: 'pending' },
+      },
+      released: { isReal: true, value: { paying: 'pending' } },
+      again: 'paid',
+      releasedAll: true,
+    });
+  });
+
+  test('a previewed snapshot answers matches, hasTag and can, and can checks guards on the previewed context', async () => {
+    const machine = createCartMachine();
+    const { actor, proxy } = await connectCart(machine, [
+      defineFixtures(machine, { shopping: { context: { items: [5] } } }),
+    ]);
+    const states = ['shopping', 'paying', { paying: 'pending' }, { paying: 'declined' }] as const;
+    const events = [{ type: 'ADD', price: 1 }, { type: 'PAY' }, { type: 'RETRY' }] as const;
+    const answers = () => {
+      const snapshot = proxy.getSnapshot();
+      return {
+        status: snapshot.status,
+        matches: states.filter((state) => snapshot.matches(state)),
+        tags: ['editable', 'busy', 'failed'].filter((tag) => snapshot.hasTag(tag)),
+        can: events.filter((event) => snapshot.can(event)).map((event) => event.type),
+      };
+    };
+
+    await preview(machine.id, ['paying.declined']);
+    const declined = answers();
+    await preview(machine.id, ['shopping'], { source: 'fixture' });
+    const fixture = answers();
+    await pickSource('live');
+    expect({ declined, fixture, live: answers(), real: actor.getSnapshot().can({ type: 'PAY' }) }).toEqual({
+      declined: { status: 'active', matches: ['paying', { paying: 'declined' }], tags: ['failed'], can: ['RETRY'] },
+      fixture: { status: 'active', matches: ['shopping'], tags: ['editable'], can: ['ADD', 'PAY'] },
+      live: { status: 'active', matches: ['shopping'], tags: ['editable'], can: ['ADD'] },
+      real: false,
+    });
+  });
+
+  test('select() reads through the preview, and its subscriber hears each selection that changes', async () => {
+    const machine = createCartMachine();
+    const { actor, proxy } = await connectCart(machine, [
+      defineFixtures(machine, { 'paying.declined': { context: { items: [9, 9, 9] } } }),
+    ]);
+    const value = proxy.select((snapshot) => snapshot.value);
+    const counts: number[] = [];
+    const subscription = proxy.select((snapshot) => snapshot.context.items.length).subscribe((count) => {
+      counts.push(count);
+    });
+    await outsideReact(() => actor.send({ type: 'ADD', price: 3 }));
+    // PAY changes the state but not the count.
+    await outsideReact(() => actor.send({ type: 'PAY' }));
+    const before = value.get();
+
+    await preview(machine.id, ['paying.declined']);
+    const during = value.get();
+    await releaseAll();
+    const after = value.get();
+    subscription.unsubscribe();
+    await preview(machine.id, ['paying.declined']);
+    expect({ before, during, after, counts }).toEqual({
+      before: { paying: 'pending' },
+      during: { paying: 'declined' },
+      after: { paying: 'pending' },
+      counts: [1, 3, 1],
+    });
+  });
+
+  test('select() with an equality function skips the selections that it finds equal', async () => {
+    const machine = createCartMachine();
+    const { proxy } = await connectCart(machine);
+    const heard: string[][] = [];
+    proxy
+      .select(
+        (snapshot) => [...snapshot.tags].sort(),
+        (a, b) => a.join() === b.join(),
+      )
+      .subscribe((tags) => {
+        heard.push(tags);
+      });
+
+    // The state that the actor is in has the same tags.
+    await preview(machine.id, ['shopping']);
+    await preview(machine.id, ['paying.declined']);
+    expect(heard).toEqual([['failed']]);
+  });
+
+  test('the rest comes from the real actor: ids, system, logic, emitted events, and the persisted snapshot', async () => {
+    const machine = createCartMachine();
+    const { actor, proxy } = await connectCart(machine);
+    const added: unknown[] = [];
+    // An app can take on() off the actor.
+    const { on } = proxy;
+    const listener = on('added', (event) => {
+      added.push(event);
+    });
+    await outsideReact(() => proxy.send({ type: 'ADD', price: 3 }));
+
+    await preview(machine.id, ['paying.declined']);
+    const { value, context, status } = proxy.getPersistedSnapshot() as Record<string, unknown>;
+    const during = {
+      persisted: { value, context, status },
+      toJSON: proxy.toJSON(),
+      json: JSON.stringify({ ref: proxy }),
+    };
+    await releaseAll();
+    listener.unsubscribe();
+    await outsideReact(() => proxy.send({ type: 'ADD', price: 4 }));
+    expect({
+      id: proxy.id,
+      sessionId: proxy.sessionId,
+      system: proxy.system === actor.system,
+      logic: proxy.logic === machine,
+      // An app lists send and on in the dependencies of its hooks, so each stays the same function.
+      stable: { send: proxy.send === proxy.send, on: proxy.on === on },
+      added,
+      during,
+    }).toEqual({
+      id: 'main-cart',
+      sessionId: actor.sessionId,
+      system: true,
+      logic: true,
+      stable: { send: true, on: true },
+      added: [{ type: 'added', price: 3 }],
+      during: {
+        persisted: { value: 'shopping', context: { items: [3] }, status: 'active' },
+        toJSON: { xstate$$type: 1, id: 'main-cart' },
+        json: '{"ref":{"xstate$$type":1,"id":"main-cart"}}',
+      },
+    });
+  });
+
+  test('start(), stop() and the observable interop give back the proxy, so a chain keeps it', async () => {
+    const machine = createCartMachine();
+    const { actor, proxy } = await connectCart(machine);
+    // XState reads Symbol.observable when something defines it, and '@@observable' when nothing does.
+    const interop = (Symbol as { observable?: symbol }).observable ?? '@@observable';
+    const observable = (proxy as unknown as Record<PropertyKey, () => unknown>)[interop]();
+    const started = proxy.start();
+    let stopped: unknown;
+    await outsideReact(() => {
+      stopped = proxy.stop();
+    });
+    expect({
+      observable: observable === proxy,
+      started: started === proxy,
+      stopped: stopped === proxy,
+      status: actor.getSnapshot().status,
+    }).toEqual({ observable: true, started: true, stopped: true, status: 'stopped' });
+  });
+});
+
+describe('final states', () => {
+  test('a previewed final state is done, with the output that the machine computes from the previewed context', async () => {
+    const machine = createCartMachine();
+    const { actor, proxy } = await connectCart(machine, [
+      defineFixtures(machine, { paid: { context: { items: [1, 2, 3] } } }),
+    ]);
+    await outsideReact(() => actor.send({ type: 'ADD', price: 4 }));
+
+    await preview(machine.id, ['paid']);
+    const { status, value, output } = proxy.getSnapshot();
+    const real = actor.getSnapshot();
+    expect({
+      previewed: { status, value, output },
+      real: { status: real.status, value: real.value },
+      instances: header().instance?.options,
+    }).toEqual({
+      previewed: { status: 'done', value: 'paid', output: { total: 6 } },
+      real: { status: 'active', value: 'shopping' },
+      instances: [`${machine.id} · 1 ●`],
+    });
+  });
+
+  test('a parallel root is done once every region is in a final state', async () => {
+    const region = { initial: 'sending', states: { sending: {}, sent: { type: 'final' as const } } };
+    const machine = createMachine({
+      id: freshId('upload'),
+      type: 'parallel',
+      states: { file: region, thumbnail: region },
+    });
+    render(
+      <>
+        <MachineView machine={machine} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    const seen = () => {
+      const { value, status } = shown('app');
+      return { value, status };
+    };
+
+    await preview(machine.id, ['file.sent', 'thumbnail.sent']);
+    const both = seen();
+    await preview(machine.id, ['file.sent']);
+    expect({ both, one: seen() }).toEqual({
+      both: { value: { file: 'sent', thumbnail: 'sent' }, status: 'done' },
+      one: { value: { file: 'sent', thumbnail: 'sending' }, status: 'active' },
+    });
+  });
+});
+
+describe('a machine that Fast Refresh replaces', () => {
+  // The edited machine keeps its id. @xstate/react starts a new actor for its new config, from the old actor's
+  // persisted snapshot.
+  function App({
+    machine,
+    fixtures,
+    rendered,
+  }: {
+    machine: AnyStateMachine;
+    fixtures?: FixturesInput;
+    rendered?: string[];
+  }) {
+    return (
+      <>
+        <MachineView machine={machine} events={['PAY', 'CONFIRM']} rendered={rendered} />
+        <StateViewer defaultOpen fixtures={fixtures} />
+      </>
+    );
+  }
+
+  function note() {
+    return screen.getByLabelText<HTMLInputElement>('note').value;
+  }
+
+  test('the preview shows through the swap, under the same instance key, and the app then drives the new actor', async () => {
+    const id = freshId('checkout');
+    const rendered: string[] = [];
+    const view = render(<App machine={createEditedMachine(id)} rendered={rendered} />);
+    await flush();
+    fireEvent.change(screen.getByLabelText('note'), { target: { value: 'typed before the edit' } });
+    await preview(id, ['paying.card.error']);
+    const keys = instanceKeys();
+
+    rendered.length = 0;
+    view.rerender(<App machine={createEditedMachine(id)} rendered={rendered} />);
+    await flush();
+    const swapped = { rendered: [...new Set(rendered)], keys: instanceKeys(), note: note() };
+    await releaseAll();
+    await press('PAY');
+    expect({ swapped, paid: { value: shown('app').value, live: panel().live } }).toEqual({
+      swapped: { rendered: ['{"paying":{"card":"error","shipping":"standard"}}'], keys, note: 'typed before the edit' },
+      paid: {
+        value: { paying: { card: 'idle', shipping: 'standard' } },
+        live: ['paying.card.idle', 'paying.shipping.standard'],
+      },
+    });
+  });
+
+  test.each([
+    {
+      edit: 'without paying.card.error',
+      leaves: ['paying.card.error'],
+      error: '"paying.card.error" is not a leaf state of this machine.',
+      paid: { paying: { card: 'idle', shipping: 'standard' } },
+    },
+    {
+      edit: 'with paying made compound',
+      leaves: ['paying.card.error', 'paying.shipping.express'],
+      error: `"paying.card.error" and "paying.shipping.express" can't be active at the same time.`,
+      paid: { paying: { card: 'idle' } },
+    },
+  ] as const)(
+    'an edit $edit that the preview can’t show gives the real state at once, warns, and lets events through',
+    async ({ edit, leaves, error, paid }) => {
+      const output = watchConsole();
+      const id = freshId('checkout');
+      const rendered: string[] = [];
+      const view = render(<App machine={createEditedMachine(id)} rendered={rendered} />);
+      await flush();
+      fireEvent.change(screen.getByLabelText('note'), { target: { value: 'typed before the edit' } });
+      await preview(id, [...leaves]);
+      const unshowable = `[state-viewer] Can't show the preview of "${shownKey()}" on this actor; showing its real state. Error: ${error}`;
+      const before = output.warn.length;
+
+      rendered.length = 0;
+      view.rerender(<App machine={createEditedMachine(id, edit)} rendered={rendered} />);
+      await flush();
+      const edited = { rendered: [...new Set(rendered)], previewing: header().previewing, note: note() };
+      await press('PAY');
+      expect({
+        edited,
+        paid: shown('app').value,
+        blocked: blockedEvents(),
+        // Only the first line of each warning. The rest is the stack of the error.
+        warnings: output.warn.slice(before).map((warning) => warning.split('\n')[0]),
+      }).toEqual({
+        edited: { rendered: ['"cart"'], previewing: '', note: 'typed before the edit' },
+        paid,
+        blocked: [],
+        // React 18's StrictMode throws away the first render, and the actor that render made warns too.
+        warnings: REACT_MAJOR < 19 ? [unshowable, unshowable] : [unshowable],
+      });
+    },
+  );
+
+  test('an edit that adds a region puts its initial leaf in the preview, where its fixture and the event log find it', async () => {
+    const id = freshId('checkout');
+    const view = render(<App machine={createEditedMachine(id)} />);
+    await flush();
+    await preview(id, ['paying.card.error']);
+    const before = { source: panel().source, context: shown('app').context };
+
+    // The fixtures file imports the machine, so Fast Refresh evaluates it again with the edit.
+    const edited = createEditedMachine(id, 'with a gift region');
+    const fixtures = [defineFixtures(edited, { 'paying.gift.none': { context: { note: 'gift fixture' } } })];
+    view.rerender(<App machine={edited} fixtures={fixtures} />);
+    await flush();
+    const after = { value: shown('app').value, source: panel().source, context: shown('app').context };
+    await press('CONFIRM');
+    expect({ before, after, rows: blockedEvents() }).toEqual({
+      before: { source: 'live', context: { note: 'live' } },
+      after: {
+        value: { paying: { card: 'error', shipping: 'standard', gift: 'none' } },
+        source: 'fixture',
+        context: { note: 'gift fixture' },
+      },
+      rows: [`CONFIRM · ${id} · 1 · in paying.card.error, paying.shipping.standard, paying.gift.none`],
     });
   });
 });
