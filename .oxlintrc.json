@@ -182,12 +182,10 @@
       // When black-box tests replace a file, delete the file and its line.
       "files": [
         "packages/state-viewer/test/core/deep-link.test.ts",
-        "packages/state-viewer/test/core/fixtures.test.ts",
         "packages/state-viewer/test/core/integration.test.ts",
         "packages/state-viewer/test/core/recording.test.ts",
         "packages/state-viewer/test/core/registry.test.ts",
         "packages/state-viewer/test/overlay/StateViewer.test.tsx",
-        "packages/state-viewer/test/overlay/fixtures.test.ts",
         "packages/state-viewer/test/overlay/model.test.ts",
         "packages/state-viewer/test/overlay/settings.test.ts",
         "packages/state-viewer/test/regressions/app-stop-held-across-activity.test.tsx",
@@ -206,7 +204,6 @@
         "packages/state-viewer/test/regressions/fallback-id-collision.test.tsx",
         "packages/state-viewer/test/regressions/fallback-id-order.test.tsx",
         "packages/state-viewer/test/regressions/finished-connect-subscriber-retention.test.ts",
-        "packages/state-viewer/test/regressions/fixtures-provided-machine.test.tsx",
         "packages/state-viewer/test/regressions/grandchild-final-recording.test.tsx",
         "packages/state-viewer/test/regressions/held-ending-across-actor-replacement.test.tsx",
         "packages/state-viewer/test/regressions/held-ending-dropped-after-told.test.tsx",
@@ -218,7 +215,6 @@
         "packages/state-viewer/test/regressions/late-observer-finished-actor.test.tsx",
         "packages/state-viewer/test/regressions/late-subscriber-after-unmount.test.tsx",
         "packages/state-viewer/test/regressions/leaf-id-type.test.tsx",
-        "packages/state-viewer/test/regressions/live-warning-before-lazy-fixtures.test.tsx",
         "packages/state-viewer/test/regressions/non-orthogonal-leaves.test.tsx",
         "packages/state-viewer/test/regressions/owed-ending-on-debug-disabled.test.tsx",
         "packages/state-viewer/test/regressions/owed-ending-timing.test.tsx",

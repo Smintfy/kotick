@@ -68,6 +68,11 @@ These techniques replace a mock. Each one was tried in this package.
 - **An edit to a machine, as Fast Refresh makes it.** jsdom has no React Refresh. Make the machine in a function, and
   `rerender()` the app with a machine that the function makes again, with the same id. @xstate/react starts the new
   actor from the old one's snapshot, so the live state carries over, as it does in the browser.
+- **The real actor moves on during a preview.** A preview blocks the events that the app sends through the hook's
+  actor. Send to the real actor instead: give `useMachine` a `systemId` and call `actor.system.get(systemId).send()`,
+  or start the actor in the test, show `connect(actor)`, and send to `actor`.
+- **A lazy fixtures loader.** Pass `fixtures={() => loaded}`, where `loaded` is a promise that the test resolves or
+  rejects, as `() => import('./fixtures')` does. Resolve it with `{ default: sets }` inside `act()`.
 - **A second copy of the package.** `vi.resetModules()` replaces nothing, so it is allowed. Import the entry again.
 - **Production builds.** `test/production.test.tsx` runs in its own Vitest project, `production` in
   `vitest.config.ts`, with `test.env.NODE_ENV` set to `'production'`. Vite's `define` doesn't change `NODE_ENV` in
