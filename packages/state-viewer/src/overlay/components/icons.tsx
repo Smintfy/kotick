@@ -19,13 +19,12 @@ function Icon({ size = 16, children }: { size?: number; children: ReactNode }) {
   );
 }
 
-/** Two states and a transition. */
-export function LogoIcon() {
+/** A state as a hexagon, with a dot for the current one. */
+export function HexagonIcon() {
   return (
-    <Icon size={18}>
-      <rect x="1.75" y="2.25" width="6" height="4.5" rx="1.5" />
-      <rect x="8.25" y="9.25" width="6" height="4.5" rx="1.5" />
-      <path d="M4.75 6.75v2.75a2 2 0 0 0 2 2h1.5" />
+    <Icon>
+      <path d="M8 1.5l5.63 3.25v6.5L8 14.5l-5.63-3.25v-6.5z" />
+      <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none" />
     </Icon>
   );
 }
