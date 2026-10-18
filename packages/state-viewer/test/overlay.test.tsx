@@ -235,7 +235,6 @@ describe('the bubble', () => {
     const badge = () => ({
       badge: overlay().querySelector('.sv-badge')?.textContent ?? null,
       name: bubble().getAttribute('aria-label'),
-      highlighted: bubble().hasAttribute('data-previewing'),
     });
 
     const seen = [badge()];
@@ -246,10 +245,10 @@ describe('the bubble', () => {
     await releaseAll();
     seen.push(badge());
     expect(seen).toEqual([
-      { badge: null, name: 'State viewer', highlighted: false },
-      { badge: '1', name: 'State viewer, 1 preview active', highlighted: true },
-      { badge: '2', name: 'State viewer, 2 previews active', highlighted: true },
-      { badge: null, name: 'State viewer', highlighted: false },
+      { badge: null, name: 'State viewer' },
+      { badge: '1', name: 'State viewer, 1 preview active' },
+      { badge: '2', name: 'State viewer, 2 previews active' },
+      { badge: null, name: 'State viewer' },
     ]);
   });
 });

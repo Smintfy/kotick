@@ -10,7 +10,7 @@ import { findInstance, groupMachines, type MachineGroup } from '../model';
 import type { StateViewerProps, Theme } from '../props';
 import { isPosition, nextPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../settings';
 import { eventOrigin, isTyping, matchesShortcut, parseShortcut } from '../shortcut';
-import { LogoIcon } from './icons';
+import { HexagonIcon } from './icons';
 import { Panel } from './Panel';
 
 const THEMES: readonly Theme[] = ['system', 'light', 'dark'];
@@ -93,10 +93,9 @@ export function Overlay(props: OverlayProps) {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         title={shortcut ? `State viewer (${shortcut.label})` : 'State viewer'}
-        data-previewing={previewCount > 0 || undefined}
         onClick={() => setOpen(!open, 'bubble')}
       >
-        <LogoIcon />
+        <HexagonIcon />
         {previewCount > 0 && (
           <span className="sv-badge" aria-hidden="true">
             {previewCount}
