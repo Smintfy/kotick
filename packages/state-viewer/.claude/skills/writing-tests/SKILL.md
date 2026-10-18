@@ -81,6 +81,9 @@ These techniques replace a mock. Each one was tried in this package.
 - **Copy link and Copy JSON.** jsdom has no clipboard and no `execCommand`, so the overlay copies through a textarea in
   its shadow root and shows "Copy failed". `copy()` in `test/support/panel.ts` observes the shadow root with a
   `MutationObserver` and returns the value of each textarea the overlay adds.
+- **A click that changes the panel's page inside another `act()`.** React 18 shows the new page only when the outer
+  `act()` ends, so a step inside `uncaught()` can't go from the machine list to a machine page. `show()` stays on a
+  machine page that shows already, so call it before such a step.
 - **Stored panel settings.** Fill localStorage `state-viewer:ui` before the render, such as
   `{"v":1,"open":true,"position":"top-left","positionDefault":"bottom-right","machine":"checkout"}`. The overlay reads
   it when it mounts.

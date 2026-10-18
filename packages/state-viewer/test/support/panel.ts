@@ -72,14 +72,17 @@ async function toList(): Promise<void> {
 
 /**
  * Shows an instance in the panel, as a developer picks it.
- * It goes back to the machine list and clicks the machine's row.
+ * It goes back to the machine list and clicks the machine's row, unless the page of that machine shows already.
  * On a machine with more than one instance, it then picks the nth instance in registration order.
+ * Inside another act(), React 18 shows a new page only when that act() ends, so open the page before such a step.
  */
 export async function show(machineId: string, nth = 1): Promise<void> {
-  await toList();
-  const row = all<HTMLButtonElement>('button[data-machine]').find((found) => found.dataset.machine === machineId);
-  if (!row) throw new Error(`The machine list has no ${machineId}.`);
-  await click(row);
+  if (shownMachine() !== machineId) {
+    await toList();
+    const row = all<HTMLButtonElement>('button[data-machine]').find((found) => found.dataset.machine === machineId);
+    if (!row) throw new Error(`The machine list has no ${machineId}.`);
+    await click(row);
+  }
   const instances = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
   if (!instances) {
     if (nth !== 1) throw new Error(`${machineId} has one instance, so it has no instance ${nth}.`);
