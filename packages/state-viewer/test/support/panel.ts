@@ -69,7 +69,6 @@ type Source = 'recorded' | 'fixture' | 'live';
 /**
  * Previews leaves of an instance the way a developer does.
  * It releases the instance's preview, then clicks each leaf in the state tree.
- * A click puts its leaf first, so the leaves are clicked last to first.
  * Then `source` picks the context source.
  */
 export async function preview(
@@ -80,7 +79,9 @@ export async function preview(
   await show(machineId, nth);
   const release = button('Release');
   if (release) await click(release);
-  for (const leaf of [...leaves].reverse()) await click(one(`[data-leaf="${leaf}"]`));
+  // A click puts its leaf first, so the last leaf is clicked first.
+  const clickOrder = [...leaves].reverse();
+  for (const leaf of clickOrder) await click(one(`[data-leaf="${leaf}"]`));
   if (source) await pickSource(source);
 }
 
