@@ -7,6 +7,8 @@ export type MachineActor = AnyActorRef & {
   logic: AnyStateMachine;
   sessionId: string;
   _send(event: unknown): void;
+  /** Private in XState. Every failure goes through it, whether a transition, start() or an initial action throws. */
+  _error(error: unknown): void;
 };
 
 export const EMPTY_CHILDREN: Readonly<Record<string, AnyActorRef>> = /* @__PURE__ */ Object.freeze({});

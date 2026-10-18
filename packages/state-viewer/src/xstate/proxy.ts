@@ -16,7 +16,7 @@ export interface Registration {
   /**
    * Points the proxy at this registration's key, registers the handle, records the current snapshot and every later
    * one, and lists child machines. Returns the cleanup, which unregisters. With `untilStopped`, the cleanup also runs
-   * once the actor is done or stopped.
+   * once the actor is done, failed or stopped.
    */
   connect(options?: { untilStopped?: boolean }): () => void;
 }
@@ -74,7 +74,7 @@ function createBinding(actor: MachineActor): Binding {
   const previewListeners = new Set<() => void>();
   let stopWatching: (() => void) | undefined;
   // Made on first use, as are `views` and `bound` below: most actors never need them, and each mount makes a binding.
-  let stopListeners: Set<() => void> | undefined;
+  let endListeners: Set<() => void> | undefined;
   // Connected registrations. The registry is watched only while one is, or while it still keeps a preview for the key,
   // which it releases at its next flush after the last one disconnects. Nothing previews an actor nobody registers,
   // and the page-wide registry would otherwise keep it alive through subscribers that never unsubscribe: XState lets
@@ -290,19 +290,26 @@ function createBinding(actor: MachineActor): Binding {
   });
   proxies.add(proxy);
 
-  // When an actor stops before it starts, XState sends nothing that the adapter can observe.
-  // Thus connect() wraps stop() on the actor itself. The proxy's stop() calls it too.
-  function onStop(listener: () => void): void {
-    if (!stopListeners) {
-      const listeners = (stopListeners = new Set());
-      const { stop } = actor;
+  // When an actor stops before it starts, or fails, XState sends nothing that the adapter can observe.
+  // Thus connect() wraps stop() and _error() on the actor itself. The proxy's stop() calls stop() too.
+  function onEnd(listener: () => void): void {
+    if (!endListeners) {
+      const listeners = (endListeners = new Set());
+      const ended = (message: string): void => {
+        for (const end of [...listeners]) callListener(end, message);
+      };
+      const { stop, _error } = actor;
       actor.stop = () => {
         stop.call(actor);
-        for (const stopped of [...listeners]) callListener(stopped, `Stopping "${key}" threw.`);
+        ended(`Stopping "${key}" threw.`);
         return actor;
       };
+      actor._error = (error) => {
+        _error.call(actor, error);
+        ended(`Unregistering "${key}", which failed, threw.`);
+      };
     }
-    stopListeners.add(listener);
+    endListeners.add(listener);
   }
 
   function createRegistration(identity: Identity, registrationKey: string): Registration {
@@ -323,7 +330,7 @@ function createBinding(actor: MachineActor): Binding {
         const disconnect = (): void => {
           if (!connected) return;
           connected = false;
-          stopListeners?.delete(disconnect);
+          endListeners?.delete(disconnect);
           stopInspecting();
           unregister();
           connections--;
@@ -336,7 +343,7 @@ function createBinding(actor: MachineActor): Binding {
           notify();
           if (untilStopped && statusOf(snapshot) !== 'active') disconnect();
         });
-        if (untilStopped) onStop(disconnect);
+        if (untilStopped) onEnd(disconnect);
         return disconnect;
       },
     };

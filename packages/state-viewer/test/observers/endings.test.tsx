@@ -1306,38 +1306,45 @@ describe('an actor that fails while a preview hides the failure', () => {
     });
   });
 
-  test('an app observer with next and error on the actor that connect() returns gets the error last: previews of the failed actor send it nothing', async () => {
-    const { machine } = createCrashingUpload();
-    const actor = createActor(machine).start();
-    onTestFinished(() => {
-      actor.stop();
-    });
-    const upload = connect(actor);
-    const heard: string[] = [];
-    upload.subscribe({
-      next: (snapshot) => heard.push(`next ${String(snapshot.value)}`),
-      error: (error) => heard.push(`error ${(error as Error).message}`),
-    });
-    render(page(null));
-    await flush();
+  test.each([
+    ['with no preview on', false],
+    ['while a preview hides the failure', true],
+  ])(
+    'an app observer with next and error on the actor that connect() returns gets the error last %s, and the failed actor leaves the overlay',
+    async (_, previews) => {
+      const { machine, crash } = createCrashingUpload();
+      const actor = createActor(machine).start();
+      onTestFinished(() => {
+        actor.stop();
+      });
+      const upload = connect(actor);
+      const heard: string[] = [];
+      upload.subscribe({
+        next: (snapshot) => heard.push(`next ${String(snapshot.value)}`),
+        error: (error) => heard.push(`error ${(error as Error).message}`),
+      });
+      render(page(null));
+      await flush();
 
-    // Before the failure, previews reach it.
-    await preview(machine.id, ['retrying']);
-    await release(machine.id);
-    const before = heard.splice(0);
-    const errors = await uncaught(() => upload.send({ type: 'BREAK' }));
-    const failed = heard.splice(0);
-    // The failed actor stays listed. The previews below reach it.
-    const listed = header().machine?.options;
-    await lookAround(machine.id, 'done', 'retrying');
-    expect({ before, uncaught: messages(errors), failed, listed, later: heard }).toEqual({
-      before: ['next retrying', 'next uploading'],
-      uncaught: [],
-      failed: [`error ${CRASH}`],
-      listed: [machine.id],
-      later: [],
-    });
-  });
+      if (previews) await preview(machine.id, ['retrying']);
+      const previewed = heard.splice(0);
+      let held: string[] = [];
+      const errors = await uncaught(() => {
+        crash();
+        held = [...heard];
+      });
+      const { machine: machines, previewing } = header();
+      expect({ previewed, held, uncaught: messages(errors), heard, machines, previewing }).toEqual({
+        previewed: previews ? ['next retrying'] : [],
+        // The preview holds back the error until the overlay drops the preview of the actor that left.
+        held: previews ? [] : [`error ${CRASH}`],
+        uncaught: [],
+        heard: [`error ${CRASH}`],
+        machines: null,
+        previewing: '',
+      });
+    },
+  );
 });
 
 describe('an error that useSelector throws to an error boundary', () => {
