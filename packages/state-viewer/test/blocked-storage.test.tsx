@@ -52,7 +52,7 @@ async function clickOverlay(label: string) {
   await flush();
 }
 
-const corner = () => overlay().querySelector('.sv-root')?.getAttribute('data-position');
+const corner = () => overlay().querySelector('[data-position]')?.getAttribute('data-position');
 
 function readable(storage: 'localStorage' | 'sessionStorage'): boolean {
   try {

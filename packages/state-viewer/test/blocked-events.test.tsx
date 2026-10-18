@@ -50,7 +50,7 @@ function clearButton(): HTMLButtonElement {
 
 /** The Blocked events section: its title, its rows newest first, and whether Clear can be clicked. */
 function eventLog() {
-  const titles = [...overlay().querySelectorAll('.sv-section-title')].map((title) => title.textContent ?? '');
+  const titles = [...overlay().querySelectorAll('section h3')].map((title) => title.textContent ?? '');
   return {
     title: titles.find((title) => title.startsWith('Blocked events')),
     rows: blockedEvents(),
@@ -60,7 +60,7 @@ function eventLog() {
 
 /** The time each row shows, newest first. */
 function times(): string[] {
-  return [...overlay().querySelectorAll('.sv-log-entry .sv-time')].map((time) => time.textContent ?? '');
+  return [...overlay().querySelectorAll('[data-part="log-entry"] [data-part="time"]')].map((time) => time.textContent ?? '');
 }
 
 async function clear(): Promise<void> {

@@ -212,7 +212,7 @@ function linkWarning(message: string, param = 'debug-state'): string {
 /** The warning under Copy link about machines whose instances a link can't reproduce. */
 function linkFooterWarning(): string {
   const root = document.querySelector('[data-state-viewer-root]')?.shadowRoot;
-  return root?.querySelector('.sv-footer .sv-warning')?.textContent ?? '';
+  return root?.querySelector('footer [data-part="warning"]')?.textContent ?? '';
 }
 
 function partialWarning(machineId: string): string {

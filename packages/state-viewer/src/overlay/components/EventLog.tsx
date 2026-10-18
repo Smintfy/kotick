@@ -37,21 +37,21 @@ export function EventLog({ entries, labelOf, onClear }: EventLogProps) {
         </button>
       </div>
       {entries.length === 0 ? (
-        <p className="sv-hint">Events the UI sends during a preview are blocked and listed here.</p>
+        <p className="sv-hint" data-part="hint">Events the UI sends during a preview are blocked and listed here.</p>
       ) : (
         <ol className="sv-log" aria-labelledby={titleId}>
           {[...entries].reverse().map((entry) => {
             const payload = summarizePayload(entry.event);
             const leaves = Array.isArray(entry.leaves) ? entry.leaves.join(', ') : '';
             return (
-              <li key={keyOf(entry)} className="sv-log-entry">
-                <span className="sv-event">{entry.event.type}</span>
-                <span className="sv-time">{formatTime(entry.at)}</span>
-                <span className="sv-log-meta" title={leaves}>
+              <li key={keyOf(entry)} className="sv-log-entry" data-part="log-entry">
+                <span className="sv-event" data-part="event">{entry.event.type}</span>
+                <span className="sv-time" data-part="time">{formatTime(entry.at)}</span>
+                <span className="sv-log-meta" data-part="log-meta" title={leaves}>
                   {labelOf(entry.instanceKey)} · {entry.blocked ? 'in' : 'delivered in'} {leaves}
                 </span>
                 {payload && (
-                  <code className="sv-payload" title={payload}>
+                  <code className="sv-payload" data-part="payload" title={payload}>
                     {payload}
                   </code>
                 )}

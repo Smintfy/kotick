@@ -32,7 +32,7 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
   return (
     <div className="sv-list" onKeyDown={onKeyDown}>
       {groups.length === 0 ? (
-        <p className="sv-empty">
+        <p className="sv-empty" data-part="empty">
           No machines yet. Hooks from <code>state-viewer/xstate</code> register their actors as they mount, and{' '}
           <code>connect()</code> registers actors created outside React.
         </p>
@@ -57,12 +57,12 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
             onClick={onReleaseAll}
             title="Release every preview (Esc)"
           >
-            <span className="sv-row-label">Release all</span>
-            <span className="sv-chip">{previewCount}</span>
+            <span className="sv-row-label" data-part="row-label">Release all</span>
+            <span className="sv-chip" data-part="chip">{previewCount}</span>
           </button>
         )}
         <button type="button" className="sv-row sv-action" data-row="settings" onClick={onSettings}>
-          <span className="sv-row-label">Settings</span>
+          <span className="sv-row-label" data-part="row-label">Settings</span>
           <GearIcon />
         </button>
       </div>
@@ -81,19 +81,19 @@ function MachineRow({ group, previewing, onOpen }: { group: MachineGroup; previe
       data-machine={group.machineId}
       onClick={() => onOpen(group.machineId)}
     >
-      <span className="sv-row-name">{group.machineId}</span>
-      {group.childrenOnly && <span className="sv-tag">child</span>}
+      <span className="sv-row-name" data-part="row-name">{group.machineId}</span>
+      {group.childrenOnly && <span className="sv-tag" data-part="tag">child</span>}
       {instances > 1 && (
-        <span className="sv-chip" title={`${instances} instances`}>
+        <span className="sv-chip" data-part="chip" title={`${instances} instances`}>
           {instances}
         </span>
       )}
       {previewing && (
-        <span className="sv-dot" title="Previewing">
+        <span className="sv-dot" data-part="dot" title="Previewing">
           <span className="sv-visually-hidden">, previewing</span>
         </span>
       )}
-      <span className="sv-row-end">{states === 1 ? '1 state' : `${states} states`}</span>
+      <span className="sv-row-end" data-part="row-end">{states === 1 ? '1 state' : `${states} states`}</span>
     </button>
   );
 }
@@ -103,7 +103,7 @@ export function PathChip() {
   const pathname = usePathname();
   if (pathname === '') return null;
   return (
-    <code className="sv-chip sv-code" title={pathname}>
+    <code className="sv-chip sv-code" data-part="chip" title={pathname}>
       {pathname}
     </code>
   );

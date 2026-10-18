@@ -69,7 +69,7 @@ function control(selector: string): HTMLElement {
 function focusedRow(): string {
   const focused = overlay().activeElement as HTMLElement | null;
   if (!focused?.hasAttribute('data-row')) return 'none';
-  return focused.dataset.machine ?? focused.querySelector('.sv-row-label')?.textContent ?? '';
+  return focused.dataset.machine ?? focused.querySelector('[data-part="row-label"]')?.textContent ?? '';
 }
 
 async function click(element: Element): Promise<void> {

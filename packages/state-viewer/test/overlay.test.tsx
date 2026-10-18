@@ -84,7 +84,7 @@ function button(label: string): HTMLButtonElement {
 
 /** The corner and the color scheme of the overlay. */
 function look(): { corner?: string; theme?: string } {
-  const { position, theme } = overlay().querySelector<HTMLElement>('.sv-root')?.dataset ?? {};
+  const { position, theme } = overlay().querySelector<HTMLElement>('[data-position]')?.dataset ?? {};
   return { corner: position, theme };
 }
 
@@ -93,9 +93,9 @@ function treeRows(): string[] {
   return [...overlay().querySelectorAll<HTMLElement>('[role="treeitem"]')].map((item) => {
     const row = item.hasAttribute('data-leaf') ? item : item.firstElementChild;
     const indent = '  '.repeat(Number(item.getAttribute('aria-level')) - 1);
-    const key = row?.querySelector('.sv-key')?.textContent;
-    const description = row?.querySelector('.sv-description')?.textContent;
-    const badges = [...(row?.querySelectorAll('.sv-type, .sv-tag') ?? [])].map((badge) => badge.textContent);
+    const key = row?.querySelector('[data-part="key"]')?.textContent;
+    const description = row?.querySelector('[data-part="description"]')?.textContent;
+    const badges = [...(row?.querySelectorAll('[data-part="type"], [data-part="tag"]') ?? [])].map((badge) => badge.textContent);
     const parts = [`${indent}${key}`];
     if (description !== undefined) parts.push(`“${description}”`);
     if (badges.length > 0) parts.push(`[${badges.join(', ')}]`);
@@ -113,7 +113,7 @@ function announced(): Record<string, string> {
   return Object.fromEntries(
     [...overlay().querySelectorAll<HTMLElement>('[data-leaf]')].map((leaf) => [
       leaf.dataset.leaf,
-      leaf.querySelector('.sv-visually-hidden')?.textContent?.replace(/^, /, ''),
+      leaf.querySelector('[data-part="leaf-status"]')?.textContent?.replace(/^, /, ''),
     ]),
   );
 }
@@ -121,9 +121,9 @@ function announced(): Record<string, string> {
 /** The machine list: the title and chips of its header, and each row with the states on its right. */
 async function machineList() {
   const rows = await machines();
-  const states = [...overlay().querySelectorAll('button[data-machine] .sv-row-end')].map((end) => end.textContent);
+  const states = [...overlay().querySelectorAll('button[data-machine] [data-part="row-end"]')].map((end) => end.textContent);
   return {
-    header: [...overlay().querySelectorAll('.sv-header .sv-title, .sv-header .sv-chip')].map((part) => part.textContent),
+    header: [...overlay().querySelectorAll('header h2, header [data-part="chip"]')].map((part) => part.textContent),
     rows: rows.map((row, index) => `${row} · ${states[index]}`),
   };
 }
@@ -345,7 +345,7 @@ describe('the bubble', () => {
     );
     await flush();
     const badge = () => ({
-      badge: overlay().querySelector('.sv-badge')?.textContent ?? null,
+      badge: overlay().querySelector('[data-part="badge"]')?.textContent ?? null,
       name: bubble().getAttribute('aria-label'),
     });
 
@@ -539,7 +539,7 @@ describe('the state tree', () => {
   function expanded(): Record<string, string | null> {
     return Object.fromEntries(
       [...overlay().querySelectorAll('[role="treeitem"][aria-expanded]')].map((item) => [
-        item.firstElementChild?.querySelector('.sv-key')?.textContent,
+        item.firstElementChild?.querySelector('[data-part="key"]')?.textContent,
         item.getAttribute('aria-expanded'),
       ]),
     );
@@ -615,7 +615,7 @@ describe('the state tree', () => {
     await flush();
     await show(machine.id);
 
-    const hint = overlay().querySelector('.sv-section')?.querySelector('.sv-hint')?.textContent;
+    const hint = overlay().querySelector('section[aria-labelledby]')?.querySelector('[data-part="hint"]')?.textContent;
     expect({ machine: shownMachine(), leaves: leaves(), hint }).toEqual({
       machine: machine.id,
       leaves: [],
@@ -627,7 +627,7 @@ describe('the state tree', () => {
     render(<StateViewer defaultOpen />);
     await flush();
 
-    expect({ machines: await machines(), body: overlay().querySelector('.sv-empty')?.textContent }).toEqual({
+    expect({ machines: await machines(), body: overlay().querySelector('[data-part="empty"]')?.textContent }).toEqual({
       machines: [],
       body:
         'No machines yet. Hooks from state-viewer/xstate register their actors as they mount, and connect() ' +
@@ -812,7 +812,7 @@ describe('Copy JSON', () => {
     await preview(machine.id, ['payment.error']);
 
     const footer = () =>
-      [...overlay().querySelectorAll('.sv-footer button')].map(
+      [...overlay().querySelectorAll('footer button')].map(
         (found) => `${found.getAttribute('aria-label')}: ${found.textContent}`,
       );
     await copy('Copy JSON');

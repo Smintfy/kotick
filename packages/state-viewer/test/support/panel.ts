@@ -95,8 +95,8 @@ export async function show(machineId: string, nth = 1): Promise<void> {
 
 /** Clicks the row of a compound or parallel state in the tree, by its key, to collapse or expand it. */
 export async function toggleState(key: string): Promise<void> {
-  const row = all('[role="treeitem"][aria-expanded] > .sv-node').find(
-    (found) => found.querySelector('.sv-key')?.textContent === key,
+  const row = all('[role="treeitem"][aria-expanded] > [data-part="node"]').find(
+    (found) => found.querySelector('[data-part="key"]')?.textContent === key,
   );
   if (!row) throw new Error(`The tree has no state ${key} with states in it.`);
   await click(row);
@@ -146,7 +146,7 @@ export async function release(machineId: string, nth = 1): Promise<void> {
 export async function releaseAll(): Promise<void> {
   if (backButton()) await toList();
   const found = all<HTMLButtonElement>('button').find(
-    (candidate) => candidate.querySelector('.sv-row-label')?.textContent === 'Release all',
+    (candidate) => candidate.querySelector('[data-part="row-label"]')?.textContent === 'Release all',
   );
   if (!found) throw new Error('The machine list has no Release all button.');
   await click(found);
@@ -157,17 +157,17 @@ export function marks(): Record<string, string[]> {
   return Object.fromEntries(
     all('[data-leaf]').map((leaf) => [
       leaf.dataset.leaf,
-      [...leaf.querySelectorAll<HTMLElement>('.sv-data[data-kind]')].map((mark) => mark.dataset.kind),
+      [...leaf.querySelectorAll<HTMLElement>('[data-kind]')].map((mark) => mark.dataset.kind),
     ]),
   );
 }
 
 /** The rows of the blocked-event log, newest first, as `EVENT · instance · in leaves`, then the payload if any. */
 export function blockedEvents(): string[] {
-  return all('.sv-log-entry').map((row) => {
-    const event = row.querySelector('.sv-event')?.textContent;
-    const where = row.querySelector('.sv-log-meta')?.textContent;
-    const payload = row.querySelector('.sv-payload')?.textContent;
+  return all('[data-part="log-entry"]').map((row) => {
+    const event = row.querySelector('[data-part="event"]')?.textContent;
+    const where = row.querySelector('[data-part="log-meta"]')?.textContent;
+    const payload = row.querySelector('[data-part="payload"]')?.textContent;
     return [event, where, payload].filter((part) => part !== undefined).join(' · ');
   });
 }
@@ -196,14 +196,14 @@ export async function copy(label: 'Copy link' | 'Copy JSON'): Promise<{ copied: 
 
 /** The machine whose page the panel shows, as the page's title gives it, or `none` on another page. */
 export function shownMachine(): string {
-  return overlay().querySelector('.sv-panel[data-page="machine"] .sv-title')?.textContent ?? 'none';
+  return overlay().querySelector('[data-page="machine"] h2')?.textContent ?? 'none';
 }
 
 /** Goes to the settings page from the machine list, and picks a corner, such as `Bottom left`. */
 export async function pickCorner(label: string): Promise<void> {
   await toList();
   const settings = all<HTMLButtonElement>('button').find(
-    (candidate) => candidate.querySelector('.sv-row-label')?.textContent === 'Settings',
+    (candidate) => candidate.querySelector('[data-part="row-label"]')?.textContent === 'Settings',
   );
   if (!settings) throw new Error('The machine list has no Settings button.');
   await click(settings);
@@ -236,12 +236,12 @@ export function instanceKeys(): string[] {
 export async function machines(): Promise<string[]> {
   await toList();
   return all('button[data-machine]').map((row) => {
-    const parts = [row.querySelector('.sv-row-name')?.textContent ?? ''];
-    const tag = row.querySelector('.sv-tag')?.textContent;
+    const parts = [row.querySelector('[data-part="row-name"]')?.textContent ?? ''];
+    const tag = row.querySelector('[data-part="tag"]')?.textContent;
     if (tag) parts.push(tag);
-    const count = row.querySelector('.sv-chip')?.textContent;
+    const count = row.querySelector('[data-part="chip"]')?.textContent;
     if (count) parts.push(`${count} instances`);
-    const previewing = row.querySelector('.sv-dot')?.textContent?.replace(/^, /, '');
+    const previewing = row.querySelector('[data-part="dot"]')?.textContent?.replace(/^, /, '');
     if (previewing) parts.push(previewing);
     return parts.join(' · ');
   });
@@ -261,7 +261,7 @@ export function instances(): string[] {
 
 /** The count on the bubble's badge: the number of active previews, or '' while none is on. */
 export function badge(): string {
-  return overlay().querySelector('.sv-badge')?.textContent ?? '';
+  return overlay().querySelector('[data-part="badge"]')?.textContent ?? '';
 }
 
 /** What the machine page shows about the shown instance, as one value for one toEqual. */
@@ -275,7 +275,7 @@ export function panel() {
     previewed: pick((leaf) => leaf.getAttribute('aria-selected') === 'true'),
     filled: pick((leaf) => leaf.hasAttribute('data-filled')),
     source: overlay().querySelector<HTMLInputElement>('[aria-label="Context source"] input:checked')?.value ?? 'none',
-    context: all('.sv-json-row, .sv-json summary').map((row) => row.textContent),
-    warning: overlay().querySelector('.sv-section .sv-warning')?.textContent ?? '',
+    context: all('[data-part="json-row"], [data-testid="sv-json"] summary').map((row) => row.textContent),
+    warning: overlay().querySelector('section[aria-labelledby] [data-part="warning"]')?.textContent ?? '',
   };
 }

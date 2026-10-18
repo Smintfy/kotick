@@ -145,7 +145,7 @@ function sources(): Record<string, string> {
  * Call it on the machine list, such as after machines().
  */
 function listActions(): string[] {
-  return [...overlay().querySelectorAll('.sv-row-label')].map((label) => label.textContent ?? '');
+  return [...overlay().querySelectorAll('[data-part="row-label"]')].map((label) => label.textContent ?? '');
 }
 
 const LIVE_WARNING = 'No recording or fixture for this state, so the preview uses live context.';

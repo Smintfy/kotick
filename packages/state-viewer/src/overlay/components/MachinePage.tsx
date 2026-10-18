@@ -249,7 +249,7 @@ export function MachinePage(props: MachinePageProps) {
           {copied?.status}
         </span>
         {plan.partial.length > 0 && (
-          <p className="sv-warning">
+          <p className="sv-warning" data-part="warning">
             Links preview every instance of a machine alike, so this one won&rsquo;t reproduce the current{' '}
             {list(plan.partial)} previews exactly.
           </p>

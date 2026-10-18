@@ -114,7 +114,7 @@ export function Overlay(props: OverlayProps) {
           chips: (
             <>
               <PathChip />
-              {groups.length > 0 && <span className="sv-chip">{groups.length}</span>}
+              {groups.length > 0 && <span className="sv-chip" data-part="chip">{groups.length}</span>}
             </>
           ),
           body: (
@@ -144,7 +144,7 @@ export function Overlay(props: OverlayProps) {
         return {
           title: page.group.machineId,
           chips: requested > 0 && (
-            <span className="sv-chip" title={`${requested} previewed state${requested === 1 ? '' : 's'}`}>
+            <span className="sv-chip" data-part="chip" title={`${requested} previewed state${requested === 1 ? '' : 's'}`}>
               {requested}
             </span>
           ),
@@ -183,7 +183,7 @@ export function Overlay(props: OverlayProps) {
       >
         <HexagonIcon />
         {previewCount > 0 && (
-          <span className="sv-badge" aria-hidden="true">
+          <span className="sv-badge" data-part="badge" aria-hidden="true">
             {previewCount}
           </span>
         )}
@@ -298,7 +298,7 @@ function focusTarget(panel: HTMLElement, page: PanelPage, from: PanelPage | unde
     case 'machine':
       return (
         panel.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]') ??
-        panel.querySelector<HTMLElement>('.sv-page') ??
+        panel.querySelector<HTMLElement>('[data-instance]') ??
         panel
       );
     case 'settings':
