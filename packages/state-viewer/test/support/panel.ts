@@ -90,6 +90,15 @@ export async function show(machineId: string, nth = 1): Promise<void> {
   await choose(instances, option.value);
 }
 
+/** Clicks the row of a compound or parallel state in the tree, by its key, to collapse or expand it. */
+export async function toggleState(key: string): Promise<void> {
+  const row = all('[role="treeitem"][aria-expanded] > .sv-node').find(
+    (found) => found.querySelector('.sv-key')?.textContent === key,
+  );
+  if (!row) throw new Error(`The tree has no state ${key} with states in it.`);
+  await click(row);
+}
+
 type Source = 'recorded' | 'fixture' | 'live';
 
 /**

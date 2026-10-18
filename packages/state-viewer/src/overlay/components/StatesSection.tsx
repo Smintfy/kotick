@@ -1,14 +1,18 @@
-// The States section: the state tree, the legend of its marks, and buttons for the child machines.
+// The States section: the state tree, and buttons for the child machines.
 // The tree shows each non-history state, the active and previewed leaves, and the data a preview of each leaf uses.
+// A click on a compound or parallel state collapses or expands it.
 
 import { useId, type CSSProperties } from 'react';
 import type { DataAvailability, Override, RegistrySnapshot, StateNodeInfo } from '../../core/types';
 import type { InstanceEntry } from '../model';
+import { ChevronIcon } from './icons';
 
 interface StatesSectionProps {
   instance: InstanceEntry;
   nodes: readonly StateNodeInfo[];
   active: ReadonlySet<string>;
+  /** The compound and parallel states whose children the tree hides, by node id. */
+  collapsed: ReadonlySet<string>;
   cursor: string | undefined;
   canPreview: boolean;
   parentLabel: string | undefined;
@@ -17,6 +21,7 @@ interface StatesSectionProps {
   data: DataAvailability;
   onRelease: (() => void) | undefined;
   onSelectLeaf(leaf: string): void;
+  onToggleGroup(id: string): void;
   onSelectInstance(instanceKey: string): void;
 }
 
@@ -49,25 +54,13 @@ export function StatesSection(props: StatesSectionProps) {
           active={props.active}
           override={props.snapshot.overrides[instance.key]}
           data={props.data}
+          collapsed={props.collapsed}
           cursor={props.cursor}
           readOnly={!canPreview}
           onSelect={props.onSelectLeaf}
+          onToggle={props.onToggleGroup}
         />
       )}
-      <div className="sv-legend" aria-hidden="true">
-        <span>
-          <span className="sv-live" data-on="" /> live
-        </span>
-        <span>
-          <DataMark kind="recorded" /> recorded
-        </span>
-        <span>
-          <DataMark kind="fixture" /> fixture
-        </span>
-        <span>
-          <DataMark kind="none" /> no data
-        </span>
-      </div>
       {childInstances.length > 0 && (
         <div className="sv-children">
           <span className="sv-hint">Children:</span>
@@ -95,10 +88,12 @@ interface StateTreeProps {
   active: ReadonlySet<string>;
   override: Override | undefined;
   data: DataAvailability;
+  collapsed: ReadonlySet<string>;
   /** The leaf keyboard navigation is on; the only one in the tab order. */
   cursor: string | undefined;
   readOnly: boolean;
   onSelect(leaf: string): void;
+  onToggle(id: string): void;
 }
 
 function StateTree(props: StateTreeProps) {
@@ -117,9 +112,11 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
   const description = typeof node.description === 'string' && node.description !== '' ? node.description : undefined;
 
   if (node.type !== 'atomic' && node.type !== 'final') {
+    const open = !tree.collapsed.has(node.id);
     return (
-      <li role="treeitem" aria-level={depth + 1} aria-expanded="true" className="sv-group">
-        <div className="sv-node" style={style} title={description}>
+      <li role="treeitem" aria-level={depth + 1} aria-expanded={open} className="sv-group" style={style}>
+        <div className="sv-node" title={description} onClick={() => tree.onToggle(node.id)}>
+          <ChevronIcon size={12} className="sv-chevron" />
           <span className="sv-label">
             <span className="sv-key">{node.key}</span>
             {description && <span className="sv-description">{description}</span>}
@@ -133,11 +130,13 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
             ))}
           </span>
         </div>
-        <ul role="group">
-          {(node.children ?? []).map((child) => (
-            <TreeNode key={child.id} node={child} depth={depth + 1} tree={tree} />
-          ))}
-        </ul>
+        {open && (
+          <ul role="group">
+            {(node.children ?? []).map((child) => (
+              <TreeNode key={child.id} node={child} depth={depth + 1} tree={tree} />
+            ))}
+          </ul>
+        )}
       </li>
     );
   }
@@ -174,7 +173,11 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
       title={description}
       onClick={() => onSelect(node.id)}
     >
-      <span className="sv-live" data-on={isActive || undefined} aria-hidden="true" />
+      <span className="sv-marks">
+        {recorded && <DataMark kind="recorded" />}
+        {fixture && <DataMark kind="fixture" />}
+        {!recorded && !fixture && <DataMark kind="none" />}
+      </span>
       <span className="sv-label">
         <span className="sv-key">{node.key}</span>
         {description && <span className="sv-description">{description}</span>}
@@ -186,14 +189,7 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
             {tag}
           </span>
         ))}
-        {requested && (
-          <span className="sv-pin" aria-hidden="true">
-            preview
-          </span>
-        )}
-        {recorded && <DataMark kind="recorded" />}
-        {fixture && <DataMark kind="fixture" />}
-        {!recorded && !fixture && <DataMark kind="none" />}
+        {isActive && <span className="sv-live" title="Live state" aria-hidden="true" />}
       </span>
       <span className="sv-visually-hidden">, {status.join(', ')}</span>
     </li>

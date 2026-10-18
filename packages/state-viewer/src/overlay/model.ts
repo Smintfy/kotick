@@ -3,7 +3,7 @@
 // the targets of "Copy link".
 
 import { toInstanceKey } from '../core/registry';
-import type { DeepLinkTarget, MachineHandle, Override } from '../core/types';
+import type { DeepLinkTarget, MachineHandle, Override, StateNodeInfo } from '../core/types';
 
 export interface InstanceEntry {
   key: string;
@@ -125,6 +125,19 @@ function linkedPreview(instances: readonly LinkedInstance[], selectedKey: string
 
 function sameLeaves(a: readonly string[] | undefined, b: readonly string[]): boolean {
   return a !== undefined && a.length === b.length && a.every((leaf, index) => leaf === b[index]);
+}
+
+/** The leaf ids in tree order, without the leaves inside a collapsed compound or parallel state. */
+export function shownLeaves(
+  nodes: readonly StateNodeInfo[],
+  collapsed: ReadonlySet<string>,
+  into: string[] = [],
+): string[] {
+  for (const node of nodes) {
+    if (node.type === 'atomic' || node.type === 'final') into.push(node.id);
+    else if (!collapsed.has(node.id)) shownLeaves(node.children ?? [], collapsed, into);
+  }
+  return into;
 }
 
 /** What a handle method returns, or `fallback` when the adapter throws: the panel must keep rendering. */
