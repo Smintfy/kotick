@@ -20,6 +20,7 @@ there.
 - [Install](#install)
 - [Quick start](#quick-start)
 - [Concepts](#concepts)
+- [The panel](#the-panel)
 - [Fixtures](#fixtures)
 - [Deep links](#deep-links)
 - [Keyboard](#keyboard)
@@ -73,7 +74,8 @@ There are two changes.
    The hooks have the same names and signatures as in `@xstate/react`.
 
 Start the dev server and click the bubble in the bottom-right corner, or press <kbd>Alt</kbd>+<kbd>S</kbd>. The panel
-lists each machine that a hook started. Select a state to preview it, and select it again to release it.
+lists each machine that a hook started. Select a machine to see its states. Select a state to preview it, and select
+it again to release it.
 
 Actors that you create outside React, for example in a module, need one more step. Wrap them with `connect()`:
 
@@ -119,6 +121,28 @@ each preview.
 
 **Child actors.** Machines that a machine invokes or spawns are listed under their parent. You can see their state,
 but you cannot preview them in this version.
+
+## The panel
+
+The bubble opens the panel on the machine list. The header shows the path of the page and the number of machines.
+Each row shows the number of states of its machine. A row also shows `child` when all the instances of the machine
+are child actors, the number of instances when there is more than one, and a dot while an instance is previewed.
+While a preview is on, **Release all** at the bottom of the list releases every preview.
+
+Select a machine to open its page:
+
+- **Instance** is a picker under the header, for a machine with more than one instance. A `●` follows each previewed
+  instance.
+- **States** shows the state tree. Select a compound or parallel state to collapse or expand it. The marks before a
+  leaf show the context that a preview of it uses: **R** is recorded context, **F** is a fixture, and **–** is none.
+  A green dot after a leaf marks the live state.
+- **Context** shows the context of the instance. During a preview, select its source: **Recorded**, **Fixture** or
+  **Live**.
+- **Blocked events** lists the events that the UI sent during a preview.
+- **Copy JSON** copies the state of the instance. **Copy link** copies a [deep link](#deep-links) to the previews.
+
+**Back** goes to the machine list again. **Settings**, at the bottom of the list, moves the bubble and the panel to
+another corner, and lists the keyboard shortcuts.
 
 ## Fixtures
 
@@ -182,11 +206,13 @@ http://localhost:5173/checkout?debug-state=checkout:payment.error;shipping.expre
 | Keys | Where | Action |
 |---|---|---|
 | <kbd>Alt</kbd>+<kbd>S</kbd> | Anywhere | Open or close the panel |
-| <kbd>↑</kbd> / <kbd>↓</kbd> | Panel | Go to the previous or next state |
-| <kbd>Home</kbd> / <kbd>End</kbd> | Panel | Go to the first or last state |
-| <kbd>Enter</kbd> | Panel | Preview or release the state |
+| <kbd>↑</kbd> / <kbd>↓</kbd> | Machine list | Go to the previous or next row |
+| <kbd>Home</kbd> / <kbd>End</kbd> | Machine list | Go to the first or last row |
+| <kbd>↑</kbd> / <kbd>↓</kbd> | Machine page | Go to the previous or next state |
+| <kbd>Home</kbd> / <kbd>End</kbd> | Machine page | Go to the first or last state |
+| <kbd>Enter</kbd> | Machine page | Preview or release the state |
+| <kbd>[</kbd> / <kbd>]</kbd> | Machine page | Go to the previous or next machine |
 | <kbd>Esc</kbd> | Panel | Release all previews |
-| <kbd>[</kbd> / <kbd>]</kbd> | Panel | Go to the previous or next machine |
 
 The shortcuts do nothing while you type in an input, a text area or an editable element. To change the toggle
 shortcut, set `shortcut`.
@@ -207,8 +233,9 @@ shortcut, set `shortcut`.
 />
 ```
 
-All props are optional. The panel keeps its open state, its corner and the selected machine in `localStorage`, so
-`position` and `defaultOpen` apply only until the user changes them.
+All props are optional. The panel keeps its open state, its corner and the machine whose page it shows in
+`localStorage`, so `position` and `defaultOpen` apply only until the user changes them. The user changes the corner in
+**Settings**. After a reload, the panel shows the page of the same machine when that machine registers.
 
 The overlay renders in a shadow root, so the styles of the page do not change it, and its styles do not change the
 page.
@@ -322,7 +349,8 @@ actor less than 1 µs more. Production builds do not have this cost.
 - **Functions in context are not recorded across reloads.** After a reload, a recorded preview does not have them.
 - **A transform on `body` moves the overlay.** If `body` has a `transform`, a `filter` or `contain`, it becomes the
   containing block of the overlay. Use `portalTarget={document.documentElement}` on such pages.
-- **The arrow keys move through leaves only.** Compound and parallel states cannot get focus.
+- **The arrow keys move through the leaves that show.** Compound and parallel states cannot get focus, so only a click
+  collapses or expands them. The arrow keys skip the leaves of a collapsed state.
 - **The state tree shows the fixtures of the first instance of a machine id.** Another instance with the same id, but
   with a changed machine config, for example after a Fast Refresh edit, can get other fixtures.
 - **Around a preview, observers can get a snapshot one more or one less time than with `@xstate/react`.** Without a
