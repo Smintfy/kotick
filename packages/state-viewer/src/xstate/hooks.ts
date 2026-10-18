@@ -149,14 +149,14 @@ function useProxiedActorRef(
     // observer changes, or when its effects run again (StrictMode, an Activity reveal): a stable observer stays with
     // the actor a new config replaced, which then tells it nothing, and so do the new actor's previews. Each view has
     // its own, so a render React throws away, which passes a new observer, doesn't move the committed one.
-    const subscription: { actor?: AnyActorRef; late?: boolean } = {};
+    const subscription: { actor?: AnyActorRef; afterStop?: boolean } = {};
     const view = createView(toObserver(observer), () => committed.binding, lifetime, undefined, hook.memory, {
       subscribed: () => subscription.actor !== undefined,
       replaced: () => {
         const { actor } = subscription;
         return actor === undefined || actor === committed.actor ? undefined : { source: findBinding(actor) };
       },
-      late: () => subscription.late === true,
+      subscribedAfterStop: () => subscription.afterStop === true,
     });
     return { view, subscription };
     // observerKey isn't read, but decides when @xstate/react subscribes the observer again.
@@ -169,7 +169,7 @@ function useProxiedActorRef(
     if (!observed) return;
     const actor = committed.actor;
     observed.subscription.actor = actor;
-    observed.subscription.late = (actor as { _processingStatus?: number } | undefined)?._processingStatus === 2;
+    observed.subscription.afterStop = (actor as { _processingStatus?: number } | undefined)?._processingStatus === 2;
   }, [observed]);
   const actor = (useXStateActorRef as (...args: unknown[]) => AnyActorRef)(logic, actorOptions, view?.observer);
   // After @xstate/react's cleanup, which stops the actor and drops its observers without telling them: the

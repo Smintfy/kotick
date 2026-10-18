@@ -89,7 +89,7 @@ interface Attachment {
    * True when @xstate/react subscribed the observer to an actor that had already ended and stopped: XState completes
    * or fails it inside subscribe() and tells it nothing more. It followed none of the actor's previews.
    */
-  late(): boolean;
+  subscribedAfterStop(): boolean;
 }
 
 /**
@@ -112,7 +112,7 @@ export interface ViewMemory {
    * How the real actor ended, held back while a preview hides the real snapshot. The target hears it once the
    * preview ends, after the real snapshot, as XState sends the done snapshot before complete.
    */
-  ending?: Ending;
+  heldEnding?: Ending;
   /**
    * What's owed about actors @xstate/react replaced (a new config: Fast Refresh, a machine built from props), which
    * the target hears once the hook's actor is no longer previewed, before anything about the new actor.
@@ -146,15 +146,15 @@ export function createView(
     const source = current();
     const actor = memory.identify ? memory.identify() : source;
     if (actor !== undefined && memory.actor !== actor) {
-      const { source: seen, last, ending } = memory;
-      if (seen && (ending || (last !== UNSET && last !== seen.getLiveSnapshot()))) {
-        memory.owed.push({ source: seen, last, ending });
+      const { source: seen, last, heldEnding } = memory;
+      if (seen && (heldEnding || (last !== UNSET && last !== seen.getLiveSnapshot()))) {
+        memory.owed.push({ source: seen, last, ending: heldEnding });
       }
       memory.actor = actor;
       memory.source = undefined;
       memory.last = UNSET;
       memory.told = false;
-      memory.ending = undefined;
+      memory.heldEnding = undefined;
     }
     if (source) memory.source = source;
     return memory;
@@ -187,7 +187,7 @@ export function createView(
 
   const end = ({ failed, cause }: Ending, source = current()): void => {
     const current = remember();
-    current.ending = undefined;
+    current.heldEnding = undefined;
     current.told = true;
     // The proxy shows the real snapshot meanwhile: toPromise reads the output from it.
     const tell = (): void => isolate(() => (failed ? target.error?.(cause) : target.complete?.()));
@@ -202,8 +202,8 @@ export function createView(
   // subscribed after the actor ended, unless the hook still holds back the ending an earlier observer was owed.
   const endOrHold = (failed: boolean, cause?: unknown): void => {
     const current = remember();
-    const late = !!attachment?.late() && current.ending === undefined;
-    if (target.next && !current.told && !late && hidden()) current.ending = { failed, cause };
+    const afterStop = !!attachment?.subscribedAfterStop() && current.heldEnding === undefined;
+    if (target.next && !current.told && !afterStop && hidden()) current.heldEnding = { failed, cause };
     else end({ failed, cause });
   };
 
@@ -220,13 +220,13 @@ export function createView(
   // What the target sees of `source`, with or without a preview hiding the real snapshot.
   const show = (source: ViewSource, isHidden: boolean): void => {
     if (closed || heardEnding()) return;
-    const { last, ending } = remember();
+    const { last, heldEnding } = remember();
     const shown = isHidden ? source.getSnapshot() : source.getLiveSnapshot();
     const status = statusOf(source.getLiveSnapshot());
     // A consumer that only re-renders (useSelector, the hooks' store) needs waking to leave a preview of an actor
     // that stopped, which XState no longer tells it about.
     const wakes = status === 'stopped' && lifetime !== 'ended' && !target.complete;
-    if (ending === undefined) {
+    if (heldEnding === undefined) {
       // Ended without the target being told: subscribed after the actor stopped, or failed without an error callback.
       // The consumer may have rendered the preview it subscribed under, so it isn't let go before the preview ends.
       if (status === 'stopped' || (lifetime === 'ended' && status === 'error' && !target.error)) {
@@ -243,7 +243,7 @@ export function createView(
     }
     // The preview that hid the ending is gone. XState sends a done snapshot through next.
     if (shown !== last && (status === 'done' || wakes)) deliver(shown);
-    if (!closed && memory.ending) end(memory.ending, source);
+    if (!closed && memory.heldEnding) end(memory.heldEnding, source);
   };
 
   // What's owed about replaced actors, once the hook's actor is no longer previewed, or at once when `force`d. It's the
@@ -292,12 +292,12 @@ export function createView(
   const settle = (): void => {
     if (getSource()) return;
     settleOwed(true);
-    const { source, ending } = remember();
-    if (source && ending) show(source, false);
+    const { source, heldEnding } = remember();
+    if (source && heldEnding) show(source, false);
   };
 
   const drop = (): void => {
-    if (memory.ending === undefined) close();
+    if (memory.heldEnding === undefined) close();
     else dropped = true;
   };
 
@@ -355,7 +355,7 @@ export function createView(
     showCurrent,
     detach,
     settle,
-    owes: () => remember().ending !== undefined || memory.owed.length > 0,
+    owes: () => remember().heldEnding !== undefined || memory.owed.length > 0,
     close,
     drop,
     isClosed: () => closed,

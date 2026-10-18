@@ -5,7 +5,7 @@ import { callLoggingErrors, toInstanceKey } from '../core/registry';
 import type { Capabilities, MachineHandle, Registry, StateNodeInfo } from '../core/types';
 import { isMachineActor, liveChildren, statusOf, type MachineActor } from './actor';
 import { isFallbackId, resolveMachineId, warnFallbackId, type Identity } from './identity';
-import { normalizeLeaves } from './preview-snapshot';
+import { completeTarget } from './preview-snapshot';
 import { getTree, leavesOfSnapshot } from './tree';
 
 const PREVIEW_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
@@ -59,7 +59,7 @@ export function createHandle(
         listeners!.delete(listener);
       };
     },
-    normalizeTarget: (leaves) => normalizeLeaves(machine, leaves, leavesOfSnapshot(machine, actor.getSnapshot())),
+    normalizeTarget: (leaves) => completeTarget(machine, leaves, leavesOfSnapshot(machine, actor.getSnapshot())),
   };
   if (identity.label !== undefined) handle.label = identity.label;
   if (parentKey !== undefined) handle.parentKey = parentKey;
@@ -119,9 +119,8 @@ export function inspect(
     if (child?.handle.parentKey !== parentKey) {
       const machineId = resolveMachineId(ref.logic);
       if (isFallbackId(ref.logic, machineId)) warnFallbackId(machineId);
-      // An invoke or spawn id names the child better than its session id.
-      const label = typeof ref.id === 'string' && ref.id !== ref.sessionId ? ref.id : undefined;
-      child = createHandle(ref, ref.logic, { machineId, instanceId: ref.sessionId, label }, parentKey, false, registry);
+      const identity = { machineId, instanceId: ref.sessionId, label: childLabel(ref) };
+      child = createHandle(ref, ref.logic, identity, parentKey, false, registry);
       childHandles.set(ref, child);
     }
     (connected ??= new Map()).set(ref, { child, unregister: registry.register(child.handle) });
@@ -148,6 +147,14 @@ export function inspect(
     for (const child of Object.values(liveChildren(ref.getSnapshot()))) add(child);
   }
 
+  /** A backstop for children that ended without telling anyone, or before their own snapshot came in. */
+  function removeEndedChildren(): void {
+    if (!connected) return;
+    for (const child of [...connected.keys()]) {
+      if (statusOf(child.getSnapshot()) !== 'active') remove(child);
+    }
+  }
+
   walk(root);
   const subscription = root.system.inspect({
     next(event) {
@@ -155,11 +162,7 @@ export function inspect(
         const ref = event.actorRef as AnyActorRef;
         if (ref === root) {
           onRootSnapshot(event.snapshot);
-          if (!connected || connected.size === 0) return;
-          // A backstop for children that ended without telling anyone, or before their own snapshot came in.
-          for (const child of [...connected.keys()]) {
-            if (statusOf(child.getSnapshot()) !== 'active') remove(child);
-          }
+          removeEndedChildren();
           return;
         }
         if (statusOf(event.snapshot) !== 'active') {
@@ -194,6 +197,11 @@ export function inspect(
     }
     connected.clear();
   };
+}
+
+/** An invoke or spawn id names the child better than its session id. */
+function childLabel(ref: AnyActorRef): string | undefined {
+  return typeof ref.id === 'string' && ref.id !== ref.sessionId ? ref.id : undefined;
 }
 
 function contextOf(snapshot: unknown): unknown {

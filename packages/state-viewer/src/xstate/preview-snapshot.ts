@@ -52,7 +52,7 @@ function orthogonal(a: AnyStateNode, b: AnyStateNode): boolean {
  * the current leaves of regions the request leaves alone, then the initial leaves of regions neither covers, the way
  * XState enters them. The requested leaves that were kept come first.
  */
-export function normalizeLeaves(machine: AnyStateMachine, requested: readonly string[], current: readonly string[]) {
+export function completeTarget(machine: AnyStateMachine, requested: readonly string[], current: readonly string[]) {
   const tree = getTree(machine);
   const kept: AnyStateNode[] = [];
   const add = (leaf: string): void => {

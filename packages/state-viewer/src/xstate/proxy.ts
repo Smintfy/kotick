@@ -216,8 +216,8 @@ function createBinding(actor: MachineActor): Binding {
     };
   }
 
-  /** Logs and drops an event sent during a preview. Returns false when there's no preview. */
-  function blocked(event: unknown): boolean {
+  /** Logs an event sent during a preview as blocked, and drops it. Returns false when there's no preview. */
+  function blockIfPreviewing(event: unknown): boolean {
     const override = currentOverride();
     if (!override) return false;
     if (!isEventObject(event)) {
@@ -252,11 +252,11 @@ function createBinding(actor: MachineActor): Binding {
     subscribe,
     // XState rejects string events itself, before anything is delivered.
     send: (event: unknown) => {
-      if (typeof event === 'string' || !blocked(event)) actor.send(event as never);
+      if (typeof event === 'string' || !blockIfPreviewing(event)) actor.send(event as never);
     },
     // What sendTo, forwardTo and delayed sends call on their target, so an actor handed the proxy is blocked too.
     _send: (event: unknown) => {
-      if (!blocked(event)) actor._send(event);
+      if (!blockIfPreviewing(event)) actor._send(event);
     },
     select,
     // These return the actor itself, which has to stay the proxy: `connect(createActor(m)).start()`.
@@ -278,6 +278,7 @@ function createBinding(actor: MachineActor): Binding {
       if (Object.hasOwn(members, property)) return members[property];
       if (property === 'ref') return proxy;
       const value: unknown = Reflect.get(target, property, target);
+      // Unbound: a bound constructor isn't the class, and test snapshots print it as "bound Actor".
       if (typeof value !== 'function' || property === 'constructor') return value;
       bound ??= new Map();
       let entry = bound.get(property);
