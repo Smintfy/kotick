@@ -175,7 +175,7 @@ export function blockedEvents(): string[] {
  * shows "Copy failed". A MutationObserver reads the textarea before the overlay removes it.
  */
 export async function copy(label: 'Copy link' | 'Copy JSON'): Promise<{ copied: string[]; status: string }> {
-  const found = button(label);
+  const found = overlay().querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
   if (!found) throw new Error(`The panel has no ${label} button.`);
   const copied: string[] = [];
   const read = (records: MutationRecord[]) => {

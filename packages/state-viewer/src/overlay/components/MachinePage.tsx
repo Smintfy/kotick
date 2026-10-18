@@ -19,6 +19,7 @@ import {
 import { isTyping, moveIndex, moveOf, type Move } from '../shortcut';
 import { ContextView } from './ContextView';
 import { EventLog } from './EventLog';
+import { CopyIcon, LinkIcon } from './icons';
 import { StatesSection } from './StatesSection';
 
 const EMPTY_DATA: DataAvailability = { recorded: new Set(), fixture: new Set() };
@@ -70,12 +71,13 @@ export function MachinePage(props: MachinePageProps) {
         leaves[0]);
 
   const pageRef = React.useRef<HTMLDivElement>(null);
-  const [status, setStatus] = React.useState('');
+  // What the last copy did. The clicked button shows it in place of its label for 2 s.
+  const [copied, setCopied] = React.useState<{ button: 'json' | 'link'; status: string }>();
   React.useEffect(() => {
-    if (status === '') return;
-    const timer = setTimeout(() => setStatus(''), 2000);
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(undefined), 2000);
     return () => clearTimeout(timer);
-  }, [status]);
+  }, [copied]);
 
   function preview(leaf: string): void {
     if (!canPreview) return;
@@ -145,7 +147,8 @@ export function MachinePage(props: MachinePageProps) {
     const { location } = window;
     const search = writeDeepLink(location.search, plan.targets, props.urlParam);
     const url = `${location.href.split(/[?#]/)[0]}${search}${location.hash}`;
-    setStatus((await copyText(url, pageRef.current ?? document.body)) ? 'Link copied' : 'Copy failed');
+    const status = (await copyText(url, pageRef.current ?? document.body)) ? 'Link copied' : 'Copy failed';
+    setCopied({ button: 'link', status });
   }
 
   async function copyJson(): Promise<void> {
@@ -156,7 +159,8 @@ export function MachinePage(props: MachinePageProps) {
       preview: override ? { requested: override.requested, source: override.source } : null,
       context: override ? override.context : liveContext,
     });
-    setStatus((await copyText(json, pageRef.current ?? document.body)) ? 'JSON copied' : 'Copy failed');
+    const status = (await copyText(json, pageRef.current ?? document.body)) ? 'JSON copied' : 'Copy failed';
+    setCopied({ button: 'json', status });
   }
 
   const available: Record<DataSource, boolean> = {
@@ -223,20 +227,26 @@ export function MachinePage(props: MachinePageProps) {
       </div>
 
       <footer className="sv-footer">
-        <button
-          type="button"
-          className="sv-button"
-          onClick={copyLink}
-          disabled={plan.targets.length === 0}
-          title={plan.targets.length === 0 ? 'Preview a state to link to it' : 'Copy a link that opens these previews'}
-        >
-          Copy link
-        </button>
-        <button type="button" className="sv-button" onClick={copyJson}>
-          Copy JSON
-        </button>
-        <span className="sv-status" role="status">
-          {status}
+        {/* The names stay the same while a label shows the status, so voice control and tests still find them. */}
+        <div className="sv-copy">
+          <button type="button" className="sv-footer-button" onClick={copyJson} aria-label="Copy JSON">
+            <span>{copied?.button === 'json' ? copied.status : 'Copy JSON'}</span>
+            <CopyIcon />
+          </button>
+          <button
+            type="button"
+            className="sv-footer-button"
+            onClick={copyLink}
+            disabled={plan.targets.length === 0}
+            aria-label="Copy link"
+            title={plan.targets.length === 0 ? 'Preview a state to link to it' : 'Copy a link that opens these previews'}
+          >
+            <span>{copied?.button === 'link' ? copied.status : 'Copy link'}</span>
+            <LinkIcon />
+          </button>
+        </div>
+        <span className="sv-visually-hidden" role="status">
+          {copied?.status}
         </span>
         {plan.partial.length > 0 && (
           <p className="sv-warning">
