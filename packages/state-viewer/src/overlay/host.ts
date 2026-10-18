@@ -8,6 +8,8 @@ const HOST_ATTRIBUTE = 'data-state-viewer-root';
 export interface OverlayHost {
   host: HTMLElement;
   shadow: ShadowRoot;
+  /** The <style> with the overlay's CSS. */
+  style: HTMLStyleElement;
   /** Where the overlay is rendered, inside the shadow root. */
   container: HTMLElement;
   remove(): void;
@@ -23,5 +25,5 @@ export function createHost(target: Element | ShadowRoot): OverlayHost {
   const container = document.createElement('div');
   shadow.append(style, container);
   target.appendChild(host);
-  return { host, shadow, container, remove: () => host.remove() };
+  return { host, shadow, style, container, remove: () => host.remove() };
 }
