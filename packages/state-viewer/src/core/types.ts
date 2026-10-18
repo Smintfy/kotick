@@ -93,6 +93,9 @@ export interface PreviewTarget {
   source?: DataSource;
 }
 
+/** Ends a fixture load. A second call does nothing. */
+export type EndFixtureLoad = () => void;
+
 /** One machine of a deep link: every instance of the machine previews these leaves. */
 export interface DeepLinkTarget {
   machineId: string;
@@ -115,12 +118,12 @@ export interface Registry {
   record(instanceKey: string, leaves: string[], context: unknown): void;
   registerFixtures(sets: FixtureSet[]): void;
   /**
-   * Starts a fixture load, such as a lazy loader of `<StateViewer fixtures>`, and returns the function that ends
-   * it, which the caller calls after it registers the sets or when the load fails.
+   * Starts a fixture load, such as a lazy loader of `<StateViewer fixtures>`.
+   * The caller ends the load after it registers the sets, or when the load fails.
    * While a load is pending, a preview on the default order that finds only live context holds its warning.
    * It warns when the last load ends, and only if no fixture that registered gave it context.
    */
-  expectFixtures(): () => void;
+  startFixtureLoad(): EndFixtureLoad;
   logEvent(entry: EventLogEntry): void;
   clearLog(): void;
 
@@ -129,5 +132,5 @@ export interface Registry {
    * one that registers from now on as it registers, and the ones registered already at the next microtask. A machine's
    * link ends once preview() or release() is called for one of its instances, or release() releases everything.
    */
-  link(targets: DeepLinkTarget[]): void;
+  applyDeepLink(targets: DeepLinkTarget[]): void;
 }

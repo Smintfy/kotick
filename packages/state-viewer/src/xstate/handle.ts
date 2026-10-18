@@ -1,7 +1,7 @@
 // The machine handle: what the registry sees of an actor and of the child machines it starts.
 
 import type { AnyActorRef, AnyMachineSnapshot, AnyStateMachine } from 'xstate';
-import { callListener, toInstanceKey } from '../core/registry';
+import { callLoggingErrors, toInstanceKey } from '../core/registry';
 import type { Capabilities, MachineHandle, Registry, StateNodeInfo } from '../core/types';
 import { isMachineActor, liveChildren, statusOf, type MachineActor } from './actor';
 import { isFallbackId, resolveMachineId, warnFallbackId, type Identity } from './identity';
@@ -70,7 +70,7 @@ export function createHandle(
     notify() {
       if (!listeners || listeners.size === 0) return;
       for (const listener of [...listeners]) {
-        if (listeners.has(listener)) callListener(listener, `A listener of "${key}" threw.`);
+        if (listeners.has(listener)) callLoggingErrors(listener, `A listener of "${key}" threw.`);
       }
     },
     record(snapshot) {

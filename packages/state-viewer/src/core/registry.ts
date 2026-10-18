@@ -7,6 +7,7 @@ import type {
   DataAvailability,
   DataSource,
   DeepLinkTarget,
+  EndFixtureLoad,
   MachineHandle,
   Override,
   PreviewTarget,
@@ -19,6 +20,12 @@ import { VERSION } from './version';
 export const REGISTRY_KEY = '__STATE_VIEWER_REGISTRY__';
 
 type SnapshotPart = 'machines' | 'overrides' | 'log' | 'data';
+
+/** `${machineId}#${instanceId}`, from toInstanceKey(). */
+type InstanceKey = string;
+type MachineId = string;
+/** Prints the live-context warning that a preview holds. */
+type HeldWarning = () => void;
 
 /** One registration of a handle; unregister removes only the registration it came from. */
 interface Registration {
@@ -62,27 +69,27 @@ export function leavesOf(nodes: readonly StateNodeInfo[], into: string[] = []): 
 }
 
 function createRegistry(): Registry {
-  const registrations = new Map<string, Registration>();
+  const registrations = new Map<InstanceKey, Registration>();
   // Keys unregistered since the last flush. Fast Refresh, StrictMode and actor swaps run an effect's cleanup and
   // then its setup in the same tick, so the registration stays in place until the flush, and a key that registers
   // again before then keeps its position and its override.
-  const removing = new Set<string>();
-  const overrides = new Map<string, Override>();
+  const removing = new Set<InstanceKey>();
+  const overrides = new Map<InstanceKey, Override>();
   // Overrides whose source the caller chose. Fixtures registering never re-resolve these. Keyed by the override, so
   // the mark goes with it when it's released, dropped or replaced.
   const chosenSource = new WeakSet<Override>();
-  const overrideListeners = new Map<string, Set<() => void>>();
-  // Deep links: machine id to the leaves its link previews. A link ends when preview() or release() is called for
-  // one of the machine's instances, or release() releases everything, so one the user moved on from doesn't come back
-  // on the machine's next instance (a new list row, a remount).
-  const links = new Map<string, readonly string[]>();
+  const overrideListeners = new Map<InstanceKey, Set<() => void>>();
+  // The leaves that each machine's deep link previews.
+  // A link ends when preview() or release() is called for one of the machine's instances, or for all instances.
+  // So a link that the user left doesn't come back on the next instance of the machine, such as a new list row.
+  const linkedLeaves = new Map<MachineId, readonly string[]>();
   // Machines whose link has warned since it was set, so the instances of a list don't repeat the same warning.
-  const linkWarned = new Set<string>();
-  // Fixture loads that expectFixtures() started and that are not done yet.
+  const linkWarned = new Set<MachineId>();
+  // Fixture loads that startFixtureLoad() started and that are not done yet.
   let pendingFixtureLoads = 0;
-  // Instance key to the live-context warning that its preview holds until no fixture load is pending.
+  // The warnings that previews hold until no fixture load is pending.
   // The fixtures that load can still give the preview context, so the preview warns only if they don't.
-  const heldWarnings = new Map<string, () => void>();
+  const heldWarnings = new Map<InstanceKey, HeldWarning>();
   const listeners = new Set<() => void>();
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
   const eventLog = createEventLog();
@@ -115,7 +122,7 @@ function createRegistry(): Registry {
     if (current === notified) return;
     notified = current;
     for (const listener of [...listeners]) {
-      if (listeners.has(listener)) callListener(listener, 'A registry listener threw.');
+      if (listeners.has(listener)) callLoggingErrors(listener, 'A registry listener threw.');
     }
   }
 
@@ -185,7 +192,7 @@ function createRegistry(): Registry {
     const set = overrideListeners.get(instanceKey);
     if (!set) return;
     for (const listener of [...set]) {
-      if (set.has(listener)) callListener(listener, `An override listener for "${instanceKey}" threw.`);
+      if (set.has(listener)) callLoggingErrors(listener, `An override listener for "${instanceKey}" threw.`);
     }
   }
 
@@ -204,13 +211,12 @@ function createRegistry(): Registry {
       // Map.set keeps an existing key's position, so a replacement stays where the first registration was.
       registrations.set(key, registration);
       recording.hydrate(handle.machineId);
-      // Matching by source now records the id's alias for its machine object, so fixtures survive HMR.
-      fixtures.fixtureLeaves(handle);
+      fixtures.recordAlias(handle);
       markDirty('machines');
       markDirty('data');
       if (replaced) releaseIfInvalid(key, handle);
       // Synchronously, inside the registration: a hook registers in a layout effect, so its first paint shows the link.
-      applyLink(key, handle);
+      previewWithLink(key, handle);
     }
 
     const current = registration;
@@ -402,7 +408,7 @@ function createRegistry(): Registry {
     const { source, context }: ResolvedContext = resolved ?? { source: 'live', context: undefined };
 
     const shown = `"${requested.join(', ')}" on "${instanceKey}"`;
-    let held: (() => void) | undefined;
+    let held: HeldWarning | undefined;
     if (source === 'live' && explicit !== 'live') {
       const message = `[state-viewer] No recorded or fixture context for ${shown}, so the preview uses the live context.`;
       // Only a preview on the default order takes the fixtures that register later.
@@ -456,7 +462,7 @@ function createRegistry(): Registry {
     }
   }
 
-  function expectFixtures(): () => void {
+  function startFixtureLoad(): EndFixtureLoad {
     pendingFixtureLoads++;
     let pending = true;
     // One-shot, so calling it again can't end a different load.
@@ -496,8 +502,8 @@ function createRegistry(): Registry {
    * Previews an instance with its machine's link. One with a preview keeps it: an instance that registers again before
    * the flush (StrictMode, Fast Refresh) still has the preview it had, linked or chosen since.
    */
-  function applyLink(key: string, handle: MachineHandle): void {
-    const leaves = links.get(handle.machineId);
+  function previewWithLink(key: string, handle: MachineHandle): void {
+    const leaves = linkedLeaves.get(handle.machineId);
     // Child machines are listed read-only, without the capability.
     if (!leaves || overrides.has(key) || !handle.capabilities?.preview) return;
     const { machineId } = handle;
@@ -513,7 +519,7 @@ function createRegistry(): Registry {
     applyPreview(key, { leaves: [...leaves] }, warn);
   }
 
-  function link(targets: DeepLinkTarget[]): void {
+  function applyDeepLink(targets: DeepLinkTarget[]): void {
     if (!Array.isArray(targets)) {
       console.warn('[state-viewer] Ignoring a deep link: expected an array of targets.');
       return;
@@ -524,7 +530,7 @@ function createRegistry(): Registry {
         console.warn('[state-viewer] Ignoring a deep link target: expected { machineId, leaves } with string leaves.');
         continue;
       }
-      links.set(target.machineId, freeze([...target.leaves]));
+      linkedLeaves.set(target.machineId, freeze([...target.leaves]));
       linkWarned.delete(target.machineId);
       added = true;
     }
@@ -533,7 +539,7 @@ function createRegistry(): Registry {
     // before every layout effect) without updating the components that show instances registered earlier.
     queueMicrotask(() => {
       for (const [key, { handle }] of [...registrations]) {
-        if (!removing.has(key)) applyLink(key, handle);
+        if (!removing.has(key)) previewWithLink(key, handle);
       }
     });
   }
@@ -541,7 +547,7 @@ function createRegistry(): Registry {
   /** Ends the link of the instance's machine: whoever previews or releases it has taken over from the link. */
   function dismissLink(instanceKey: string): void {
     const handle = registrations.get(instanceKey)?.handle;
-    if (handle) links.delete(handle.machineId);
+    if (handle) linkedLeaves.delete(handle.machineId);
   }
 
   function onOverride(instanceKey: string, listener: () => void): () => void {
@@ -578,7 +584,7 @@ function createRegistry(): Registry {
       applyPreview(instanceKey, target, warnInConsole);
     },
     release(instanceKey) {
-      if (instanceKey === undefined) links.clear();
+      if (instanceKey === undefined) linkedLeaves.clear();
       else dismissLink(instanceKey);
       releaseOverride(instanceKey);
     },
@@ -591,12 +597,12 @@ function createRegistry(): Registry {
     },
     registerFixtures(sets) {
       fixtures.register(sets);
-      // Records each id's alias for its machine object before HMR can replace it, even if nothing reads the snapshot.
-      for (const { handle } of registrations.values()) fixtures.fixtureLeaves(handle);
+      // The new sets can match machines that registered earlier. Record those aliases before HMR replaces the machines.
+      for (const { handle } of registrations.values()) fixtures.recordAlias(handle);
       markDirty('data');
       reresolve();
     },
-    expectFixtures,
+    startFixtureLoad,
     logEvent(entry) {
       eventLog.push(entry);
       markDirty('log');
@@ -606,7 +612,7 @@ function createRegistry(): Registry {
       eventLog.clear();
       markDirty('log');
     },
-    link,
+    applyDeepLink,
   };
 }
 
@@ -630,10 +636,10 @@ function createNoopRegistry(): Registry {
     onOverride: () => noop,
     record: noop,
     registerFixtures: noop,
-    expectFixtures: () => noop,
+    startFixtureLoad: () => noop,
     logEvent: noop,
     clearLog: noop,
-    link: noop,
+    applyDeepLink: noop,
   };
 }
 
@@ -641,7 +647,7 @@ let serverRegistry: Registry | undefined;
 let warnedVersion = false;
 
 /** The page's registry, created on first use. Returns a no-op registry on the server. */
-export function getRegistry(): Registry {
+export function getPageRegistry(): Registry {
   // globalThis is shared by every request on a server, so a real registry there would mix up users' instances.
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     serverRegistry ??= createNoopRegistry();
@@ -704,7 +710,7 @@ function freeze<T extends object>(value: T): T {
   return value;
 }
 
-export function callListener(listener: () => void, message: string): void {
+export function callLoggingErrors(listener: () => void, message: string): void {
   try {
     listener();
   } catch (error) {

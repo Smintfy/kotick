@@ -368,7 +368,7 @@ interface Registry {
 
   record(instanceKey: string, leaves: string[], context: unknown): void;
   registerFixtures(sets: FixtureSet[]): void;
-  expectFixtures(): () => void;                  // a fixture load starts; call the result when it ends (§10.3)
+  startFixtureLoad(): () => void;                // a fixture load starts; call the result when it ends (§10.3)
   logEvent(entry: EventLogEntry): void;
   clearLog(): void;
 }
@@ -410,7 +410,7 @@ interface Registry {
 - A leaf is marked recorded when at least one recorded configuration contains it, matching the lookup fallback.
 - Fixture sets match an instance by `source` (the same definition object), then by `machineId`. The id fallback covers HMR, which recreates the machine and its config. A set that matched by source keeps matching that registry id afterwards, so machines under `debug.id` or a generated id keep their fixtures across HMR. Sets for the same machine merge, and a later set wins per leaf id.
 - When fixtures register, every preview whose source came from the default order is checked again for the same configuration, and replaced only if its context or source changed. A live preview picks up a fixture that now matches, a fixture preview follows its fixture (or falls back to live if none matches any more), and a preview on a recording stays put. Recordings aren't consulted again, so a preview never changes with live traffic. Previews with an explicitly chosen source are left alone.
-- `<StateViewer fixtures>` calls `expectFixtures()` when a load starts, and the function it returns when the load settles: after its sets register, or when the loader fails. It starts the load in an insertion effect, like the deep link, so the registry expects the fixtures before the app's hooks register in layout effects and the link previews them. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't, and the instances of one linked machine warn once. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
+- `<StateViewer fixtures>` calls `startFixtureLoad()` when a load starts, and the function it returns when the load settles: after its sets register, or when the loader fails. It starts the load in an insertion effect, like the deep link, so the registry expects the fixtures before the app's hooks register in layout effects and the link previews them. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't, and the instances of one linked machine warn once. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
 - Fixture lookup checks the requested leaves in the order given (the clicked leaf, or a deep link's order), then the leaves `normalizeTarget` filled in. The first leaf with a fixture wins.
 
 ### 10.4 Deep links

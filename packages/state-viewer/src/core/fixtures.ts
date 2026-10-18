@@ -14,6 +14,11 @@ interface FixtureStore {
   lookup(target: FixtureTarget, requested: string[], normalized: string[]): FixtureMatch | undefined;
   /** Leaf ids with a fixture for this target; the same Set until fixtures change or a new alias adds sets. */
   fixtureLeaves(target: FixtureTarget): ReadonlySet<string>;
+  /**
+   * Records the target's machine id as an alias of its source, when sets match the source.
+   * HMR replaces the machine object, and the alias keeps the sets of the old source for the id.
+   */
+  recordAlias(target: FixtureTarget): void;
 }
 
 interface StoredSet {
@@ -53,21 +58,22 @@ export function createFixtureStore(): FixtureStore {
     byId.delete(machineId);
   }
 
-  function resolve({ machineId, source }: FixtureTarget): MergedFixtures {
-    if (hasSource(source)) {
-      let merged = bySource.get(source);
-      if (!merged) {
-        const matched = sets.filter((set) => set.source === source);
-        if (matched.length > 0) {
-          merged = merge(matched);
-          bySource.set(source, merged);
-        }
-      }
-      if (merged) {
-        addAlias(machineId, source);
-        return merged;
-      }
+  /** The sets whose source is `source`, merged, or undefined when no set has that source. */
+  function matchSource(source: unknown): MergedFixtures | undefined {
+    if (!hasSource(source)) return undefined;
+    let merged = bySource.get(source);
+    if (!merged) {
+      const matched = sets.filter((set) => set.source === source);
+      if (matched.length === 0) return undefined;
+      merged = merge(matched);
+      bySource.set(source, merged);
     }
+    return merged;
+  }
+
+  function resolve({ machineId, source }: FixtureTarget): MergedFixtures {
+    const sourceMatch = matchSource(source);
+    if (sourceMatch) return sourceMatch;
     let merged = byId.get(machineId);
     if (!merged) {
       const sources = aliases.get(machineId);
@@ -111,6 +117,10 @@ export function createFixtureStore(): FixtureStore {
 
     fixtureLeaves(target) {
       return resolve(target).leaves;
+    },
+
+    recordAlias({ machineId, source }) {
+      if (matchSource(source)) addAlias(machineId, source);
     },
   };
 }
