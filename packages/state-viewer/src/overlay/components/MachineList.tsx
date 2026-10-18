@@ -7,7 +7,11 @@ import type { RegistrySnapshot } from '../../core/types';
 import { usePathname } from '../hooks';
 import { attempt, type MachineGroup } from '../model';
 import { moveIndex, moveOf } from '../shortcut';
+import { CHIP, TAG } from './classes';
 import { GearIcon } from './icons';
+
+const ACTION =
+  'flex h-8.5 w-full cursor-pointer items-center gap-1.5 rounded-md bg-transparent px-1.5 py-0 text-left text-lg text-fg hover:bg-hover [&>:last-child]:ml-auto [&>svg]:text-muted';
 
 interface MachineListProps {
   groups: readonly MachineGroup[];
@@ -30,14 +34,14 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
   }
 
   return (
-    <div className="sv-list" onKeyDown={onKeyDown}>
+    <div className="flex min-h-0 flex-col" onKeyDown={onKeyDown}>
       {groups.length === 0 ? (
-        <p className="sv-empty" data-part="empty">
+        <p className="px-3 py-4 text-center leading-relaxed text-muted" data-part="empty">
           No machines yet. Hooks from <code>state-viewer/xstate</code> register their actors as they mount, and{' '}
           <code>connect()</code> registers actors created outside React.
         </p>
       ) : (
-        <div className="sv-rows">
+        <div className="grid gap-0.5 overflow-auto overscroll-contain p-1.5">
           {groups.map((group) => (
             <MachineRow
               key={group.machineId}
@@ -48,21 +52,23 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
           ))}
         </div>
       )}
-      <div className="sv-actions">
+      <div className="grid flex-none border-t border-t-line px-1.5 py-0.5">
         {previewCount > 0 && (
           <button
             type="button"
-            className="sv-row sv-action"
+            className={ACTION}
             data-row="release"
             onClick={onReleaseAll}
             title="Release every preview (Esc)"
           >
-            <span className="sv-row-label" data-part="row-label">Release all</span>
-            <span className="sv-chip" data-part="chip">{previewCount}</span>
+            <span data-part="row-label">Release all</span>
+            <span className={CHIP} data-part="chip">
+              {previewCount}
+            </span>
           </button>
         )}
-        <button type="button" className="sv-row sv-action" data-row="settings" onClick={onSettings}>
-          <span className="sv-row-label" data-part="row-label">Settings</span>
+        <button type="button" className={ACTION} data-row="settings" onClick={onSettings}>
+          <span data-part="row-label">Settings</span>
           <GearIcon />
         </button>
       </div>
@@ -76,24 +82,26 @@ function MachineRow({ group, previewing, onOpen }: { group: MachineGroup; previe
   return (
     <button
       type="button"
-      className="sv-row"
+      className="flex h-6.5 w-full cursor-pointer items-center gap-1.5 rounded-md bg-transparent px-1.5 py-0 text-left text-fg hover:bg-hover"
       data-row="machine"
       data-machine={group.machineId}
       onClick={() => onOpen(group.machineId)}
     >
-      <span className="sv-row-name" data-part="row-name">{group.machineId}</span>
-      {group.childrenOnly && <span className="sv-tag" data-part="tag">child</span>}
+      <span className="min-w-0 truncate font-mono text-base" data-part="row-name">{group.machineId}</span>
+      {group.childrenOnly && <span className={TAG} data-part="tag">
+          child
+        </span>}
       {instances > 1 && (
-        <span className="sv-chip" data-part="chip" title={`${instances} instances`}>
+        <span className={CHIP} data-part="chip" title={`${instances} instances`}>
           {instances}
         </span>
       )}
       {previewing && (
-        <span className="sv-dot" data-part="dot" title="Previewing">
-          <span className="sv-visually-hidden">, previewing</span>
+        <span className="size-1.5 flex-none rounded-[50%] bg-accent" data-part="dot" title="Previewing">
+          <span className="visually-hidden">, previewing</span>
         </span>
       )}
-      <span className="sv-row-end" data-part="row-end">{states === 1 ? '1 state' : `${states} states`}</span>
+      <span className="ml-auto flex-none pl-2 text-base text-muted" data-part="row-end">{states === 1 ? '1 state' : `${states} states`}</span>
     </button>
   );
 }
@@ -103,7 +111,11 @@ export function PathChip() {
   const pathname = usePathname();
   if (pathname === '') return null;
   return (
-    <code className="sv-chip sv-code" data-part="chip" title={pathname}>
+    <code
+      className="inline-block h-4.5 min-w-0 flex-initial truncate rounded-sm bg-chip px-1.25 text-center font-mono text-sm leading-4.5 font-normal text-fg tabular-nums"
+      data-part="chip"
+      title={pathname}
+    >
       {pathname}
     </code>
   );

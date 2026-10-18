@@ -11,6 +11,7 @@ import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '
 import type { StateViewerProps, Theme } from '../props';
 import { isPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../settings';
 import { eventOrigin, isTyping, matchesShortcut, parseShortcut } from '../shortcut';
+import { CHIP } from './classes';
 import { HexagonIcon } from './icons';
 import { MachineList, PathChip } from './MachineList';
 import { MachinePage } from './MachinePage';
@@ -114,7 +115,11 @@ export function Overlay(props: OverlayProps) {
           chips: (
             <>
               <PathChip />
-              {groups.length > 0 && <span className="sv-chip" data-part="chip">{groups.length}</span>}
+              {groups.length > 0 && (
+                <span className={CHIP} data-part="chip">
+                  {groups.length}
+                </span>
+              )}
             </>
           ),
           body: (
@@ -144,7 +149,7 @@ export function Overlay(props: OverlayProps) {
         return {
           title: page.group.machineId,
           chips: requested > 0 && (
-            <span className="sv-chip" data-part="chip" title={`${requested} previewed state${requested === 1 ? '' : 's'}`}>
+            <span className={CHIP} data-part="chip" title={`${requested} previewed state${requested === 1 ? '' : 's'}`}>
               {requested}
             </span>
           ),
@@ -170,11 +175,16 @@ export function Overlay(props: OverlayProps) {
   const view = open ? pageView() : undefined;
 
   return (
-    <div className="sv-root" data-theme={theme} data-position={position}>
+    // "all" on the host leaves direction alone, so the root sets it, or the page's would be inherited.
+    <div
+      className="pointer-events-none absolute inset-0 text-left font-sans text-base leading-normal font-normal text-fg [direction:ltr] [-webkit-font-smoothing:antialiased]"
+      data-theme={theme}
+      data-position={position}
+    >
       <button
         ref={bubbleRef}
         type="button"
-        className="sv-bubble"
+        className="pointer-events-auto absolute grid size-8 cursor-pointer place-items-center rounded-lg border border-transparent bg-bubble p-0 text-white [box-shadow:var(--sv-shadow)] [transition:background-color_120ms_ease] hover:bg-bubble-hover in-data-[position$=left]:left-4 in-data-[position$=right]:right-4 in-data-[position^=bottom]:bottom-4 in-data-[position^=top]:top-4 motion-reduce:[transition:none] dark:border-bubble-edge"
         aria-label={bubbleLabel}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
@@ -183,7 +193,11 @@ export function Overlay(props: OverlayProps) {
       >
         <HexagonIcon />
         {previewCount > 0 && (
-          <span className="sv-badge" data-part="badge" aria-hidden="true">
+          <span
+            className="absolute -top-1.5 -right-1.5 h-4.5 min-w-4.5 rounded-[9px] border-2 border-bg bg-badge px-1.25 text-center text-xs leading-3.5 font-bold text-white tabular-nums"
+            data-part="badge"
+            aria-hidden="true"
+          >
             {previewCount}
           </span>
         )}

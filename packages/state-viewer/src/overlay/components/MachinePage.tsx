@@ -19,8 +19,12 @@ import {
 import { isTyping, moveIndex, moveOf, type Move } from '../shortcut';
 import { ContextView } from './ContextView';
 import { EventLog } from './EventLog';
+import { BODY } from './classes';
 import { CopyIcon, LinkIcon } from './icons';
 import { StatesSection } from './StatesSection';
+
+const FOOTER_BUTTON =
+  'flex h-7.5 min-w-0 cursor-pointer items-center justify-between gap-1.5 rounded-md bg-transparent px-1.5 py-0 text-lg whitespace-nowrap text-fg enabled:hover:bg-hover disabled:cursor-default disabled:opacity-45 [&>svg]:flex-none [&>svg]:text-muted';
 
 const EMPTY_DATA: DataAvailability = { recorded: new Set(), fixture: new Set() };
 
@@ -174,12 +178,14 @@ export function MachinePage(props: MachinePageProps) {
 
   return (
     // Focusable, so a click on a blank part of the page keeps its keys working.
-    <div className="sv-page" ref={pageRef} data-instance={key} tabIndex={-1} onKeyDown={onKeyDown}>
+    <div
+      className="flex min-h-0 flex-auto flex-col focus-visible:[outline:none]"
+      ref={pageRef} data-instance={key} tabIndex={-1} onKeyDown={onKeyDown}>
       {group.instances.length > 1 ? (
-        <div className="sv-instance">
-          <span className="sv-select-wrap">
+        <div className="flex-none px-1.5 pt-1.5">
+          <span className="relative block min-w-0 after:pointer-events-none after:absolute after:top-1/2 after:right-2.5 after:-mt-1 after:size-1.25 after:transform-[rotate(45deg)] after:border-r-[1.5px] after:border-b-[1.5px] after:border-r-muted after:border-b-muted">
             <select
-              className="sv-select"
+              className="block h-6.5 w-full cursor-pointer appearance-none rounded-md bg-surface py-0 pr-6 pl-1.5 text-base text-ellipsis text-fg"
               aria-label="Instance"
               value={key}
               onChange={(event) => props.onPickInstance(event.target.value)}
@@ -195,10 +201,10 @@ export function MachinePage(props: MachinePageProps) {
         </div>
       ) : (
         // A label from the app names the instance even when the machine has no other instance to pick.
-        handle.label !== undefined && <p className="sv-instance sv-instance-label">{instance.label}</p>
+        handle.label !== undefined && <p className="flex-none truncate px-3 pt-1.5 text-base text-muted">{instance.label}</p>
       )}
 
-      <div className="sv-body">
+      <div className={BODY}>
         <StatesSection
           instance={instance}
           nodes={nodes}
@@ -226,30 +232,30 @@ export function MachinePage(props: MachinePageProps) {
         <EventLog entries={snapshot.log} labelOf={labelOf} onClear={() => registry.clearLog()} />
       </div>
 
-      <footer className="sv-footer">
+      <footer className="flex-none border-t border-t-line px-1.5 py-1">
         {/* The names stay the same while a label shows the status, so voice control and tests still find them. */}
-        <div className="sv-copy">
-          <button type="button" className="sv-footer-button" onClick={copyJson} aria-label="Copy JSON">
-            <span>{copied?.button === 'json' ? copied.status : 'Copy JSON'}</span>
+        <div className="grid grid-cols-[1fr_1fr] gap-1">
+          <button type="button" className={FOOTER_BUTTON} onClick={copyJson} aria-label="Copy JSON">
+            <span className="overflow-hidden text-ellipsis">{copied?.button === 'json' ? copied.status : 'Copy JSON'}</span>
             <CopyIcon />
           </button>
           <button
             type="button"
-            className="sv-footer-button"
+            className={FOOTER_BUTTON}
             onClick={copyLink}
             disabled={plan.targets.length === 0}
             aria-label="Copy link"
             title={plan.targets.length === 0 ? 'Preview a state to link to it' : 'Copy a link that opens these previews'}
           >
-            <span>{copied?.button === 'link' ? copied.status : 'Copy link'}</span>
+            <span className="overflow-hidden text-ellipsis">{copied?.button === 'link' ? copied.status : 'Copy link'}</span>
             <LinkIcon />
           </button>
         </div>
-        <span className="sv-visually-hidden" role="status">
+        <span className="visually-hidden" role="status">
           {copied?.status}
         </span>
         {plan.partial.length > 0 && (
-          <p className="sv-warning" data-part="warning">
+          <p className="mt-1 mb-0.5 px-1.5 text-base text-warn" data-part="warning">
             Links preview every instance of a machine alike, so this one won&rsquo;t reproduce the current{' '}
             {list(plan.partial)} previews exactly.
           </p>

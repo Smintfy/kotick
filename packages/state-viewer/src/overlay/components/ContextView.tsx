@@ -4,6 +4,7 @@
 import { useId, useState } from 'react';
 import type { DataSource, Override } from '../../core/types';
 import { inspect } from '../format';
+import { SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
 import { ChevronIcon } from './icons';
 
 const SOURCES: readonly { source: DataSource; label: string; missing: string }[] = [
@@ -27,18 +28,19 @@ export function ContextView({ context, override, available, onSource }: ContextV
   const fellBack = override?.source === 'live' && !available.recorded && !available.fixture;
 
   return (
-    <section className="sv-section" aria-labelledby={titleId}>
-      <div className="sv-section-head">
-        <h3 className="sv-section-title" id={titleId}>
+    <section className={SECTION} aria-labelledby={titleId}>
+      <div className={SECTION_HEAD}>
+        <h3 className={SECTION_TITLE} id={titleId}>
           Context
         </h3>
         {override ? (
-          <div className="sv-segmented" role="radiogroup" aria-label="Context source">
+          <div className="inline-flex rounded-[7px] bg-surface p-0.5" role="radiogroup" aria-label="Context source">
             {SOURCES.map(({ source, label, missing }) => {
               const enabled = available[source] || override.source === source;
               return (
-                <label key={source} className="sv-segment" title={enabled ? undefined : missing}>
+                <label key={source} className="relative inline-flex" title={enabled ? undefined : missing}>
                   <input
+                    className="peer absolute inset-0 m-0 size-full cursor-pointer opacity-0 disabled:cursor-default"
                     type="radio"
                     name={name}
                     value={source}
@@ -46,22 +48,35 @@ export function ContextView({ context, override, available, onSource }: ContextV
                     disabled={!enabled}
                     onChange={() => onSource(source)}
                   />
-                  <span>{label}</span>
+                  <span className="rounded-[5px] px-2 text-base leading-5 text-muted peer-checked:bg-segment-on peer-checked:text-fg peer-checked:[box-shadow:var(--sv-segment-shadow)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-1 peer-focus-visible:outline-focus peer-disabled:opacity-45">
+                    {label}
+                  </span>
                 </label>
               );
             })}
           </div>
         ) : (
-          <span className="sv-source">Live</span>
+          <span className="text-base text-muted">Live</span>
         )}
       </div>
       {fellBack && (
-        <p className="sv-warning" data-part="warning">No recording or fixture for this state, so the preview uses live context.</p>
+        <p className="mb-1.5 px-1.5 text-base text-warn" data-part="warning">No recording or fixture for this state, so the preview uses live context.</p>
       )}
       <JsonView value={context} />
     </section>
   );
 }
+
+/** The class of a value by its type. */
+const VALUE_CLASSES = {
+  string: 'whitespace-pre text-json-string',
+  number: 'text-json-number',
+  boolean: 'text-json-literal',
+  null: 'text-json-literal',
+  undefined: 'text-json-literal',
+  special: 'text-muted italic',
+  summary: 'text-muted',
+} as const;
 
 /** Entries shown per object before "… n more", so a huge context doesn't stall the panel. */
 const ENTRY_LIMIT = 100;
@@ -69,7 +84,10 @@ const ENTRY_LIMIT = 100;
 function JsonView({ value }: { value: unknown }) {
   const inspected = inspect(value);
   return (
-    <div className="sv-json" data-testid="sv-json">
+    <div
+      className="max-h-65 overflow-auto rounded-lg bg-surface px-2 py-1.5 font-mono text-base leading-normal whitespace-nowrap"
+      data-testid="sv-json"
+    >
       {inspected.kind === 'branch' && inspected.size > 0 ? (
         <Entries value={value} entries={inspected.entries()} depth={0} ancestors={[]} />
       ) : (
@@ -88,7 +106,7 @@ function Entries(props: { value: unknown; entries: [string, unknown][]; depth: n
         <JsonEntry key={index} name={name} value={item} depth={depth} ancestors={ancestors} />
       ))}
       {entries.length > ENTRY_LIMIT && (
-        <div className="sv-json-row sv-json-special" data-part="json-row">… {entries.length - ENTRY_LIMIT} more</div>
+        <div className="pl-3.5 text-muted italic" data-part="json-row">… {entries.length - ENTRY_LIMIT} more</div>
       )}
     </>
   );
@@ -107,7 +125,7 @@ function JsonEntry({ name, value, depth, ancestors }: JsonEntryProps) {
   const [open, setOpen] = useState(depth < 2);
   const label = name !== undefined && (
     <>
-      <span className="sv-json-key">{name}</span>:{' '}
+      <span className="text-json-key">{name}</span>:{' '}
     </>
   );
   const circular = typeof value === 'object' && value !== null && ancestors.includes(value);
@@ -117,22 +135,26 @@ function JsonEntry({ name, value, depth, ancestors }: JsonEntryProps) {
     const text = !inspected ? '[Circular]' : inspected.kind === 'leaf' ? inspected.text : inspected.summary;
     const type = !inspected ? 'special' : inspected.kind === 'leaf' ? inspected.type : 'summary';
     return (
-      <div className="sv-json-row" data-part="json-row">
+      // A row without a chevron starts where the keys after a chevron start.
+      <div className="pl-3.5" data-part="json-row">
         {label}
-        <span className={`sv-json-${type}`}>{text === 'Array(0)' ? '[]' : text}</span>
+        <span className={VALUE_CLASSES[type]}>{text === 'Array(0)' ? '[]' : text}</span>
       </div>
     );
   }
 
   return (
-    <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <details className="group/json" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary>
-        <ChevronIcon size={10} className="sv-json-chevron" />
+        <ChevronIcon
+          size={10}
+          className="mr-1 align-[-1px] text-muted [transition:transform_100ms_ease] group-not-open/json:transform-[rotate(-90deg)] motion-reduce:[transition:none]"
+        />
         {label}
-        <span className="sv-json-summary">{inspected.summary}</span>
+        <span className="text-muted">{inspected.summary}</span>
       </summary>
       {open && (
-        <div className="sv-json-children">
+        <div className="pl-3.5">
           <Entries value={value} entries={inspected.entries()} depth={depth + 1} ancestors={ancestors} />
         </div>
       )}

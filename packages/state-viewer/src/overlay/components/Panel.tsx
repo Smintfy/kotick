@@ -34,23 +34,32 @@ export function Panel(props: PanelProps) {
     <section
       ref={props.panelRef}
       id={props.id}
-      className="sv-panel"
+      // The panel is 10px past the bubble: 16px offset + 32px bubble + 10px gap. It slides in from the bubble.
+      // Focus lands on the panel only as a fallback, and the controls inside show where it is.
+      className="pointer-events-auto absolute flex max-h-[min(70vh,calc(100%-80px))] w-70 max-w-[calc(100%-32px)] animate-enter flex-col overflow-hidden rounded-xl border border-outline bg-bg [box-shadow:var(--sv-shadow-lg)] focus-visible:[outline:none] in-data-[position$=left]:left-4 in-data-[position$=right]:right-4 in-data-[position^=bottom]:bottom-14.5 in-data-[position^=bottom]:[--sv-enter:6px] in-data-[position^=top]:top-14.5 in-data-[position^=top]:[--sv-enter:-6px] motion-reduce:animate-none"
       data-page={props.page}
       aria-label="State viewer"
       tabIndex={-1}
       onKeyDown={onKeyDown}
     >
-      <header className="sv-header">
+      <header className="flex h-9 flex-none items-center gap-1.5 border-b border-b-line pr-1.5 pl-3">
         {props.onBack && (
-          <button type="button" className="sv-icon-button sv-back" onClick={props.onBack} aria-label="Back" title="Back">
+          // The Back icon lines up with the content below, and the title follows it closely.
+          <button
+            type="button"
+            className="-mr-1 -ml-2 inline-grid size-7 flex-none cursor-pointer place-items-center rounded-md bg-transparent p-0 text-muted hover:bg-hover hover:text-fg"
+            onClick={props.onBack}
+            aria-label="Back"
+            title="Back"
+          >
             <BackIcon />
           </button>
         )}
-        <h2 className="sv-title">{props.title}</h2>
+        <h2 className="min-w-0 truncate text-lg font-medium">{props.title}</h2>
         {props.chips}
         <button
           type="button"
-          className="sv-icon-button sv-close"
+          className="ml-auto inline-grid size-7 flex-none cursor-pointer place-items-center rounded-md bg-transparent p-0 text-muted hover:bg-hover hover:text-fg"
           onClick={props.onClose}
           aria-label="Close"
           title={props.shortcutLabel ? `Close (${props.shortcutLabel})` : 'Close'}

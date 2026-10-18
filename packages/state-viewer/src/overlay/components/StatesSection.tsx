@@ -5,6 +5,7 @@
 import { useId, type CSSProperties } from 'react';
 import type { DataAvailability, Override, RegistrySnapshot, StateNodeInfo } from '../../core/types';
 import type { InstanceEntry } from '../model';
+import { BUTTON, HINT, SECTION, SECTION_HEAD, SECTION_TITLE, TAG } from './classes';
 import { ChevronIcon } from './icons';
 
 interface StatesSectionProps {
@@ -29,24 +30,24 @@ export function StatesSection(props: StatesSectionProps) {
   const titleId = useId();
   const { instance, canPreview, parentLabel, childInstances } = props;
   return (
-    <section className="sv-section" aria-labelledby={titleId}>
-      <div className="sv-section-head">
-        <h3 className="sv-section-title" id={titleId}>
+    <section className={SECTION} aria-labelledby={titleId}>
+      <div className={SECTION_HEAD}>
+        <h3 className={SECTION_TITLE} id={titleId}>
           States
         </h3>
         {props.onRelease && (
-          <button type="button" className="sv-button" onClick={props.onRelease}>
+          <button type="button" className={BUTTON} onClick={props.onRelease}>
             Release
           </button>
         )}
       </div>
       {!canPreview && (
-        <p className="sv-hint" data-part="hint">
+        <p className={HINT} data-part="hint">
           {parentLabel ? `Child of ${parentLabel}. ` : ''}Child machines are listed read-only.
         </p>
       )}
       {props.nodes.length === 0 ? (
-        <p className="sv-hint" data-part="hint">This machine has no states to list.</p>
+        <p className={HINT} data-part="hint">This machine has no states to list.</p>
       ) : (
         <StateTree
           nodes={props.nodes}
@@ -62,13 +63,15 @@ export function StatesSection(props: StatesSectionProps) {
         />
       )}
       {childInstances.length > 0 && (
-        <div className="sv-children" data-part="children">
-          <span className="sv-hint" data-part="hint">Children:</span>
+        <div className="mt-2 flex flex-wrap items-center gap-1 px-1.5" data-part="children">
+          <span className="text-base text-muted" data-part="hint">
+            Children:
+          </span>
           {childInstances.map((child) => (
             <button
               key={child.key}
               type="button"
-              className="sv-button"
+              className="h-5 flex-none cursor-pointer rounded-[5px] bg-surface px-1.5 py-0 font-mono text-sm whitespace-nowrap text-fg enabled:hover:bg-hover enabled:hover:text-fg disabled:cursor-default disabled:opacity-45"
               onClick={() => props.onSelectInstance(child.key)}
             >
               {child.label}
@@ -98,7 +101,12 @@ interface StateTreeProps {
 
 function StateTree(props: StateTreeProps) {
   return (
-    <ul role="tree" aria-label={props.label} aria-multiselectable="true" className="sv-tree">
+    <ul
+      role="tree"
+      aria-label={props.label}
+      aria-multiselectable="true"
+      className="grid gap-px [[data-part=hint]+&]:mt-1.5"
+    >
       {props.nodes.map((node) => (
         <TreeNode key={node.id} node={node} depth={0} tree={props} />
       ))}
@@ -114,24 +122,36 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
   if (node.type !== 'atomic' && node.type !== 'final') {
     const open = !tree.collapsed.has(node.id);
     return (
-      <li role="treeitem" aria-level={depth + 1} aria-expanded={open} className="sv-group" style={style}>
-        <div className="sv-node" data-part="node" title={description} onClick={() => tree.onToggle(node.id)}>
-          <ChevronIcon size={12} className="sv-chevron" />
-          <span className="sv-label">
-            <span className="sv-key" data-part="key">{node.key}</span>
-            {description && <span className="sv-description" data-part="description">{description}</span>}
+      <li role="treeitem" aria-level={depth + 1} aria-expanded={open} className="group/state" style={style}>
+        <div
+          className="flex cursor-pointer min-h-6 items-center gap-1.5 rounded-md py-0.5 pr-1.5 pl-[calc(6px+var(--sv-depth,0)*14px)] text-muted hover:bg-hover"
+          data-part="node"
+          title={description}
+          onClick={() => tree.onToggle(node.id)}
+        >
+          <ChevronIcon
+            size={12}
+            className="flex-none text-muted [transition:transform_100ms_ease] group-aria-[expanded=false]/state:transform-[rotate(-90deg)] motion-reduce:[transition:none]"
+          />
+          <span className="grid min-w-0 flex-auto">
+            <span className="truncate font-mono text-base" data-part="key">{node.key}</span>
+            {description && <span className="truncate text-sm text-muted" data-part="description">{description}</span>}
           </span>
-          <span className="sv-meta">
-            {node.type === 'parallel' && <span className="sv-type" data-part="type">parallel</span>}
+          <span className="flex flex-none items-center gap-1">
+            {node.type === 'parallel' && <span className="text-sm text-muted" data-part="type">parallel</span>}
             {tags.map((tag) => (
-              <span key={tag} className="sv-tag" data-part="tag">
+              <span key={tag} className={TAG} data-part="tag">
                 {tag}
               </span>
             ))}
           </span>
         </div>
         {open && (
-          <ul role="group">
+          // A group's children hang from a guide under the middle of its chevron.
+          <ul
+            role="group"
+            className="relative grid gap-px before:absolute before:inset-y-0 before:left-[calc(11.5px+var(--sv-depth)*14px)] before:w-px before:bg-guide"
+          >
             {(node.children ?? []).map((child) => (
               <TreeNode key={child.id} node={child} depth={depth + 1} tree={tree} />
             ))}
@@ -165,7 +185,7 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
       aria-selected={requested}
       aria-disabled={readOnly || undefined}
       tabIndex={cursor === node.id ? 0 : -1}
-      className="sv-node sv-leaf"
+      className="group/leaf flex cursor-pointer min-h-6 items-center gap-1.5 rounded-md py-0.5 pr-1.5 pl-[calc(6px+var(--sv-depth,0)*14px)] focus-visible:outline-offset-[-2px] aria-disabled:cursor-default aria-selected:bg-selected data-filled:bg-filled hover:not-aria-disabled:not-aria-selected:bg-hover"
       style={style}
       data-leaf={node.id}
       data-active={isActive || undefined}
@@ -173,38 +193,54 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
       title={description}
       onClick={() => onSelect(node.id)}
     >
-      <span className="sv-marks">
+      <span className="flex flex-none gap-0.5">
         {recorded && <DataMark kind="recorded" />}
         {fixture && <DataMark kind="fixture" />}
         {!recorded && !fixture && <DataMark kind="none" />}
       </span>
-      <span className="sv-label">
-        <span className="sv-key" data-part="key">{node.key}</span>
-        {description && <span className="sv-description" data-part="description">{description}</span>}
+      <span className="grid min-w-0 flex-auto">
+        <span className="truncate font-mono text-base" data-part="key">{node.key}</span>
+        {description && <span className="truncate text-sm text-muted" data-part="description">{description}</span>}
       </span>
-      <span className="sv-meta">
-        {node.type === 'final' && <span className="sv-type" data-part="type">final</span>}
+      <span className="flex flex-none items-center gap-1">
+        {node.type === 'final' && <span className="text-sm text-muted" data-part="type">final</span>}
         {tags.map((tag) => (
-          <span key={tag} className="sv-tag" data-part="tag">
+          <span key={tag} className={TAG} data-part="tag">
             {tag}
           </span>
         ))}
-        {isActive && <span className="sv-live" title="Live state" aria-hidden="true" />}
+        {isActive && <span className="size-1.5 flex-none rounded-[50%] bg-live" title="Live state" aria-hidden="true" />}
       </span>
-      <span className="sv-visually-hidden" data-part="leaf-status">, {status.join(', ')}</span>
+      <span className="visually-hidden" data-part="leaf-status">, {status.join(', ')}</span>
     </li>
   );
 }
 
 const MARKS = {
-  recorded: { text: 'R', title: 'Recorded context: the app has been in this state' },
-  fixture: { text: 'F', title: 'Fixture context from defineFixtures()' },
-  none: { text: '–', title: 'No recorded or fixture context; a preview uses the live context' },
+  recorded: {
+    text: 'R',
+    title: 'Recorded context: the app has been in this state',
+    className:
+      'inline-grid size-3.5 place-items-center rounded-xs bg-recorded-soft text-2xs leading-none font-bold text-recorded group-aria-selected/leaf:bg-recorded-solid group-aria-selected/leaf:text-white',
+  },
+  fixture: {
+    text: 'F',
+    title: 'Fixture context from defineFixtures()',
+    className:
+      'inline-grid size-3.5 place-items-center rounded-xs bg-fixture-soft text-2xs leading-none font-bold text-fixture group-aria-selected/leaf:bg-fixture-solid group-aria-selected/leaf:text-white',
+  },
+  // On a selected leaf, the dashed border is muted, because the chip gray is too close to the selected gray.
+  none: {
+    text: '–',
+    title: 'No recorded or fixture context; a preview uses the live context',
+    className:
+      'inline-grid size-3.5 place-items-center rounded-xs border border-dashed border-chip text-2xs leading-none font-bold text-muted group-aria-selected/leaf:border-muted',
+  },
 } as const;
 
 function DataMark({ kind }: { kind: keyof typeof MARKS }) {
   return (
-    <span className="sv-data" data-kind={kind} title={MARKS[kind].title} aria-hidden="true">
+    <span className={MARKS[kind].className} data-kind={kind} title={MARKS[kind].title} aria-hidden="true">
       {MARKS[kind].text}
     </span>
   );
