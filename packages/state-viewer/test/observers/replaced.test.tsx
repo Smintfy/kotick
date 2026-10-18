@@ -5,7 +5,7 @@ import { fromCallback, setup, type Actor, type Observer, type SnapshotFrom } fro
 import { page } from '../support/app';
 import { uncaught } from '../support/console';
 import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
-import { badge, clickLeaf, flush, freshId, machines, preview, release } from '../support/panel';
+import { badge, clickLeaf, flush, freshId, machines, preview, release, show } from '../support/panel';
 
 type SocketEvent = { type: 'FINISH' | 'PAUSE' | 'BREAK' };
 type Socket = (event: SocketEvent) => void;
@@ -174,10 +174,13 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
       calls,
       /** The socket of the upload of `machine` reports, past the hook's actor. */
       report: (machine: UploadMachine, type: SocketEvent['type']): void => socket(machine)({ type }),
-      preview: (leaf: string) =>
-        step(`[preview ${leaf}]`, async () => {
+      preview: async (leaf: string) => {
+        // The step runs inside act(), where React 18 doesn't show a new page of the panel. So the page opens first.
+        if (previews) await show(props.machine.id);
+        await step(`[preview ${leaf}]`, async () => {
           if (previews) await preview(props.machine.id, [leaf]);
-        }),
+        });
+      },
       /** Closes the preview of the upload, through its Release button. */
       release: () =>
         step('[release]', async () => {
