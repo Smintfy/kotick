@@ -174,7 +174,7 @@ code { font-family: ${MONO}; font-size: 11px; }
 /* Panel */
 .sv-panel {
   position: absolute;
-  width: 256px;
+  width: 280px;
   max-width: calc(100% - 32px);
   max-height: min(70vh, calc(100% - 80px));
   display: flex;
