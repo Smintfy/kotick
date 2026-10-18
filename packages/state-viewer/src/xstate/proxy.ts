@@ -1,7 +1,7 @@
 // The actor proxy: what consumers hold in place of the real actor.
 
 import { toObserver, type AnyActorRef, type AnyMachineSnapshot, type Observer } from 'xstate';
-import { callListener, getRegistry, toInstanceKey } from '../core/registry';
+import { callLoggingErrors, getPageRegistry, toInstanceKey } from '../core/registry';
 import type { MachineHandle, Override } from '../core/types';
 import { EMPTY_CHILDREN, liveChildren, statusOf, type MachineActor } from './actor';
 import { createHandle, inspect } from './handle';
@@ -65,7 +65,7 @@ export function getBinding<TActor extends AnyActorRef>(actor: TActor): Binding<T
 }
 
 function createBinding(actor: MachineActor): Binding {
-  const registry = getRegistry();
+  const registry = getPageRegistry();
   const machine = actor.logic;
   // The instance key the proxy reads previews from. Set by the first registration, so an actor that HMR recreated
   // shows the preview on its first render, and moved by connect() when the id changes.
@@ -90,7 +90,7 @@ function createBinding(actor: MachineActor): Binding {
     emitting++;
     try {
       for (const listener of [...previewListeners]) {
-        if (previewListeners.has(listener)) callListener(listener, `A subscriber of "${key}" threw.`);
+        if (previewListeners.has(listener)) callLoggingErrors(listener, `A subscriber of "${key}" threw.`);
       }
     } finally {
       emitting--;
@@ -296,7 +296,7 @@ function createBinding(actor: MachineActor): Binding {
     if (!endListeners) {
       const listeners = (endListeners = new Set());
       const ended = (message: string): void => {
-        for (const end of [...listeners]) callListener(end, message);
+        for (const end of [...listeners]) callLoggingErrors(end, message);
       };
       const { stop, _error } = actor;
       actor.stop = () => {

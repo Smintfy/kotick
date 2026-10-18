@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { getRegistry } from '../core/registry';
+import { getPageRegistry } from '../core/registry';
 import type { FixtureSet, Registry } from '../core/types';
 import { Overlay } from './components/Overlay';
 import { readDeepLink, resolveUrlParam } from './deep-link';
@@ -12,7 +12,7 @@ import { createHost, type OverlayHost } from './host';
 import type { FixturesInput, StateViewerProps } from './props';
 
 export function StateViewer(props: StateViewerProps): React.ReactNode {
-  const registry = getRegistry();
+  const registry = getPageRegistry();
   useDeepLink(registry, resolveUrlParam(props.urlParam));
   useFixtures(registry, props.fixtures);
   const host = useHost(props.portalTarget);
@@ -37,7 +37,7 @@ function useDeepLink(registry: Registry, param: string): void {
     if (applied.has(id)) return;
     applied.add(id);
     const targets = readDeepLink(search, param);
-    if (targets.length > 0) registry.link(targets);
+    if (targets.length > 0) registry.applyDeepLink(targets);
   }, [registry, param]);
 }
 
@@ -52,7 +52,7 @@ function useFixtures(registry: Registry, input: FixturesInput | undefined): void
     let current = true;
     // Ended when the load settles, not on cleanup: StrictMode and a new input start the next load after the cleanup,
     // and an end between them would give the held warnings too early.
-    const done = registry.expectFixtures();
+    const endLoad = registry.startFixtureLoad();
     void loadFixtures(input)
       .then((sets) => {
         // A newer input took over; its sets win.
@@ -67,7 +67,7 @@ function useFixtures(registry: Registry, input: FixturesInput | undefined): void
         for (const set of fresh) seen.add(set);
         registry.registerFixtures(fresh);
       })
-      .finally(done);
+      .finally(endLoad);
     return () => {
       current = false;
     };
