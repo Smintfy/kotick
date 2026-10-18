@@ -17,6 +17,7 @@ import {
   releaseAll,
   show,
   shownMachine,
+  toggleState,
 } from './support/panel';
 
 const SETTINGS_KEY = 'state-viewer:ui';
@@ -522,6 +523,84 @@ describe('the state tree', () => {
         },
       },
       back: ['shipping.standard', 'payment.editing'],
+    });
+  });
+
+  /** Picks the nth instance in the Instance picker, and stays on the machine page. */
+  async function pickInstance(nth: number): Promise<void> {
+    const picker = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
+    const option = picker?.options[nth - 1];
+    if (!picker || !option) throw new Error(`The machine page has no instance ${nth} to pick.`);
+    fireEvent.change(picker, { target: { value: option.value } });
+    await flush();
+  }
+
+  /** Whether each shown compound or parallel state is expanded, by its key. */
+  function expanded(): Record<string, string | null> {
+    return Object.fromEntries(
+      [...overlay().querySelectorAll('[role="treeitem"][aria-expanded]')].map((item) => [
+        item.firstElementChild?.querySelector('.sv-key')?.textContent,
+        item.getAttribute('aria-expanded'),
+      ]),
+    );
+  }
+
+  test('a click on a compound or parallel state hides the states in it, and a second click shows them again', async () => {
+    const machine = createEditorMachine();
+    render(
+      <>
+        <Run machine={machine} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    await show(machine.id);
+
+    await toggleState('payment');
+    await toggleState('saving');
+    const collapsed = { expanded: expanded(), leaves: leaves() };
+    await toggleState('payment');
+    expect({ collapsed, expandedAgain: { expanded: expanded(), leaves: leaves() } }).toEqual({
+      collapsed: {
+        expanded: { payment: 'false', shipping: 'true', speed: 'true', saving: 'false' },
+        leaves: ['cart', 'shipping.speed.standard', 'shipping.speed.express', 'shipping.gift', 'done'],
+      },
+      expandedAgain: {
+        expanded: { payment: 'true', shipping: 'true', speed: 'true', saving: 'false' },
+        leaves: [
+          'cart',
+          'payment.idle',
+          'payment.error',
+          'shipping.speed.standard',
+          'shipping.speed.express',
+          'shipping.gift',
+          'done',
+        ],
+      },
+    });
+  });
+
+  test('a state collapses for one instance, so another instance, or the same one shown again, shows every state', async () => {
+    const machine = createEditorMachine();
+    render(
+      <>
+        <Run machine={machine} />
+        <Run machine={machine} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    await show(machine.id, 1);
+
+    await toggleState('payment');
+    const first = leaves();
+    await pickInstance(2);
+    const second = leaves();
+    await pickInstance(1);
+    expect({ first, second, firstAgain: leaves() }).toEqual({
+      first: EDITOR_LEAVES.filter((leaf) => !leaf.startsWith('payment.')),
+      second: EDITOR_LEAVES,
+      firstAgain: EDITOR_LEAVES,
     });
   });
 

@@ -4,7 +4,7 @@ import { useMachine } from 'state-viewer/xstate';
 import { describe, expect, test } from 'vitest';
 import { createMachine, setup, type AnyStateMachine } from 'xstate';
 import { watchConsole } from './support/console';
-import { flush, freshId, isOpen, overlay, panel, preview, show, shownMachine } from './support/panel';
+import { flush, freshId, isOpen, overlay, panel, preview, show, shownMachine, toggleState } from './support/panel';
 
 const ALT_S = { key: 's', code: 'KeyS', altKey: true };
 
@@ -343,6 +343,34 @@ describe('in the panel', () => {
         bubble: two,
       },
       { key: 'Escape', focus: 'shipping.standard', stops: 'shipping.standard', previewed: [], bubble: none },
+    ]);
+  });
+
+  test('arrows, Home and End skip the leaves of a collapsed state, and the tab stop moves off them', async () => {
+    const checkout = createCheckoutMachine();
+    render(
+      <>
+        <Run machine={checkout} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    await show(checkout.id);
+    await toggleState('shipping');
+    tabStop().focus();
+
+    const seen = [`start: ${focusedLeaf()}`];
+    for (const key of ['ArrowUp', 'End', 'ArrowDown', 'Home']) {
+      await press({ key }, focusedInOverlay());
+      seen.push(`${key}: ${focusedLeaf()}`);
+    }
+    expect(seen).toEqual([
+      // The live shipping leaf is hidden, so the tab stop is on the live payment leaf.
+      'start: payment.editing',
+      'ArrowUp: payment.editing',
+      'End: payment.success',
+      'ArrowDown: payment.success',
+      'Home: payment.editing',
     ]);
   });
 

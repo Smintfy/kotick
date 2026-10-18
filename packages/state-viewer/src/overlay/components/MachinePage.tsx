@@ -2,13 +2,20 @@
 // the state as JSON. It handles the keys that move through the tree and switch machines.
 
 import * as React from 'react';
-import { leavesOf } from '../../core/registry';
 import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../../core/types';
 import { copyText } from '../clipboard';
 import { writeDeepLink } from '../deep-link';
 import { toJson } from '../format';
 import { useHandleUpdates } from '../hooks';
-import { attempt, findInstance, planLink, toggleLeaf, type InstanceEntry, type MachineGroup } from '../model';
+import {
+  attempt,
+  findInstance,
+  planLink,
+  shownLeaves,
+  toggleLeaf,
+  type InstanceEntry,
+  type MachineGroup,
+} from '../model';
 import { isTyping, moveIndex, moveOf, type Move } from '../shortcut';
 import { ContextView } from './ContextView';
 import { EventLog } from './EventLog';
@@ -17,6 +24,7 @@ import { StatesSection } from './StatesSection';
 const EMPTY_DATA: DataAvailability = { recorded: new Set(), fixture: new Set() };
 
 const NO_NODES: StateNodeInfo[] = [];
+const NONE_COLLAPSED: ReadonlySet<string> = new Set();
 
 interface MachinePageProps {
   registry: Registry;
@@ -40,7 +48,13 @@ export function MachinePage(props: MachinePageProps) {
   const override = snapshot.overrides[key];
   const canPreview = handle.capabilities?.preview === true;
   const nodes = React.useMemo(() => attempt(() => handle.describe(), NO_NODES), [handle]);
-  const leaves = React.useMemo(() => leavesOf(nodes), [nodes]);
+  // Collapsed groups belong to one showing of an instance.
+  // Another instance, or the same one shown again, starts with every group open.
+  const [collapse, setCollapse] = React.useState({ key, groups: NONE_COLLAPSED });
+  if (collapse.key !== key) setCollapse({ key, groups: NONE_COLLAPSED });
+  const collapsed = collapse.groups;
+  // The leaves that show: the arrows and the cursor skip the leaves of a collapsed group.
+  const leaves = React.useMemo(() => shownLeaves(nodes, collapsed), [nodes, collapsed]);
   // Read on every render: the handle's updates re-render the page, the registry snapshot doesn't change for them.
   const active = new Set<string>(attempt(() => handle.getActiveLeaves(), []));
   const liveContext = attempt(() => handle.getContext(), undefined);
@@ -73,6 +87,12 @@ export function MachinePage(props: MachinePageProps) {
   function selectLeaf(leaf: string): void {
     setCursor(leaf);
     preview(leaf);
+  }
+
+  function toggleGroup(id: string): void {
+    const next = new Set(collapsed);
+    if (!next.delete(id)) next.add(id);
+    setCollapse({ key, groups: next });
   }
 
   function moveCursor(move: Move): void {
@@ -179,12 +199,14 @@ export function MachinePage(props: MachinePageProps) {
           instance={instance}
           nodes={nodes}
           active={active}
+          collapsed={collapsed}
           cursor={cursor}
           canPreview={canPreview}
           parentLabel={parent?.label}
           childInstances={children}
           onRelease={override ? () => registry.release(key) : undefined}
           onSelectLeaf={selectLeaf}
+          onToggleGroup={toggleGroup}
           onSelectInstance={props.onOpenInstance}
           snapshot={snapshot}
           data={data}
