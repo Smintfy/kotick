@@ -196,13 +196,13 @@ function childOf(actor: AnyActorRef, id: string): AnyActorRef {
 
 /** What the States section shows about the parent and the children of the shown instance. */
 function family() {
-  const states = [...overlay().querySelectorAll('section.sv-section')].find(
+  const states = [...overlay().querySelectorAll('section[aria-labelledby]')].find(
     (section) => section.querySelector('h3')?.textContent === 'States',
   );
   if (!states) throw new Error('The panel shows no States section.');
   return {
-    hint: states.querySelector('p.sv-hint')?.textContent ?? '',
-    children: [...states.querySelectorAll('.sv-children button')].map((button) => button.textContent),
+    hint: states.querySelector('p[data-part="hint"]')?.textContent ?? '',
+    children: [...states.querySelectorAll('[data-part="children"] button')].map((button) => button.textContent),
   };
 }
 

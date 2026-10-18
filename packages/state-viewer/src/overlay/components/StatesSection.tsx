@@ -41,12 +41,12 @@ export function StatesSection(props: StatesSectionProps) {
         )}
       </div>
       {!canPreview && (
-        <p className="sv-hint">
+        <p className="sv-hint" data-part="hint">
           {parentLabel ? `Child of ${parentLabel}. ` : ''}Child machines are listed read-only.
         </p>
       )}
       {props.nodes.length === 0 ? (
-        <p className="sv-hint">This machine has no states to list.</p>
+        <p className="sv-hint" data-part="hint">This machine has no states to list.</p>
       ) : (
         <StateTree
           nodes={props.nodes}
@@ -62,8 +62,8 @@ export function StatesSection(props: StatesSectionProps) {
         />
       )}
       {childInstances.length > 0 && (
-        <div className="sv-children">
-          <span className="sv-hint">Children:</span>
+        <div className="sv-children" data-part="children">
+          <span className="sv-hint" data-part="hint">Children:</span>
           {childInstances.map((child) => (
             <button
               key={child.key}
@@ -115,16 +115,16 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
     const open = !tree.collapsed.has(node.id);
     return (
       <li role="treeitem" aria-level={depth + 1} aria-expanded={open} className="sv-group" style={style}>
-        <div className="sv-node" title={description} onClick={() => tree.onToggle(node.id)}>
+        <div className="sv-node" data-part="node" title={description} onClick={() => tree.onToggle(node.id)}>
           <ChevronIcon size={12} className="sv-chevron" />
           <span className="sv-label">
-            <span className="sv-key">{node.key}</span>
-            {description && <span className="sv-description">{description}</span>}
+            <span className="sv-key" data-part="key">{node.key}</span>
+            {description && <span className="sv-description" data-part="description">{description}</span>}
           </span>
           <span className="sv-meta">
-            {node.type === 'parallel' && <span className="sv-type">parallel</span>}
+            {node.type === 'parallel' && <span className="sv-type" data-part="type">parallel</span>}
             {tags.map((tag) => (
-              <span key={tag} className="sv-tag">
+              <span key={tag} className="sv-tag" data-part="tag">
                 {tag}
               </span>
             ))}
@@ -179,19 +179,19 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
         {!recorded && !fixture && <DataMark kind="none" />}
       </span>
       <span className="sv-label">
-        <span className="sv-key">{node.key}</span>
-        {description && <span className="sv-description">{description}</span>}
+        <span className="sv-key" data-part="key">{node.key}</span>
+        {description && <span className="sv-description" data-part="description">{description}</span>}
       </span>
       <span className="sv-meta">
-        {node.type === 'final' && <span className="sv-type">final</span>}
+        {node.type === 'final' && <span className="sv-type" data-part="type">final</span>}
         {tags.map((tag) => (
-          <span key={tag} className="sv-tag">
+          <span key={tag} className="sv-tag" data-part="tag">
             {tag}
           </span>
         ))}
         {isActive && <span className="sv-live" title="Live state" aria-hidden="true" />}
       </span>
-      <span className="sv-visually-hidden">, {status.join(', ')}</span>
+      <span className="sv-visually-hidden" data-part="leaf-status">, {status.join(', ')}</span>
     </li>
   );
 }

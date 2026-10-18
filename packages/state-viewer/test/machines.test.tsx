@@ -173,13 +173,13 @@ function machinePage() {
 
 /** What the States section shows about the parent and the children of the shown instance. */
 function family() {
-  const states = [...overlay().querySelectorAll('section.sv-section')].find(
+  const states = [...overlay().querySelectorAll('section[aria-labelledby]')].find(
     (section) => section.querySelector('h3')?.textContent === 'States',
   );
   if (!states) throw new Error('The panel shows no States section.');
   return {
-    hints: [...states.querySelectorAll('p.sv-hint')].map((hint) => hint.textContent),
-    children: [...states.querySelectorAll('.sv-children button')].map((button) => button.textContent),
+    hints: [...states.querySelectorAll('p[data-part="hint"]')].map((hint) => hint.textContent),
+    children: [...states.querySelectorAll('[data-part="children"] button')].map((button) => button.textContent),
     readOnly: [...states.querySelectorAll<HTMLElement>('[data-leaf][aria-disabled="true"]')].map(
       (leaf) => leaf.dataset.leaf,
     ),

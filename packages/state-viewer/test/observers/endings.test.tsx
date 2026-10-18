@@ -98,7 +98,7 @@ async function lookAround(machineId: string, first: string, then: string): Promi
 /** The Release all row of the machine list, for a click that the overlay's flush doesn't follow at once. */
 function releaseAllButton(): HTMLButtonElement {
   const found = [...overlay().querySelectorAll('button')].find(
-    (button) => button.querySelector('.sv-row-label')?.textContent === 'Release all',
+    (button) => button.querySelector('[data-part="row-label"]')?.textContent === 'Release all',
   );
   if (!found) throw new Error('The machine list has no Release all button.');
   return found;

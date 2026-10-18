@@ -56,7 +56,7 @@ export function ContextView({ context, override, available, onSource }: ContextV
         )}
       </div>
       {fellBack && (
-        <p className="sv-warning">No recording or fixture for this state, so the preview uses live context.</p>
+        <p className="sv-warning" data-part="warning">No recording or fixture for this state, so the preview uses live context.</p>
       )}
       <JsonView value={context} />
     </section>
@@ -88,7 +88,7 @@ function Entries(props: { value: unknown; entries: [string, unknown][]; depth: n
         <JsonEntry key={index} name={name} value={item} depth={depth} ancestors={ancestors} />
       ))}
       {entries.length > ENTRY_LIMIT && (
-        <div className="sv-json-row sv-json-special">… {entries.length - ENTRY_LIMIT} more</div>
+        <div className="sv-json-row sv-json-special" data-part="json-row">… {entries.length - ENTRY_LIMIT} more</div>
       )}
     </>
   );
@@ -117,7 +117,7 @@ function JsonEntry({ name, value, depth, ancestors }: JsonEntryProps) {
     const text = !inspected ? '[Circular]' : inspected.kind === 'leaf' ? inspected.text : inspected.summary;
     const type = !inspected ? 'special' : inspected.kind === 'leaf' ? inspected.type : 'summary';
     return (
-      <div className="sv-json-row">
+      <div className="sv-json-row" data-part="json-row">
         {label}
         <span className={`sv-json-${type}`}>{text === 'Array(0)' ? '[]' : text}</span>
       </div>
