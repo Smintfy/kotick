@@ -799,6 +799,35 @@ describe('Copy JSON', () => {
       context: ['boom: "[Unreadable]"'],
     });
   });
+
+  test('the clicked button shows what the copy did for 2 s in place of its label, and keeps its name', async () => {
+    const machine = createCheckoutMachine();
+    render(
+      <>
+        <Checkout machine={machine} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    await preview(machine.id, ['payment.error']);
+
+    const footer = () =>
+      [...overlay().querySelectorAll('.sv-footer button')].map(
+        (found) => `${found.getAttribute('aria-label')}: ${found.textContent}`,
+      );
+    await copy('Copy JSON');
+    const afterJson = footer();
+    await copy('Copy link');
+    const afterLink = footer();
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    await flush();
+    // jsdom has no clipboard, so each copy fails.
+    expect({ afterJson, afterLink, later: footer() }).toEqual({
+      afterJson: ['Copy JSON: Copy failed', 'Copy link: Copy link'],
+      afterLink: ['Copy JSON: Copy JSON', 'Copy link: Copy failed'],
+      later: ['Copy JSON: Copy JSON', 'Copy link: Copy link'],
+    });
+  });
 });
 
 describe('settings', () => {

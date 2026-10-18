@@ -4,6 +4,7 @@
 import { useId, useState } from 'react';
 import type { DataSource, Override } from '../../core/types';
 import { inspect } from '../format';
+import { ChevronIcon } from './icons';
 
 const SOURCES: readonly { source: DataSource; label: string; missing: string }[] = [
   { source: 'recorded', label: 'Recorded', missing: 'Nothing recorded for this state yet' },
@@ -51,7 +52,7 @@ export function ContextView({ context, override, available, onSource }: ContextV
             })}
           </div>
         ) : (
-          <span className="sv-source">live</span>
+          <span className="sv-source">Live</span>
         )}
       </div>
       {fellBack && (
@@ -126,6 +127,7 @@ function JsonEntry({ name, value, depth, ancestors }: JsonEntryProps) {
   return (
     <details open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
       <summary>
+        <ChevronIcon size={10} className="sv-json-chevron" />
         {label}
         <span className="sv-json-summary">{inspected.summary}</span>
       </summary>
