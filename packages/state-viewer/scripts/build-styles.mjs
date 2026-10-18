@@ -17,8 +17,10 @@ const input = join(root, 'styles.css');
 const output = join(root, 'src/overlay/styles.generated.ts');
 const components = join(root, 'src/overlay/components');
 
+// The root dev scripts give their arguments, such as Vite's --port, to each dev script, so unknown options are ignored.
 const { values } = parseArgs({
   options: { check: { type: 'boolean', default: false }, watch: { type: 'boolean', default: false } },
+  strict: false,
 });
 
 async function generate() {
@@ -55,7 +57,8 @@ function withPropertyFallbacks(css) {
     return `${name}: ${initial ? initial[1] : 'initial'};`;
   });
   if (declarations.length === 0) return css;
-  return `${css}\n@layer properties {\n  :host, *, ::before, ::after, ::backdrop {\n    ${declarations.join('\n    ')}\n  }\n}\n`;
+  const rule = `:host, *, ::before, ::after, ::backdrop { ${declarations.join(' ')} }`;
+  return `${css}\n@layer properties { ${rule} }\n`;
 }
 
 function current() {

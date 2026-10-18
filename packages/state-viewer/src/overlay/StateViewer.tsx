@@ -10,6 +10,7 @@ import { readDeepLink, resolveUrlParam } from './deep-link';
 import { useIsomorphicLayoutEffect } from './hooks';
 import { createHost, type OverlayHost } from './host';
 import type { FixturesInput, StateViewerProps } from './props';
+import { overlayStyles } from './styles.generated';
 
 export function StateViewer(props: StateViewerProps): React.ReactNode {
   const registry = getPageRegistry();
@@ -84,6 +85,11 @@ function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
       setHost((current) => (current === created ? null : current));
     };
   }, [target]);
+  // Fast Refresh renders this again after the style watcher writes new CSS, but the host stays, so its <style> changes.
+  const css = overlayStyles();
+  useIsomorphicLayoutEffect(() => {
+    if (host && host.style.textContent !== css) host.style.textContent = css;
+  }, [host, css]);
   return host;
 }
 
