@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --filter vite-react dev",
-    "dev:hostile-css": "pnpm --filter hostile-css dev",
-    "dev:next": "pnpm --filter next-app dev",
+    "dev": "pnpm --parallel --filter state-viewer --filter vite-react dev",
+    "dev:hostile-css": "pnpm --parallel --filter state-viewer --filter hostile-css dev",
+    "dev:next": "pnpm --parallel --filter state-viewer --filter next-app dev",
     "test": "pnpm lint && pnpm -r test",
     "test:matrix": "node scripts/test-matrix.mjs",
     "check:bundles": "node tests/bundles/check.mjs",

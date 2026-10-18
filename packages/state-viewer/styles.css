@@ -1,8 +1,122 @@
-// Page styles can reach the host element, so `:host` resets it with !important.
-// Across the shadow boundary, the shadow root's !important declarations beat the page's.
-// Sizes are in px, never rem, because the page sets the root font size.
+/*
+ * The overlay's CSS. scripts/build-styles.mjs compiles it into src/overlay/styles.generated.ts.
+ * The overlay is in a shadow root, so these rules reach only the overlay, and the page's rules reach only the host.
+ * Sizes are in px, never rem, because the page sets the root font size.
+ */
 
-const LIGHT = `
+/* The properties layer is first, so a utility that sets a --tw-* property wins over its fallback. */
+@layer properties, theme, base, utilities;
+
+/* No preflight: it changes svg, button and img, and the reset in the base layer is all the overlay needs. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./src/overlay/components";
+
+/*
+ * Only these tokens, so no default token leaks in.
+ * inline puts each value in the utility, so a page rule on the host element can't change a token.
+ */
+@theme inline {
+  --*: initial;
+
+  --spacing: 4px;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --text-2xs: 9px;
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 12px;
+  --text-lg: 13px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --leading-normal: 1.4;
+  --leading-relaxed: 1.5;
+
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --color-white: #ffffff;
+  --color-bg: var(--sv-bg);
+  --color-surface: var(--sv-surface);
+  --color-hover: var(--sv-hover);
+  --color-selected: var(--sv-selected);
+  --color-filled: color-mix(in srgb, var(--sv-selected) 50%, transparent);
+  --color-fg: var(--sv-fg);
+  --color-muted: var(--sv-muted);
+  --color-line: var(--sv-border);
+  --color-outline: var(--sv-outline);
+  --color-chip: var(--sv-chip);
+  --color-guide: var(--sv-guide);
+  --color-segment-on: var(--sv-segment-on);
+  --color-live: var(--sv-live);
+  --color-recorded: var(--sv-recorded);
+  --color-recorded-soft: var(--sv-recorded-soft);
+  --color-recorded-solid: var(--sv-recorded-solid);
+  --color-fixture: var(--sv-fixture);
+  --color-fixture-soft: var(--sv-fixture-soft);
+  --color-fixture-solid: var(--sv-fixture-solid);
+  --color-accent: var(--sv-accent);
+  --color-focus: var(--sv-focus);
+  --color-warn: var(--sv-warn);
+  --color-badge: var(--sv-badge);
+  --color-json-key: var(--sv-json-key);
+  --color-json-string: var(--sv-json-string);
+  --color-json-number: var(--sv-json-number);
+  --color-json-literal: var(--sv-json-literal);
+  /* The bubble is near-black on every page. The dark theme adds a light edge, so it shows on dark pages. */
+  --color-bubble: #0a0a0a;
+  --color-bubble-hover: #1f1f1f;
+  --color-bubble-edge: rgba(255, 255, 255, 0.14);
+
+  --animate-enter: sv-enter 140ms ease-out;
+
+  @keyframes sv-enter {
+    from {
+      opacity: 0;
+      transform: translateY(var(--sv-enter, 6px));
+    }
+  }
+}
+
+/* Plain :hover, as before. Tailwind's default also needs (hover: hover), which touch screens don't match. */
+@custom-variant hover (&:hover);
+
+/* The theme comes from the data-theme attribute of the overlay's root: system, light or dark. */
+@custom-variant dark {
+  &:where([data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where([data-theme="system"] *) {
+      @slot;
+    }
+  }
+}
+
+/* Today's rules, until the components use utilities. */
+
+:host {
+  all: initial !important;
+  display: block !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  pointer-events: none !important;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.sv-root {
   color-scheme: light;
   --sv-bg: #ffffff;
   --sv-surface: #f4f4f5;
@@ -35,9 +149,23 @@ const LIGHT = `
   --sv-json-string: #15803d;
   --sv-json-number: #1d4ed8;
   --sv-json-literal: #be185d;
-`;
 
-const DARK = `
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--sv-fg);
+  text-align: left;
+  /* "all" leaves direction alone, so the page's would be inherited. */
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-color-scheme: dark) {
+  .sv-root:not([data-theme="light"]) {
   color-scheme: dark;
   --sv-bg: #0a0a0a;
   --sv-surface: #1a1a1a;
@@ -70,52 +198,48 @@ const DARK = `
   --sv-json-string: #4ade80;
   --sv-json-number: #60a5fa;
   --sv-json-literal: #f472b6;
-`;
-
-const MONO = `ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace`;
-
-/**
- * It is a function, so production builds can remove it.
- * esbuild keeps a top-level template literal with `${…}` parts, because it can't prove they have no side effects.
- */
-export function overlayStyles(): string {
-  return `
-:host {
-  all: initial !important;
-  display: block !important;
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 2147483647 !important;
-  pointer-events: none !important;
 }
-
-*, *::before, *::after { box-sizing: border-box; }
-
-.sv-root {${LIGHT}
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  font-size: 12px;
-  font-weight: 400;
-  line-height: 1.4;
-  color: var(--sv-fg);
-  text-align: left;
-  /* "all" leaves direction alone, so the page's would be inherited. */
-  direction: ltr;
-  -webkit-font-smoothing: antialiased;
 }
-@media (prefers-color-scheme: dark) {
-  .sv-root:not([data-theme="light"]) {${DARK}}
+.sv-root[data-theme="dark"] {
+  color-scheme: dark;
+  --sv-bg: #0a0a0a;
+  --sv-surface: #1a1a1a;
+  --sv-hover: #1f1f1f;
+  --sv-selected: #2b2b2b;
+  --sv-fg: #fafafa;
+  --sv-muted: #8b8b8b;
+  --sv-border: #232323;
+  --sv-outline: rgba(255, 255, 255, 0.1);
+  --sv-chip: #333333;
+  --sv-guide: #2e2e2e;
+  --sv-scrollbar: #3d3d3d;
+  --sv-scrollbar-hover: #555555;
+  --sv-segment-on: #3a3a3a;
+  --sv-segment-shadow: none;
+  --sv-live: #22c55e;
+  --sv-recorded: #4ade80;
+  --sv-recorded-soft: rgba(34, 197, 94, 0.16);
+  --sv-recorded-solid: #16a34a;
+  --sv-fixture: #fbbf24;
+  --sv-fixture-soft: rgba(245, 158, 11, 0.16);
+  --sv-fixture-solid: #d97706;
+  --sv-accent: #3b82f6;
+  --sv-focus: #60a5fa;
+  --sv-warn: #fbbf24;
+  --sv-badge: #ef4444;
+  --sv-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --sv-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.5);
+  --sv-json-key: #c084fc;
+  --sv-json-string: #4ade80;
+  --sv-json-number: #60a5fa;
+  --sv-json-literal: #f472b6;
 }
-.sv-root[data-theme="dark"] {${DARK}}
 
 button, select, input { font: inherit; color: inherit; margin: 0; }
 button { -webkit-tap-highlight-color: transparent; }
 h2, h3, p { margin: 0; font: inherit; }
 ul, ol { list-style: none; margin: 0; padding: 0; }
-code { font-family: ${MONO}; font-size: 11px; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 11px; }
 :focus { outline: none; }
 :focus-visible { outline: 2px solid var(--sv-focus); outline-offset: 1px; }
 
@@ -251,7 +375,7 @@ code { font-family: ${MONO}; font-size: 11px; }
   min-width: 0;
   height: 18px;
   padding: 0 5px;
-  font-family: ${MONO};
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-weight: 400;
   line-height: 18px;
   text-overflow: ellipsis;
@@ -318,7 +442,7 @@ code { font-family: ${MONO}; font-size: 11px; }
 .sv-row-name {
   overflow: hidden;
   min-width: 0;
-  font-family: ${MONO};
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -456,7 +580,7 @@ kbd {
 .sv-leaf[aria-selected="true"]:hover { background: var(--sv-selected); }
 .sv-leaf[data-filled] { background: color-mix(in srgb, var(--sv-selected) 50%, transparent); }
 .sv-label { display: grid; min-width: 0; flex: 1 1 auto; }
-.sv-key { overflow: hidden; font-family: ${MONO}; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.sv-key { overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .sv-description {
   overflow: hidden;
   color: var(--sv-muted);
@@ -488,7 +612,7 @@ kbd {
 
 .sv-children { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; padding: 0 6px; }
 .sv-children .sv-hint { padding: 0; }
-.sv-children .sv-button { background: var(--sv-surface); color: var(--sv-fg); font-family: ${MONO}; font-size: 11px; }
+.sv-children .sv-button { background: var(--sv-surface); color: var(--sv-fg); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 11px; }
 
 /* Context */
 .sv-segmented { display: inline-flex; padding: 2px; border-radius: 7px; background: var(--sv-surface); }
@@ -511,7 +635,7 @@ kbd {
   padding: 6px 8px;
   border-radius: 8px;
   background: var(--sv-surface);
-  font-family: ${MONO};
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   line-height: 1.4;
   white-space: nowrap;
@@ -547,7 +671,7 @@ kbd {
 }
 .sv-event {
   overflow: hidden;
-  font-family: ${MONO};
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 12px;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -562,7 +686,7 @@ kbd {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sv-payload { font-family: ${MONO}; }
+.sv-payload { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
 
 /* Footer */
 .sv-footer { flex: none; padding: 4px 6px; border-top: 1px solid var(--sv-border); }
@@ -592,6 +716,4 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .sv-panel { animation: none; }
   .sv-bubble, .sv-chevron, .sv-json-chevron { transition: none; }
-}
-`;
 }
