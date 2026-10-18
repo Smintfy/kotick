@@ -6,7 +6,7 @@ import type { Registry } from '../../core/types';
 import { resolveUrlParam } from '../deep-link';
 import { useIsomorphicLayoutEffect, useLatest, useRegistrySnapshot } from '../hooks';
 import type { OverlayHost } from '../host';
-import { findInstance, groupMachines } from '../model';
+import { findInstance, groupMachines, type MachineGroup } from '../model';
 import type { StateViewerProps, Theme } from '../props';
 import { isPosition, nextPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../settings';
 import { eventOrigin, isTyping, matchesShortcut, parseShortcut } from '../shortcut';
@@ -29,24 +29,13 @@ export function Overlay(props: OverlayProps) {
   const snapshot = useRegistrySnapshot(registry);
   const panelId = React.useId();
 
-  // Read once, written only when the user changes something.
-  const [settings, setSettings] = React.useState(readSettings);
-  const initialSettings = React.useRef(settings);
-  React.useEffect(() => {
-    if (settings !== initialSettings.current) writeSettings(settings);
-  }, [settings]);
-  const update = (patch: Settings) => setSettings((current) => ({ ...current, ...patch }));
-
+  const [settings, update] = useStoredSettings();
   const open = settings.open ?? props.defaultOpen === true;
   const position = resolvePosition(settings, defaultPosition);
 
   const groups = React.useMemo(() => groupMachines(snapshot.machines), [snapshot.machines]);
   const [instanceKey, setInstanceKey] = React.useState<string>();
-  // The stored machine once it registers; until then the first one, without overwriting the stored choice.
-  const group =
-    groups.find((candidate) => candidate.machineId === settings.machine) ??
-    groups.find((candidate) => !candidate.child) ??
-    groups[0];
+  const group = groupToShow(groups, settings.machine);
   const instance = group && (group.instances.find((entry) => entry.key === instanceKey) ?? group.instances[0]);
 
   function selectMachine(machineId: string): void {
@@ -67,36 +56,13 @@ export function Overlay(props: OverlayProps) {
     selectMachine(groups[(index + step + groups.length) % groups.length].machineId);
   }
 
-  // Focus: opening by hand moves it into the panel, so the panel's keys work at once; closing gives it back to where
-  // the shortcut was pressed, or to the bubble, rather than losing it with the panel.
-  const panelRef = React.useRef<HTMLElement>(null);
-  const bubbleRef = React.useRef<HTMLButtonElement>(null);
-  const returnFocus = React.useRef<HTMLElement | null>(null);
-  const focusOnOpen = React.useRef(false);
+  const { panelRef, bubbleRef, onToggle } = usePanelFocus(open, host);
 
-  function setOpen(next: boolean, from: 'bubble' | 'shortcut' | 'close'): void {
+  function setOpen(next: boolean, from: ToggleOrigin): void {
     if (next === open) return;
-    if (next) {
-      const active = document.activeElement;
-      const outside = active instanceof HTMLElement && active !== host.host;
-      returnFocus.current = from === 'shortcut' && outside ? active : null;
-      focusOnOpen.current = true;
-    } else if (panelRef.current?.contains(host.shadow.activeElement)) {
-      const back = returnFocus.current;
-      if (back?.isConnected) back.focus();
-      else bubbleRef.current?.focus();
-    }
-    if (!next) returnFocus.current = null;
+    onToggle(next, from);
     update({ open: next });
   }
-
-  useIsomorphicLayoutEffect(() => {
-    if (!open || !focusOnOpen.current) return;
-    focusOnOpen.current = false;
-    const panel = panelRef.current;
-    const item = panel?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
-    (item ?? panel)?.focus();
-  }, [open]);
 
   const toggle = useLatest(() => setOpen(!open, 'shortcut'));
   React.useEffect(() => {
@@ -157,6 +123,70 @@ export function Overlay(props: OverlayProps) {
       )}
     </div>
   );
+}
+
+/** The panel settings in localStorage. They are read once, and written only when the user changes something. */
+function useStoredSettings() {
+  const [settings, setSettings] = React.useState(readSettings);
+  const initialSettings = React.useRef(settings);
+  React.useEffect(() => {
+    if (settings !== initialSettings.current) writeSettings(settings);
+  }, [settings]);
+  const update = (patch: Settings) => setSettings((current) => ({ ...current, ...patch }));
+  return [settings, update] as const;
+}
+
+/**
+ * The stored machine once it registers.
+ * Until then, the first machine with an instance that isn't a child machine, or else the first machine.
+ * The fallback doesn't replace the stored machine.
+ */
+function groupToShow(groups: readonly MachineGroup[], storedMachine: string | undefined): MachineGroup | undefined {
+  return (
+    groups.find((candidate) => candidate.machineId === storedMachine) ??
+    groups.find((candidate) => !candidate.childrenOnly) ??
+    groups[0]
+  );
+}
+
+type ToggleOrigin = 'bubble' | 'shortcut' | 'close';
+
+/**
+ * Moves focus into the panel when it opens, so the panel's keys work at once.
+ * When the panel closes, it gives focus back to where the shortcut was pressed, or to the bubble.
+ * Call onToggle() before the panel opens or closes.
+ */
+function usePanelFocus(open: boolean, host: OverlayHost) {
+  const panelRef = React.useRef<HTMLElement>(null);
+  const bubbleRef = React.useRef<HTMLButtonElement>(null);
+  const returnFocus = React.useRef<HTMLElement | null>(null);
+  const focusOnOpen = React.useRef(false);
+
+  useIsomorphicLayoutEffect(() => {
+    if (!open || !focusOnOpen.current) return;
+    focusOnOpen.current = false;
+    const panel = panelRef.current;
+    const item = panel?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+    (item ?? panel)?.focus();
+  }, [open]);
+
+  function onToggle(next: boolean, from: ToggleOrigin): void {
+    if (next) {
+      const active = document.activeElement;
+      const outside = active instanceof HTMLElement && active !== host.host;
+      returnFocus.current = from === 'shortcut' && outside ? active : null;
+      focusOnOpen.current = true;
+      return;
+    }
+    if (panelRef.current?.contains(host.shadow.activeElement)) {
+      const back = returnFocus.current;
+      if (back?.isConnected) back.focus();
+      else bubbleRef.current?.focus();
+    }
+    returnFocus.current = null;
+  }
+
+  return { panelRef, bubbleRef, onToggle };
 }
 
 // StrictMode and Fast Refresh run the memo again, so each invalid shortcut warns once per page.

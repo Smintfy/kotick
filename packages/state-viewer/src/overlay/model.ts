@@ -16,8 +16,8 @@ export interface InstanceEntry {
 export interface MachineGroup {
   machineId: string;
   instances: InstanceEntry[];
-  /** Every instance is a child machine, listed read-only. */
-  child: boolean;
+  /** Child machines are listed read-only. */
+  childrenOnly: boolean;
 }
 
 /** Groups handles by machine id, in the order each id first registered. */
@@ -26,7 +26,7 @@ export function groupMachines(handles: readonly MachineHandle[]): MachineGroup[]
   for (const handle of handles) {
     let group = groups.get(handle.machineId);
     if (!group) {
-      group = { machineId: handle.machineId, instances: [], child: true };
+      group = { machineId: handle.machineId, instances: [], childrenOnly: true };
       groups.set(handle.machineId, group);
     }
     const ordinal = group.instances.length + 1;
@@ -36,7 +36,7 @@ export function groupMachines(handles: readonly MachineHandle[]): MachineGroup[]
       ordinal,
       label: `${handle.label ?? handle.machineId} · ${ordinal}`,
     });
-    if (handle.parentKey === undefined) group.child = false;
+    if (handle.parentKey === undefined) group.childrenOnly = false;
   }
   return [...groups.values()];
 }
@@ -50,15 +50,20 @@ export function findInstance(groups: readonly MachineGroup[], key: string | unde
   return undefined;
 }
 
+/** What a click on a leaf does to the instance's preview. */
+export type LeafToggle = { action: 'preview'; leaves: string[] } | { action: 'release' };
+
 /**
- * The leaves to preview after selecting `leaf`, or an empty array to release. A requested leaf is taken out again;
- * any other goes first, so the registry resolves its fixture first and normalizeTarget drops the requested
- * leaves it can't be active with, while leaves in other parallel regions stay.
+ * A requested leaf is taken out again, and the preview is released when no leaf stays.
+ * Any other leaf goes first, so the registry resolves its fixture first.
+ * normalizeTarget then drops the requested leaves that can't be active with the new leaf.
+ * Requested leaves in other parallel regions stay.
  */
-export function toggleLeaf(requested: readonly string[] | undefined, leaf: string): string[] {
-  if (!requested) return [leaf];
-  if (requested.includes(leaf)) return requested.filter((other) => other !== leaf);
-  return [leaf, ...requested];
+export function toggleLeaf(requested: readonly string[] | undefined, leaf: string): LeafToggle {
+  if (!requested) return { action: 'preview', leaves: [leaf] };
+  if (!requested.includes(leaf)) return { action: 'preview', leaves: [leaf, ...requested] };
+  const kept = requested.filter((other) => other !== leaf);
+  return kept.length === 0 ? { action: 'release' } : { action: 'preview', leaves: kept };
 }
 
 interface LinkPlan {
@@ -67,39 +72,48 @@ interface LinkPlan {
   partial: string[];
 }
 
+interface LinkedInstance {
+  key: string;
+  override: Override | undefined;
+}
+
 /**
- * One target per previewed machine: the selected instance's preview if it has one, otherwise that of the
- * first-registered previewed instance. The override's requested leaves, so after a reload untouched regions follow
- * each instance's own state.
+ * One target per previewed machine, with the requested leaves of the preview that linkedPreview() chooses.
+ * After a reload, the regions that the preview didn't request follow the state of each instance.
  */
 export function planLink(
   handles: readonly MachineHandle[],
   overrides: Readonly<Record<string, Override>>,
   selectedKey: string | undefined,
 ): LinkPlan {
-  const byMachine = new Map<string, { chosen?: Override; requested: (readonly string[] | undefined)[] }>();
+  const byMachine = new Map<string, LinkedInstance[]>();
   for (const handle of handles) {
     // Child machines can't be previewed, and links skip them.
     if (!handle.capabilities?.preview) continue;
     const key = toInstanceKey(handle.machineId, handle.instanceId);
-    const override = overrides[key];
-    let entry = byMachine.get(handle.machineId);
-    if (!entry) {
-      entry = { requested: [] };
-      byMachine.set(handle.machineId, entry);
+    let instances = byMachine.get(handle.machineId);
+    if (!instances) {
+      instances = [];
+      byMachine.set(handle.machineId, instances);
     }
-    entry.requested.push(override?.requested);
-    if (override && (!entry.chosen || key === selectedKey)) entry.chosen = override;
+    instances.push({ key, override: overrides[key] });
   }
 
   const targets: DeepLinkTarget[] = [];
   const partial: string[] = [];
-  for (const [machineId, { chosen, requested }] of byMachine) {
+  for (const [machineId, instances] of byMachine) {
+    const chosen = linkedPreview(instances, selectedKey);
     if (!chosen) continue;
     targets.push({ machineId, leaves: [...chosen.requested] });
-    if (requested.some((leaves) => !sameLeaves(leaves, chosen.requested))) partial.push(machineId);
+    if (instances.some(({ override }) => !sameLeaves(override?.requested, chosen.requested))) partial.push(machineId);
   }
   return { targets, partial };
+}
+
+/** The preview of the selected instance, or else the preview of the first instance that registered. */
+function linkedPreview(instances: readonly LinkedInstance[], selectedKey: string | undefined): Override | undefined {
+  const selected = instances.find(({ key }) => key === selectedKey)?.override;
+  return selected ?? instances.find(({ override }) => override !== undefined)?.override;
 }
 
 function sameLeaves(a: readonly string[] | undefined, b: readonly string[]): boolean {
