@@ -23,8 +23,10 @@ test file.
 3. **Drive it like a developer.** Render components that call the hooks next to the overlay with `page()` or `mount()`
    from `test/support/app.tsx`, and click their buttons with `press()`. Drive the overlay with `test/support/panel.ts`:
    `show()`, `preview()`, `pickSource()` and `release()`. Read the result from the DOM: what the components render,
-   `panel()` and `isOpen()`. When a hook must behave like the `@xstate/react` hook of the same name, run the test against
-   both with `describe.each(IMPLEMENTATIONS)` from `test/support/hooks.ts`.
+   `panel()` and `isOpen()`. Find an overlay element by its role, its `aria-*` or `data-*` attributes, or its
+   `data-part`, never by a class. The classes are Tailwind utilities, and they change with the styles. When a hook
+   must behave like the `@xstate/react` hook of the same name, run the test against both with
+   `describe.each(IMPLEMENTATIONS)` from `test/support/hooks.ts`.
 4. **Assert exact values.** Collect what one step shows into one object, and compare it with `toEqual` against a
    literal. Never use `toBeDefined`, `toBeTruthy`, `toBeFalsy` or `expect.anything()`. Prefer a whole value to
    `toMatchObject`, `toContain` or `stringContaining`.
