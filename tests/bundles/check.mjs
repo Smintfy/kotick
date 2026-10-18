@@ -5,7 +5,7 @@
 // esbuild, Vite, Next.js (Turbopack and webpack) and React Router. Then it builds the examples, which use the
 // workspace source. In each output, it looks for strings that only the registry, the overlay and the adapter contain.
 // For esbuild and Vite it also compares the JavaScript loaded at startup with the same app written against
-// @xstate/react (src/baseline.tsx), and fails when the difference is over STARTUP_BUDGET.
+// @xstate/react (src/baseline.tsx), and fails when the difference is over STARTUP_BUDGET_GZIP_BYTES.
 //
 // Usage:
 //   node tests/bundles/check.mjs                    every bundler, then the examples
@@ -33,8 +33,8 @@ import { gzipSync } from 'node:zlib';
 const root = join(import.meta.dirname, '../..');
 const fixtureDir = import.meta.dirname;
 
-/** The most that the startup JavaScript may grow against the same app with @xstate/react, in gzip bytes. */
-const STARTUP_BUDGET = 512;
+/** The most that the startup JavaScript may grow against the same app with @xstate/react. */
+const STARTUP_BUDGET_GZIP_BYTES = 512;
 
 /** Strings that only debug code contains, and the part of the package each one stands for. */
 const MARKERS = {
@@ -152,8 +152,8 @@ function compare(name, app, baseline) {
   const a = sizeOf(app);
   const b = sizeOf(baseline);
   const growth = a.gzip - b.gzip;
-  if (growth > STARTUP_BUDGET) {
-    const over = `over the budget of ${formatBytes(STARTUP_BUDGET)}`;
+  if (growth > STARTUP_BUDGET_GZIP_BYTES) {
+    const over = `over the budget of ${formatBytes(STARTUP_BUDGET_GZIP_BYTES)}`;
     failures.push(`${name}: startup JS is ${formatBytes(growth)} gzip larger than with @xstate/react, ${over}.`);
   }
   return `startup JS ${formatBytes(a.gzip)} gzip, ${signed(growth)} vs @xstate/react (${signed(a.raw - b.raw)} raw)`;
