@@ -89,9 +89,9 @@ export function Panel(props: PanelProps) {
 
   function preview(leaf: string): void {
     if (!canPreview || key === undefined) return;
-    const next = toggleLeaf(override?.requested, leaf);
-    if (next.length === 0) registry.release(key);
-    else registry.preview(key, { leaves: next });
+    const toggle = toggleLeaf(override?.requested, leaf);
+    if (toggle.action === 'release') registry.release(key);
+    else registry.preview(key, { leaves: toggle.leaves });
   }
 
   function selectLeaf(leaf: string): void {
@@ -337,7 +337,7 @@ function childrenOf(groups: readonly MachineGroup[], parentKey: string): Instanc
 function machineOption(group: MachineGroup, snapshot: RegistrySnapshot): string {
   const count = group.instances.length > 1 ? ` (${group.instances.length})` : '';
   const previewing = group.instances.some((entry) => snapshot.overrides[entry.key]) ? ' ●' : '';
-  return `${group.machineId}${group.child ? ' (child)' : ''}${count}${previewing}`;
+  return `${group.machineId}${group.childrenOnly ? ' (child)' : ''}${count}${previewing}`;
 }
 
 function list(items: readonly string[]): string {

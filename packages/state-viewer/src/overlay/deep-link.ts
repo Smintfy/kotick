@@ -3,6 +3,9 @@
 import type { DeepLinkTarget } from '../core/types';
 
 const DEFAULT_URL_PARAM = 'debug-state';
+const TARGET_SEPARATOR = ',';
+const MACHINE_ID_END = ':';
+const LEAF_SEPARATOR = ';';
 
 export function resolveUrlParam(urlParam: string | undefined): string {
   return typeof urlParam === 'string' && urlParam !== '' ? urlParam : DEFAULT_URL_PARAM;
@@ -22,7 +25,7 @@ function parseDeepLink(raw: string): ParsedDeepLink {
   // If code passed our value to set(), that added one encoding and one decode restores what we wrote. If a router
   // parsed and rebuilt the query, our value was decoded before being encoded, so one decode gives the fully decoded
   // value: ids without reserved characters come back intact, ids with ':' ';' ',' or '%' don't.
-  if (!value.includes(':')) {
+  if (!value.includes(MACHINE_ID_END)) {
     try {
       value = decodeURIComponent(value);
     } catch {
@@ -31,21 +34,21 @@ function parseDeepLink(raw: string): ParsedDeepLink {
   }
 
   const byMachine = new Map<string, { target: DeepLinkTarget; segment: string }>();
-  for (const segment of value.split(',')) {
+  for (const segment of value.split(TARGET_SEPARATOR)) {
     if (segment === '') continue;
 
-    const colon = segment.indexOf(':');
-    if (colon === -1) {
+    const idEnd = segment.indexOf(MACHINE_ID_END);
+    if (idEnd === -1) {
       errors.push(`Skipped "${segment}": expected <machineId>:<leaf>.`);
       continue;
     }
-    if (colon === 0) {
+    if (idEnd === 0) {
       errors.push(`Skipped "${segment}": the machine id is empty.`);
       continue;
     }
     const rawLeaves = segment
-      .slice(colon + 1)
-      .split(';')
+      .slice(idEnd + 1)
+      .split(LEAF_SEPARATOR)
       .filter((leaf) => leaf !== '');
     if (rawLeaves.length === 0) {
       errors.push(`Skipped "${segment}": no leaves after the machine id.`);
@@ -55,7 +58,7 @@ function parseDeepLink(raw: string): ParsedDeepLink {
     let target: DeepLinkTarget;
     try {
       target = {
-        machineId: decodeURIComponent(segment.slice(0, colon)),
+        machineId: decodeURIComponent(segment.slice(0, idEnd)),
         leaves: [...new Set(rawLeaves.map((leaf) => decodeURIComponent(leaf)))],
       };
     } catch {
@@ -81,8 +84,13 @@ function serializeDeepLink(targets: DeepLinkTarget[]): string {
   // encodeURIComponent keeps dots and parentheses readable but escapes the separators ':' ';' ','.
   return targets
     .filter((target) => target.leaves.length > 0)
-    .map((target) => `${encodeURIComponent(target.machineId)}:${target.leaves.map(encodeURIComponent).join(';')}`)
-    .join(',');
+    .map(
+      (target) =>
+        encodeURIComponent(target.machineId) +
+        MACHINE_ID_END +
+        target.leaves.map(encodeURIComponent).join(LEAF_SEPARATOR),
+    )
+    .join(TARGET_SEPARATOR);
 }
 
 /** Reads targets from a query string such as `location.search`, warning about skipped segments. */
