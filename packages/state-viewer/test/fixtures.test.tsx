@@ -173,7 +173,7 @@ test('a fixture gives a state its context: the tree marks the leaf, and a previe
       marks: checkoutMarks({ done: ['fixture'] }),
       shown: { value: 'done', context: { step: 99, note: 'placed' } },
       panel: {
-        instance: `${checkout.id} · 1 ●`,
+        instance: `${checkout.id} · 1`,
         live: ['idle'],
         previewed: ['done'],
         filled: [],
@@ -275,7 +275,7 @@ describe('the fixtures prop', () => {
     expect({ marks: marks(), panel: panel(), shown: shown(), warnings: output.warn }).toEqual({
       marks: checkoutMarks({ 'paying.card.error': ['fixture'], done: ['fixture'] }),
       panel: {
-        instance: `${machine.id} · 1 ●`,
+        instance: `${machine.id} · 1`,
         live: ['idle'],
         previewed: ['paying.card.error'],
         filled: ['paying.shipping.standard'],
@@ -412,7 +412,7 @@ describe('matching a set to a machine', () => {
 
     await preview(debugId, ['done']);
     expect({ instance: panel().instance, marks: marks(), source: panel().source, shown: shown() }).toEqual({
-      instance: `${debugId} · 1 ●`,
+      instance: `${debugId} · 1`,
       marks: checkoutMarks({ done: ['fixture'] }),
       source: 'fixture',
       shown: { value: 'done', context: { step: 99, note: 'by machine' } },
@@ -598,7 +598,7 @@ describe('matching a set to a machine', () => {
       warnings: output.warn,
     }).toEqual({
       id: expect.stringMatching(/^machine-[0-9a-z]{7}$/),
-      instance: `${set.machineId} · 1 ●`,
+      instance: `${set.machineId} · 1`,
       marks: { closed: ['recorded'], [state]: ['fixture'] },
       shown: { value: state, context: { label: 'fixture' } },
       warnings: [
@@ -656,7 +656,7 @@ describe('fixtures that register after a preview', () => {
     expect({ before, after: { panel: panel(), shown: shown() }, warnings: output.warn }).toEqual({
       before: {
         panel: {
-          instance: `${machine.id} · 1 ●`,
+          instance: `${machine.id} · 1`,
           live: ['idle'],
           previewed: ['paying.card.error'],
           filled: ['paying.shipping.standard'],
@@ -668,7 +668,7 @@ describe('fixtures that register after a preview', () => {
       },
       after: {
         panel: {
-          instance: `${machine.id} · 1 ●`,
+          instance: `${machine.id} · 1`,
           live: ['paying.card.idle', 'paying.shipping.express'],
           previewed: ['paying.card.error'],
           filled: ['paying.shipping.standard'],
@@ -760,7 +760,7 @@ describe('fixtures that register after a preview', () => {
       after: {
         marks: checkoutMarks({ 'paying.card.error': ['fixture'] }),
         panel: {
-          instance: `${id} · 1 ●`,
+          instance: `${id} · 1`,
           live: ['idle'],
           previewed: ['done'],
           filled: [],
@@ -1038,7 +1038,7 @@ describe('after HMR', () => {
       after: {
         sameKey: true,
         panel: {
-          instance: `${debugId} · 1 ●`,
+          instance: `${debugId} · 1`,
           live: ['idle'],
           previewed: ['done'],
           filled: [],
@@ -1169,7 +1169,7 @@ describe('after HMR', () => {
       linked: { previewed: ['paying.card.error'], source: 'live' },
       loaded: {
         panel: {
-          instance: `${debugId} · 1 ●`,
+          instance: `${debugId} · 1`,
           live: ['idle'],
           previewed: ['paying.card.error'],
           filled: ['paying.shipping.standard'],

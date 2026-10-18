@@ -1,4 +1,4 @@
-// Panel UI state kept in localStorage: whether the panel is open, its corner, and the selected machine.
+// Panel UI state kept in localStorage: whether the panel is open, its corner, and the machine whose page it shows.
 
 import type { Position } from './props';
 
@@ -12,7 +12,10 @@ export interface Settings {
    * an app that changes its default isn't overruled by a choice made against the old one.
    */
   positionDefault?: Position;
-  /** The selected machine's id. Instance ids change on every page load, so the instance isn't kept. */
+  /**
+   * The id of the machine whose page the panel shows. Unset shows the machine list.
+   * Instance ids change on every page load, so the instance isn't kept.
+   */
   machine?: string;
 }
 
@@ -69,9 +72,4 @@ export function writeSettings(settings: Settings): void {
 /** The corner to use: the stored one while the app's default is still the one it was chosen over. */
 export function resolvePosition(settings: Settings, fallback: Position): Position {
   return settings.position !== undefined && settings.positionDefault === fallback ? settings.position : fallback;
-}
-
-/** The next corner clockwise, for the panel's move button. */
-export function nextPosition(position: Position): Position {
-  return POSITIONS[(POSITIONS.indexOf(position) + 1) % POSITIONS.length];
 }

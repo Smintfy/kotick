@@ -1,17 +1,21 @@
 // The toolbar bubble and the panel it opens, inside the shadow root.
-// It keeps the settings, picks the machine to show, moves focus in and out of the panel, and handles the shortcut.
+// It keeps the settings, picks the page to show, moves focus in and out of the panel and between its pages, and
+// handles the shortcut.
 
 import * as React from 'react';
 import type { Registry } from '../../core/types';
 import { resolveUrlParam } from '../deep-link';
 import { useIsomorphicLayoutEffect, useLatest, useRegistrySnapshot } from '../hooks';
 import type { OverlayHost } from '../host';
-import { findInstance, groupMachines, type MachineGroup } from '../model';
+import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../model';
 import type { StateViewerProps, Theme } from '../props';
-import { isPosition, nextPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../settings';
+import { isPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../settings';
 import { eventOrigin, isTyping, matchesShortcut, parseShortcut } from '../shortcut';
 import { HexagonIcon } from './icons';
+import { MachineList, PathChip } from './MachineList';
+import { MachinePage } from './MachinePage';
 import { Panel } from './Panel';
+import { SettingsPage } from './SettingsPage';
 
 const THEMES: readonly Theme[] = ['system', 'light', 'dark'];
 
@@ -34,33 +38,52 @@ export function Overlay(props: OverlayProps) {
   const position = resolvePosition(settings, defaultPosition);
 
   const groups = React.useMemo(() => groupMachines(snapshot.machines), [snapshot.machines]);
+  const [subpage, setSubpage] = React.useState<'settings'>();
   const [instanceKey, setInstanceKey] = React.useState<string>();
-  const group = groupToShow(groups, settings.machine);
-  const instance = group && (group.instances.find((entry) => entry.key === instanceKey) ?? group.instances[0]);
+  const page = pageToShow(subpage, groups, settings.machine, instanceKey);
 
-  function selectMachine(machineId: string): void {
+  const { panelRef, bubbleRef, onToggle, focusWithPage } = usePanelFocus(open, host, page);
+
+  function openMachine(machineId: string): void {
+    focusWithPage();
     update({ machine: machineId });
     setInstanceKey(undefined);
   }
 
-  function selectInstance(key: string): void {
+  function back(): void {
+    focusWithPage();
+    setSubpage(undefined);
+    update({ machine: undefined });
+  }
+
+  function openSettings(): void {
+    focusWithPage();
+    setSubpage('settings');
+  }
+
+  function pickInstance(key: string): void {
     const entry = findInstance(groups, key);
     if (!entry) return;
-    if (entry.handle.machineId !== group?.machineId) update({ machine: entry.handle.machineId });
+    if (entry.handle.machineId !== settings.machine) update({ machine: entry.handle.machineId });
     setInstanceKey(key);
   }
 
-  function cycleMachine(step: 1 | -1): void {
-    if (groups.length < 2 || !group) return;
-    const index = groups.indexOf(group);
-    selectMachine(groups[(index + step + groups.length) % groups.length].machineId);
+  // Unlike the Instance picker, a Children button doesn't stay on the page, so focus follows to the child's tree.
+  function openInstance(key: string): void {
+    focusWithPage();
+    pickInstance(key);
   }
 
-  const { panelRef, bubbleRef, onToggle } = usePanelFocus(open, host);
+  function cycleMachine(step: 1 | -1): void {
+    if (page.kind !== 'machine' || groups.length < 2) return;
+    const index = groups.indexOf(page.group);
+    openMachine(groups[(index + step + groups.length) % groups.length].machineId);
+  }
 
   function setOpen(next: boolean, from: ToggleOrigin): void {
     if (next === open) return;
     onToggle(next, from);
+    if (!next) setSubpage(undefined);
     update({ open: next });
   }
 
@@ -83,6 +106,69 @@ export function Overlay(props: OverlayProps) {
       ? 'State viewer'
       : `State viewer, ${previewCount} preview${previewCount === 1 ? '' : 's'} active`;
 
+  function pageView(): PageView {
+    switch (page.kind) {
+      case 'machines':
+        return {
+          title: 'Machines',
+          chips: (
+            <>
+              <PathChip />
+              {groups.length > 0 && <span className="sv-chip">{groups.length}</span>}
+            </>
+          ),
+          body: (
+            <MachineList
+              groups={groups}
+              snapshot={snapshot}
+              onOpen={openMachine}
+              onReleaseAll={() => registry.release()}
+              onSettings={openSettings}
+            />
+          ),
+        };
+      case 'settings':
+        return {
+          title: 'Settings',
+          onBack: back,
+          body: (
+            <SettingsPage
+              position={position}
+              shortcutLabel={shortcut?.label}
+              onPosition={(next) => update({ position: next, positionDefault: defaultPosition })}
+            />
+          ),
+        };
+      case 'machine': {
+        const requested = snapshot.overrides[page.instance.key]?.requested.length ?? 0;
+        return {
+          title: page.group.machineId,
+          chips: requested > 0 && (
+            <span className="sv-chip" title={`${requested} previewed state${requested === 1 ? '' : 's'}`}>
+              {requested}
+            </span>
+          ),
+          onBack: back,
+          body: (
+            <MachinePage
+              registry={registry}
+              snapshot={snapshot}
+              groups={groups}
+              group={page.group}
+              instance={page.instance}
+              urlParam={urlParam}
+              onPickInstance={pickInstance}
+              onOpenInstance={openInstance}
+              onCycleMachine={cycleMachine}
+            />
+          ),
+        };
+      }
+    }
+  }
+
+  const view = open ? pageView() : undefined;
+
   return (
     <div className="sv-root" data-theme={theme} data-position={position}>
       <button
@@ -102,26 +188,48 @@ export function Overlay(props: OverlayProps) {
           </span>
         )}
       </button>
-      {open && (
+      {view && (
         <Panel
           id={panelId}
-          registry={registry}
-          snapshot={snapshot}
-          groups={groups}
-          group={group}
-          instance={instance}
-          urlParam={urlParam}
-          shortcutLabel={shortcut?.label}
           panelRef={panelRef}
-          onSelectMachine={selectMachine}
-          onSelectInstance={selectInstance}
-          onCycleMachine={cycleMachine}
-          onMove={() => update({ position: nextPosition(position), positionDefault: defaultPosition })}
+          page={page.kind}
+          title={view.title}
+          chips={view.chips}
+          onBack={view.onBack}
+          shortcutLabel={shortcut?.label}
           onClose={() => setOpen(false, 'close')}
-        />
+          onReleaseAll={() => registry.release()}
+        >
+          {view.body}
+        </Panel>
       )}
     </div>
   );
+}
+
+/** What the shell shows for a page: its header, and the page itself. */
+interface PageView {
+  title: string;
+  chips?: React.ReactNode;
+  onBack?: () => void;
+  body: React.ReactNode;
+}
+
+/**
+ * The settings page while it is open. Else the stored machine's page once that machine registers, with the picked
+ * instance or else its first. Else the machine list.
+ */
+function pageToShow(
+  subpage: 'settings' | undefined,
+  groups: readonly MachineGroup[],
+  storedMachine: string | undefined,
+  instanceKey: string | undefined,
+): PanelPage {
+  if (subpage === 'settings') return { kind: 'settings' };
+  const group = groups.find((candidate) => candidate.machineId === storedMachine);
+  if (!group) return { kind: 'machines' };
+  const instance = group.instances.find((entry) => entry.key === instanceKey) ?? group.instances[0];
+  return { kind: 'machine', group, instance };
 }
 
 /** The panel settings in localStorage. They are read once, and written only when the user changes something. */
@@ -135,46 +243,34 @@ function useStoredSettings() {
   return [settings, update] as const;
 }
 
-/**
- * The stored machine once it registers.
- * Until then, the first machine with an instance that isn't a child machine, or else the first machine.
- * The fallback doesn't replace the stored machine.
- */
-function groupToShow(groups: readonly MachineGroup[], storedMachine: string | undefined): MachineGroup | undefined {
-  return (
-    groups.find((candidate) => candidate.machineId === storedMachine) ??
-    groups.find((candidate) => !candidate.childrenOnly) ??
-    groups[0]
-  );
-}
-
 type ToggleOrigin = 'bubble' | 'shortcut' | 'close';
 
 /**
  * Moves focus into the panel when it opens, so the panel's keys work at once.
  * When the panel closes, it gives focus back to where the shortcut was pressed, or to the bubble.
- * Call onToggle() before the panel opens or closes.
+ * When a click or a key in the panel goes to another page, focus goes into the new page.
+ * Call onToggle() before the panel opens or closes, and focusWithPage() before the page changes.
  */
-function usePanelFocus(open: boolean, host: OverlayHost) {
+function usePanelFocus(open: boolean, host: OverlayHost, page: PanelPage) {
   const panelRef = React.useRef<HTMLElement>(null);
   const bubbleRef = React.useRef<HTMLButtonElement>(null);
   const returnFocus = React.useRef<HTMLElement | null>(null);
-  const focusOnOpen = React.useRef(false);
+  // Set until the next commit, which shows the new page. `from` is the page before it, or undefined on open.
+  const moveFocus = React.useRef<{ from: PanelPage | undefined } | null>(null);
 
   useIsomorphicLayoutEffect(() => {
-    if (!open || !focusOnOpen.current) return;
-    focusOnOpen.current = false;
+    const request = moveFocus.current;
+    moveFocus.current = null;
     const panel = panelRef.current;
-    const item = panel?.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
-    (item ?? panel)?.focus();
-  }, [open]);
+    if (request && open && panel) focusTarget(panel, page, request.from).focus();
+  });
 
   function onToggle(next: boolean, from: ToggleOrigin): void {
     if (next) {
       const active = document.activeElement;
       const outside = active instanceof HTMLElement && active !== host.host;
       returnFocus.current = from === 'shortcut' && outside ? active : null;
-      focusOnOpen.current = true;
+      moveFocus.current = { from: undefined };
       return;
     }
     if (panelRef.current?.contains(host.shadow.activeElement)) {
@@ -185,7 +281,39 @@ function usePanelFocus(open: boolean, host: OverlayHost) {
     returnFocus.current = null;
   }
 
-  return { panelRef, bubbleRef, onToggle };
+  // Only when focus is in the panel: a page that changes on its own, such as when its machine registers, keeps it.
+  function focusWithPage(): void {
+    if (panelRef.current?.contains(host.shadow.activeElement)) moveFocus.current = { from: page };
+  }
+
+  return { panelRef, bubbleRef, onToggle, focusWithPage };
+}
+
+/**
+ * Where focus goes on a page: the tree's tab stop, the checked corner, or a row of the list.
+ * Back on the list, it goes to the row of the page it came from.
+ */
+function focusTarget(panel: HTMLElement, page: PanelPage, from: PanelPage | undefined): HTMLElement {
+  switch (page.kind) {
+    case 'machine':
+      return (
+        panel.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]') ??
+        panel.querySelector<HTMLElement>('.sv-page') ??
+        panel
+      );
+    case 'settings':
+      return panel.querySelector<HTMLElement>('[role="radiogroup"] input:checked') ?? panel;
+    case 'machines': {
+      const rows = [...panel.querySelectorAll<HTMLElement>('[data-row]')];
+      const cameFrom =
+        from?.kind === 'machine'
+          ? rows.find((row) => row.dataset.machine === from.group.machineId)
+          : from?.kind === 'settings'
+            ? rows.find((row) => row.dataset.row === 'settings')
+            : undefined;
+      return cameFrom ?? rows[0] ?? panel;
+    }
+  }
 }
 
 // StrictMode and Fast Refresh run the memo again, so each invalid shortcut warns once per page.

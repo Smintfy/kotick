@@ -14,7 +14,18 @@ import {
   type AnyActorRef,
   type AnyStateMachine,
 } from 'xstate';
-import { flush, freshId, header, marks, overlay, panel, preview, show } from './support/panel';
+import {
+  flush,
+  freshId,
+  instances,
+  machines,
+  marks,
+  overlay,
+  panel,
+  preview,
+  show,
+  shownMachine,
+} from './support/panel';
 
 function createWorkerMachine() {
   return setup({
@@ -176,15 +187,6 @@ function shown(name: string) {
   return JSON.parse(within(screen.getByRole('region', { name })).getByRole('status').textContent ?? 'null');
 }
 
-/** The options of the Machine picker, or null when the overlay lists no machine. */
-function machines() {
-  return header().machine?.options ?? null;
-}
-
-function instances() {
-  return header().instance?.options;
-}
-
 /** The live child under `id` in an actor's snapshot. */
 function childOf(actor: AnyActorRef, id: string): AnyActorRef {
   const child = (actor.getSnapshot() as { children: Record<string, AnyActorRef | undefined> }).children[id];
@@ -228,38 +230,45 @@ test('an invoked child is listed under its parent while the invoking state is ac
   await mount(<Parent machine={parent} />);
   const seen = () => {
     const { instance, live } = panel();
-    return { machines: machines(), instance, live, children: family().children };
+    return { instance, live, children: family().children };
   };
 
-  const idle = seen();
+  const listed = await machines();
+  await show(parent.id);
+  const idle = { ...seen(), machines: listed };
   await press('Open');
-  const busy = seen();
+  const busy = { ...seen(), machines: await machines() };
   await show(worker.id);
   const child = { ...seen(), marks: marks() };
   await press('Progress');
   await press('Pause');
   const paused = { ...seen(), context: panel().context, marks: marks() };
   await press('Close');
-  const withChild = [parent.id, `${worker.id} (child)`];
-  expect({ idle, busy, child, paused, closed: seen() }).toEqual({
-    idle: { machines: [parent.id], instance: `${parent.id} · 1`, live: ['idle'], children: [] },
-    busy: { machines: withChild, instance: `${parent.id} · 1`, live: ['busy'], children: ['job · 1'] },
+  const closed = { shown: shownMachine(), machines: await machines() };
+  await press('Open');
+  expect({ idle, busy, child, paused, closed, reopened: { shown: shownMachine(), ...seen() } }).toEqual({
+    idle: { instance: `${parent.id} · 1`, live: ['idle'], children: [], machines: [parent.id] },
+    busy: {
+      instance: `${parent.id} · 1`,
+      live: ['busy'],
+      children: ['job · 1'],
+      machines: [parent.id, `${worker.id} · child`],
+    },
     child: {
-      machines: withChild,
       instance: 'job · 1',
       live: ['working'],
       children: [],
       marks: { working: ['recorded'], paused: ['none'], finished: ['none'] },
     },
     paused: {
-      machines: withChild,
       instance: 'job · 1',
       live: ['paused'],
       children: [],
       context: ['progress: 50'],
       marks: { working: ['recorded'], paused: ['recorded'], finished: ['none'] },
     },
-    closed: { machines: [parent.id], instance: `${parent.id} · 1`, live: ['idle'], children: [] },
+    closed: { shown: 'none', machines: [parent.id] },
+    reopened: { shown: worker.id, instance: 'job · 1', live: ['working'], children: [] },
   });
 });
 
@@ -292,13 +301,14 @@ describe('children that an action spawns', () => {
     const { actor } = await RUNS.useActorRef(crew);
 
     await send(actor, { type: 'SPAWN' });
-    const spawned = machines();
+    const spawned = await machines();
     await send(actor, { type: 'HIRE' });
-    const atCrew = { machines: machines(), children: family().children };
+    await show(crew.id);
+    const atCrew = { children: family().children, machines: await machines() };
     await show(worker.id, 2);
     expect({ spawned, atCrew, atHired: { instances: instances(), hint: family().hint } }).toEqual({
-      spawned: [crew.id, `${worker.id} (child)`],
-      atCrew: { machines: [crew.id, `${worker.id} (child) (2)`], children: ['spawned · 1', 'hired · 2'] },
+      spawned: [crew.id, `${worker.id} · child`],
+      atCrew: { children: ['spawned · 1', 'hired · 2'], machines: [crew.id, `${worker.id} · child · 2 instances`] },
       atHired: { instances: ['spawned · 1', 'hired · 2'], hint: `Child of ${crew.id} · 1. ${READ_ONLY}` },
     });
   });
@@ -341,15 +351,16 @@ describe('grandchildren', () => {
     const { task, step, wizard } = createWizardMachines();
     await RUNS.useActorRef(wizard);
 
+    await show(wizard.id);
     const atWizard = family();
     await show(step.id);
     const atStep = family();
     await show(task.id);
-    expect({ machines: machines(), atWizard, atStep, atTask: family() }).toEqual({
-      machines: [wizard.id, `${step.id} (child)`, `${task.id} (child)`],
+    expect({ atWizard, atStep, atTask: family(), machines: await machines() }).toEqual({
       atWizard: { hint: '', children: ['step · 1'] },
       atStep: { hint: `Child of ${wizard.id} · 1. ${READ_ONLY}`, children: ['task · 1'] },
       atTask: { hint: `Child of step · 1. ${READ_ONLY}`, children: [] },
+      machines: [wizard.id, `${step.id} · child`, `${task.id} · child`],
     });
   });
 });
@@ -362,15 +373,16 @@ describe("a child that the parent's initial state invokes", () => {
       const parent = createParentMachine(worker, 'busy');
       const { actor, stop } = await RUNS[run](parent);
       const atChild = async () => {
+        const listed = await machines();
         await show(worker.id);
-        return { machines: machines(), instances: instances(), live: panel().live, hint: family().hint };
+        return { machines: listed, instances: instances(), live: panel().live, hint: family().hint };
       };
 
       const running = await atChild();
       await send(actor, { type: 'PAUSE' });
       const paused = panel().live;
       await send(actor, { type: 'CLOSE' });
-      const closed = machines();
+      const closed = await machines();
       await send(actor, { type: 'OPEN' });
       const reopened = await atChild();
       await act(async () => {
@@ -378,17 +390,17 @@ describe("a child that the parent's initial state invokes", () => {
       });
       await flush();
       const child = {
-        machines: [parent.id, `${worker.id} (child)`],
+        machines: [parent.id, `${worker.id} · child`],
         instances: ['job · 1'],
         live: ['working'],
         hint: `Child of ${parent.id} · 1. ${READ_ONLY}`,
       };
-      expect({ running, paused, closed, reopened, stopped: machines() }).toEqual({
+      expect({ running, paused, closed, reopened, stopped: await machines() }).toEqual({
         running: child,
         paused: ['paused'],
         closed: [parent.id],
         reopened: child,
-        stopped: null,
+        stopped: [],
       });
     },
   );
@@ -443,7 +455,7 @@ describe('a child that finishes', () => {
 
     await press(button);
     hidePage();
-    expect({ parent: shown(parent.id), machines: machines(), stored: storedEntries(worker.id) }).toEqual({
+    expect({ parent: shown(parent.id), machines: await machines(), stored: storedEntries(worker.id) }).toEqual({
       parent: 'idle',
       machines: [parent.id],
       stored: [
@@ -465,8 +477,8 @@ describe('a child that finishes', () => {
 
     await send(actor.system.get('task') as AnyActorRef, { type: 'FINISH', result: 'shipped' });
     hidePage();
-    expect({ machines: machines(), stored: storedEntries(tree.task.id) }).toEqual({
-      machines: root === 'wizard' ? [tree.wizard.id] : null,
+    expect({ machines: await machines(), stored: storedEntries(tree.task.id) }).toEqual({
+      machines: root === 'wizard' ? [tree.wizard.id] : [],
       stored: [
         { leaves: ['running'], context: { result: 'none' } },
         { leaves: ['finished'], context: { result: 'shipped' } },
@@ -536,12 +548,12 @@ describe('a child that fails', () => {
     const { actor } = await RUNS.useActorRef(supervisor);
     const orphan = childOf(childOf(actor, 'job'), 'inner');
 
-    const running = machines();
+    const running = await machines();
     await send(actor, { type: 'POKE' });
-    const failed = { value: actor.getSnapshot().value, machines: machines() };
+    const failed = { value: actor.getSnapshot().value, machines: await machines() };
     await send(orphan, { type: 'TICK' });
-    expect({ running, failed, ticked: { value: orphan.getSnapshot().value, machines: machines() } }).toEqual({
-      running: [supervisor.id, `${flaky.id} (child)`, `${ticker.id} (child)`],
+    expect({ running, failed, ticked: { value: orphan.getSnapshot().value, machines: await machines() } }).toEqual({
+      running: [supervisor.id, `${flaky.id} · child`, `${ticker.id} · child`],
       failed: { value: 'failed', machines: [supervisor.id] },
       ticked: { value: 'tock', machines: [supervisor.id] },
     });
@@ -553,10 +565,10 @@ describe('a child that fails', () => {
     const before = tickers.length;
 
     await send(actor, { type: 'START_BROKEN' });
-    const failed = { value: actor.getSnapshot().value, machines: machines() };
+    const failed = { value: actor.getSnapshot().value, machines: await machines() };
     const orphans = tickers.slice(before);
     for (const orphan of orphans) await send(orphan, { type: 'TICK' });
-    const ticked = { values: orphans.map((orphan) => orphan.getSnapshot().value), machines: machines() };
+    const ticked = { values: orphans.map((orphan) => orphan.getSnapshot().value), machines: await machines() };
     expect({ failed, ticked }).toEqual({
       failed: { value: 'failed', machines: [supervisor.id] },
       ticked: { values: ['tock'], machines: [supervisor.id] },
@@ -572,8 +584,12 @@ describe('a child that fails', () => {
       await show(machineId);
       return instances();
     };
-    expect({ machines: machines(), flaky: await instancesOf(flaky.id), ticker: await instancesOf(ticker.id) }).toEqual({
-      machines: [supervisor.id, `${flaky.id} (child)`, `${ticker.id} (child)`],
+    expect({
+      machines: await machines(),
+      flaky: await instancesOf(flaky.id),
+      ticker: await instancesOf(ticker.id),
+    }).toEqual({
+      machines: [supervisor.id, `${flaky.id} · child`, `${ticker.id} · child`],
       flaky: ['job · 1'],
       ticker: ['inner · 1'],
     });
@@ -702,10 +718,10 @@ describe('during a preview of the parent', () => {
     await send(actor, { type: 'PAUSE' });
 
     await preview(invoker.id, ['active']);
-    expect({ parent: shown('parent'), timer: timerShown(), machines: machines() }).toEqual({
+    expect({ parent: shown('parent'), timer: timerShown(), machines: await machines() }).toEqual({
       parent: { value: 'active', status: 'active', matches: ['active'], tags: ['live'], can: ['PAUSE'], children: [] },
       timer: null,
-      machines: [`${invoker.id} ●`],
+      machines: [`${invoker.id} · previewing`],
     });
   });
 });

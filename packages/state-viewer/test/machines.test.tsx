@@ -15,11 +15,13 @@ import { describe, expect, onTestFinished, test, vi } from 'vitest';
 import { assign, createActor, createMachine, setup, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { watchConsole } from './support/console';
 import {
+  badge,
   clickLeaf,
   flush,
   freshId,
-  header,
   instanceKeys,
+  instances,
+  machines,
   marks,
   overlay,
   panel,
@@ -27,6 +29,7 @@ import {
   release,
   show,
   shownKey,
+  shownMachine,
 } from './support/panel';
 
 function createToggleMachine(name: string) {
@@ -163,9 +166,9 @@ function shown(name: string) {
   return JSON.parse(screen.getByRole('status', { name }).textContent ?? 'null');
 }
 
-function pickers() {
-  const { machine, instance } = header();
-  return { machine, instance };
+/** What the shown machine page names: its machine, its instances and the shown instance. */
+function machinePage() {
+  return { machine: shownMachine(), instances: instances(), instance: panel().instance };
 }
 
 /** What the States section shows about the parent and the children of the shown instance. */
@@ -234,36 +237,34 @@ test('lists each machine once, in registration order, and its instances as "mach
   );
   await flush();
 
-  const first = pickers();
+  await show(app.id);
+  const first = { ...machinePage(), machines: await machines() };
   await show(toggle.id);
-  const toggles = pickers();
+  const toggles = machinePage();
   await preview(toggle.id, ['on'], { nth: 2 });
-  const machines = [app.id, checkout.id];
+  const rows = [app.id, checkout.id];
   expect({
     first,
     toggles,
-    previewed: { ...pickers(), shown: [shown(toggle.id), shown('Second toggle')] },
+    previewed: { ...machinePage(), shown: [shown(toggle.id), shown('Second toggle')], machines: await machines() },
   }).toEqual({
     first: {
-      machine: { options: [...machines, `${toggle.id} (2)`], selected: app.id, disabled: false },
-      instance: { options: [`${app.id} · 1`], selected: `${app.id} · 1`, disabled: true },
+      machine: app.id,
+      instances: [`${app.id} · 1`],
+      instance: `${app.id} · 1`,
+      machines: [...rows, `${toggle.id} · 2 instances`],
     },
     toggles: {
-      machine: { options: [...machines, `${toggle.id} (2)`], selected: `${toggle.id} (2)`, disabled: false },
-      instance: {
-        options: [`${toggle.id} · 1`, 'Second toggle · 2'],
-        selected: `${toggle.id} · 1`,
-        disabled: false,
-      },
+      machine: toggle.id,
+      instances: [`${toggle.id} · 1`, 'Second toggle · 2'],
+      instance: `${toggle.id} · 1`,
     },
     previewed: {
-      machine: { options: [...machines, `${toggle.id} (2) ●`], selected: `${toggle.id} (2) ●`, disabled: false },
-      instance: {
-        options: [`${toggle.id} · 1`, 'Second toggle · 2 ●'],
-        selected: 'Second toggle · 2 ●',
-        disabled: false,
-      },
+      machine: toggle.id,
+      instances: [`${toggle.id} · 1`, 'Second toggle · 2 ●'],
+      instance: 'Second toggle · 2',
       shown: ['off', 'on'],
+      machines: [...rows, `${toggle.id} · 2 instances · previewing`],
     },
   });
 });
@@ -280,7 +281,8 @@ test('rows come and go as their components mount and unmount, and keep the order
   );
   const view = render(rows(['B', 'C']));
   await flush();
-  const seen = () => ({ previewing: header().previewing, instances: header().instance?.options ?? null });
+  await show(machine.id);
+  const seen = () => ({ previewing: badge(), instances: instances() });
 
   const steps = [seen()];
   view.rerender(rows(['A', 'B', 'C']));
@@ -297,9 +299,9 @@ test('rows come and go as their components mount and unmount, and keep the order
   expect(steps).toEqual([
     { previewing: '', instances: ['B · 1', 'C · 2'] },
     { previewing: '', instances: ['B · 1', 'C · 2', 'A · 3'] },
-    { previewing: '1 previewing', instances: ['B · 1 ●', 'C · 2', 'A · 3'] },
+    { previewing: '1', instances: ['B · 1 ●', 'C · 2', 'A · 3'] },
     { previewing: '', instances: ['C · 1', 'A · 2'] },
-    { previewing: '', instances: null },
+    { previewing: '', instances: [] },
   ]);
 });
 
@@ -330,7 +332,7 @@ test('each hook, and the Provider of createActorContext, lists its machine', asy
   );
   await flush();
 
-  expect(header().machine?.options).toEqual([viaUseMachine.id, viaUseActor.id, viaUseActorRef.id, viaContext.id]);
+  expect(await machines()).toEqual([viaUseMachine.id, viaUseActor.id, viaUseActorRef.id, viaContext.id]);
 });
 
 test('a preview renders the component of the previewed instance again, and no other', async () => {
@@ -382,7 +384,7 @@ describe('instance keys', () => {
     await flush();
     await show(machine.id);
     const name = keyNames();
-    const seen = () => ({ instances: header().instance?.options, keys: name(instanceKeys()) });
+    const seen = () => ({ instances: instances(), keys: name(instanceKeys()) });
 
     const steps = [seen()];
     view.rerender(
@@ -440,7 +442,7 @@ describe('instance keys', () => {
     expect({
       previewed,
       hydrated,
-      unmounted: { instances: header().instance?.options, keys: name(instanceKeys()) },
+      unmounted: { instances: instances(), keys: name(instanceKeys()) },
       recoverable,
     }).toEqual({
       previewed: { keys: ['key 1', 'key 2'], shown: ['on', 'off'] },
@@ -462,19 +464,27 @@ describe('child machines', () => {
     );
     await flush();
 
-    const atParent = { ...pickers(), family: family() };
+    await show(parent.id);
+    const atParent = { ...machinePage(), family: family() };
     await clickButton('load · 1');
-    const atChild = { ...pickers(), family: family() };
+    const atChild = { ...machinePage(), family: family() };
     await clickLeaf('failed');
-    expect({ atParent, atChild, clicked: { previewed: panel().previewed, previewing: header().previewing } }).toEqual({
+    expect({
+      atParent,
+      atChild,
+      clicked: { previewed: panel().previewed, previewing: badge() },
+      machines: await machines(),
+    }).toEqual({
       atParent: {
-        machine: { options: [parent.id, `${fetcher.id} (child)`], selected: parent.id, disabled: false },
-        instance: { options: [`${parent.id} · 1`], selected: `${parent.id} · 1`, disabled: true },
+        machine: parent.id,
+        instances: [`${parent.id} · 1`],
+        instance: `${parent.id} · 1`,
         family: { hints: [], children: ['load · 1'], readOnly: [] },
       },
       atChild: {
-        machine: { options: [parent.id, `${fetcher.id} (child)`], selected: `${fetcher.id} (child)`, disabled: false },
-        instance: { options: ['load · 1'], selected: 'load · 1', disabled: true },
+        machine: fetcher.id,
+        instances: ['load · 1'],
+        instance: 'load · 1',
         family: {
           hints: [`Child of ${parent.id} · 1. Child machines are listed read-only.`],
           children: [],
@@ -482,6 +492,7 @@ describe('child machines', () => {
         },
       },
       clicked: { previewed: [], previewing: '' },
+      machines: [parent.id, `${fetcher.id} · child`],
     });
   });
 
@@ -501,11 +512,10 @@ describe('child machines', () => {
       await clickLeaf('failed');
     }
     // XState creates the invoked child with the parent's first snapshot, so it registers with the parent, first.
-    const { machine, instance } = header();
-    expect({ machines: machine?.options, instances: instance?.options, shown: shown(fetcher.id) }).toEqual({
-      machines: [parent.id, `${fetcher.id} (2) ●`],
+    expect({ instances: instances(), shown: shown(fetcher.id), machines: await machines() }).toEqual({
       instances: ['load · 1', `${fetcher.id} · 2 ●`],
       shown: 'failed',
+      machines: [parent.id, `${fetcher.id} · 2 instances · previewing`],
     });
   });
 });
@@ -533,22 +543,21 @@ describe('editing a machine, as Fast Refresh does', () => {
 
     view.rerender(<App machine={createCheckoutMachine(id)} toggle={toggle} />);
     await flush();
-    const { previewing, machine, instance } = header();
     expect({
-      previewing,
-      machines: machine?.options,
-      instances: instance?.options,
+      previewing: badge(),
+      instances: instances(),
       previewed: panel().previewed,
       shown: [shown('First'), shown('Second')],
+      machines: await machines(),
     }).toEqual({
-      previewing: '1 previewing',
-      machines: [`${id} (2) ●`, toggle.id],
+      previewing: '1',
       instances: ['First · 1 ●', 'Second · 2'],
       previewed: ['paying.card.error'],
       shown: [
         { paying: { card: 'error', shipping: 'standard' } },
         { paying: { card: 'idle', shipping: 'standard' } },
       ],
+      machines: [`${id} · 2 instances · previewing`, toggle.id],
     });
   });
 
@@ -570,13 +579,13 @@ describe('editing a machine, as Fast Refresh does', () => {
     const view = render(app(createCheckoutMachine(id)));
     await flush();
     await preview(id, [...leaves]);
-    const before = header().previewing;
+    const before = badge();
 
     view.rerender(app(createCheckoutMachine(id, edit)));
     await flush();
     // @xstate/react starts the new actor from the persisted snapshot of the old one, so the live state carries over.
-    expect({ before, after: header().previewing, previewed: panel().previewed, shown: shown(id) }).toEqual({
-      before: '1 previewing',
+    expect({ before, after: badge(), previewed: panel().previewed, shown: shown(id) }).toEqual({
+      before: '1',
       after: '',
       previewed: [],
       shown: { paying: { card: 'idle', shipping: 'standard' } },
@@ -642,10 +651,10 @@ describe('machine ids', () => {
     await flush();
 
     await preview('constructor', ['on']);
-    expect({ machines: header().machine?.options, previewed: panel().previewed, shown: shown('constructor') }).toEqual({
-      machines: ['constructor ●'],
+    expect({ previewed: panel().previewed, shown: shown('constructor'), machines: await machines() }).toEqual({
       previewed: ['on'],
       shown: 'on',
+      machines: ['constructor · previewing'],
     });
   });
 
@@ -662,12 +671,11 @@ describe('machine ids', () => {
     );
     await flush();
 
-    expect({ id, pickers: pickers(), warnings: output.warn }).toEqual({
+    await show(id);
+    expect({ id, page: machinePage(), machines: await machines(), warnings: output.warn }).toEqual({
       id: expect.stringMatching(MADE_ID),
-      pickers: {
-        machine: { options: [`${id} (2)`], selected: `${id} (2)`, disabled: false },
-        instance: { options: ['First · 1', 'Second · 2'], selected: 'First · 1', disabled: false },
-      },
+      page: { machine: id, instances: ['First · 1', 'Second · 2'], instance: 'First · 1' },
+      machines: [`${id} · 2 instances`],
       warnings: [madeIdWarning(id)],
     });
   });
@@ -692,7 +700,7 @@ describe('machine ids', () => {
     await flush();
 
     const made = [anonymous, defaultId].map((machine) => defineFixtures(machine, {}).machineId);
-    expect({ machines: header().machine?.options, warnings: output.warn }).toEqual({
+    expect({ machines: await machines(), warnings: output.warn }).toEqual({
       machines: [...debugIds, named.id, ...made],
       warnings: made.map(madeIdWarning),
     });
@@ -746,19 +754,19 @@ describe('machine ids', () => {
     view.rerender(app(createMachine(edit(createFetchConfig(state)))));
     await flush();
     expect({
-      machines: header().machine?.options,
       previewed: panel().previewed,
       source: panel().source,
       context: panel().context,
       shown: shown('fetch'),
       warnings: output.warn,
+      machines: await machines(),
     }).toEqual({
-      machines: [`${id} ●`],
       previewed: ['failure.offline'],
       source: 'fixture',
       context: ['items: []', 'error: "Network down"'],
       shown: { failure: 'offline' },
       warnings: [madeIdWarning(id)],
+      machines: [`${id} · previewing`],
     });
   });
 
@@ -780,18 +788,19 @@ describe('machine ids', () => {
 
     const [usersId, postsId] = [users, posts].map((machine) => defineFixtures(machine, {}).machineId);
     await preview(postsId, [loaded]);
+    const key = shownKey();
     expect({
-      machines: header().machine?.options,
       marks: marks(),
       source: panel().source,
       shown: [shown('users'), shown('posts')],
       warnings: output.warn,
+      machines: await machines(),
     }).toEqual({
-      machines: [usersId, `${postsId} ●`],
       marks: { idle: ['recorded'], [loaded]: ['none'], failure: ['none'] },
       source: 'live',
       shown: [{ users: ['Ada'] }, { posts: [] }],
-      warnings: [madeIdWarning(usersId), madeIdWarning(postsId), liveWarning(loaded, shownKey())],
+      warnings: [madeIdWarning(usersId), madeIdWarning(postsId), liveWarning(loaded, key)],
+      machines: [usersId, `${postsId} · previewing`],
     });
   });
 });
@@ -825,17 +834,17 @@ describe('debug options', () => {
     );
     await flush();
 
+    await show(debugId);
     const actor = actors[0] as AnyActorRef & { options: Record<string, unknown> };
     expect({
       shown: shown('greeting'),
-      pickers: pickers(),
+      page: machinePage(),
+      machines: await machines(),
       actor: { id: actor.id, input: actor.options.input, debug: 'debug' in actor.options },
     }).toEqual({
       shown: { name: 'Ada' },
-      pickers: {
-        machine: { options: [debugId], selected: debugId, disabled: false },
-        instance: { options: ['Greeter · 1'], selected: 'Greeter · 1', disabled: true },
-      },
+      page: { machine: debugId, instances: ['Greeter · 1'], instance: 'Greeter · 1' },
+      machines: [debugId],
       actor: { id: 'greeter', input: { name: 'Ada' }, debug: false },
     });
   });
@@ -872,7 +881,7 @@ describe('debug options', () => {
     view.rerender(app('After'));
     await flush();
     const relabeled = {
-      instances: header().instance?.options,
+      instances: instances(),
       key: shownKey(),
       previewed: panel().previewed,
       shown: shown('lamp'),
@@ -940,8 +949,8 @@ describe('debug options', () => {
     const before = shown('toggle');
     fireEvent.click(screen.getByRole('button', { name: 'Toggle' }));
     await flush();
-    expect({ machine: header().machine, before, after: shown('toggle') }).toEqual({
-      machine: null,
+    expect({ machines: await machines(), before, after: shown('toggle') }).toEqual({
+      machines: [],
       before: 'off',
       after: 'on',
     });
@@ -977,17 +986,18 @@ describe("StrictMode's second run of effects", () => {
     await flush();
 
     await show(id);
+    const key = shownKey();
     const error = { paying: { card: 'error', shipping: 'standard' } };
     expect({
-      machines: header().machine?.options,
-      instances: header().instance?.options,
+      instances: instances(),
       shown: [shown('First'), shown('Second')],
       warnings: output.warn,
+      machines: await machines(),
     }).toEqual({
-      machines: [`${id} (2) ●`, late.id],
       instances: ['First · 1 ●', 'Second · 2 ●'],
       shown: [error, error],
-      warnings: [liveWarning('paying.card.error', shownKey())],
+      warnings: [liveWarning('paying.card.error', key)],
+      machines: [`${id} · 2 instances · previewing`, late.id],
     });
   });
 });
@@ -1070,7 +1080,7 @@ describe.each([
     });
     const hidden = {
       fallback: screen.queryByText('Loading the dialog')?.textContent,
-      instances: header().instance?.options,
+      instances: instances(),
       marks: marks(),
     };
     await reveal();
@@ -1078,7 +1088,7 @@ describe.each([
       before,
       hidden,
       revealed: {
-        instances: header().instance?.options,
+        instances: instances(),
         shown: [shown('Hidden'), shown('Outside')],
         observed: page.observed.at(-1),
       },
@@ -1146,7 +1156,7 @@ describe('a second copy of the package', () => {
     await flush();
 
     await preview(machine.id, ['on'], { nth: 2 });
-    expect({ instances: header().instance?.options, shown: [shown('First copy'), shown('Second copy')] }).toEqual({
+    expect({ instances: instances(), shown: [shown('First copy'), shown('Second copy')] }).toEqual({
       instances: ['First copy · 1', 'Second copy · 2 ●'],
       shown: ['off', 'on'],
     });

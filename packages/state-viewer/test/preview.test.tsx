@@ -15,12 +15,14 @@ import {
 import { watchConsole } from './support/console';
 import { REACT_MAJOR } from './support/hooks';
 import {
+  badge,
   blockedEvents,
   clickLeaf,
   flush,
   freshId,
-  header,
   instanceKeys,
+  instances,
+  machines,
   overlay,
   panel,
   pickSource,
@@ -136,6 +138,14 @@ function sources(): Record<string, string> {
   return Object.fromEntries(
     [...inputs].map((input) => [input.value, input.checked ? 'checked' : input.disabled ? 'disabled' : 'enabled']),
   );
+}
+
+/**
+ * The labels of the rows under the machines on the machine list: `Release all` while a preview is on, then `Settings`.
+ * Call it on the machine list, such as after machines().
+ */
+function listActions(): string[] {
+  return [...overlay().querySelectorAll('.sv-row-label')].map((label) => label.textContent ?? '');
 }
 
 const LIVE_WARNING = 'No recording or fixture for this state, so the preview uses live context.';
@@ -319,14 +329,14 @@ describe('instances', () => {
       second: shown('second').value,
       note: screen.getByLabelText<HTMLInputElement>('second note').value,
       previewed: panel().previewed,
-      previewing: header().previewing,
-      instances: header().instance?.options,
+      previewing: badge(),
+      instances: instances(),
     }).toEqual({
       first: 'idle',
       second: { paying: { card: 'error', shipping: 'standard' } },
       note: 'typed before the preview',
       previewed: ['paying.card.error'],
-      previewing: '1 previewing',
+      previewing: '1',
       instances: [`${machine.id} · 1`, `${machine.id} · 2 ●`],
     });
   });
@@ -347,23 +357,25 @@ describe('releasing', () => {
     await preview(first.id, ['done']);
     await preview(second.id, ['done']);
 
-    const seen = () => {
-      const { previewing, releaseAll, machine } = header();
-      const machines = machine?.options;
-      return { first: shown('first').value, second: shown('second').value, previewing, releaseAll, machines };
-    };
+    const seen = async () => ({
+      first: shown('first').value,
+      second: shown('second').value,
+      previewing: badge(),
+      machines: await machines(),
+      actions: listActions(),
+    });
     await release(first.id);
-    const one = seen();
+    const one = await seen();
     await releaseAll();
-    expect({ one, all: seen() }).toEqual({
+    expect({ one, all: await seen() }).toEqual({
       one: {
         first: 'idle',
         second: 'done',
-        previewing: '1 previewing',
-        releaseAll: 'enabled',
-        machines: [first.id, `${second.id} ●`],
+        previewing: '1',
+        machines: [first.id, `${second.id} · previewing`],
+        actions: ['Release all', 'Settings'],
       },
-      all: { first: 'idle', second: 'idle', previewing: '', releaseAll: 'disabled', machines: [first.id, second.id] },
+      all: { first: 'idle', second: 'idle', previewing: '', machines: [first.id, second.id], actions: ['Settings'] },
     });
   });
 });
@@ -380,7 +392,7 @@ describe('context', () => {
     expect({ shown: shown(), panel: panel(), warnings: output.warn }).toEqual({
       shown: { value: 'done', context: { step: 2, note: 'none' } },
       panel: {
-        instance: `${machine.id} · 1 ●`,
+        instance: `${machine.id} · 1`,
         live: ['paying.card.idle', 'paying.shipping.express'],
         previewed: ['done'],
         filled: [],
@@ -404,6 +416,7 @@ describe('context', () => {
     // The app records each configuration it goes through: Start goes to paying.card.idle and paying.shipping.standard.
     await press('Start');
     await press('Express');
+    await show(machine.id);
     const before = { source: panel().source, context: panel().context };
     const contextOf = async (leaf: string) => {
       await preview(machine.id, [leaf]);
@@ -498,7 +511,7 @@ describe('parallel regions', () => {
     expect({ shown: shown(), panel: panel() }).toEqual({
       shown: { value: { paying: { card: 'error', shipping: 'express' } }, context: { step: 2, note: 'none' } },
       panel: {
-        instance: `${machine.id} · 1 ●`,
+        instance: `${machine.id} · 1`,
         live: ['paying.card.idle', 'paying.shipping.express'],
         previewed: ['paying.card.error'],
         filled: ['paying.shipping.express'],
@@ -524,6 +537,7 @@ describe('parallel regions', () => {
     const output = watchConsole();
     const machine = createCheckoutMachine();
     await mount(machine);
+    await show(machine.id);
     const key = shownKey();
 
     await preview(machine.id, ['paying.shipping.express', 'paying.card.error']);
@@ -557,7 +571,7 @@ describe('parallel regions', () => {
     await clickLeaf('paying.card.error');
     const one = { value: shown().value, previewed: panel().previewed, filled: panel().filled };
     await clickLeaf('paying.shipping.express');
-    const none = { value: shown().value, previewed: panel().previewed, previewing: header().previewing };
+    const none = { value: shown().value, previewed: panel().previewed, previewing: badge() };
     expect({ one, none }).toEqual({
       one: {
         value: { paying: { card: 'idle', shipping: 'express' } },
@@ -595,6 +609,7 @@ describe('parallel regions', () => {
     await mount(machine, [
       defineFixtures(machine, { 'paying.card.error': { context: { step: 5, note: 'card error' } } }),
     ]);
+    await show(machine.id);
     const key = shownKey();
 
     await preview(machine.id, ['paying.card.error']);
@@ -663,7 +678,7 @@ describe('an actor that moves on during a preview', () => {
     expect({ shown: shown(), panel: panel() }).toEqual({
       shown: { value: { paying: { card: 'error', shipping: 'standard' } }, context: { step: 1, note: 'none' } },
       panel: {
-        instance: `${machine.id} · 1 ●`,
+        instance: `${machine.id} · 1`,
         live: ['paying.card.idle', 'paying.shipping.express'],
         previewed: ['paying.card.error'],
         filled: ['paying.shipping.standard'],
@@ -680,6 +695,7 @@ describe('an actor that moves on during a preview', () => {
     const send = await mountConnected(machine, [
       defineFixtures(machine, { 'paying.shipping.standard': { context: { step: 7, note: 'standard shipping' } } }),
     ]);
+    await show(machine.id);
     const key = shownKey();
     await send({ type: 'START' });
     await send({ type: 'FAIL', note: 'declined' });
@@ -897,11 +913,11 @@ describe('final states', () => {
     expect({
       previewed: { status, value, output },
       real: { status: real.status, value: real.value },
-      instances: header().instance?.options,
+      instances: instances(),
     }).toEqual({
       previewed: { status: 'done', value: 'paid', output: { total: 6 } },
       real: { status: 'active', value: 'shopping' },
-      instances: [`${machine.id} · 1 ●`],
+      instances: [`${machine.id} · 1`],
     });
   });
 
@@ -972,6 +988,7 @@ describe('a machine that Fast Refresh replaces', () => {
     await flush();
     const swapped = { rendered: [...new Set(rendered)], keys: instanceKeys(), note: note() };
     await releaseAll();
+    await show(id);
     await press('PAY');
     expect({ swapped, paid: { value: shown('app').value, live: panel().live } }).toEqual({
       swapped: { rendered: ['{"paying":{"card":"error","shipping":"standard"}}'], keys, note: 'typed before the edit' },
@@ -1011,7 +1028,7 @@ describe('a machine that Fast Refresh replaces', () => {
       rendered.length = 0;
       view.rerender(<App machine={createEditedMachine(id, edit)} rendered={rendered} />);
       await flush();
-      const edited = { rendered: [...new Set(rendered)], previewing: header().previewing, note: note() };
+      const edited = { rendered: [...new Set(rendered)], previewing: badge(), note: note() };
       await press('PAY');
       expect({
         edited,

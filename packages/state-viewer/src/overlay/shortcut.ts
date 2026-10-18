@@ -1,5 +1,5 @@
 // Keyboard shortcuts. The toggle is configurable, such as 'alt+s' or 'ctrl+shift+d', and every shortcut
-// is ignored while the user types.
+// is ignored while the user types. The arrows, Home and End move through the rows of a page.
 
 interface Shortcut {
   /** `KeyboardEvent.key`, lowercased: 's', 'escape', 'f2'. */
@@ -110,4 +110,27 @@ function isElement(target: EventTarget | null | undefined): target is Element {
 
 function isApple(): boolean {
   return typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform ?? '');
+}
+
+export type Move = 'next' | 'previous' | 'first' | 'last';
+
+const MOVES: Readonly<Record<string, Move>> = { ArrowDown: 'next', ArrowUp: 'previous', Home: 'first', End: 'last' };
+
+/** The move that `KeyboardEvent.key` makes through rows or leaves, if any. */
+export function moveOf(key: string): Move | undefined {
+  return Object.hasOwn(MOVES, key) ? MOVES[key] : undefined;
+}
+
+/** The index a move goes to among `length` items. `index` is -1 when no item is current. A move stops at the ends. */
+export function moveIndex(index: number, length: number, move: Move): number {
+  switch (move) {
+    case 'first':
+      return 0;
+    case 'last':
+      return length - 1;
+    case 'next':
+      return Math.min(index + 1, length - 1);
+    case 'previous':
+      return Math.max(index - 1, 0);
+  }
 }

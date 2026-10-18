@@ -8,12 +8,15 @@ import {
   flush,
   freshId,
   isOpen,
+  machines,
   marks,
   overlay,
   panel,
+  pickCorner,
   preview,
   releaseAll,
   show,
+  shownMachine,
 } from './support/panel';
 
 const SETTINGS_KEY = 'state-viewer:ui';
@@ -84,12 +87,6 @@ function look(): { corner?: string; theme?: string } {
   return { corner: position, theme };
 }
 
-/** The text of the selected Machine option, or `none` when the panel lists no machine. */
-function shownMachine(): string {
-  const picker = overlay().querySelector<HTMLSelectElement>('select[aria-label="Machine"]');
-  return picker?.selectedOptions[0]?.textContent ?? 'none';
-}
-
 /** The shown tree, a row per state: indented by its level, then its key, description, type and tags. */
 function treeRows(): string[] {
   return [...overlay().querySelectorAll<HTMLElement>('[role="treeitem"]')].map((item) => {
@@ -120,6 +117,16 @@ function announced(): Record<string, string> {
   );
 }
 
+/** The machine list: the title and chips of its header, and each row with the states on its right. */
+async function machineList() {
+  const rows = await machines();
+  const states = [...overlay().querySelectorAll('button[data-machine] .sv-row-end')].map((end) => end.textContent);
+  return {
+    header: [...overlay().querySelectorAll('.sv-header .sv-title, .sv-header .sv-chip')].map((part) => part.textContent),
+    rows: rows.map((row, index) => `${row} · ${states[index]}`),
+  };
+}
+
 function stored(): unknown {
   const raw = localStorage.getItem(SETTINGS_KEY);
   return raw === null ? null : JSON.parse(raw);
@@ -129,7 +136,7 @@ function json(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
-test('the bubble opens a panel that shows the page’s machine, and Close closes it', async () => {
+test('the bubble opens a panel that lists the page’s machines, a row shows its machine, and Close closes it', async () => {
   const machine = createCheckoutMachine();
   render(
     <>
@@ -146,17 +153,121 @@ test('the bubble opens a panel that shows the page’s machine, and Close closes
   };
   const closed = { open: isOpen(), controls: controlled() };
   await click(bubble());
-  const opened = { open: isOpen(), controls: controlled(), machine: shownMachine(), live: panel().live };
+  const opened = { open: isOpen(), controls: controlled(), machines: await machines() };
+  await show(machine.id);
+  const shown = { machine: shownMachine(), live: panel().live };
   await click(button('Close'));
-  expect({ closed, opened, reclosed: { open: isOpen(), controls: controlled() } }).toEqual({
+  expect({ closed, opened, shown, reclosed: { open: isOpen(), controls: controlled() } }).toEqual({
     closed: { open: false, controls: null },
-    opened: {
-      open: true,
-      controls: 'State viewer',
-      machine: machine.id,
-      live: ['shipping.standard', 'payment.editing'],
-    },
+    opened: { open: true, controls: 'State viewer', machines: [machine.id] },
+    shown: { machine: machine.id, live: ['shipping.standard', 'payment.editing'] },
     reclosed: { open: false, controls: null },
+  });
+});
+
+describe('the machine list', () => {
+  test('lists each machine with its states, its instances, a child tag and a preview mark, under the page’s path', async () => {
+    window.history.replaceState(null, '', '/checkout');
+    const checkout = createCheckoutMachine();
+    const toggle = createToggleMachine();
+    const fetcher = createMachine({ id: freshId('fetcher'), initial: 'loading', states: { loading: {}, failed: {} } });
+    const parent = setup({ actors: { fetcher } }).createMachine({
+      id: freshId('parent'),
+      initial: 'active',
+      states: { active: { invoke: { id: 'load', src: 'fetcher' } } },
+    });
+    render(
+      <>
+        <Checkout machine={checkout} />
+        <Run machine={toggle} />
+        <Run machine={toggle} />
+        <Run machine={parent} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+
+    const listed = await machineList();
+    await preview(toggle.id, ['on'], { nth: 2 });
+    const previewing = await machineList();
+    window.history.pushState(null, '', '/cart');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await flush();
+    expect({ listed, previewing, navigated: (await machineList()).header }).toEqual({
+      listed: {
+        header: ['Machines', '/checkout', '4'],
+        rows: [
+          `${checkout.id} · 5 states`,
+          `${toggle.id} · 2 instances · 2 states`,
+          `${parent.id} · 1 state`,
+          `${fetcher.id} · child · 2 states`,
+        ],
+      },
+      previewing: {
+        header: ['Machines', '/checkout', '4'],
+        rows: [
+          `${checkout.id} · 5 states`,
+          `${toggle.id} · 2 instances · previewing · 2 states`,
+          `${parent.id} · 1 state`,
+          `${fetcher.id} · child · 2 states`,
+        ],
+      },
+      navigated: ['Machines', '/cart', '4'],
+    });
+  });
+
+  test('Back from a machine page shows the list again, and the panel forgets the machine', async () => {
+    const toggle = createToggleMachine();
+    const page = () => (
+      <>
+        <Run machine={toggle} />
+        <StateViewer defaultOpen />
+      </>
+    );
+    const { unmount } = render(page());
+    await flush();
+
+    await show(toggle.id);
+    const shown = { machine: shownMachine(), saved: stored() };
+    await click(button('Back'));
+    const back = { machine: shownMachine(), saved: stored() };
+    unmount();
+    render(page());
+    await flush();
+    expect({ shown, back, reloaded: shownMachine() }).toEqual({
+      shown: { machine: toggle.id, saved: { v: 1, machine: toggle.id } },
+      back: { machine: 'none', saved: { v: 1 } },
+      reloaded: 'none',
+    });
+  });
+
+  test('the stored machine’s page opens when that machine registers, and the list shows while it is gone', async () => {
+    const toggle = createToggleMachine();
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ v: 1, open: true, machine: toggle.id }));
+    const page = (mounted: boolean) => (
+      <>
+        {mounted && <Run machine={toggle} />}
+        <StateViewer />
+      </>
+    );
+    const { rerender } = render(page(false));
+    await flush();
+
+    const before = shownMachine();
+    rerender(page(true));
+    await flush();
+    const registered = { machine: shownMachine(), live: panel().live };
+    rerender(page(false));
+    await flush();
+    const gone = shownMachine();
+    rerender(page(true));
+    await flush();
+    expect({ before, registered, gone, back: shownMachine() }).toEqual({
+      before: 'none',
+      registered: { machine: toggle.id, live: ['off'] },
+      gone: 'none',
+      back: toggle.id,
+    });
   });
 });
 
@@ -314,6 +425,7 @@ describe('the state tree', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     expect({
       label: overlay().querySelector('[role="tree"]')?.getAttribute('aria-label'),
@@ -351,6 +463,7 @@ describe('the state tree', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     const previewed: unknown[] = [];
     for (const leaf of leaves()) {
@@ -370,6 +483,7 @@ describe('the state tree', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     const started = { live: panel().live, marks: marks(), announced: announced() };
     fireEvent.click(screen.getByRole('button', { name: 'Express' }));
@@ -420,6 +534,7 @@ describe('the state tree', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     const hint = overlay().querySelector('.sv-section')?.querySelector('.sv-hint')?.textContent;
     expect({ machine: shownMachine(), leaves: leaves(), hint }).toEqual({
@@ -433,8 +548,8 @@ describe('the state tree', () => {
     render(<StateViewer defaultOpen />);
     await flush();
 
-    expect({ machine: shownMachine(), body: overlay().querySelector('.sv-body')?.textContent }).toEqual({
-      machine: 'none',
+    expect({ machines: await machines(), body: overlay().querySelector('.sv-empty')?.textContent }).toEqual({
+      machines: [],
       body:
         'No machines yet. Hooks from state-viewer/xstate register their actors as they mount, and connect() ' +
         'registers actors created outside React.',
@@ -469,6 +584,7 @@ describe('the context rows', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     expect(panel().context).toEqual([
       'text: "hi"',
@@ -500,6 +616,7 @@ describe('Copy JSON', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     const live = await copy('Copy JSON');
     await preview(machine.id, ['payment.error']);
@@ -562,6 +679,7 @@ describe('Copy JSON', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     const { copied } = await copy('Copy JSON');
     expect(copied.map((text) => JSON.parse(text).context)).toStrictEqual([
@@ -595,6 +713,7 @@ describe('Copy JSON', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     expect({ copied: (await copy('Copy JSON')).copied, context: panel().context }).toEqual({
       copied: ['"[Unserializable: no]"'],
@@ -618,8 +737,8 @@ describe('settings', () => {
     await flush();
     const first = { open: isOpen(), corner: look().corner };
     await click(bubble());
+    await pickCorner('Bottom left');
     await show(toggle.id);
-    await click(button('Move to the next corner'));
     const saved = stored();
     unmount();
 
@@ -632,16 +751,22 @@ describe('settings', () => {
     });
   });
 
-  test('Move to the next corner goes clockwise', async () => {
+  test('picking a corner in Settings moves the bubble and the panel there', async () => {
     render(<StateViewer defaultOpen />);
     await flush();
 
-    const corners: (string | undefined)[] = [];
-    for (let step = 0; step < 4; step += 1) {
-      await click(button('Move to the next corner'));
-      corners.push(look().corner);
+    const checked = () => overlay().querySelector('[role="radiogroup"] input:checked')?.parentElement?.textContent;
+    const corners: { corner?: string; checked?: string }[] = [];
+    for (const label of ['Top left', 'Top right', 'Bottom left', 'Bottom right']) {
+      await pickCorner(label);
+      corners.push({ corner: look().corner, checked: checked() });
     }
-    expect(corners).toEqual(['bottom-left', 'top-left', 'top-right', 'bottom-right']);
+    expect(corners).toEqual([
+      { corner: 'top-left', checked: 'Top left' },
+      { corner: 'top-right', checked: 'Top right' },
+      { corner: 'bottom-left', checked: 'Bottom left' },
+      { corner: 'bottom-right', checked: 'Bottom right' },
+    ]);
   });
 
   test('a stored corner applies only while the position prop is the one the user moved away from', async () => {

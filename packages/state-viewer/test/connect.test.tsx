@@ -15,7 +15,19 @@ import {
 } from 'xstate';
 import { mount, page, start } from './support/app';
 import { uncaught, watchConsole } from './support/console';
-import { flush, freshId, header, instanceKeys, panel, preview, release, shownKey } from './support/panel';
+import {
+  badge,
+  flush,
+  freshId,
+  instanceKeys,
+  instances,
+  machines,
+  panel,
+  preview,
+  release,
+  show,
+  shownKey,
+} from './support/panel';
 
 const BROKEN = 'Checkout broken';
 
@@ -89,8 +101,9 @@ test('an actor started outside React and connected is listed, and its preview sh
   await mount(<CheckoutView actor={checkout} />);
 
   await send(checkout, { type: 'ADD' });
-  const { machine: machines, instance } = header();
-  const listed = { machines: machines?.options, instances: instance?.options, live: panel().live, shown: shown() };
+  const rows = await machines();
+  await show(machine.id);
+  const listed = { machines: rows, instances: instances(), live: panel().live, shown: shown() };
   await preview(machine.id, ['payment.error']);
   const previewing = shown();
   await release(machine.id);
@@ -114,10 +127,10 @@ describe('options', () => {
     await mount(<CheckoutView actor={checkout} />);
 
     await preview(id, ['payment.error']);
-    const { machine: machines, instance } = header();
-    expect({ machines: machines?.options, instances: instance?.options, shown: shown() }).toEqual({
-      machines: [`${id} ●`],
-      instances: ['Header cart · 1 ●'],
+    const named = instances();
+    expect({ machines: await machines(), instances: named, shown: shown() }).toEqual({
+      machines: [`${id} · previewing`],
+      instances: ['Header cart · 1'],
       shown: { value: { payment: 'error' }, items: 0 },
     });
   });
@@ -131,7 +144,7 @@ describe('several actors of one machine', () => {
     await mount(null);
 
     await preview(machine.id, ['payment.error'], { nth: 2 });
-    expect({ instances: header().instance?.options, keys: new Set(instanceKeys()).size }).toEqual({
+    expect({ instances: instances(), keys: new Set(instanceKeys()).size }).toEqual({
       instances: [`${machine.id} · 1`, `${machine.id} · 2 ●`],
       keys: 2,
     });
@@ -150,8 +163,8 @@ describe('the same actor connected again', () => {
       isActor: checkout instanceof Actor,
       again: connect(actor) === checkout,
       returned: connect(checkout) === checkout,
-      instances: header().instance?.options,
-    }).toEqual({ isActor: true, again: true, returned: true, instances: [`${machine.id} · 1 ●`] });
+      instances: instances(),
+    }).toEqual({ isActor: true, again: true, returned: true, instances: [`${machine.id} · 1`] });
   });
 
   test('given an id, the returned actor comes back as it is, without a warning', async () => {
@@ -162,7 +175,7 @@ describe('the same actor connected again', () => {
 
     const returned = connect(checkout, { id: freshId('other') }) === checkout;
     await flush();
-    expect({ returned, machines: header().machine?.options, warnings: output.warn }).toEqual({
+    expect({ returned, machines: await machines(), warnings: output.warn }).toEqual({
       returned: true,
       machines: [machine.id],
       warnings: [],
@@ -200,7 +213,7 @@ describe('actors that connect() gives back unchanged', () => {
 
     const returned = connect(actor, { disabled });
     await flush();
-    expect({ same: returned === actor, machines: header().machine }).toEqual({ same: true, machines: null });
+    expect({ same: returned === actor, machines: await machines() }).toEqual({ same: true, machines: [] });
   });
 });
 
@@ -224,24 +237,21 @@ describe('an actor that ends', () => {
     const checkout = connect(actor);
     await mount(null);
     await preview(machine.id, ['payment.error']);
-    const before = header().previewing;
+    const before = badge();
 
     const errors = await uncaught(() => end(actor, checkout));
-    const { previewing, releaseAll, machine: machines } = header();
     expect({
       before,
       status: actor.getSnapshot().status,
       uncaught: errors.map((error) => (error as Error).message),
-      previewing,
-      releaseAll,
-      machines,
+      previewing: badge(),
+      machines: await machines(),
     }).toEqual({
-      before: '1 previewing',
+      before: '1',
       status,
       uncaught: reported,
       previewing: '',
-      releaseAll: 'disabled',
-      machines: null,
+      machines: [],
     });
   });
 });
@@ -255,7 +265,8 @@ describe('an actor connected before it starts', () => {
     });
     const checkout = connect(actor);
     await mount(<CheckoutView actor={checkout} />);
-    const instances = header().instance?.options;
+    await show(machine.id);
+    const listed = instances();
     const keys = instanceKeys();
 
     let started: unknown;
@@ -263,7 +274,7 @@ describe('an actor connected before it starts', () => {
       started = checkout.start();
       checkout.send({ type: 'ADD' });
     });
-    expect({ instances, returned: started === checkout, shown: shown(), keys: instanceKeys() }).toEqual({
+    expect({ instances: listed, returned: started === checkout, shown: shown(), keys: instanceKeys() }).toEqual({
       instances: [`${machine.id} · 1`],
       returned: true,
       shown: { value: 'cart', items: 1 },
@@ -279,12 +290,12 @@ describe('an actor connected before it starts', () => {
     const actor = createActor(machine);
     const checkout = connect(actor);
     await mount(null);
-    const before = header().machine?.options;
+    const before = await machines();
 
     await act(async () => {
       stop(actor, checkout);
     });
-    expect({ before, after: header().machine }).toEqual({ before: [machine.id], after: null });
+    expect({ before, after: await machines() }).toEqual({ before: [machine.id], after: [] });
   });
 
   test('leaves the overlay when an action of its initial state throws as it starts', async () => {
@@ -305,15 +316,15 @@ describe('an actor connected before it starts', () => {
     });
     const greeting = connect(actor);
     await mount(null);
-    const before = header().machine?.options;
+    const before = await machines();
 
     const errors = await uncaught(() => greeting.start());
     expect({
       before,
       status: greeting.getSnapshot().status,
       uncaught: errors.map((error) => (error as Error).message),
-      after: header().machine,
-    }).toEqual({ before: [machine.id], status: 'error', uncaught: ['Greeting broken'], after: null });
+      after: await machines(),
+    }).toEqual({ before: [machine.id], status: 'error', uncaught: ['Greeting broken'], after: [] });
   });
 });
 
@@ -349,15 +360,15 @@ describe('an actor that a hook runs', () => {
     const returned = { real: connect(actors.real) === actors.hook, hook: connect(actors.hook) === actors.hook };
     await flush();
     await preview(machine.id, ['on']);
-    const previewing = { instances: header().instance?.options, shown: shown('toggle') };
+    const previewing = { instances: instances(), shown: shown('toggle') };
     view.rerender(page(<Toggle machine={machine} hook={hook} />));
     await flush();
-    const rerendered = { instances: header().instance?.options, shown: shown('toggle') };
+    const rerendered = { instances: instances(), shown: shown('toggle') };
     await release(machine.id);
     expect({ returned, previewing, rerendered, released: shown('toggle'), warnings: output.warn }).toEqual({
       returned: { real: true, hook: true },
-      previewing: { instances: [`${machine.id} · 1 ●`], shown: 'on' },
-      rerendered: { instances: [`${machine.id} · 1 ●`], shown: 'on' },
+      previewing: { instances: [`${machine.id} · 1`], shown: 'on' },
+      rerendered: { instances: [`${machine.id} · 1`], shown: 'on' },
       released: 'off',
       warnings: [
         `[state-viewer] No recorded or fixture context for "on" on "${shownKey()}", so the preview uses the live context.`,
@@ -383,8 +394,9 @@ describe('an actor that a hook runs', () => {
       connect(second, { label: 'Other toggle' }),
     ].map((actor) => actor === actors.hook);
     await flush();
-    const { machine: machines, instance } = header();
-    expect({ returned, machines: machines?.options, instances: instance?.options, warnings: output.warn }).toEqual({
+    const rows = await machines();
+    await show(machine.id);
+    expect({ returned, machines: rows, instances: instances(), warnings: output.warn }).toEqual({
       returned: [true, true, true, true],
       machines: [machine.id],
       instances: [`${machine.id} · 1`],
@@ -422,13 +434,12 @@ describe('an actor that is not the root of its system', () => {
     connect(app.system.get('auth'));
     await mount(null);
 
-    const machines = () => header().machine?.options;
-    const steps = [machines()];
+    const steps = [await machines()];
     for (const type of ['TOGGLE', 'OPEN_SETTINGS'] as const) {
       await act(async () => {
         app.send({ type });
       });
-      steps.push(machines());
+      steps.push(await machines());
     }
     expect(steps).toEqual([[auth.id], [auth.id], [auth.id]]);
   });

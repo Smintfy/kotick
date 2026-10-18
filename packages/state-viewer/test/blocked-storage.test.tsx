@@ -6,7 +6,7 @@ import { useMachine } from 'state-viewer/xstate';
 import { expect, test } from 'vitest';
 import { assign, setup } from 'xstate';
 import { watchConsole } from './support/console';
-import { flush, freshId, isOpen, marks, overlay, panel, preview, show } from './support/panel';
+import { flush, freshId, isOpen, marks, overlay, panel, pickCorner, preview, show } from './support/panel';
 
 // A sandboxed frame, or a browser that blocks site data, has no storage: reading localStorage or sessionStorage
 // throws. The registry reads sessionStorage once per page, and test/setup.ts can't clear storage on about:blank, so
@@ -75,7 +75,7 @@ test('without storage, recordings mark leaves and feed previews from memory, and
 
   await clickOverlay('State viewer');
   const opened = { open: isOpen(), corner: corner() };
-  await clickOverlay('Move to the next corner');
+  await pickCorner('Bottom left');
   const moved = corner();
 
   await press('Start');
