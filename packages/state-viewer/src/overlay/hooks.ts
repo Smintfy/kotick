@@ -36,3 +36,26 @@ export function useLatest<T>(value: T): { readonly current: T } {
   });
   return ref;
 }
+
+/**
+ * The page's path, such as `/checkout`, or '' on the server.
+ * Client routers change it with pushState(), which fires no event, so the Navigation API's currententrychange is the
+ * source where the browser has it. popstate covers Back and Forward in the other browsers.
+ */
+export function usePathname(): string {
+  return React.useSyncExternalStore(subscribeToLocation, readPathname, () => '');
+}
+
+function readPathname(): string {
+  return window.location.pathname;
+}
+
+function subscribeToLocation(onChange: () => void): () => void {
+  const navigation = 'navigation' in window ? window.navigation : undefined;
+  window.addEventListener('popstate', onChange);
+  navigation?.addEventListener('currententrychange', onChange);
+  return () => {
+    window.removeEventListener('popstate', onChange);
+    navigation?.removeEventListener('currententrychange', onChange);
+  };
+}

@@ -55,10 +55,36 @@ export function isOpen(): boolean {
   return one('button[aria-expanded]').getAttribute('aria-expanded') === 'true';
 }
 
-/** Shows an instance in the panel: picks its machine, then the nth instance of that machine in registration order. */
+/** The Back button of a machine page or the settings page. The machine list has none. */
+function backButton(): HTMLButtonElement | null {
+  return overlay().querySelector<HTMLButtonElement>('button[aria-label="Back"]');
+}
+
+/** Clicks Back until the panel shows the machine list. */
+async function toList(): Promise<void> {
+  for (let clicks = 0; clicks < 2; clicks += 1) {
+    const back = backButton();
+    if (!back) return;
+    await click(back);
+  }
+  throw new Error('Back does not lead to the machine list.');
+}
+
+/**
+ * Shows an instance in the panel, as a developer picks it.
+ * It goes back to the machine list and clicks the machine's row.
+ * On a machine with more than one instance, it then picks the nth instance in registration order.
+ */
 export async function show(machineId: string, nth = 1): Promise<void> {
-  await choose(one('select[aria-label="Machine"]'), machineId);
-  const instances = one<HTMLSelectElement>('select[aria-label="Instance"]');
+  await toList();
+  const row = all<HTMLButtonElement>('button[data-machine]').find((found) => found.dataset.machine === machineId);
+  if (!row) throw new Error(`The machine list has no ${machineId}.`);
+  await click(row);
+  const instances = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
+  if (!instances) {
+    if (nth !== 1) throw new Error(`${machineId} has one instance, so it has no instance ${nth}.`);
+    return;
+  }
   const option = instances.options[nth - 1];
   if (!option) throw new Error(`${machineId} has no instance ${nth}.`);
   await choose(instances, option.value);
@@ -101,9 +127,16 @@ export async function release(machineId: string, nth = 1): Promise<void> {
   await click(found);
 }
 
+/**
+ * Goes to the machine list and clicks Release all. The list shows it only while a preview is on.
+ * On the list already, it clicks before it waits, so the click comes before the registry's next flush.
+ */
 export async function releaseAll(): Promise<void> {
-  const found = button('Release all');
-  if (!found) throw new Error('The panel has no Release all button.');
+  if (backButton()) await toList();
+  const found = all<HTMLButtonElement>('button').find(
+    (candidate) => candidate.querySelector('.sv-row-label')?.textContent === 'Release all',
+  );
+  if (!found) throw new Error('The machine list has no Release all button.');
   await click(found);
 }
 
@@ -149,46 +182,83 @@ export async function copy(label: 'Copy link' | 'Copy JSON'): Promise<{ copied: 
   return { copied, status: one('[role="status"]').textContent ?? '' };
 }
 
-/** The key of the shown instance. Warnings name an instance by its key. */
-export function shownKey(): string {
-  return one<HTMLSelectElement>('select[aria-label="Instance"]').value;
+/** The machine whose page the panel shows, as the page's title gives it, or `none` on another page. */
+export function shownMachine(): string {
+  return overlay().querySelector('.sv-panel[data-page="machine"] .sv-title')?.textContent ?? 'none';
 }
 
-/** The keys of the shown machine's instances, in registration order. They are the values of the Instance options. */
+/** Goes to the settings page from the machine list, and picks a corner, such as `Bottom left`. */
+export async function pickCorner(label: string): Promise<void> {
+  await toList();
+  const settings = all<HTMLButtonElement>('button').find(
+    (candidate) => candidate.querySelector('.sv-row-label')?.textContent === 'Settings',
+  );
+  if (!settings) throw new Error('The machine list has no Settings button.');
+  await click(settings);
+  const corner = all<HTMLLabelElement>('[role="radiogroup"] label').find((found) => found.textContent === label);
+  if (!corner) throw new Error(`The settings page has no corner ${label}.`);
+  await click(corner.querySelector('input') ?? corner);
+}
+
+/** The name of the shown instance, such as `checkout · 1`, as the label of its state tree gives it. */
+function shownName(): string | undefined {
+  return overlay().querySelector('[role="tree"]')?.getAttribute('aria-label')?.replace(/^States of /, '');
+}
+
+/** The key of the shown instance. Warnings name an instance by its key. */
+export function shownKey(): string {
+  return one('[data-instance]').dataset.instance ?? '';
+}
+
+/** The keys of the shown machine's instances, in registration order: the values of the Instance options. */
 export function instanceKeys(): string[] {
-  return [...one<HTMLSelectElement>('select[aria-label="Instance"]').options].map((option) => option.value);
+  const picker = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
+  return picker ? [...picker.options].map((option) => option.value) : [shownKey()];
 }
 
 /**
- * What the panel header shows: the count of previewed instances, whether Release all is enabled, and the Machine and
- * Instance pickers. A picker is null while no machine is registered.
+ * Goes to the machine list and returns its rows, such as `checkout-3 · child · 2 instances · previewing`.
+ * A row names the machine, then `child` when all its instances are child machines, the number of instances when
+ * there is more than one, and `previewing` while one of them is previewed.
  */
-export function header() {
-  const releaseAll = button('Release all');
-  if (!releaseAll) throw new Error('Open the panel first.');
-  const picker = (label: 'Machine' | 'Instance') => {
-    const select = overlay().querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`);
-    if (!select) return null;
-    return {
-      options: [...select.options].map((option) => option.textContent),
-      selected: select.selectedOptions[0]?.textContent,
-      disabled: select.disabled,
-    };
-  };
-  return {
-    previewing: overlay().querySelector('.sv-title-count')?.textContent ?? '',
-    releaseAll: releaseAll.disabled ? 'disabled' : 'enabled',
-    machine: picker('Machine'),
-    instance: picker('Instance'),
-  };
+export async function machines(): Promise<string[]> {
+  await toList();
+  return all('button[data-machine]').map((row) => {
+    const parts = [row.querySelector('.sv-row-name')?.textContent ?? ''];
+    const tag = row.querySelector('.sv-tag')?.textContent;
+    if (tag) parts.push(tag);
+    const count = row.querySelector('.sv-chip')?.textContent;
+    if (count) parts.push(`${count} instances`);
+    const previewing = row.querySelector('.sv-dot')?.textContent?.replace(/^, /, '');
+    if (previewing) parts.push(previewing);
+    return parts.join(' · ');
+  });
 }
 
-/** What the panel shows about the shown instance, as one value for one toEqual. */
+/**
+ * The instances that the shown machine page names, or [] on another page.
+ * With more than one, they are the Instance options, with ` ●` after a previewed one.
+ * With one, the page has no picker, and it is the name of the instance.
+ */
+export function instances(): string[] {
+  const picker = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
+  if (picker) return [...picker.options].map((option) => option.textContent ?? '');
+  const name = shownName();
+  return name === undefined ? [] : [name];
+}
+
+/** The count on the bubble's badge: the number of active previews, or '' while none is on. */
+export function badge(): string {
+  return overlay().querySelector('.sv-badge')?.textContent ?? '';
+}
+
+/** What the machine page shows about the shown instance, as one value for one toEqual. */
 export function panel() {
+  one('[data-instance]');
   const leaves = all('[data-leaf]');
   const pick = (test: (leaf: HTMLElement) => boolean) => leaves.filter(test).map((leaf) => leaf.dataset.leaf);
   return {
-    instance: one<HTMLSelectElement>('select[aria-label="Instance"]').selectedOptions[0]?.textContent,
+    instance: shownName(),
     live: pick((leaf) => leaf.hasAttribute('data-active')),
     previewed: pick((leaf) => leaf.getAttribute('aria-selected') === 'true'),
     filled: pick((leaf) => leaf.hasAttribute('data-filled')),

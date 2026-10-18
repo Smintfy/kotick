@@ -5,7 +5,18 @@ import { describe, expect, test } from 'vitest';
 import { createActor, createMachine, type AnyActorRef, type Observer, type SnapshotFrom } from 'xstate';
 import { page, press } from '../support/app';
 import { describeWithActivity, IMPLEMENTATIONS, type Hooks } from '../support/hooks';
-import { clickLeaf, flush, freshId, header, panel, preview, release, releaseAll } from '../support/panel';
+import {
+  badge,
+  clickLeaf,
+  flush,
+  freshId,
+  instances,
+  machines,
+  panel,
+  preview,
+  release,
+  releaseAll,
+} from '../support/panel';
 
 /** Makes the upload machine. Called again with the same id, it makes a new machine, as Fast Refresh does. */
 function createUploadMachine(id = freshId('upload')) {
@@ -132,12 +143,12 @@ describe('a connected actor read with useSelector, stopped during a preview', ()
     await flush();
 
     await preview(machine.id, ['failed']);
-    const previewed = { reader: shown('reader'), previewing: header().previewing };
+    const previewed = { reader: shown('reader'), previewing: badge() };
     await act(async () => {
       upload.stop();
     });
-    expect({ previewed, stopped: { reader: shown('reader'), previewing: header().previewing } }).toEqual({
-      previewed: { reader: 'active:failed', previewing: '1 previewing' },
+    expect({ previewed, stopped: { reader: shown('reader'), previewing: badge() } }).toEqual({
+      previewed: { reader: 'active:failed', previewing: '1' },
       stopped: { reader: 'stopped:uploading', previewing: '' },
     });
   });
@@ -153,12 +164,12 @@ describe('a hook actor the app stopped', () => {
     await release(machine.id);
 
     await preview(machine.id, ['paused']);
-    const later = { shown: both(), instances: header().instance?.options, previewed: panel().previewed };
+    const later = { shown: both(), instances: instances(), previewed: panel().previewed };
     await release(machine.id);
     expect({ later, released: both() }).toEqual({
       later: {
         shown: { upload: 'stopped:uploading', reader: 'stopped:uploading' },
-        instances: [`${machine.id} · 1 ●`],
+        instances: [`${machine.id} · 1`],
         previewed: ['paused'],
       },
       released: { upload: 'stopped:uploading', reader: 'stopped:uploading' },
@@ -465,6 +476,8 @@ describeWithActivity('an Activity hides the component after the app stops the ac
         const view = render(page(<App mode="visible" />));
         await flush();
         if (previews) await preview(machine.id, ['failed']);
+        // Release all is on the machine list. Going there flushes the overlay, so it comes before the hide.
+        if (releaseWhileHidden && previews) await machines();
 
         log.length = 0;
         log.push('[app stops]');
@@ -475,7 +488,7 @@ describeWithActivity('an Activity hides the component after the app stops the ac
         if (releaseWhileHidden && previews) await releaseAll();
         await flush();
         // The count is the page's. The @xstate/react row registers nothing, so it skips the read.
-        const hidden = previews ? header().previewing : '';
+        const hidden = previews ? badge() : '';
         log.push('[reveal]');
         view.rerender(page(<App mode="visible" />));
         await flush();

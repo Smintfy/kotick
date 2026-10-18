@@ -5,7 +5,7 @@ import { connect, useActorRef, useMachine, useSelector } from 'state-viewer/xsta
 import { describe, expect, onTestFinished, test } from 'vitest';
 import { assign, createActor, sendTo, setup, type AnyActorRef } from 'xstate';
 import { watchConsole } from './support/console';
-import { blockedEvents, flush, freshId, overlay, preview, release, shownKey } from './support/panel';
+import { blockedEvents, flush, freshId, overlay, preview, release, show, shownKey } from './support/panel';
 
 function createPaymentMachine() {
   return setup({
@@ -68,7 +68,10 @@ async function clear(): Promise<void> {
   await flush();
 }
 
-/** Renders the app next to an open overlay, and clears the blocked events that earlier tests in the file left. */
+/**
+ * Renders the app next to an open overlay, and shows the first machine that the panel lists.
+ * Then it clears the blocked events that earlier tests in the file left. Each machine page lists the page's events.
+ */
 async function mount(app: ReactNode): Promise<void> {
   render(
     <>
@@ -77,6 +80,9 @@ async function mount(app: ReactNode): Promise<void> {
     </>,
   );
   await flush();
+  const first = overlay().querySelector<HTMLElement>('button[data-machine]')?.dataset.machine;
+  if (first === undefined) throw new Error('The app registers no machine.');
+  await show(first);
   await clear();
 }
 

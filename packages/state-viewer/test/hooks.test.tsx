@@ -18,7 +18,18 @@ import { press } from './support/app';
 import { alerts, Boundary } from './support/boundary';
 import { uncaught } from './support/console';
 import { IMPLEMENTATIONS, REACT_MAJOR } from './support/hooks';
-import { blockedEvents, flush, freshId, header, overlay, panel, preview, release } from './support/panel';
+import {
+  blockedEvents,
+  flush,
+  freshId,
+  instances,
+  machines,
+  overlay,
+  panel,
+  preview,
+  release,
+  show,
+} from './support/panel';
 
 function createToggleMachine() {
   return setup({
@@ -93,7 +104,10 @@ function shown(name = 'toggle') {
   return JSON.parse(screen.getByRole('status', { name }).textContent ?? 'null');
 }
 
-/** Clears the blocked-event log, which the page keeps for the whole file. */
+/**
+ * Clears the blocked-event log, which the page keeps for the whole file.
+ * The Clear button is on a machine page, so call show() first.
+ */
 async function clearBlockedEvents(): Promise<void> {
   const clear = [...overlay().querySelectorAll('button')].find((button) => button.textContent === 'Clear');
   if (!clear) throw new Error('The panel has no Clear button.');
@@ -197,6 +211,7 @@ describe('useMachine and useActor', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
 
     const linked = { shown: shown(), previewed: panel().previewed, commits: structuredClone(commits) };
     await release(machine.id);
@@ -449,6 +464,7 @@ describe('useActorRef', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
     await clearBlockedEvents();
 
     await preview(machine.id, ['on']);
@@ -607,6 +623,7 @@ describe('createActorContext', () => {
       </>,
     );
     await flush();
+    await show(machine.id);
     await clearBlockedEvents();
 
     await preview(machine.id, ['on']);
@@ -673,8 +690,9 @@ describe('createActorContext', () => {
     );
     await flush();
 
-    const { machine: machines, instance } = header();
-    expect({ shown: shown('greeting'), machines: machines?.options, instances: instance?.options }).toEqual({
+    const rows = await machines();
+    await show(provided);
+    expect({ shown: shown('greeting'), machines: rows, instances: instances() }).toEqual({
       shown: { name: 'Grace', input: { name: 'Grace' }, debug: false },
       machines: [provided],
       instances: [`${provided} · 1`],
@@ -702,7 +720,7 @@ describe('createActorContext', () => {
     );
     await flush();
 
-    const before = { shown: shown(), machines: header().machine?.options };
+    const before = { shown: shown(), machines: await machines() };
     await preview(other.id, ['off']);
     expect({ before, previewed: shown() }).toEqual({ before: { shown: 'on', machines: [other.id] }, previewed: 'off' });
   });
@@ -784,6 +802,6 @@ describe('logic other than a machine', () => {
     );
     await flush();
 
-    expect(header().machine?.options).toEqual([machine.id]);
+    expect(await machines()).toEqual([machine.id]);
   });
 });

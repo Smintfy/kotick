@@ -5,7 +5,7 @@ import { fromCallback, setup, type Actor, type Observer, type SnapshotFrom } fro
 import { page } from '../support/app';
 import { uncaught } from '../support/console';
 import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
-import { clickLeaf, flush, freshId, header, preview, release } from '../support/panel';
+import { badge, clickLeaf, flush, freshId, machines, preview, release } from '../support/panel';
 
 type SocketEvent = { type: 'FINISH' | 'PAUSE' | 'BREAK' };
 type Socket = (event: SocketEvent) => void;
@@ -304,7 +304,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
         await upload.preview('failed');
         await upload.replace({ id: freshId('upload-v2') });
         expect({
-          previewing: header().previewing,
+          previewing: badge(),
           calls: upload.calls,
         }).toEqual({
           previewing: '',
@@ -328,7 +328,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
           await upload.preview('failed');
           await upload.replace();
           await upload.hide();
-          const hidden = header().previewing;
+          const hidden = badge();
           await upload.reveal();
           expect({ hidden, calls: upload.calls }).toEqual({
             hidden: '',
@@ -572,8 +572,8 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
           await upload.stop();
           await upload.replace();
           await upload.disable();
-          expect({ listed: header().machine, calls: upload.calls }).toEqual({
-            listed: null,
+          expect({ listed: await machines(), calls: upload.calls }).toEqual({
+            listed: [],
             calls: previews
               ? ['[stop]', '[replace]', '[disable]', 'complete']
               : ['[stop]', 'complete', '[replace]', '[disable]'],
@@ -589,7 +589,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
             await upload.stop();
             await upload.replace();
             await upload.hide();
-            const hidden = header().previewing;
+            const hidden = badge();
             await upload.reveal();
             expect({ hidden, calls: upload.calls }).toEqual({
               hidden: '',
@@ -651,7 +651,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
           await upload.finish();
           await upload.replace({ edit: 'without failed' });
           expect({
-            previewing: header().previewing,
+            previewing: badge(),
             calls: upload.calls,
           }).toEqual({
             previewing: '',
@@ -675,7 +675,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
           await upload.preview('failed');
           await upload.replace({ edit: 'without failed' });
           expect({
-            previewing: header().previewing,
+            previewing: badge(),
             calls: upload.calls,
           }).toEqual({
             previewing: '',
@@ -733,7 +733,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
           await upload.finish();
           await upload.hide();
           await upload.replace();
-          const hidden = header().previewing;
+          const hidden = badge();
           await upload.reveal();
           expect({ hidden, calls: upload.calls }).toEqual({
             hidden: '',
@@ -779,7 +779,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
 
           await upload.finish();
           await upload.replace({ id: freshId('upload-v2') });
-          const replaced = header().previewing;
+          const replaced = badge();
           await upload.preview('failed');
           await upload.release();
           expect({ replaced, calls: upload.calls }).toEqual({
@@ -988,8 +988,8 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
 
       await upload.preview('failed');
       await upload.replace({ disabled: true });
-      expect({ listed: header().machine, calls: upload.calls }).toEqual({
-        listed: null,
+      expect({ listed: await machines(), calls: upload.calls }).toEqual({
+        listed: [],
         calls: previews
           ? ['[preview failed]', 'active:failed (old)', '[replace+disable]', 'active:uploading (new)']
           : ['[preview failed]', '[replace+disable]', 'active:uploading (new)'],

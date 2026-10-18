@@ -1,5 +1,6 @@
 // What the panel derives from the registry snapshot, as pure functions.
-// It groups machines by id, labels instances, finds the leaves a click previews, and plans the targets of "Copy link".
+// It groups machines by id, labels instances, names the panel's pages, finds the leaves a click previews, and plans
+// the targets of "Copy link".
 
 import { toInstanceKey } from '../core/registry';
 import type { DeepLinkTarget, MachineHandle, Override } from '../core/types';
@@ -40,6 +41,12 @@ export function groupMachines(handles: readonly MachineHandle[]): MachineGroup[]
   }
   return [...groups.values()];
 }
+
+/** The page that the panel shows. Overlay derives it on each render and never stores it. */
+export type PanelPage =
+  | { kind: 'machines' }
+  | { kind: 'settings' }
+  | { kind: 'machine'; group: MachineGroup; instance: InstanceEntry };
 
 export function findInstance(groups: readonly MachineGroup[], key: string | undefined): InstanceEntry | undefined {
   if (key === undefined) return undefined;
@@ -118,4 +125,13 @@ function linkedPreview(instances: readonly LinkedInstance[], selectedKey: string
 
 function sameLeaves(a: readonly string[] | undefined, b: readonly string[]): boolean {
   return a !== undefined && a.length === b.length && a.every((leaf, index) => leaf === b[index]);
+}
+
+/** What a handle method returns, or `fallback` when the adapter throws: the panel must keep rendering. */
+export function attempt<T>(read: () => T, fallback: T): T {
+  try {
+    return read();
+  } catch {
+    return fallback;
+  }
 }

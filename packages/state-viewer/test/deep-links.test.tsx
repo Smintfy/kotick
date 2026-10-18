@@ -228,7 +228,7 @@ test('a link in the URL previews its state when the page loads', async () => {
   expect({ shown: shown(), panel: panel(), warnings: output.warn }).toEqual({
     shown: [ERROR],
     panel: {
-      instance: `${machine.id} · 1 ●`,
+      instance: `${machine.id} · 1`,
       live: ['payment.editing', 'shipping.standard'],
       previewed: ['payment.error'],
       filled: ['shipping.standard'],
@@ -886,6 +886,7 @@ describe('fixtures and recordings', () => {
     fireEvent.click(screen.getByRole('button', { name: 'ADD' }));
     await flush();
     await releaseAll();
+    await show(cart.id);
     expect({ linked, released: shown(), newestBlocked: blockedEvents()[0], warnings: output.warn }).toEqual({
       linked: [
         { value: { payment: 'error', shipping: 'express' }, context: { note: 'declined' } },
@@ -912,6 +913,7 @@ describe('Copy link', () => {
       </>,
     );
     window.history.replaceState(null, '', '/shop?tab=1#top');
+    await show(checkout.id);
     const nothingPreviewed = await copy('Copy link');
 
     await preview(checkout.id, ['shipping.express', 'payment.error']);
@@ -1109,6 +1111,7 @@ describe('round trips', () => {
       </>,
     );
 
+    await show(checkout.id);
     expect({ search: window.location.search, copied: (await copy('Copy link')).copied }).toEqual({
       search: `?${link}`,
       copied: [`http://localhost:3000/?${link}`],

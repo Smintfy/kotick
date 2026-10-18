@@ -17,7 +17,7 @@ import { page, press } from '../support/app';
 import { alerts, Boundary } from '../support/boundary';
 import { uncaught } from '../support/console';
 import { ACTOR_SELECT, describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
-import { clickLeaf, flush, freshId, header, overlay, preview, release, releaseAll } from '../support/panel';
+import { badge, clickLeaf, flush, freshId, machines, overlay, preview, release, releaseAll } from '../support/panel';
 
 const BROKEN = 'Upload broken';
 
@@ -95,10 +95,12 @@ async function lookAround(machineId: string, first: string, then: string): Promi
   await release(machineId);
 }
 
-/** The Release all button, for a click that the overlay's flush doesn't follow at once. */
+/** The Release all row of the machine list, for a click that the overlay's flush doesn't follow at once. */
 function releaseAllButton(): HTMLButtonElement {
-  const found = [...overlay().querySelectorAll('button')].find((button) => button.textContent === 'Release all');
-  if (!found) throw new Error('The panel has no Release all button.');
+  const found = [...overlay().querySelectorAll('button')].find(
+    (button) => button.querySelector('.sv-row-label')?.textContent === 'Release all',
+  );
+  if (!found) throw new Error('The machine list has no Release all button.');
   return found;
 }
 
@@ -710,12 +712,11 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
         // @xstate/react tells waitFor when the actor ends.
         // state-viewer tells it when the overlay drops the preview of the instance that left.
         const { outcome, status } = HEARD[answer];
-        const { previewing, machine } = header();
-        expect({ log: page.log, status: shown('save'), previewing, machine }).toEqual({
+        expect({ log: page.log, status: shown('save'), previewing: badge(), machines: await machines() }).toEqual({
           log: previews ? ['answer', 'close', outcome] : ['answer', outcome, 'close'],
           status,
           previewing: '',
-          machine: null,
+          machines: [],
         });
       });
 
@@ -725,12 +726,11 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
         await flush();
         await flush();
 
-        const { previewing, machine } = header();
-        expect({ log: page.log, status: shown('save'), previewing, machine }).toEqual({
+        expect({ log: page.log, status: shown('save'), previewing: badge(), machines: await machines() }).toEqual({
           log: ['close'],
           status: 'saving',
           previewing: '',
-          machine: null,
+          machines: [],
         });
       });
     }
@@ -762,12 +762,14 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
     /** Closes the dialog, then releases the preview before the overlay flushes. */
     async function releaseBeforeTheFlush(withActivity: boolean) {
       const page = await saveAndAnswerDuringPreview(useActorRef, true, withActivity, 'SAVED');
+      // Release all is on the machine list. Going there flushes the overlay, so it comes before the close.
+      await machines();
       page.close();
       // The overlay keeps the preview of the instance that left until its next flush, which comes after this click.
       page.log.push('release');
       fireEvent.click(releaseAllButton());
       await flush();
-      return { log: page.log, status: shown('save'), previewing: header().previewing };
+      return { log: page.log, status: shown('save'), previewing: badge() };
     }
 
     const RELEASED = { log: ['answer', 'close', 'release', 'resolved done saved'], status: 'saved', previewing: '' };
@@ -894,7 +896,7 @@ describe("a subscription through the hook's actor, made before an Activity hides
         page.hide();
         await flush();
         await flush();
-        const hidden = { heard: page.take(), previewing: header().previewing };
+        const hidden = { heard: page.take(), previewing: badge() };
         page.reveal();
         await flush();
         const revealed = page.take();
@@ -919,12 +921,12 @@ describe("a subscription through the hook's actor, made before an Activity hides
           page.reveal();
           await flush();
           // The instance registered again before the flush of the overlay, so the preview stays, and holds the ending.
-          const revealed = { heard: page.take(), previewing: header().previewing };
+          const revealed = { heard: page.take(), previewing: badge() };
           await page.release();
           const released = page.take();
           expect({ underPreview, revealed, released, restarted: await page.previewRestarted() }).toEqual({
             underPreview: UNDER_PREVIEW,
-            revealed: { heard: [], previewing: previews ? '1 previewing' : '' },
+            revealed: { heard: [], previewing: previews ? '1' : '' },
             released: previews ? ['done finished'] : [],
             restarted: RESTARTED,
           });
@@ -1279,7 +1281,7 @@ describe('an actor that fails while a preview hides the failure', () => {
       const failed = await failDuringPreview(machine, crash, <App showStatus />);
       const previewing = shownUpload();
       await release(machine.id);
-      expect({ uncaught: failed.uncaught, previewing, released: alerts(), previews: header().previewing }).toEqual({
+      expect({ uncaught: failed.uncaught, previewing, released: alerts(), previews: badge() }).toEqual({
         uncaught: [],
         previewing: 'retrying',
         released: [CRASH],
@@ -1333,14 +1335,14 @@ describe('an actor that fails while a preview hides the failure', () => {
         crash();
         held = [...heard];
       });
-      const { machine: machines, previewing } = header();
-      expect({ previewed, held, uncaught: messages(errors), heard, machines, previewing }).toEqual({
+      const listed = await machines();
+      expect({ previewed, held, uncaught: messages(errors), heard, machines: listed, previewing: badge() }).toEqual({
         previewed: previews ? ['next retrying'] : [],
         // The preview holds back the error until the overlay drops the preview of the actor that left.
         held: previews ? [] : [`error ${CRASH}`],
         uncaught: [],
         heard: [`error ${CRASH}`],
-        machines: null,
+        machines: [],
         previewing: '',
       });
     },

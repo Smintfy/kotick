@@ -4,7 +4,7 @@ import { useMachine } from 'state-viewer/xstate';
 import { describe, expect, test } from 'vitest';
 import { createMachine, setup, type AnyStateMachine } from 'xstate';
 import { watchConsole } from './support/console';
-import { flush, freshId, isOpen, overlay, panel, preview, show } from './support/panel';
+import { flush, freshId, isOpen, overlay, panel, preview, show, shownMachine } from './support/panel';
 
 const ALT_S = { key: 's', code: 'KeyS', altKey: true };
 
@@ -65,8 +65,16 @@ function control(selector: string): HTMLElement {
   return found;
 }
 
-function shownMachine(): string | null | undefined {
-  return overlay().querySelector<HTMLSelectElement>('select[aria-label="Machine"]')?.selectedOptions[0]?.textContent;
+/** The row of the machine list that has focus: its machine id, or else its label. `none` when no row has focus. */
+function focusedRow(): string {
+  const focused = overlay().activeElement as HTMLElement | null;
+  if (!focused?.hasAttribute('data-row')) return 'none';
+  return focused.dataset.machine ?? focused.querySelector('.sv-row-label')?.textContent ?? '';
+}
+
+async function click(element: Element): Promise<void> {
+  fireEvent.click(element);
+  await flush();
 }
 
 test('Alt+S opens the panel, and closes it again', async () => {
@@ -146,6 +154,7 @@ describe('the shortcut prop', () => {
 describe('focus', () => {
   test('opening with the shortcut puts focus on the tree, and closing gives it back where the shortcut was pressed', async () => {
     const machine = createCheckoutMachine();
+    localStorage.setItem('state-viewer:ui', JSON.stringify({ v: 1, machine: machine.id }));
     render(
       <>
         <Run machine={machine} />
@@ -166,6 +175,76 @@ describe('focus', () => {
     });
   });
 
+  test('opening on the machine list puts focus on its first row', async () => {
+    const machine = createCheckoutMachine();
+    render(
+      <>
+        <Run machine={machine} />
+        <StateViewer />
+      </>,
+    );
+    await flush();
+
+    await press(ALT_S);
+    expect(focusedRow()).toBe(machine.id);
+  });
+
+  test('a row puts focus on the tree of its machine, and Back puts it on that row again', async () => {
+    const checkout = createCheckoutMachine();
+    const toggle = createToggleMachine();
+    render(
+      <>
+        <Run machine={checkout} />
+        <Run machine={toggle} />
+        <StateViewer />
+      </>,
+    );
+    await flush();
+    await press(ALT_S);
+    await press({ key: 'ArrowDown' }, focusedInOverlay());
+
+    await click(focusedInOverlay());
+    const opened = { machine: shownMachine(), focus: focusedLeaf() };
+    await click(control('button[aria-label="Back"]'));
+    expect({ opened, back: focusedRow() }).toEqual({ opened: { machine: toggle.id, focus: 'off' }, back: toggle.id });
+  });
+
+  test('Settings puts focus on the checked corner, and Back puts it on the Settings row again', async () => {
+    const machine = createCheckoutMachine();
+    render(
+      <>
+        <Run machine={machine} />
+        <StateViewer position="bottom-left" />
+      </>,
+    );
+    await flush();
+    await press(ALT_S);
+
+    await click(control('[data-row="settings"]'));
+    const corner = (overlay().activeElement as HTMLInputElement | null)?.value;
+    await click(control('button[aria-label="Back"]'));
+    expect({ corner, back: focusedRow() }).toEqual({ corner: 'bottom-left', back: 'Settings' });
+  });
+
+  test('a click on another page leaves focus outside the panel where it is', async () => {
+    const machine = createCheckoutMachine();
+    render(
+      <>
+        <Run machine={machine} />
+        <button type="button">Pay</button>
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    screen.getByRole('button', { name: 'Pay' }).focus();
+
+    await show(machine.id);
+    expect({ machine: shownMachine(), focus: document.activeElement?.textContent }).toEqual({
+      machine: machine.id,
+      focus: 'Pay',
+    });
+  });
+
   test('[ and ] from the tree keep focus in the tree of the machine they show, on its tab stop', async () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
@@ -177,6 +256,7 @@ describe('focus', () => {
       </>,
     );
     await flush();
+    await show(checkout.id);
     tabStop().focus();
 
     const seen: { machine: unknown; focus: string }[] = [];
@@ -197,6 +277,7 @@ describe('in the panel', () => {
     const toggle = createToggleMachine();
     render(
       <>
+        <Run machine={checkout} />
         <Run machine={checkout} />
         <Run machine={toggle} />
         <StateViewer defaultOpen />
@@ -224,7 +305,7 @@ describe('in the panel', () => {
       ['ArrowDown'],
       ['ArrowDown'],
       ['ArrowUp'],
-      ['ArrowDown', control('select[aria-label="Machine"]')],
+      ['ArrowDown', control('select[aria-label="Instance"]')],
       ['Enter', control('button[aria-label="Close"]')],
       ['End'],
       ['Enter'],
@@ -265,6 +346,38 @@ describe('in the panel', () => {
     ]);
   });
 
+  test('arrows, Home and End move through the rows of the machine list', async () => {
+    const checkout = createCheckoutMachine();
+    const toggle = createToggleMachine();
+    render(
+      <>
+        <Run machine={checkout} />
+        <Run machine={toggle} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    await preview(toggle.id, ['on']);
+    await click(control('button[aria-label="Back"]'));
+    control('[data-row]').focus();
+
+    const seen = [focusedRow()];
+    for (const key of ['ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowUp', 'Home', 'End']) {
+      await press({ key }, focusedInOverlay());
+      seen.push(`${key}: ${focusedRow()}`);
+    }
+    expect(seen).toEqual([
+      checkout.id,
+      `ArrowDown: ${toggle.id}`,
+      'ArrowDown: Release all',
+      'ArrowDown: Settings',
+      'ArrowDown: Settings',
+      'ArrowUp: Release all',
+      `Home: ${checkout.id}`,
+      'End: Settings',
+    ]);
+  });
+
   test('[ and ] show the previous and next machine, and wrap around', async () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
@@ -283,13 +396,14 @@ describe('in the panel', () => {
       </>,
     );
     await flush();
+    await show(checkout.id);
 
     const shown = [shownMachine()];
     for (const key of [']', '[', '[']) {
-      await press({ key }, control('.sv-panel'));
+      await press({ key }, control('[data-instance]'));
       shown.push(shownMachine());
     }
-    expect(shown).toEqual([checkout.id, toggle.id, checkout.id, `${fetcher.id} (child)`]);
+    expect(shown).toEqual([checkout.id, toggle.id, checkout.id, fetcher.id]);
   });
 });
 

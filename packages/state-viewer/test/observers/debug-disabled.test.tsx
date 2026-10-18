@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { createMachine, fromCallback, setup, type AnyActorRef, type Observer, type SnapshotFrom } from 'xstate';
 import { page, press } from '../support/app';
 import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
-import { flush, freshId, header, preview, release } from '../support/panel';
+import { badge, flush, freshId, machines, preview, release } from '../support/panel';
 
 function createToggleMachine() {
   return createMachine({
@@ -77,11 +77,6 @@ function useRecorder(heard: string[], { object, stable }: ObserverKind): Recorde
   return stable ? first : inline;
 }
 
-/** The machines that the overlay lists. */
-function listed(): (string | null)[] {
-  return header().machine?.options ?? [];
-}
-
 test('debug.disabled takes the machine out of the overlay, and the observer goes on hearing the real actor', async () => {
   const machine = createToggleMachine();
   const heard: string[] = [];
@@ -97,15 +92,15 @@ test('debug.disabled takes the machine out of the overlay, and the observer goes
   const view = render(page(<Toggle disabled={false} />));
   await flush();
 
-  const mounted = { heard: heard.splice(0), listed: listed() };
+  const mounted = { heard: heard.splice(0), listed: await machines() };
   view.rerender(page(<Toggle disabled />));
   await flush();
-  const disabled = { heard: heard.splice(0), listed: listed() };
+  const disabled = { heard: heard.splice(0), listed: await machines() };
   await press('Toggle');
   const toggled = heard.splice(0);
   view.rerender(page(<Toggle disabled={false} />));
   await flush();
-  expect({ mounted, disabled, toggled, enabled: { heard, listed: listed() } }).toEqual({
+  expect({ mounted, disabled, toggled, enabled: { heard, listed: await machines() } }).toEqual({
     // StrictMode starts the actor twice.
     mounted: { heard: ['active:off', 'active:off'], listed: [machine.id] },
     disabled: { heard: [], listed: [] },
@@ -138,10 +133,10 @@ describe('an observer that the component passes after the actor moved', () => {
       await press('Toggle');
       view.rerender(page(<Toggle panelOpen disabled={false} />));
       await flush();
-      const opened = { heard: heard.splice(0), listed: listed() };
+      const opened = { heard: heard.splice(0), listed: await machines() };
       view.rerender(page(<Toggle panelOpen disabled />));
       await flush();
-      const disabled = { heard: heard.splice(0), listed: listed() };
+      const disabled = { heard: heard.splice(0), listed: await machines() };
       await press('Toggle');
       expect({ opened, disabled, toggled: heard }).toEqual({
         // @xstate/react subscribes the observer to an actor that already moved, and XState sends it nothing.
@@ -194,7 +189,7 @@ describe('while a preview shows', () => {
           await finish();
           const finished = heard.splice(0);
           await disable();
-          const disabled = { heard: heard.splice(0), listed: listed() };
+          const disabled = { heard: heard.splice(0), listed: await machines() };
           // A later render with debug still disabled.
           await disable();
           // @xstate/react subscribes an inline observer object again on each render, and XState completes it at once.
@@ -219,7 +214,7 @@ describe('while a preview shows', () => {
           const previewed = heard.splice(0);
 
           await disable();
-          const disabled = { heard: heard.splice(0), listed: listed() };
+          const disabled = { heard: heard.splice(0), listed: await machines() };
           await disable();
           const later = heard.splice(0);
           await finish();
@@ -365,7 +360,7 @@ describeWithActivity('while an Activity hides the component', () => {
           view.rerender(app('hidden', false));
           await flush();
           await flush();
-          const hidden = header().previewing;
+          const hidden = badge();
           if (disabling === 'while hidden') {
             calls.push('[debug disabled]');
             view.rerender(app('hidden', true));

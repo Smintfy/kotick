@@ -20,7 +20,7 @@ import { mount, start } from '../support/app';
 import { uncaught } from '../support/console';
 import { collected } from '../support/gc';
 import { IMPLEMENTATIONS } from '../support/hooks';
-import { clickLeaf, flush, freshId, header, panel, preview, release } from '../support/panel';
+import { badge, clickLeaf, flush, freshId, machines, panel, preview, release } from '../support/panel';
 
 function createCheckoutMachine() {
   return setup({
@@ -610,7 +610,7 @@ describe('waitFor called during a preview on an actor that already finished', ()
     const previewing = read(job);
     const finished = waitForFinished(job);
     await flush();
-    expect({ previewing, dropped: { previews: header().previewing, waitFor: finished() } }).toEqual({
+    expect({ previewing, dropped: { previews: badge(), waitFor: finished() } }).toEqual({
       previewing: { status: 'active', value: 'waiting', output: undefined },
       dropped: { previews: '', waitFor: 'resolved done 42' },
     });
@@ -730,13 +730,14 @@ describe('a subscriber that subscribes again as it hears the end of an actor tha
       };
       const refs = [await finishDuringPreview(), await finishDuringPreview(), await finishDuringPreview()];
 
-      const { machine: machines, previewing } = header();
+      const listed = await machines();
+      const previewing = badge();
       // React keeps the previous render of the overlay, which shows the last actor, until the overlay renders again.
       // Unmount the overlay. The page-wide registry stays.
       view.unmount();
       const gone = await collected(refs);
-      expect({ machines, previewing, gone, heard: heard.map((settled) => settled()) }).toEqual({
-        machines: null,
+      expect({ machines: listed, previewing, gone, heard: heard.map((settled) => settled()) }).toEqual({
+        machines: [],
         previewing: '',
         gone: [true, true, true],
         heard: ['resolved done 42', 'resolved done 42', 'resolved done 42'],
