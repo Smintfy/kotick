@@ -14,6 +14,8 @@ const LIGHT = `
   --sv-outline: rgba(0, 0, 0, 0.1);
   --sv-chip: #e4e4e7;
   --sv-guide: #e4e4e7;
+  --sv-scrollbar: #c4c4c8;
+  --sv-scrollbar-hover: #a1a1a8;
   --sv-segment-on: #ffffff;
   --sv-segment-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   --sv-live: #16a34a;
@@ -47,6 +49,8 @@ const DARK = `
   --sv-outline: rgba(255, 255, 255, 0.1);
   --sv-chip: #333333;
   --sv-guide: #2e2e2e;
+  --sv-scrollbar: #3d3d3d;
+  --sv-scrollbar-hover: #555555;
   --sv-segment-on: #3a3a3a;
   --sv-segment-shadow: none;
   --sv-live: #22c55e;
@@ -114,6 +118,20 @@ ul, ol { list-style: none; margin: 0; padding: 0; }
 code { font-family: ${MONO}; font-size: 11px; }
 :focus { outline: none; }
 :focus-visible { outline: 2px solid var(--sv-focus); outline-offset: 1px; }
+
+/* A thin rounded thumb with no track. The transparent border keeps the thumb clear of the panel's edge. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--sv-scrollbar) padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--sv-scrollbar-hover); }
+/* Chrome ignores the pseudo-elements above once scrollbar-color is set, so only browsers without them get it. */
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: var(--sv-scrollbar) transparent; }
+}
 
 .sv-visually-hidden {
   position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
