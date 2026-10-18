@@ -465,6 +465,8 @@ kbd {
 .sv-data[data-kind="none"] { border: 1px dashed var(--sv-chip); color: var(--sv-muted); }
 .sv-leaf[aria-selected="true"] .sv-data[data-kind="recorded"] { background: var(--sv-recorded-solid); color: #ffffff; }
 .sv-leaf[aria-selected="true"] .sv-data[data-kind="fixture"] { background: var(--sv-fixture-solid); color: #ffffff; }
+/* The chip gray of the dashed border is too close to the selected gray. */
+.sv-leaf[aria-selected="true"] .sv-data[data-kind="none"] { border-color: var(--sv-muted); }
 
 .sv-children { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 8px; padding: 0 6px; }
 .sv-children .sv-hint { padding: 0; }
