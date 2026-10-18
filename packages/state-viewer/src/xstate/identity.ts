@@ -20,7 +20,7 @@ const warned = new Set<string>();
 export function resolveMachineId(machine: AnyStateMachine, debugId?: string): string {
   if (typeof debugId === 'string' && debugId !== '') return debugId;
   if (typeof machine.id === 'string' && machine.id !== '' && machine.id !== DEFAULT_MACHINE_ID) return machine.id;
-  return fallbackMachineId(machine);
+  return machineIdFromShape(machine);
 }
 
 export function isFallbackId(machine: AnyStateMachine, machineId: string): boolean {
@@ -36,7 +36,7 @@ export function isFallbackId(machine: AnyStateMachine, machineId: string): boole
  * The context keys tell apart machines with the same states, such as two fetch machines.
  * Without them, those machines would share recordings and fixtures.
  */
-function fallbackMachineId(machine: AnyStateMachine): string {
+function machineIdFromShape(machine: AnyStateMachine): string {
   let id = fallbackIds.get(machine);
   if (id === undefined) {
     id = `machine-${hash(`${signature(machine.root)}|${contextKeys(machine)}`)}`;
