@@ -12,9 +12,9 @@ const warned = new WeakSet<object>();
 
 /**
  * Registers an actor created outside React and returns its proxy; use the proxy wherever the app reads the actor.
- * The actor is registered at once and unregistered when it's done or stopped. Actors that aren't machines, that
- * already stopped or that have `disabled` set come back unchanged. An actor connected before, or created by one of
- * the hooks, gets the proxy it already has without registering again; so does a proxy.
+ * The actor is registered at once and unregistered when it's done, failed or stopped. Actors that aren't machines,
+ * that already stopped or that have `disabled` set come back unchanged. An actor connected before, or created by one
+ * of the hooks, gets the proxy it already has without registering again; so does a proxy.
  */
 export function connect<TActor extends AnyActorRef>(actor: TActor, options?: DebugOptions): TActor {
   if (isProxy(actor)) return existing(actor, options);

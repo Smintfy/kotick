@@ -14,20 +14,29 @@ import {
   type EventFrom,
 } from 'xstate';
 import { mount, page, start } from './support/app';
-import { watchConsole } from './support/console';
+import { uncaught, watchConsole } from './support/console';
 import { flush, freshId, header, instanceKeys, panel, preview, release, shownKey } from './support/panel';
+
+const BROKEN = 'Checkout broken';
 
 function createCheckoutMachine() {
   return setup({
     types: {
       context: {} as { items: number },
-      events: {} as { type: 'ADD' } | { type: 'PAY' } | { type: 'SUCCEED' } | { type: 'NOOP' },
+      events: {} as { type: 'ADD' } | { type: 'PAY' } | { type: 'SUCCEED' } | { type: 'NOOP' } | { type: 'BREAK' },
     },
     guards: { hasItems: ({ context }) => context.items > 0 },
   }).createMachine({
     id: freshId('checkout'),
     context: { items: 0 },
     initial: 'cart',
+    on: {
+      BREAK: {
+        actions: () => {
+          throw new Error(BROKEN);
+        },
+      },
+    },
     states: {
       cart: {
         on: {
@@ -196,17 +205,20 @@ describe('actors that connect() gives back unchanged', () => {
 });
 
 describe('an actor that ends', () => {
-  test.each<[string, (actor: Checkout, checkout: Checkout) => void, string]>([
-    ['stops', (actor) => actor.stop(), 'stopped'],
-    ['is stopped through the actor that connect() returned', (_, checkout) => checkout.stop(), 'stopped'],
+  test.each<[string, (actor: Checkout, checkout: Checkout) => void, string, string[]]>([
+    ['stops', (actor) => actor.stop(), 'stopped', []],
+    ['is stopped through the actor that connect() returned', (_, checkout) => checkout.stop(), 'stopped', []],
     [
       'reaches its final state',
       (actor) => {
         for (const type of ['ADD', 'PAY', 'SUCCEED'] as const) actor.send({ type });
       },
       'done',
+      [],
     ],
-  ])('leaves the overlay, with its preview, when it %s', async (_, end, status) => {
+    // No observer handles the error, so XState reports it, as without connect().
+    ['fails', (actor) => actor.send({ type: 'BREAK' }), 'error', [BROKEN]],
+  ])('leaves the overlay, with its preview, when it %s', async (_, end, status, reported) => {
     const machine = createCheckoutMachine();
     const actor = start(machine);
     const checkout = connect(actor);
@@ -214,13 +226,19 @@ describe('an actor that ends', () => {
     await preview(machine.id, ['payment.error']);
     const before = header().previewing;
 
-    await act(async () => {
-      end(actor, checkout);
-    });
+    const errors = await uncaught(() => end(actor, checkout));
     const { previewing, releaseAll, machine: machines } = header();
-    expect({ before, status: actor.getSnapshot().status, previewing, releaseAll, machines }).toEqual({
+    expect({
+      before,
+      status: actor.getSnapshot().status,
+      uncaught: errors.map((error) => (error as Error).message),
+      previewing,
+      releaseAll,
+      machines,
+    }).toEqual({
       before: '1 previewing',
       status,
+      uncaught: reported,
       previewing: '',
       releaseAll: 'disabled',
       machines: null,
@@ -267,6 +285,35 @@ describe('an actor connected before it starts', () => {
       stop(actor, checkout);
     });
     expect({ before, after: header().machine }).toEqual({ before: [machine.id], after: null });
+  });
+
+  test('leaves the overlay when an action of its initial state throws as it starts', async () => {
+    const machine = createMachine({
+      id: freshId('greeting'),
+      initial: 'shown',
+      states: {
+        shown: {
+          entry: () => {
+            throw new Error('Greeting broken');
+          },
+        },
+      },
+    });
+    const actor = createActor(machine);
+    onTestFinished(() => {
+      actor.stop();
+    });
+    const greeting = connect(actor);
+    await mount(null);
+    const before = header().machine?.options;
+
+    const errors = await uncaught(() => greeting.start());
+    expect({
+      before,
+      status: greeting.getSnapshot().status,
+      uncaught: errors.map((error) => (error as Error).message),
+      after: header().machine,
+    }).toEqual({ before: [machine.id], status: 'error', uncaught: ['Greeting broken'], after: null });
   });
 });
 
