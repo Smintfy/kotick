@@ -12,7 +12,7 @@ For installation and usage, see the [package README](packages/state-viewer/READM
 | `examples/hostile-css` | A page with global styles that try to change the overlay |
 | `examples/next-app` | The Next.js App Router, with server rendering |
 | `tests/bundles` | A fixture app for the production-build check |
-| `scripts` | The test matrix |
+| `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` |
 | `specs` | The [MVP spec and roadmap](specs/state-debugger-mvp-spec.md) |
 
 The end-to-end tests are in a separate repository, [state-viewer-e2e](../state-viewer-e2e), and run against the

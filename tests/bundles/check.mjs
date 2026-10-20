@@ -29,22 +29,13 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
+import { MARKERS } from '../../scripts/debug-markers.mjs';
 
 const root = join(import.meta.dirname, '../..');
 const fixtureDir = import.meta.dirname;
 
 /** The most that the startup JavaScript may grow against the same app with @xstate/react. */
 const STARTUP_BUDGET_GZIP_BYTES = 512;
-
-/** Strings that only debug code contains, and the part of the package each one stands for. */
-const MARKERS = {
-  __STATE_VIEWER_REGISTRY__: 'registry',
-  'state-viewer:recorded:': 'recordings',
-  'data-state-viewer-root': 'overlay',
-  'state-viewer:ui': 'overlay settings',
-  __STATE_VIEWER_LAST_INSTANCE__: 'adapter hooks and connect()',
-  'state-viewer.preview': 'actor proxy',
-};
 
 const { values } = parseArgs({
   options: {
