@@ -11,6 +11,7 @@ For installation and usage, see the [package README](packages/state-viewer/READM
 | `examples/vite-react` | Vite and React Router. One page for each way to read a machine: `useMachine`, `createActorContext`, `useActor`, and `connect()` in the header |
 | `examples/hostile-css` | A page with global styles that try to change the overlay |
 | `examples/next-app` | The Next.js App Router, with server rendering |
+| `site` | The landing page and the docs, in Next.js. The docs pages show the package README |
 | `tests/bundles` | A fixture app for the production-build check |
 | `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` and the site build |
 | `specs` | The [MVP spec and roadmap](specs/state-debugger-mvp-spec.md) |
@@ -32,9 +33,10 @@ pnpm install
 | `pnpm dev` | Starts the vite-react example on port 5173, and the style watcher |
 | `pnpm dev:hostile-css` | Starts the hostile-css example on port 5174, and the style watcher |
 | `pnpm dev:next` | Starts the Next.js example on port 3100, and the style watcher |
-| `pnpm build` | Builds the package and the examples |
-| `pnpm test` | Runs `pnpm lint`, then the unit, adapter and type tests with Vitest |
-| `pnpm typecheck` | Checks the types of the package and the examples |
+| `pnpm dev:site` | Starts the site on port 3200, and the style watcher |
+| `pnpm build` | Builds the package, the examples and the site |
+| `pnpm test` | Runs `pnpm lint`, then the unit, adapter and type tests with Vitest, and builds the site |
+| `pnpm typecheck` | Checks the types of the package, the examples and the site |
 | `pnpm lint` | Runs oxlint over the repository with the rules in `.oxlintrc.json` |
 | `pnpm test:matrix` | Runs the tests on React 18 and 19, each with the minimum and the latest XState |
 | `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, and looks for debug code |
@@ -50,3 +52,7 @@ few minutes. Both accept `--only <name>` to run part of the work, and `--keep` t
 
 Tests use the package the way an app does, with no mocks. The rules are in
 [writing-tests](packages/state-viewer/.claude/skills/writing-tests/SKILL.md), and `pnpm lint` enforces most of them.
+
+The docs pages of the site render `packages/state-viewer/README.md`, and `site/src/site.tsx` lists which section goes on
+which page. The site build fails when the README and that list do not agree, or when the build loses the overlay that
+the demo on the landing page shows.
