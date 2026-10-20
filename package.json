@@ -7,6 +7,7 @@
     "dev": "pnpm --parallel --filter state-viewer --filter vite-react dev",
     "dev:hostile-css": "pnpm --parallel --filter state-viewer --filter hostile-css dev",
     "dev:next": "pnpm --parallel --filter state-viewer --filter next-app dev",
+    "dev:site": "pnpm --parallel --filter state-viewer --filter site dev",
     "test": "pnpm lint && pnpm -r test",
     "test:matrix": "node scripts/test-matrix.mjs",
     "check:bundles": "node tests/bundles/check.mjs",
