@@ -1,0 +1,38 @@
+{
+  "name": "site",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3200",
+    "build": "next build",
+    "start": "next start --port 3200",
+    "test": "next build",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@xstate/react": "catalog:",
+    "github-slugger": "^2.0.0",
+    "hast-util-raw": "^9.1.0",
+    "hast-util-to-jsx-runtime": "^2.3.6",
+    "mdast-util-from-markdown": "^2.1.0",
+    "mdast-util-gfm": "^3.1.0",
+    "mdast-util-to-hast": "^13.2.1",
+    "mdast-util-to-string": "^4.0.0",
+    "micromark-extension-gfm": "^3.0.0",
+    "next": "^16.4.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "shiki": "^4.5.0",
+    "state-viewer": "workspace:*",
+    "xstate": "catalog:"
+  },
+  "devDependencies": {
+    "@types/hast": "^3.0.5",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^24.13.3",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:"
+  }
+}
