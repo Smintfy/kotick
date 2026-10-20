@@ -659,10 +659,14 @@ kbd {
   font-size: 13px;
 }
 
+/*
+ * The card form is the tallest state of the checkout, and it fits in 440px.
+ * Thus, the panel below the checkout does not move when the state changes.
+ */
 @container (width < 600px) {
   .demo-body {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 440px;
+    grid-template-rows: 440px 440px;
     height: auto;
     padding: 0 8px;
   }
