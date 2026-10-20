@@ -18,8 +18,7 @@
   --fixture-soft: light-dark(rgba(217, 119, 6, 0.14), rgba(245, 158, 11, 0.16));
   --chip: light-dark(#e4e4e7, #333333);
   --badge: #ef4444;
-  /* --muted gives 4.4:1 on --surface in light mode. Text on a panel uses this color, for 4.5:1 or more. */
-  --muted-panel: light-dark(#626269, #a1a1a1);
+  --muted-on-surface: light-dark(#626269, #a1a1a1);
   --sans:
     ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     sans-serif;
@@ -134,7 +133,6 @@ kbd {
   top: 16px;
 }
 
-/* The bubble is near-black in both themes, as in the overlay. The light edge shows it on a dark page. */
 .mark {
   display: block;
   flex: none;
@@ -228,7 +226,6 @@ kbd {
   padding-left: 12px;
 }
 
-/* The panel marks the live state with a green dot. The nav marks the heading in view the same way. */
 .sidebar nav a[data-active]::before {
   content: "";
   position: absolute;
@@ -437,7 +434,6 @@ kbd {
   opacity: 1;
 }
 
-/* Without hover, the button always shows. The padding keeps it above the first line of code. */
 @media (hover: none) {
   .code .copy {
     opacity: 1;
@@ -491,10 +487,6 @@ kbd {
   margin-top: 72px;
 }
 
-/*
- * Each bullet of the intro is a row, with its bold lead-in in the left padding.
- * The lead-in floats, because in a grid each run of text and each code span would become a cell.
- */
 .intro ul {
   margin: 24px 0 0;
   padding: 0;
@@ -509,6 +501,7 @@ kbd {
   border-bottom: 1px solid var(--line);
 }
 
+/* The lead-in floats, because in a grid each run of text and each code span would become a cell. */
 .intro li > strong:first-child {
   float: left;
   width: 168px;
@@ -546,7 +539,7 @@ kbd {
   border: 0;
   border-radius: 6px;
   background: none;
-  color: var(--muted-panel);
+  color: var(--muted-on-surface);
   font-size: 13px;
   cursor: pointer;
 }
@@ -600,7 +593,7 @@ kbd {
 }
 
 .cards span {
-  color: var(--muted-panel);
+  color: var(--muted-on-surface);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -622,7 +615,7 @@ kbd {
   align-items: center;
   justify-content: space-between;
   padding: 8px 8px 8px 16px;
-  color: var(--muted-panel);
+  color: var(--muted-on-surface);
   font: 13px var(--mono);
 }
 
@@ -645,24 +638,21 @@ kbd {
  * With contain: layout, the dock is the containing block of the host, so the overlay stays in the dock.
  */
 .demo-dock {
+  --overlay-panel-bottom: 58px;
+
   position: relative;
   contain: layout;
 }
 
-/* The bottom of the panel is 58px above the bottom of the dock. Thus, the open panel covers the hint. */
 .demo-hint {
   position: absolute;
   right: 16px;
-  bottom: 58px;
+  bottom: var(--overlay-panel-bottom);
   margin: 0;
-  color: var(--muted-panel);
+  color: var(--muted-on-surface);
   font-size: 13px;
 }
 
-/*
- * The card form is the tallest state of the checkout, and it fits in 440px.
- * Thus, the panel below the checkout does not move when the state changes.
- */
 @container (width < 600px) {
   .demo-body {
     grid-template-columns: minmax(0, 1fr);
@@ -793,7 +783,6 @@ kbd {
   color: var(--fg);
 }
 
-/* The marks of the panel, at the size of the table text. */
 .source-mark {
   display: inline-grid;
   place-items: center;

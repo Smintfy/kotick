@@ -8,19 +8,22 @@ import type { Heading, NavItem } from '@/site';
 
 const noHeadings: readonly Heading[] = [];
 
-/** The id of the last heading above the line at 30% of the window. */
+const readingLinePercent = 30;
+
 function useHeadingInView(headings: readonly Heading[]): string | undefined {
   const [active, setActive] = useState<string>();
 
   useEffect(() => {
     const elements = headings.flatMap(({ id }) => document.getElementById(id) ?? []);
     const update = () => {
-      const line = window.innerHeight * 0.3;
+      const line = (window.innerHeight * readingLinePercent) / 100;
       setActive(elements.filter((element) => element.getBoundingClientRect().top < line).at(-1)?.id);
     };
     // The observed area is everything above the line, not only the part in the window.
     // Thus, each heading that crosses the line calls update, also on a long scroll step.
-    const observer = new IntersectionObserver(update, { rootMargin: '100000px 0px -70% 0px' });
+    const observer = new IntersectionObserver(update, {
+      rootMargin: `100000px 0px -${100 - readingLinePercent}% 0px`,
+    });
     for (const element of elements) observer.observe(element);
     return () => observer.disconnect();
   }, [headings]);

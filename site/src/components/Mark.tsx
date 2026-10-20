@@ -1,4 +1,3 @@
-/** The bubble of the overlay, with the hexagon icon of a state. */
 export function Mark({ size }: { size: number }) {
   return (
     <svg className="mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
