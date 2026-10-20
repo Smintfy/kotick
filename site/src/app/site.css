@@ -14,6 +14,10 @@
   --recorded: light-dark(#15803d, #4ade80);
   --fixture: light-dark(#b45309, #fbbf24);
   --accent: light-dark(#2563eb, #3b82f6);
+  --recorded-soft: light-dark(rgba(22, 163, 74, 0.12), rgba(34, 197, 94, 0.16));
+  --fixture-soft: light-dark(rgba(217, 119, 6, 0.14), rgba(245, 158, 11, 0.16));
+  --chip: light-dark(#e4e4e7, #333333);
+  --badge: #ef4444;
   /* --muted gives 4.4:1 on --surface in light mode. Text on a panel uses this color, for 4.5:1 or more. */
   --muted-panel: light-dark(#626269, #a1a1a1);
   --sans:
@@ -336,7 +340,8 @@ kbd {
   margin: 0;
 }
 
-.copy {
+.copy,
+.demo-bar button {
   padding: 6px 10px;
   border: 0;
   border-radius: 6px;
@@ -347,7 +352,8 @@ kbd {
   cursor: pointer;
 }
 
-.copy:hover {
+.copy:hover,
+.demo-bar button:hover {
   background: var(--selected);
 }
 
@@ -603,6 +609,211 @@ kbd {
   .cards {
     grid-template-columns: 1fr;
   }
+}
+
+.demo {
+  margin: 0 0 24px;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.demo-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 8px 16px;
+  color: var(--muted-panel);
+  font: 13px var(--mono);
+}
+
+.demo-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 312px;
+  height: 480px;
+  padding: 0 0 8px 8px;
+}
+
+.demo-app {
+  overflow: auto;
+  padding: 20px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+/*
+ * The host of the overlay is position: fixed.
+ * With contain: layout, the dock is the containing block of the host, so the overlay stays in the dock.
+ */
+.demo-dock {
+  position: relative;
+  contain: layout;
+}
+
+/* The bottom of the panel is 58px above the bottom of the dock. Thus, the open panel covers the hint. */
+.demo-hint {
+  position: absolute;
+  right: 16px;
+  bottom: 58px;
+  margin: 0;
+  color: var(--muted-panel);
+  font-size: 13px;
+}
+
+@container (width < 600px) {
+  .demo-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 440px;
+    height: auto;
+    padding: 0 8px;
+  }
+}
+
+.demo-caption {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.checkout {
+  display: grid;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.checkout :is(ul, p, fieldset, form) {
+  margin: 0;
+}
+
+.checkout-lines {
+  padding: 0;
+  list-style: none;
+}
+
+.checkout-lines li,
+.checkout-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.checkout-total {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.checkout fieldset {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.checkout legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-weight: 500;
+}
+
+.checkout fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkout fieldset label span {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.checkout form,
+.checkout form label {
+  display: grid;
+  gap: 8px;
+}
+
+.checkout form label {
+  font-weight: 500;
+}
+
+.checkout input:not([type="radio"]) {
+  padding: 8px 10px;
+  border: 1px solid var(--chip);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px var(--mono);
+}
+
+.checkout-hint {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.checkout button {
+  justify-self: start;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.checkout button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.checkout-notice {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: inset 3px 0 var(--live);
+}
+
+.checkout-notice[data-tone="error"] {
+  box-shadow: inset 3px 0 var(--badge);
+}
+
+.checkout-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.checkout-actions button + button {
+  background: var(--selected);
+  color: var(--fg);
+}
+
+/* The marks of the panel, at the size of the table text. */
+.source-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.source-mark[data-source="recorded"] {
+  background: var(--recorded-soft);
+  color: var(--recorded);
+}
+
+.source-mark[data-source="fixture"] {
+  background: var(--fixture-soft);
+  color: var(--fixture);
+}
+
+.source-mark[data-source="none"] {
+  border: 1px dashed var(--chip);
+  color: var(--muted);
 }
 
 @media (width < 768px) {

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { InstallTabs } from '@/components/InstallTabs';
 import { Mark } from '@/components/Mark';
+import { Demo } from '@/demo/Demo';
 import {
   costs,
   hrefFor,
@@ -16,6 +17,7 @@ import {
 
 export default function Home() {
   const bodies: Record<LandingId, ReactNode> = {
+    'how-it-works': <Demo fixturesHref={hrefFor('fixtures')} />,
     why: (
       <>
         <p>

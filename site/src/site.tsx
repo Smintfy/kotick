@@ -110,6 +110,7 @@ const omitted: readonly string[] = ['contents'];
 const footer = 'license';
 
 export const landingHeadings = [
+  { id: 'how-it-works', text: 'How it works', depth: 2 },
   { id: 'why', text: 'Why state-viewer', depth: 2 },
   { id: 'install', text: 'Install', depth: 2 },
   { id: 'explore', text: 'Explore', depth: 2 },
