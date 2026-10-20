@@ -1,18 +1,18 @@
 import { defineFixtures } from 'state-viewer/xstate';
 import { assign, fromPromise, not, or, setup, stateIn } from 'xstate';
 
+type Cents = number;
+
 type LineItem = {
   id: string;
   name: string;
-  /** The price in cents. */
-  price: number;
+  price: Cents;
   qty: number;
 };
 
 export type CheckoutContext = {
   items: LineItem[];
-  /** The total of the items in cents, without shipping. */
-  total: number;
+  total: Cents;
   cardNumber: string;
   error?: string;
   receiptId?: string;
@@ -29,8 +29,6 @@ export type CheckoutEvent =
 
 const digitsOf = (cardNumber: string) => cardNumber.replace(/\D/g, '');
 
-// A payment provider for the demo.
-// The charge completes for all 16-digit card numbers, but not for numbers that end in 0002.
 const charge = fromPromise<{ receiptId: string }, { cardNumber: string }>(async ({ input }) => {
   await new Promise((resolve) => setTimeout(resolve, 800));
   if (digitsOf(input.cardNumber).endsWith('0002')) throw new Error('Card declined');
@@ -86,7 +84,6 @@ export const checkoutMachine = setup({
           states: {
             incomplete: {},
             complete: { on: { PAY: '#checkout.payment.processing' } },
-            // With this history state, "Edit card" goes back to the last state in `editing`.
             last: { type: 'history' },
           },
         },
@@ -122,9 +119,7 @@ const base: CheckoutContext = {
 };
 const withCard: CheckoutContext = { ...base, cardNumber: '4242 4242 4242 4242' };
 
-// Each leaf has a fixture, so no preview uses the live context.
-// The demo also runs in the production build, so the fixtures are an array without a development check.
-export const fixtures = [
+export const fixturesInEveryBuild = [
   defineFixtures(checkoutMachine, {
     'shipping.standard': { context: base },
     'shipping.express': { context: base },

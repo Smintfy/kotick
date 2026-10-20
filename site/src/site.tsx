@@ -1,6 +1,3 @@
-// The docs pages show the sections of the package README, so the README stays the only copy of the docs.
-// If the README and pageTable do not agree, this module throws when it loads.
-// Thus, next build and next dev fail.
 import 'server-only';
 import GithubSlugger from 'github-slugger';
 import type { ElementContent } from 'hast';
@@ -16,7 +13,7 @@ import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { createHighlighter } from 'shiki';
-import { CopyButton } from '@/components/CopyButton';
+import { CopyCodeButton } from '@/components/CopyButton';
 import readme from '../../packages/state-viewer/README.md';
 
 export type Heading = { id: string; text: string; depth: 2 | 3 };
@@ -26,11 +23,8 @@ export type DocsPage = {
   href: `/docs/${string}`;
   title: string;
   description: string;
-  /** The README id of the first section. The H1 of the page has it. */
   id: string;
-  /** The headings after the H1, for the nav. */
   headings: readonly Heading[];
-  /** The README text of the sections of the page, for Copy Markdown. */
   markdown: string;
   render(): ReactNode;
 };
@@ -40,9 +34,7 @@ export type NavItem = { href: string; title: string; headings: readonly Heading[
 type PageEntry = {
   slug: string;
   title: string;
-  /** The page header, the card on the landing page, and the meta description. */
   description: string;
-  /** README H2 ids, in page order. The H2 of the first section becomes the H1 of the page, with the title. */
   sections: readonly [string, ...string[]];
 };
 
@@ -103,10 +95,8 @@ const pageTable: readonly PageEntry[] = [
   },
 ];
 
-/** README H2s on no page. The nav replaces the table of contents. */
 const omitted: readonly string[] = ['contents'];
 
-/** The README H2 that the footer of each page shows. */
 const footer = 'license';
 
 export const landingHeadings = [
@@ -118,10 +108,8 @@ export const landingHeadings = [
 
 export type LandingId = (typeof landingHeadings)[number]['id'];
 
-// github-light-default gives comments 4.1:1 on the code background, and this light theme gives 4.6:1.
 const themes = { light: 'github-light-high-contrast', dark: 'github-dark-default' } as const;
 
-/** The fence languages that the highlighter loads. A fence with no language renders as text. */
 const languages = ['bash', 'diff', 'ts', 'tsx'] as const;
 
 type ReadmeHeading = { id: string; text: string; depth: MdastHeading['depth'] };
@@ -129,7 +117,6 @@ type ReadmeHeading = { id: string; text: string; depth: MdastHeading['depth'] };
 type Section = ReadmeHeading & {
   node: MdastHeading;
   body: RootContent[];
-  /** The headings in the body, at their README depth. */
   subheadings: ReadmeHeading[];
 };
 
@@ -143,7 +130,6 @@ const duplicates = (values: readonly string[]) =>
 
 function parse() {
   const tree = fromMarkdown(readme, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
-  // One slugger for all the headings, in document order, gives the ids that GitHub gives, suffixes included.
   const slugger = new GithubSlugger();
   const ids = new Set<string>();
   const identify = (node: MdastHeading): ReadmeHeading => {
@@ -187,7 +173,7 @@ function readCost(section: Section | undefined, pattern: RegExp): string | undef
   return found.length === 1 ? found[0]?.[1] : undefined;
 }
 
-function load() {
+function loadOrThrow() {
   const { ids, intro, sections } = parse();
   const byId = new Map(sections.map((section) => [section.id, section]));
   const problems: string[] = [];
@@ -224,8 +210,6 @@ function load() {
     });
   }
 
-  // The Contents list is on no page, but its links are checked too.
-  // They prove that the ids are the ones that GitHub gives.
   const parts = [
     { name: 'the intro', nodes: intro, shown: true },
     ...sections.map((section) => ({
@@ -272,7 +256,6 @@ function load() {
   }
   const packageName = readPackageName(byId.get('install'));
   if (packageName === undefined) problems.push('#install must have a code block "npm install <name>".');
-  // The landing page shows these numbers. Thus, a new benchmark result changes the site with the README.
   const transition = readCost(byId.get('performance-in-development'), /a transition costs (approximately [\d.]+ µs)/g);
   if (transition === undefined) {
     problems.push('#performance-in-development must say "a transition costs approximately <number> µs" one time.');
@@ -301,19 +284,18 @@ function load() {
   };
 }
 
-// The H2 of the first section becomes the H1 of the page. Thus, the headings under it move up one level.
-const raised = { 1: 1, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5 } as const satisfies Record<
+const oneLevelUp = { 1: 1, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5 } as const satisfies Record<
   MdastHeading['depth'],
   MdastHeading['depth']
 >;
 
 function toPage(entry: PageEntry, [first, ...others]: Section[]): DocsPage {
   const body = [
-    ...first.body.map((node) => (node.type === 'heading' ? { ...node, depth: raised[node.depth] } : node)),
+    ...first.body.map((node) => (node.type === 'heading' ? { ...node, depth: oneLevelUp[node.depth] } : node)),
     ...others.flatMap((section) => [section.node, ...section.body]),
   ];
   const headings = [
-    ...first.subheadings.map((heading) => ({ ...heading, depth: raised[heading.depth] })),
+    ...first.subheadings.map((heading) => ({ ...heading, depth: oneLevelUp[heading.depth] })),
     ...others.flatMap((section) => [section, ...section.subheadings]),
   ].flatMap(({ id, text, depth }) => (depth === 2 || depth === 3 ? [{ id, text, depth }] : []));
   return {
@@ -335,7 +317,6 @@ function sourceOf(section: Section): string {
 
 function render(nodes: RootContent[]): ReactNode {
   const tree = toHast({ type: 'root', children: nodes }, { allowDangerousHtml: true, handlers: { code: highlight } });
-  // The README writes keys as <kbd> HTML. raw() parses that HTML into elements.
   return toJsxRuntime(raw(tree), { Fragment, jsx, jsxs, components });
 }
 
@@ -358,7 +339,7 @@ function CodeBlock(props: ComponentProps<'pre'>) {
   return (
     <figure className="code">
       <pre {...props} />
-      <CopyButton />
+      <CopyCodeButton />
     </figure>
   );
 }
@@ -387,7 +368,7 @@ const components = {
   ),
 };
 
-const site = load();
+const site = loadOrThrow();
 const highlighter = await createHighlighter({ themes: Object.values(themes), langs: [...languages] });
 
 export const pages: readonly DocsPage[] = site.pages;
@@ -401,23 +382,18 @@ export const nav: readonly NavItem[] = [
   ...pages.map(({ href, title, headings }) => ({ href, title, headings })),
 ];
 
-/** The first paragraph of the README, as plain text. */
 export const pitch: string = site.pitch;
 
 export const packageName: string = site.packageName;
 
-/** The two README numbers, as the README writes them. */
 export const costs: { transition: string; startup: string } = site.costs;
 
-/** The README intro after the pitch: one paragraph and the bullets. */
 export const renderIntro = (): ReactNode => render(site.intro);
 
-/** The lead paragraph of Quick start and its numbered list. */
 export const renderQuickStart = (): ReactNode => render(site.quickStart);
 
 export const renderLicense = (): ReactNode => render(site.license);
 
-/** The href of a README heading. Throws for a heading that no page shows. */
 export function hrefFor(id: string): string {
   const href = site.hrefs.get(id);
   if (href === undefined) throw new Error(`site/src/site.tsx: no page shows the README heading #${id}.`);

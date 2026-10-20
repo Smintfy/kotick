@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { StateViewer } from 'state-viewer';
 import { useMachine } from 'state-viewer/xstate';
-import { type CheckoutEvent, checkoutMachine, fixtures } from '@/demo/checkout';
+import { type CheckoutEvent, checkoutMachine, fixturesInEveryBuild } from '@/demo/checkout';
 
 const shippingOptions = [
   { key: 'standard', label: 'Standard', fee: 0, event: { type: 'SHIP_STANDARD' } },
@@ -13,6 +13,8 @@ const shippingOptions = [
 ] as const satisfies ReadonlyArray<{ key: string; label: string; fee: number; event: CheckoutEvent }>;
 
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+const reloadWithDeepLink = '/?debug-state=checkout:payment.error;shipping.express#how-it-works';
 
 function Checkout() {
   const [snapshot, send] = useMachine(checkoutMachine);
@@ -127,7 +129,7 @@ export function Demo({ fixturesHref }: { fixturesHref: string }) {
           </div>
           <div ref={setDock} className="demo-dock">
             <p className="demo-hint">Click the bubble, or press Alt+S.</p>
-            {dock && <StateViewer portalTarget={dock} defaultOpen fixtures={fixtures} />}
+            {dock && <StateViewer portalTarget={dock} defaultOpen fixtures={fixturesInEveryBuild} />}
           </div>
         </div>
       </figure>
@@ -199,8 +201,7 @@ export function Demo({ fixturesHref }: { fixturesHref: string }) {
         </p>
         <p>
           <strong>Copy link</strong> in the panel writes a URL that opens the page with the same previews.{' '}
-          {/* The overlay reads the link when it mounts. A plain <a> loads the page again, so the overlay mounts again. */}
-          <a href="/?debug-state=checkout:payment.error;shipping.express#how-it-works">
+          <a href={reloadWithDeepLink}>
             Open this page with payment.error and shipping.express
           </a>
           .

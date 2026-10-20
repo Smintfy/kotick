@@ -3,28 +3,21 @@ import path from 'node:path';
 import type { NextConfig } from 'next';
 import { MARKERS } from '../scripts/debug-markers.mjs';
 
-// In a production build, state-viewer removes its overlay, and <StateViewer /> renders nothing.
-// The demo on the landing page must show the overlay, also in the production build.
-// Thus, this loader gives "development" as process.env.NODE_ENV to the source of the package.
-const devStateViewer = {
+const keepOverlayInProduction = {
   condition: { path: /packages\/state-viewer\/src\// },
   loaders: [path.join(import.meta.dirname, 'state-viewer-dev-loader.cjs')],
 };
 
 const config: NextConfig = {
-  // The workspace gives state-viewer as TypeScript source.
   transpilePackages: ['state-viewer'],
   turbopack: {
     rules: {
-      // The docs pages import the package README as a string.
       '*.md': { type: 'text' },
-      '*.ts': devStateViewer,
-      '*.tsx': devStateViewer,
+      '*.ts': keepOverlayInProduction,
+      '*.tsx': keepOverlayInProduction,
     },
   },
   compiler: {
-    // Without the loader, the build removes the overlay, and the demo shows only the checkout.
-    // This check fails the build when a string that only the debug code contains is in no client chunk.
     async runAfterProductionCompile({ distDir }) {
       const chunks = path.join(distDir, 'static', 'chunks');
       const files = (await readdir(chunks, { recursive: true })).filter((file) => file.endsWith('.js'));

@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-/** Copies text. Without text, it copies the text of the pre next to it. */
-export function CopyButton({ text, label = 'Copy' }: { text?: string; label?: string }) {
+function Copy({ label, read }: { label: string; read: (button: HTMLButtonElement) => string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -17,12 +16,17 @@ export function CopyButton({ text, label = 'Copy' }: { text?: string; label?: st
       type="button"
       className="copy"
       aria-live="polite"
-      onClick={(event) => {
-        const value = text ?? event.currentTarget.parentElement?.querySelector('pre')?.textContent ?? '';
-        void navigator.clipboard.writeText(value).then(() => setCopied(true));
-      }}
+      onClick={(event) => void navigator.clipboard.writeText(read(event.currentTarget)).then(() => setCopied(true))}
     >
       {copied ? 'Copied' : label}
     </button>
   );
+}
+
+export function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
+  return <Copy label={label} read={() => text} />;
+}
+
+export function CopyCodeButton() {
+  return <Copy label="Copy" read={(button) => button.parentElement?.querySelector('pre')?.textContent ?? ''} />;
 }
