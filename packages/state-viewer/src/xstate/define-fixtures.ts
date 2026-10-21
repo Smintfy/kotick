@@ -57,7 +57,13 @@ export function defineFixtures<TMachine extends AnyStateMachine>(
   return set;
 }
 
+/** Whether the fixtures are an object. A JavaScript app can give defineFixtures() any value. */
+function isStatesObject(states: FixtureSet['states'] | null | undefined): states is FixtureSet['states'] {
+  return typeof states === 'object' && states !== null;
+}
+
 function warnUnknownLeaves(machine: AnyStateMachine, set: FixtureSet): void {
+  if (!isStatesObject(set.states)) return;
   const { leaves } = getTree(machine);
   const unknown = Object.keys(set.states).filter((leaf) => !leaves.has(leaf));
 

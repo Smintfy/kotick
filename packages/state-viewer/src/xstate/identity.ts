@@ -18,11 +18,16 @@ const warned = new Set<string>();
 
 /** `debug.id`, then `machine.id`, then a generated id for machines still on XState's default. */
 export function resolveMachineId(machine: AnyStateMachine, debugId?: string): string {
-  if (debugId !== undefined && debugId !== '') return debugId;
+  if (isDebugId(debugId)) return debugId;
 
   if (machine.id !== '' && machine.id !== DEFAULT_MACHINE_ID) return machine.id;
 
   return fallbackMachineId(machine);
+}
+
+/** Whether `debug.id` names the machine. A JavaScript app can give any value, and an empty id names nothing. */
+function isDebugId(debugId: string | undefined): debugId is string {
+  return typeof debugId === 'string' && debugId !== '';
 }
 
 export function isFallbackId(machine: AnyStateMachine, machineId: string): boolean {
