@@ -98,12 +98,6 @@ export interface PreviewTarget {
 /** Ends a fixture load. A second call does nothing. */
 export type EndFixtureLoad = () => void;
 
-/** One machine of a deep link: every instance of the machine previews these leaves. */
-export interface DeepLinkTarget {
-  machineId: string;
-  leaves: string[];
-}
-
 export interface Registry {
   version: string;
   register(handle: MachineHandle): () => void;
@@ -129,11 +123,4 @@ export interface Registry {
   startFixtureLoad(): EndFixtureLoad;
   logEvent(entry: EventLogEntry): void;
   clearLog(): void;
-
-  /**
-   * Applies a deep link: previews each target machine's instances with the default context order, each
-   * one that registers from now on as it registers, and the ones registered already at the next microtask. A machine's
-   * link ends once preview() or release() is called for one of its instances, or release() releases everything.
-   */
-  applyDeepLink(targets: DeepLinkTarget[]): void;
 }

@@ -4,7 +4,6 @@
 
 import * as React from 'react';
 import type { Registry } from '../../core/types';
-import { resolveUrlParam } from '../deep-link';
 import { useIsomorphicLayoutEffect, useLatest, useRegistrySnapshot } from '../hooks';
 import type { OverlayHost } from '../host';
 import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../model';
@@ -33,7 +32,6 @@ export function Overlay(props: OverlayProps) {
   const { registry, host } = props;
   const defaultPosition = isPosition(props.position) ? props.position : 'bottom-right';
   const theme = isTheme(props.theme) ? props.theme : 'system';
-  const urlParam = resolveUrlParam(props.urlParam);
   const shortcut = useShortcut(props.shortcut);
   const snapshot = useRegistrySnapshot(registry);
   const panelId = React.useId();
@@ -174,7 +172,6 @@ export function Overlay(props: OverlayProps) {
               groups={groups}
               group={page.group}
               instance={page.instance}
-              urlParam={urlParam}
               onPickInstance={pickInstance}
               onOpenInstance={openInstance}
               onCycleMachine={cycleMachine}

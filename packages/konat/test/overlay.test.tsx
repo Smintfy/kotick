@@ -623,9 +623,9 @@ describe('Copy JSON', () => {
         (found) => `${found.getAttribute('aria-label')}: ${found.textContent}`,
       );
 
-    const live = await copy('Copy JSON');
+    const live = await copy();
     await preview(machine.id, ['payment.error']);
-    const previewing = await copy('Copy JSON');
+    const previewing = await copy();
     const labels = footer();
     await new Promise((resolve) => setTimeout(resolve, 2100));
     await flush();
@@ -655,9 +655,9 @@ describe('Copy JSON', () => {
         ],
         status: 'Copy failed',
       },
-      // The clicked button shows the status in place of its label for 2 s, and keeps its name.
-      labels: ['Copy JSON: Copy failed', 'Copy link: Copy link'],
-      later: ['Copy JSON: Copy JSON', 'Copy link: Copy link'],
+      // The button shows the status in place of its label for 2 s, and keeps its name.
+      labels: ['Copy JSON: Copy failed'],
+      later: ['Copy JSON: Copy JSON'],
     });
   });
 
@@ -690,7 +690,7 @@ describe('Copy JSON', () => {
     await mount(<Run machine={machine} />);
     await show(machine.id);
 
-    const { copied } = await copy('Copy JSON');
+    const { copied } = await copy();
     expect(copied.map((text) => JSON.parse(text).context)).toStrictEqual([
       {
         cycle: { name: 'loop', self: '[Circular]' },
@@ -719,7 +719,7 @@ describe('Copy JSON', () => {
     await mount(<Run machine={machine} />);
     await show(machine.id);
 
-    expect({ copied: (await copy('Copy JSON')).copied, context: panel().context }).toEqual({
+    expect({ copied: (await copy()).copied, context: panel().context }).toEqual({
       copied: ['"[Unserializable: no]"'],
       context: ['boom: "[Unreadable]"'],
     });

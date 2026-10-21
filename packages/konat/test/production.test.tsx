@@ -38,11 +38,10 @@ function settle(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 50));
 }
 
-test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtures or storage', async () => {
+test('an app runs on @xstate/react alone: no overlay, shortcut, fixtures or storage', async () => {
   const globals = Reflect.ownKeys(globalThis);
   const machine = createToggleMachine();
   const loads: string[] = [];
-  window.history.replaceState(null, '', `/?debug-state=${machine.id}:on`);
 
   function Toggle() {
     const [snapshot, send] = useMachine(machine, { debug: { label: 'Toggle' } });

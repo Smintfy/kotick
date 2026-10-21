@@ -1,12 +1,11 @@
 // <Konat /> in development builds.
-// It applies the page's deep link, registers fixtures, and renders the overlay into a shadow root.
+// It registers fixtures and renders the overlay into a shadow root.
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { getPageRegistry } from '../core/registry';
 import type { FixtureSet, Registry } from '../core/types';
 import { Overlay } from './components/Overlay';
-import { readDeepLink, resolveUrlParam } from './deep-link';
 import { useIsomorphicLayoutEffect } from './hooks';
 import { createHost, type OverlayHost } from './host';
 import type { FixturesInput, KonatProps } from './props';
@@ -14,45 +13,18 @@ import { overlayStyles } from './styles.generated';
 
 export function Konat(props: KonatProps): React.ReactNode {
   const registry = getPageRegistry();
-  useDeepLink(registry, resolveUrlParam(props.urlParam));
   useFixtures(registry, props.fixtures);
   const host = useHost(props.portalTarget);
 
   return host && createPortal(<Overlay {...props} registry={registry} host={host} />, host.container);
 }
 
-// Links applied per registry, so remounting the overlay (Fast Refresh of the component that renders it, a route
-// change) doesn't bring back previews the user released.
-const appliedLinks = new WeakMap<Registry, Set<string>>();
-
-function useDeepLink(registry: Registry, param: string): void {
-  // React runs the insertion effects of a commit before all its layout effects, where the app's hooks register.
-  // So instances that mount with the overlay are previewed as they register, and their first paint shows the preview.
-  React.useInsertionEffect(() => {
-    const search = window.location.search;
-    let applied = appliedLinks.get(registry);
-
-    if (!applied) {
-      applied = new Set();
-      appliedLinks.set(registry, applied);
-    }
-
-    const id = `${param}\n${search}`;
-
-    if (applied.has(id)) return;
-    applied.add(id);
-    const targets = readDeepLink(search, param);
-
-    if (targets.length > 0) registry.applyDeepLink(targets);
-  }, [registry, param]);
-}
-
 // Sets already registered, so a loader that runs again (an inline arrow on a re-render, StrictMode) adds nothing new.
 const registeredSets = new WeakMap<Registry, WeakSet<FixtureSet>>();
 
 function useFixtures(registry: Registry, input: FixturesInput | undefined): void {
-  // Like the deep link, this insertion effect runs before the app's hooks register in layout effects.
-  // So the registry expects the fixtures before the link previews the instances.
+  // An insertion effect, because StrictMode doesn't run it a second time.
+  // So the loader runs once when the overlay mounts, and its warnings show once.
   React.useInsertionEffect(() => {
     if (input === undefined) return;
     let current = true;

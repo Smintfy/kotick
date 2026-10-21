@@ -72,13 +72,3 @@ export function CopyIcon() {
     </Icon>
   );
 }
-
-export function LinkIcon() {
-  return (
-    <Icon>
-      <path d="M6.5 9.5l3-3" />
-      <path d="M7.25 4.75l1-1a2.83 2.83 0 0 1 4 4l-1 1" />
-      <path d="M8.75 11.25l-1 1a2.83 2.83 0 0 1-4-4l1-1" />
-    </Icon>
-  );
-}

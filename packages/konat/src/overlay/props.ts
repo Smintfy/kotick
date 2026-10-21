@@ -19,8 +19,6 @@ export interface KonatProps {
   theme?: Theme;
   /** Toggles the panel from anywhere, such as `'alt+s'` (the default) or `'ctrl+shift+d'`; `false` turns it off. */
   shortcut?: string | false;
-  /** Query parameter that deep links use. Defaults to `'debug-state'`. */
-  urlParam?: string;
   /** Fixture sets, or a loader for them, which becomes its own chunk. Wrap it in a dev check to drop it from builds. */
   fixtures?: FixturesInput;
   /** Where the overlay's host element is appended. Defaults to `document.body`. */

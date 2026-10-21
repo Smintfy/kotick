@@ -86,9 +86,9 @@ These techniques replace a mock. Each one was tried in this package.
 - **No storage at all.** Call `window.jsdom.reconfigure({ url: 'about:blank' })` before the first render. Both
   storages then throw. `test/setup.ts` clears the storage before each test, which then throws too, so such a file
   holds one test, as `test/blocked-storage.test.tsx` does.
-- **Copy link and Copy JSON.** jsdom has no clipboard and no `execCommand`, so the overlay copies through a textarea in
-  its shadow root and shows "Copy failed". `copy()` in `test/support/panel.ts` observes the shadow root with a
-  `MutationObserver` and returns the value of each textarea the overlay adds.
+- **Copy JSON.** jsdom has no clipboard and no `execCommand`, so the overlay copies through a textarea in its shadow
+  root and shows "Copy failed". `copy()` in `test/support/panel.ts` observes the shadow root with a `MutationObserver`
+  and returns the value of each textarea the overlay adds.
 - **A click that changes the panel's page inside another `act()`.** React 18 shows the new page only when the outer
   `act()` ends, so a step inside `uncaught()` can't go from the machine list to a machine page. `show()` stays on a
   machine page that shows already, so call it before such a step.
@@ -98,8 +98,6 @@ These techniques replace a mock. Each one was tried in this package.
 - **An edit to a machine, as Fast Refresh makes it.** jsdom has no React Refresh. Make the machine in a function, and
   `rerender()` the app with a machine that the function makes again, with the same id. @xstate/react starts the new
   actor from the old one's snapshot, so the live state carries over, as it does in the browser.
-- **A deep link.** Call `history.replaceState(null, '', '/?debug-state=<id>:<leaf>')` before the render, and give the
-  machine a fresh id. The overlay applies each search once per page, so a test never reuses another test's link.
 - **The first paint.** Mount with `createRoot` and without `act`: set `IS_REACT_ACT_ENVIRONMENT` to false for the
   mount. Read the DOM in a microtask that a layout effect queues, at the end of the task that commits the mount, where
   the browser paints. StrictMode can hide a late update, so also mount without it.

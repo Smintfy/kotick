@@ -7,7 +7,6 @@ import { createRecordingStore } from './recording';
 import type {
   DataAvailability,
   DataSource,
-  DeepLinkTarget,
   EndFixtureLoad,
   MachineHandle,
   Override,
@@ -24,8 +23,6 @@ type SnapshotPart = 'machines' | 'overrides' | 'log' | 'data';
 
 /** `${machineId}#${instanceId}`, from toInstanceKey(). */
 type InstanceKey = string;
-
-type MachineId = string;
 
 /** Prints the live-context warning that a preview holds. */
 type HeldWarning = () => void;
@@ -55,10 +52,6 @@ const REFRESH_ORDER: Readonly<Record<DataSource, readonly DataSource[]>> = {
 
 const noop = (): void => {};
 
-type Warn = (message: string, ...details: unknown[]) => void;
-
-const warnInConsole: Warn = (message, ...details) => console.warn(message, ...details);
-
 export function toInstanceKey(machineId: string, instanceId: string): string {
   return `${machineId}#${instanceId}`;
 }
@@ -84,12 +77,6 @@ function createRegistry(): Registry {
   // the mark goes with it when it's released, dropped or replaced.
   const chosenSource = new WeakSet<Override>();
   const overrideListeners = new Map<InstanceKey, Set<() => void>>();
-  // The leaves that each machine's deep link previews.
-  // A link ends when preview() or release() is called for one of the machine's instances, or for all instances.
-  // So a link that the user left doesn't come back on the next instance of the machine, such as a new list row.
-  const linkedLeaves = new Map<MachineId, readonly string[]>();
-  // Machines whose link has warned since it was set, so the instances of a list don't repeat the same warning.
-  const linkWarned = new Set<MachineId>();
   // Fixture loads that startFixtureLoad() started and that are not done yet.
   let pendingFixtureLoads = 0;
   // The warnings that previews hold until no fixture load is pending.
@@ -242,8 +229,6 @@ function createRegistry(): Registry {
       markDirty('data');
 
       if (replaced) releaseIfInvalid(key, handle);
-      // Synchronously, inside the registration: a hook registers in a layout effect, so its first paint shows the link.
-      previewWithLink(key, handle);
     }
 
     const current = registration;
@@ -376,18 +361,17 @@ function createRegistry(): Registry {
     return undefined;
   }
 
-  /** What preview() does, with its warnings going to `warn`. */
-  function applyPreview(instanceKey: string, target: PreviewTarget, warn: Warn): void {
+  function applyPreview(instanceKey: string, target: PreviewTarget): void {
     const handle = registeredHandle(instanceKey);
 
     if (!handle) {
-      warn(`[konat] Can't preview "${instanceKey}": no machine is registered under that key.`);
+      console.warn(`[konat] Can't preview "${instanceKey}": no machine is registered under that key.`);
 
       return;
     }
 
     if (!handle.capabilities?.preview) {
-      warn(`[konat] Can't preview "${instanceKey}": its adapter doesn't support previews.`);
+      console.warn(`[konat] Can't preview "${instanceKey}": its adapter doesn't support previews.`);
 
       return;
     }
@@ -395,7 +379,7 @@ function createRegistry(): Registry {
     const given: unknown[] = Array.isArray(target?.leaves) ? target.leaves : [];
 
     if (given.length === 0) {
-      warn(`[konat] Can't preview "${instanceKey}": no leaves were given.`);
+      console.warn(`[konat] Can't preview "${instanceKey}": no leaves were given.`);
 
       return;
     }
@@ -405,7 +389,7 @@ function createRegistry(): Registry {
     try {
       valid = validLeaves(handle);
     } catch (error) {
-      warn(`[konat] Can't preview "${instanceKey}": describe() threw.`, error);
+      console.warn(`[konat] Can't preview "${instanceKey}": describe() threw.`, error);
 
       return;
     }
@@ -424,13 +408,13 @@ function createRegistry(): Registry {
 
       if (asked.length === 0) {
         const verb = plural ? 'are not leaf states' : 'is not a leaf state';
-        warn(`[konat] Can't preview "${instanceKey}": ${list} ${verb} of "${handle.machineId}".`);
+        console.warn(`[konat] Can't preview "${instanceKey}": ${list} ${verb} of "${handle.machineId}".`);
 
         return;
       }
 
       const what = `not ${plural ? 'leaf states' : 'a leaf state'} of "${handle.machineId}"`;
-      warn(`[konat] Ignoring ${list} in the preview of "${instanceKey}": ${what}.`);
+      console.warn(`[konat] Ignoring ${list} in the preview of "${instanceKey}": ${what}.`);
     }
 
     let normalized: string[];
@@ -438,13 +422,13 @@ function createRegistry(): Registry {
     try {
       normalized = handle.normalizeTarget([...asked]);
     } catch (error) {
-      warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() threw.`, error);
+      console.warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() threw.`, error);
 
       return;
     }
 
     if (!Array.isArray(normalized)) {
-      warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() didn't return an array.`);
+      console.warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() didn't return an array.`);
 
       return;
     }
@@ -453,8 +437,8 @@ function createRegistry(): Registry {
     const requested = asked.filter((leaf) => normalized.includes(leaf));
 
     if (requested.length === 0) {
-      // Nothing that was asked for would be shown, and the override would have no leaves to link to or mark.
-      warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() kept none of the requested leaves.`);
+      // Nothing that was asked for would be shown, and the override would have no leaves to mark.
+      console.warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() kept none of the requested leaves.`);
 
       return;
     }
@@ -475,7 +459,7 @@ function createRegistry(): Registry {
     try {
       resolved = resolveContext(handle, order, requested, leaves);
     } catch (error) {
-      warn(`[konat] Can't preview "${instanceKey}": getContext() threw.`, error);
+      console.warn(`[konat] Can't preview "${instanceKey}": getContext() threw.`, error);
 
       return;
     }
@@ -490,10 +474,10 @@ function createRegistry(): Registry {
       const message = `[konat] No recorded or fixture context for ${shown}, so the preview uses the live context.`;
 
       // Only a preview on the default order takes the fixtures that register later.
-      if (explicit === undefined && pendingFixtureLoads > 0) held = () => warn(message);
-      else warn(message);
+      if (explicit === undefined && pendingFixtureLoads > 0) held = () => console.warn(message);
+      else console.warn(message);
     } else if (explicit !== undefined && source !== explicit) {
-      warn(`[konat] No ${explicit} context for ${shown}, so the preview uses the ${source} context.`);
+      console.warn(`[konat] No ${explicit} context for ${shown}, so the preview uses the ${source} context.`);
     }
 
     // Before the listeners are notified, because a listener can preview the instance again.
@@ -516,9 +500,11 @@ function createRegistry(): Registry {
   }
 
   /**
-   * Resolves the context of previews left to the default order again, so one made before the fixtures loaded (a deep
-   * link on page load, an early click) picks them up. The configuration stays as it was. Only fixtures registering
-   * calls this, and it looks up no recordings: those would move a preview along with live traffic.
+   * Resolves the context of previews left to the default order again.
+   * So a preview made before the fixtures loaded, such as an early click, picks them up.
+   * The configuration stays as it was.
+   * Only fixtures registering calls this.
+   * It looks up no recordings, because those would move a preview along with live traffic.
    */
   function reresolve(): void {
     for (const [key, override] of [...overrides]) {
@@ -589,67 +575,6 @@ function createRegistry(): Registry {
     for (const key of released) notifyOverride(key);
   }
 
-  /**
-   * Previews an instance with its machine's link. One with a preview keeps it: an instance that registers again before
-   * the flush (StrictMode, Fast Refresh) still has the preview it had, linked or chosen since.
-   */
-  function previewWithLink(key: string, handle: MachineHandle): void {
-    const leaves = linkedLeaves.get(handle.machineId);
-
-    // Child machines are listed read-only, without the capability.
-    if (!leaves || overrides.has(key) || !handle.capabilities?.preview) return;
-    const { machineId } = handle;
-    let warned = false;
-
-    // Checked at each call, because the preview can give a held warning after another instance warned.
-    const warn: Warn = (message, ...details) => {
-      // Another instance of the machine warned first.
-      if (!warned && linkWarned.has(machineId)) return;
-      warned = true;
-      linkWarned.add(machineId);
-      console.warn(message, ...details);
-    };
-
-    applyPreview(key, { leaves: [...leaves] }, warn);
-  }
-
-  function applyDeepLink(targets: DeepLinkTarget[]): void {
-    if (!Array.isArray(targets)) {
-      console.warn('[konat] Ignoring a deep link: expected an array of targets.');
-
-      return;
-    }
-
-    let added = false;
-
-    for (const target of targets) {
-      if (!isLinkTarget(target)) {
-        console.warn('[konat] Ignoring a deep link target: expected { machineId, leaves } with string leaves.');
-        continue;
-      }
-
-      linkedLeaves.set(target.machineId, freeze([...target.leaves]));
-      linkWarned.delete(target.machineId);
-      added = true;
-    }
-
-    if (!added) return;
-    // Not at once, so a UI can link from the commit where its components register (React's insertion effects run
-    // before every layout effect) without updating the components that show instances registered earlier.
-    queueMicrotask(() => {
-      for (const [key, { handle }] of [...registrations]) {
-        if (!removing.has(key)) previewWithLink(key, handle);
-      }
-    });
-  }
-
-  /** Ends the link of the instance's machine: whoever previews or releases it has taken over from the link. */
-  function dismissLink(instanceKey: string): void {
-    const handle = registrations.get(instanceKey)?.handle;
-
-    if (handle) linkedLeaves.delete(handle.machineId);
-  }
-
   function onOverride(instanceKey: string, listener: () => void): () => void {
     let set = overrideListeners.get(instanceKey);
 
@@ -684,15 +609,8 @@ function createRegistry(): Registry {
     register,
     subscribe,
     getSnapshot,
-    preview(instanceKey, target) {
-      dismissLink(instanceKey);
-      applyPreview(instanceKey, target, warnInConsole);
-    },
-    release(instanceKey) {
-      if (instanceKey === undefined) linkedLeaves.clear();
-      else dismissLink(instanceKey);
-      releaseOverride(instanceKey);
-    },
+    preview: applyPreview,
+    release: releaseOverride,
     getOverride: (instanceKey) => overrides.get(instanceKey),
     onOverride,
     record(instanceKey, leaves, context) {
@@ -719,7 +637,6 @@ function createRegistry(): Registry {
       eventLog.clear();
       markDirty('log');
     },
-    applyDeepLink,
   };
 }
 
@@ -746,7 +663,6 @@ function createNoopRegistry(): Registry {
     startFixtureLoad: () => noop,
     logEvent: noop,
     clearLog: noop,
-    applyDeepLink: noop,
   };
 }
 
@@ -789,19 +705,6 @@ export function getPageRegistry(): Registry {
 // A JS app can register anything, so the ids are read through `?.` and checked.
 function isValidHandle(handle: MachineHandle): boolean {
   return isId(handle?.machineId) && isId(handle?.instanceId);
-}
-
-function isLinkTarget(target: unknown): target is DeepLinkTarget {
-  return (
-    typeof target === 'object' &&
-    target !== null &&
-    'machineId' in target &&
-    isId(target.machineId) &&
-    'leaves' in target &&
-    Array.isArray(target.leaves) &&
-    target.leaves.length > 0 &&
-    target.leaves.every(isLeafId)
-  );
 }
 
 // Keys come from machine ids, so a null prototype keeps ids like "constructor" or "__proto__" from misbehaving.
