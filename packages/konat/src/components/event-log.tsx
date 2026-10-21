@@ -1,5 +1,3 @@
-// The event log: events the UI sent during a preview, newest first, with the state it showed and when.
-
 import { useId } from 'react';
 import type { EventLogEntry } from '../types';
 import { formatTime, summarizePayload } from '../utils/format';
@@ -22,7 +20,7 @@ function keyOf(entry: EventLogEntry): number {
 
 interface EventLogProps {
   entries: readonly EventLogEntry[];
-  /** `checkout · 1` for an instance key; the key itself once the instance is gone. */
+  /** Falls back to the key itself once the instance is gone. */
   labelOf(instanceKey: string): string;
   onClear(): void;
 }

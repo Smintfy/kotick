@@ -1,5 +1,4 @@
 /*
- * The overlay's CSS. scripts/build-styles.mjs compiles it into src/styles.generated.ts.
  * The overlay is in a shadow root, so these rules reach only the overlay.
  * Sizes are in px, never rem, because the page sets the root font size.
  */
@@ -95,7 +94,6 @@
 /* Plain :hover. Tailwind's own hover variant also needs (hover: hover), which touch screens don't match. */
 @custom-variant hover (&:hover);
 
-/* The theme comes from the data-theme attribute of the overlay's root: system, light or dark. */
 @custom-variant dark {
   &:where([data-theme="dark"] *) {
     @slot;
@@ -127,7 +125,6 @@
     box-sizing: border-box;
   }
 
-  /* The overlay's root has data-theme. Its colors are custom properties, so the utilities follow the theme. */
   [data-theme] {
     color-scheme: light;
     --konat-bg: #ffffff;
@@ -240,7 +237,6 @@
     color: inherit;
     margin: 0;
   }
-  /* Each button and the select draw their own border, if any. */
   button,
   select {
     border: 0;
@@ -281,7 +277,7 @@
     display: none;
   }
 
-  /* A thin rounded thumb with no track. The transparent border keeps the thumb clear of the panel's edge. */
+  /* The transparent border keeps the thumb clear of the panel's edge. */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;

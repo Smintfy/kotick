@@ -1,7 +1,3 @@
-// The toolbar bubble and the panel it opens, inside the shadow root.
-// It keeps the settings, picks the page to show, moves focus in and out of the panel and between its pages, and
-// handles the shortcut.
-
 import * as React from 'react';
 import { warnOnce } from '../core/warn-once';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
@@ -233,7 +229,6 @@ export function Overlay(props: OverlayProps) {
   );
 }
 
-/** What the shell shows for a page: its header, and the page itself. */
 interface PageView {
   title: string;
   chips?: React.ReactNode;
@@ -241,10 +236,6 @@ interface PageView {
   body: React.ReactNode;
 }
 
-/**
- * The settings page while it is open. Else the stored machine's page once that machine registers, with the picked
- * instance or else its first. Else the machine list.
- */
 function pageToShow(
   subpage: 'settings' | undefined,
   groups: readonly MachineGroup[],
@@ -323,10 +314,6 @@ function usePanelFocus(open: boolean, host: OverlayHost, page: PanelPage) {
   return { panelRef, bubbleRef, onToggle, focusWithPage };
 }
 
-/**
- * Where focus goes on a page: the tree's tab stop, the checked corner, or a row of the list.
- * Back on the list, it goes to the row of the page it came from.
- */
 function focusTarget(panel: HTMLElement, page: PanelPage, from: PanelPage | undefined): HTMLElement {
   switch (page.kind) {
     case 'machine':

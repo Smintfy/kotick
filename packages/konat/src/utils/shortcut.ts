@@ -1,6 +1,3 @@
-// Keyboard shortcuts. The toggle is configurable, such as 'alt+s' or 'ctrl+shift+d', and every shortcut
-// is ignored while the user types. The arrows, Home and End move through the rows of a page.
-
 import type { KonatProps } from '../types';
 
 interface Shortcut {
@@ -41,12 +38,12 @@ const KEY_NAMES = new Map<string, string>([
   ['plus', '+'],
 ]);
 
-/** Whether the shortcut prop is text to parse. A JS app can pass anything. */
+/** A JS app can pass any value as the shortcut prop. */
 export function isShortcutText(value: KonatProps['shortcut']): value is string {
   return typeof value === 'string';
 }
 
-/** Parses a shortcut such as 'alt+s'; `undefined` when it names no key or an unknown modifier. */
+/** `undefined` when the text names no key or an unknown modifier. */
 export function parseShortcut(value: string): Shortcut | undefined {
   const parts = value
     .toLowerCase()
@@ -100,7 +97,6 @@ const TEXT_INPUT_TYPES = new Set([
   'time',
 ]);
 
-/** Whether keys pressed on `target` type text: text inputs, textareas and contenteditable elements. */
 export function isTyping(target: EventTarget | null | undefined): boolean {
   if (!isElement(target)) return false;
 
@@ -113,14 +109,13 @@ export function isTyping(target: EventTarget | null | undefined): boolean {
 }
 
 /**
- * Whether a target is an element. The check reads nodeType, not instanceof, so an element of another window counts.
+ * The check reads nodeType, not instanceof, so an element of another window counts.
  * The overlay can be in the document of an iframe or a popup.
  */
 export function isElement(target: EventTarget | null | undefined): target is Element {
   return target !== null && target !== undefined && 'nodeType' in target && target.nodeType === Node.ELEMENT_NODE;
 }
 
-/** Whether an element is an `<input>`, of this window or another one. */
 function isInput(element: Element): element is HTMLInputElement {
   return element.localName === 'input';
 }
@@ -145,12 +140,11 @@ const MOVES = new Map<string, Move>([
   ['End', 'last'],
 ]);
 
-/** The move that `KeyboardEvent.key` makes through rows or leaves, if any. */
 export function moveOf(key: string): Move | undefined {
   return MOVES.get(key);
 }
 
-/** The index a move goes to among `length` items. `index` is -1 when no item is current. A move stops at the ends. */
+/** `index` is -1 when no item is current. A move stops at the ends. */
 export function moveIndex(index: number, length: number, move: Move): number {
   switch (move) {
     case 'first':

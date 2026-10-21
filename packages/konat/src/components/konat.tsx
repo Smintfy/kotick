@@ -1,6 +1,3 @@
-// <Konat /> in development builds.
-// It registers fixtures and renders the overlay into a shadow root.
-
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { getPageRegistry } from '../core/registry';
@@ -76,7 +73,7 @@ function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   return host;
 }
 
-/** Whether the fixtures prop is a loader. A function of another window is one too. */
+/** A function of another window is a loader too. */
 function isLoader(input: FixturesInput): input is Exclude<FixturesInput, readonly FixtureSet[]> {
   return typeof input === 'function';
 }
@@ -112,7 +109,6 @@ async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
   return sets;
 }
 
-/** A module namespace, as a loader that returns `import()` resolves to. */
 function hasDefaultExport(value: unknown): value is { default: unknown } {
   return typeof value === 'object' && value !== null && !Array.isArray(value) && 'default' in value;
 }

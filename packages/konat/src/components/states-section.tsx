@@ -1,7 +1,3 @@
-// The States section: the state tree, and buttons for the child machines.
-// The tree shows each non-history state, the active and previewed leaves, and the data a preview of each leaf uses.
-// A click on a compound or parallel state collapses or expands it.
-
 import { useId, type CSSProperties } from 'react';
 import type { DataAvailability, Override, RegistrySnapshot, StateNodeInfo } from '../types';
 import type { InstanceEntry } from '../utils/model';
@@ -86,14 +82,11 @@ export function StatesSection(props: StatesSectionProps) {
 
 interface StateTreeProps {
   nodes: readonly StateNodeInfo[];
-  /** Names the tree for assistive technology, such as the instance label. */
   label: string;
-  /** The real actor's active leaves. */
   active: ReadonlySet<string>;
   override: Override | undefined;
   data: DataAvailability;
   collapsed: ReadonlySet<string>;
-  /** The leaf keyboard navigation is on; the only one in the tab order. */
   cursor: string | undefined;
   readOnly: boolean;
   onSelect(leaf: string): void;

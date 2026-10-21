@@ -1,6 +1,3 @@
-// The machine list: a row for each machine on the page, then Release all and Settings.
-// The arrows, Home and End move focus through the rows.
-
 import type * as React from 'react';
 import { leavesOf } from '../core/registry';
 import { usePathname } from '../hooks/use-pathname';
@@ -109,7 +106,6 @@ function MachineRow({ group, previewing, onOpen }: { group: MachineGroup; previe
   );
 }
 
-/** The page's path, in a code chip. It renders nothing on the server. */
 export function PathChip() {
   const pathname = usePathname();
 

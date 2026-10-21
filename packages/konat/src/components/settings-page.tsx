@@ -1,5 +1,3 @@
-// The settings page: the corner of the bubble and the panel, and the keyboard shortcuts.
-
 import { useId } from 'react';
 import type { Position } from '../types';
 import { BODY, SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
@@ -21,7 +19,7 @@ const PAGE_SHORTCUTS: readonly { keys: string[]; action: string }[] = [
 
 interface SettingsPageProps {
   position: Position;
-  /** The toggle shortcut, such as 'Alt+S'. Undefined while the shortcut is off. */
+  /** Undefined while the shortcut is off. */
   shortcutLabel: string | undefined;
   onPosition(position: Position): void;
 }
