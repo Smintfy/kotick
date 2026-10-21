@@ -13,6 +13,7 @@ import {
   type AnyActorRef,
   type EventFrom,
 } from 'xstate';
+import { errorMessage, systemActor } from './support/anti-slop-b';
 import { mount, page, start } from './support/app';
 import { uncaught, watchConsole } from './support/console';
 import {
@@ -31,12 +32,14 @@ import {
 
 const BROKEN = 'Checkout broken';
 
+type CheckoutContext = { items: number };
+
+type CheckoutEvent = { type: 'ADD' } | { type: 'PAY' } | { type: 'SUCCEED' } | { type: 'NOOP' } | { type: 'BREAK' };
+
 function createCheckoutMachine() {
   return setup({
-    types: {
-      context: {} as { items: number },
-      events: {} as { type: 'ADD' } | { type: 'PAY' } | { type: 'SUCCEED' } | { type: 'NOOP' } | { type: 'BREAK' },
-    },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
     guards: { hasItems: ({ context }) => context.items > 0 },
   }).createMachine({
     id: freshId('checkout'),
@@ -248,7 +251,7 @@ describe('an actor that ends', () => {
     expect({
       before,
       status: actor.getSnapshot().status,
-      uncaught: errors.map((error) => (error as Error).message),
+      uncaught: errors.map(errorMessage),
       previewing: badge(),
       machines: await machines(),
     }).toEqual({
@@ -328,7 +331,7 @@ describe('an actor connected before it starts', () => {
     expect({
       before,
       status: greeting.getSnapshot().status,
-      uncaught: errors.map((error) => (error as Error).message),
+      uncaught: errors.map(errorMessage),
       after: await machines(),
     }).toEqual({ before: [machine.id], status: 'error', uncaught: ['Greeting broken'], after: [] });
   });
@@ -358,7 +361,7 @@ describe('an actor that a hook runs', () => {
   function actorsOf(hook: Hook): Actors {
     if (!hook.actor) throw new Error('The toggle did not render.');
 
-    return { hook: hook.actor, real: hook.actor.system.get(SYSTEM_ID) as AnyActorRef };
+    return { hook: hook.actor, real: systemActor(hook.actor, SYSTEM_ID) };
   }
 
   test("connect() gives back the hook's actor, and the hook's instance stays the one listed and previewed", async () => {
@@ -431,8 +434,11 @@ describe('an actor that is not the root of its system', () => {
       states: { closed: { on: { OPEN: 'open' } }, open: {} },
     });
 
+    type AppEvent = { type: 'TOGGLE' } | { type: 'OPEN_SETTINGS' };
+
     const appMachine = setup({
-      types: { events: {} as { type: 'TOGGLE' } | { type: 'OPEN_SETTINGS' } },
+      // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+      types: { events: {} as AppEvent },
       actors: { auth, settings },
     }).createMachine({
       id: freshId('app'),
