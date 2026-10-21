@@ -3,6 +3,7 @@ import { StateViewer, type Theme } from 'state-viewer';
 import { defineFixtures, useMachine } from 'state-viewer/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import { createMachine, setup, type AnyStateMachine } from 'xstate';
+import type { Json } from './support/json';
 import {
   copy,
   flush,
@@ -22,9 +23,14 @@ import {
 
 const SETTINGS_KEY = 'state-viewer:ui';
 
+type CheckoutContext = { note: string };
+
+type CheckoutEvent = { type: 'EXPRESS' } | { type: 'STANDARD' };
+
 function createCheckoutMachine() {
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   return setup({
-    types: { context: {} as { note: string }, events: {} as { type: 'EXPRESS' } | { type: 'STANDARD' } },
+    types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
   }).createMachine({
     id: freshId('checkout'),
     type: 'parallel',
@@ -89,7 +95,7 @@ function button(label: string): HTMLButtonElement {
 }
 
 /** The corner and the color scheme of the overlay. */
-function look(): { corner?: string; theme?: string } {
+function look() {
   const { position, theme } = overlay().querySelector<HTMLElement>('[data-position]')?.dataset ?? {};
 
   return { corner: position, theme };
@@ -139,13 +145,13 @@ async function machineList() {
   };
 }
 
-function stored(): unknown {
+function stored(): Json {
   const raw = localStorage.getItem(SETTINGS_KEY);
 
   return raw === null ? null : JSON.parse(raw);
 }
 
-function json(value: unknown): string {
+function json(value: Json): string {
   return JSON.stringify(value, null, 2);
 }
 
@@ -757,7 +763,9 @@ describe('Copy JSON', () => {
   });
 
   test('turns what JSON can’t hold into placeholders, and repeats an object that is shared but not a cycle', async () => {
-    const cycle: Record<string, unknown> = { name: 'loop' };
+    type Loop = { name: string; self?: Loop };
+
+    const cycle: Loop = { name: 'loop' };
     cycle.self = cycle;
     const shared = { n: 1 };
 
@@ -989,10 +997,14 @@ test('the theme prop sets the color scheme, and an unknown theme follows the sys
 
   const themes = [look().theme];
 
-  for (const theme of ['light', 'dark', 'neon']) {
-    rerender(<StateViewer theme={theme as Theme} />);
+  for (const theme of ['light', 'dark'] satisfies Theme[]) {
+    rerender(<StateViewer theme={theme} />);
     themes.push(look().theme);
   }
+
+  // @ts-expect-error A JavaScript app can pass a theme that Theme does not have.
+  rerender(<StateViewer theme="neon" />);
+  themes.push(look().theme);
 
   expect(themes).toEqual(['system', 'light', 'dark', 'system']);
 });

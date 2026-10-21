@@ -65,7 +65,7 @@ export function focused<T extends Element>(kind: new () => T): T | null {
 
   if (element === null) return null;
 
-  if (!(element instanceof kind)) throw new Error(`The focus is on a ${element.tagName}, not on a ${kind.name}.`);
+  if (!(element instanceof kind)) throw new Error(`The focus is on <${element.localName}>, not on a ${kind.name}.`);
 
   return element;
 }
