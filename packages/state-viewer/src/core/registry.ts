@@ -762,7 +762,8 @@ export function getPageRegistry(): Registry {
     return serverRegistry;
   }
 
-  // SAFETY: Every version of state-viewer keeps its Registry under this key of globalThis, and nothing else writes it.
+  // SAFETY: Only state-viewer writes this key of globalThis, and each version writes its Registry there.
+  // The code below compares the version of the registry that it finds.
   const scope = globalThis as typeof globalThis & { [REGISTRY_KEY]?: Registry };
   const existing = scope[REGISTRY_KEY];
 
@@ -805,7 +806,8 @@ function isLinkTarget(target: unknown): target is DeepLinkTarget {
 
 // Keys come from machine ids, so a null prototype keeps ids like "constructor" or "__proto__" from misbehaving.
 function emptyRecord<T>(): Record<string, T> {
-  return Object.create(null);
+  // SAFETY: An object with no prototype and no keys is an empty record, whatever the type of its values.
+  return Object.create(null) as Record<string, T>;
 }
 
 function toRecord<T>(map: Map<string, T>): Record<string, T> {

@@ -102,14 +102,27 @@ const TEXT_INPUT_TYPES = new Set([
 
 /** Whether keys pressed on `target` type text: text inputs, textareas and contenteditable elements. */
 export function isTyping(target: EventTarget | null | undefined): boolean {
-  if (!(target instanceof Element)) return false;
+  if (!isElement(target)) return false;
 
-  if (target instanceof HTMLTextAreaElement) return true;
+  if (target.localName === 'textarea') return true;
 
-  if (target instanceof HTMLInputElement) return TEXT_INPUT_TYPES.has(target.type);
+  if (isInput(target)) return TEXT_INPUT_TYPES.has(target.type);
 
   // isContentEditable also covers inherited editability; the selector is for DOMs that don't implement it (jsdom).
-  return (target instanceof HTMLElement && target.isContentEditable) || target.closest(EDITABLE) !== null;
+  return ('isContentEditable' in target && target.isContentEditable === true) || target.closest(EDITABLE) !== null;
+}
+
+/**
+ * Whether a target is an element. The check reads nodeType, not instanceof, so an element of another window counts.
+ * The overlay can be in the document of an iframe or a popup.
+ */
+export function isElement(target: EventTarget | null | undefined): target is Element {
+  return target !== null && target !== undefined && 'nodeType' in target && target.nodeType === Node.ELEMENT_NODE;
+}
+
+/** Whether an element is an `<input>`, of this window or another one. */
+function isInput(element: Element): element is HTMLInputElement {
+  return element.localName === 'input';
 }
 
 const EDITABLE = '[contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]';

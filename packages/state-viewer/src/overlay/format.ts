@@ -4,7 +4,7 @@
 import type { EventLogEntry } from '../core/types';
 
 /** An object inside a context or an event's payload, as the panel walks it. */
-// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- A context is the app's own data, and it has no schema.
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- A context or an event is the app's own data, with no schema.
 type ContextObject = Record<string, unknown>;
 
 /** What an XState actor ref has. It is shown as `[Actor id]`, not as its properties. */
@@ -91,14 +91,14 @@ function inspectObject(value: ContextObject): Inspected {
  * JSON for the clipboard. Cycles, functions, actors, Maps and Sets become readable placeholders rather than errors,
  * and `undefined` properties are left out as JSON.stringify does.
  */
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The clipboard gets any value of a context.
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- The clipboard and the event log get any value of a context or an event.
 export function toJson(value: unknown, space: number | string = 2): string {
   const ancestors: unknown[] = [];
 
   try {
     const text = JSON.stringify(
       value,
-      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- `item` is what toJSON() gave for any value of a context.
+      // oxlint-disable-next-line anti-slop/no-unknown-parameters -- `item` is what toJSON() gave for any value of a context or an event.
       function replacer(this: ContextObject, key: string, item: unknown) {
         // `item` is what toJSON() returned. Actors have one that hides what they are, so placeholders use the raw
         // value.
