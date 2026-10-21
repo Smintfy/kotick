@@ -10,8 +10,7 @@ import { badge, clickLeaf, flush, freshId, machines, preview, release } from '..
 
 const BROKEN = 'Upload broken';
 
-/** The system id of the upload's actor. The server sends to the real actor by it, so a preview doesn't block it. */
-const UPLOAD = 'upload';
+const UPLOAD_SYSTEM_ID = 'upload';
 
 type UploadEvent = { type: 'UPLOADED' } | { type: 'BREAK' };
 
@@ -57,16 +56,16 @@ function observerInto(heard: string[], { error = true } = {}): Observer<Recorded
   return observer;
 }
 
-/** What the server sends to the real actor of the upload, as a socket would, past the proxy. */
+/** What the server sends to the upload, as a socket would. */
 function Server({ actorRef }: { actorRef: AnyActorRef }) {
-  const send = (type: 'UPLOADED' | 'BREAK') => systemActor(actorRef, UPLOAD).send({ type });
+  const sendToReal = (type: 'UPLOADED' | 'BREAK') => systemActor(actorRef, UPLOAD_SYSTEM_ID).send({ type });
 
   return (
     <>
-      <button type="button" onClick={() => send('UPLOADED')}>
+      <button type="button" onClick={() => sendToReal('UPLOADED')}>
         Finish upload
       </button>
-      <button type="button" onClick={() => send('BREAK')}>
+      <button type="button" onClick={() => sendToReal('BREAK')}>
         Break upload
       </button>
     </>
@@ -94,7 +93,7 @@ test('the observer given to useActorRef gets the done snapshot, then complete, o
   const observer = observerInto(heard);
 
   function Upload() {
-    return <Server actorRef={useActorRef(machine, { systemId: UPLOAD }, observer)} />;
+    return <Server actorRef={useActorRef(machine, { systemId: UPLOAD_SYSTEM_ID }, observer)} />;
   }
 
   render(page(<Upload />));
@@ -124,7 +123,7 @@ test('an inline observer follows the next preview, and hears the done snapshot o
   const heard: string[] = [];
 
   function Upload({ hint }: { hint: string }) {
-    const actorRef = useActorRef(machine, { systemId: UPLOAD }, observerInto(heard));
+    const actorRef = useActorRef(machine, { systemId: UPLOAD_SYSTEM_ID }, observerInto(heard));
     const value = useSelector(actorRef, (snapshot) => String(snapshot.value));
 
     return (
@@ -166,7 +165,7 @@ test.each([
   const observer = observerInto(heard, { error });
 
   function Upload() {
-    return <Server actorRef={useActorRef(machine, { systemId: UPLOAD }, observer)} />;
+    return <Server actorRef={useActorRef(machine, { systemId: UPLOAD_SYSTEM_ID }, observer)} />;
   }
 
   render(page(<Upload />));
@@ -191,7 +190,7 @@ test('an observer passed only after the upload finished hears complete at once, 
   const observer = observerInto(heard);
 
   function Upload({ panelOpen }: { panelOpen: boolean }) {
-    return <Server actorRef={useActorRef(machine, { systemId: UPLOAD }, panelOpen ? observer : undefined)} />;
+    return <Server actorRef={useActorRef(machine, { systemId: UPLOAD_SYSTEM_ID }, panelOpen ? observer : undefined)} />;
   }
 
   const view = render(page(<Upload panelOpen={false} />));
@@ -222,7 +221,7 @@ describe('a waitFor on the actor of a hook whose component unmounts while a prev
     let actorRef: AnyActorRef | undefined;
 
     function Dialog() {
-      actorRef = useActorRef(machine, { systemId: UPLOAD });
+      actorRef = useActorRef(machine, { systemId: UPLOAD_SYSTEM_ID });
 
       return null;
     }
@@ -238,7 +237,7 @@ describe('a waitFor on the actor of a hook whose component unmounts while a prev
     if (answer) {
       log.push('answer');
       await act(async () => {
-        systemActor(actorRef!, UPLOAD).send({ type: answer });
+        systemActor(actorRef!, UPLOAD_SYSTEM_ID).send({ type: answer });
       });
     }
 
@@ -327,7 +326,7 @@ describe('an actor that fails while a preview hides the failure', () => {
     const machine = createUploadMachine();
 
     function MachineApp() {
-      const [snapshot, , actorRef] = useMachine(machine, { systemId: UPLOAD });
+      const [snapshot, , actorRef] = useMachine(machine, { systemId: UPLOAD_SYSTEM_ID });
 
       return (
         <>
@@ -354,7 +353,7 @@ describe('an actor that fails while a preview hides the failure', () => {
     }
 
     function SelectorApp({ showStatus }: { showStatus: boolean }) {
-      const actorRef = useActorRef(machine, { systemId: UPLOAD });
+      const actorRef = useActorRef(machine, { systemId: UPLOAD_SYSTEM_ID });
 
       return (
         <>

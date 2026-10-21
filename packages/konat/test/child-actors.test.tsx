@@ -449,7 +449,7 @@ function Watcher({ actor }: { actor: AnyActorRef }) {
   );
 }
 
-/** Starts the parent outside React, and shows it through connect(). Returns the real actor, to send past a preview. */
+/** Starts the parent outside React, and shows it through connect(). */
 async function mountWatcher(machine: AnyStateMachine) {
   const actor = start(machine);
   await mount(<Watcher actor={connect(actor)} />);
@@ -464,14 +464,14 @@ function seen() {
 describe('during a preview of the parent', () => {
   test('the component gets the live children as the real actor moves on', async () => {
     const invoker = createInvokerMachine();
-    const actor = await mountWatcher(invoker);
+    const real = await mountWatcher(invoker);
     await preview(invoker.id, ['paused']);
-    await send(childOf(actor, 'timer'), { type: 'LAP' });
+    await send(childOf(real, 'timer'), { type: 'LAP' });
 
     const lapped = seen();
-    await send(actor, { type: 'PAUSE' });
+    await send(real, { type: 'PAUSE' });
     const paused = seen();
-    await send(actor, { type: 'RESUME' });
+    await send(real, { type: 'RESUME' });
     expect({ lapped, paused, resumed: seen() }).toEqual({
       lapped: { parent: { value: 'paused', children: ['timer'] }, timer: 'lapped' },
       paused: { parent: { value: 'paused', children: [] }, timer: null },
@@ -481,8 +481,8 @@ describe('during a preview of the parent', () => {
 
   test('a preview of a state that invokes a child starts no child', async () => {
     const invoker = createInvokerMachine();
-    const actor = await mountWatcher(invoker);
-    await send(actor, { type: 'PAUSE' });
+    const real = await mountWatcher(invoker);
+    await send(real, { type: 'PAUSE' });
 
     await preview(invoker.id, ['active']);
     expect({ ...seen(), machines: await machines() }).toEqual({

@@ -19,22 +19,22 @@ type Edit = 'as written' | 'without failed';
 const EDITED_STATES = { 'as written': { failed: {} }, 'without failed': {} };
 
 /**
- * An upload whose invoked socket reports what the server says. The test reports through `sockets`, by the machine's
- * version, past the hook's actor: a preview blocks the events the app sends through that.
+ * An upload whose invoked socket reports what the server says. The test reports through `realSockets`, by the
+ * machine's version.
  * A new machine each call, as Fast Refresh or a machine built from props gives the hook. `version` names the machine
  * in what an observer hears.
  */
 function createUploadMachine(
   { id, version, edit = 'as written' }: { id: string; version: string; edit?: Edit },
-  sockets: Map<string, Socket>,
+  realSockets: Map<string, Socket>,
 ) {
   return setup({
     actors: {
       socket: fromCallback<SocketEvent>(({ sendBack }) => {
-        sockets.set(version, sendBack);
+        realSockets.set(version, sendBack);
 
         return () => {
-          if (sockets.get(version) === sendBack) sockets.delete(version);
+          if (realSockets.get(version) === sendBack) realSockets.delete(version);
         };
       }),
     },
@@ -85,8 +85,8 @@ function observe(calls: string[]): Observer<UploadSnapshot> {
  */
 async function mountUpload(kind: Kind) {
   const calls: string[] = [];
-  const sockets = new Map<string, Socket>();
-  let machine = createUploadMachine({ id: freshId('upload'), version: 'old' }, sockets);
+  const realSockets = new Map<string, Socket>();
+  let machine = createUploadMachine({ id: freshId('upload'), version: 'old' }, realSockets);
   let inWindow: (() => void) | undefined;
 
   function Upload({ machine }: { machine: UploadMachine }) {
@@ -107,7 +107,7 @@ async function mountUpload(kind: Kind) {
   calls.length = 0;
 
   const socket = (): Socket => {
-    const send = sockets.get(String(machine.version));
+    const send = realSockets.get(String(machine.version));
 
     if (!send) throw new Error(`No socket runs for the ${machine.version} upload.`);
 
@@ -139,10 +139,10 @@ async function mountUpload(kind: Kind) {
      * message from the server can arrive there, because React runs the passive effects after the paint.
      */
     replace: async (edit?: Edit, report?: SocketEvent['type']): Promise<void> => {
-      const replaced = sockets.get(String(machine.version));
+      const replaced = realSockets.get(String(machine.version));
 
       if (report) inWindow = () => replaced?.({ type: report });
-      machine = createUploadMachine({ id: machine.id, version: 'new', edit }, sockets);
+      machine = createUploadMachine({ id: machine.id, version: 'new', edit }, realSockets);
       await step('[replace]', async () => {
         view.rerender(page(<Upload machine={machine} />));
         await flush();
@@ -201,10 +201,10 @@ describe('the actor is replaced during a preview', () => {
 
   test('a component that mirrors the upload from a stable observer shows the real state once the preview is released', async () => {
     const id = freshId('upload');
-    const sockets = new Map<string, Socket>();
+    const realSockets = new Map<string, Socket>();
 
     function Upload({ version }: { version: string }) {
-      const machine = React.useMemo(() => createUploadMachine({ id, version }, sockets), [version]);
+      const machine = React.useMemo(() => createUploadMachine({ id, version }, realSockets), [version]);
       const [status, setStatus] = React.useState('?');
       const [observer] = React.useState(() => (snapshot: UploadSnapshot) => setStatus(String(snapshot.value)));
       useActorRef(machine, undefined, observer);
@@ -329,13 +329,13 @@ describeWithActivity('a render React throws away gives the hook a new machine', 
     ['plain update', 'the fallback'],
   ])("a suspended %s: an inline observer follows the committed actor's previews and real updates", async (update, shows) => {
     const calls: string[] = [];
-    const sockets = new Map<string, Socket>();
+    const realSockets = new Map<string, Socket>();
     const id = freshId('upload');
 
     // `loading` is a view whose data the files list next to the upload doesn't have yet.
     type AppState = { machine: UploadMachine; loading: boolean };
 
-    const committed: AppState = { machine: createUploadMachine({ id, version: 'old' }, sockets), loading: false };
+    const committed: AppState = { machine: createUploadMachine({ id, version: 'old' }, realSockets), loading: false };
 
     let setState: React.Dispatch<React.SetStateAction<AppState>> = () => {};
 
@@ -379,7 +379,7 @@ describeWithActivity('a render React throws away gives the hook a new machine', 
     calls.push(`[${update}]`);
 
     const apply = (): void =>
-      setState({ machine: createUploadMachine({ id, version: 'thrown away' }, sockets), loading: true });
+      setState({ machine: createUploadMachine({ id, version: 'thrown away' }, realSockets), loading: true });
 
     await act(async () => (update === 'transition' ? React.startTransition(apply) : apply()));
     await flush();
@@ -387,7 +387,7 @@ describeWithActivity('a render React throws away gives the hook a new machine', 
     await step('[preview failed]', () => preview(id, ['failed']));
     await step('[release]', () => release(id));
     // The socket of the committed upload reports it finished.
-    await step('[finish]', () => sockets.get('old')?.({ type: 'FINISH' }));
+    await step('[finish]', () => realSockets.get('old')?.({ type: 'FINISH' }));
     expect({ shown, calls }).toEqual({
       shown: shows,
       calls: [

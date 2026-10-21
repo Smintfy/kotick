@@ -128,7 +128,6 @@ async function mountConnected(machine: CheckoutMachine, fixtures?: FixturesInput
   );
   await flush();
 
-  // The module sends to the actor itself, not to the proxy, so a preview doesn't block these events.
   return async (event: EventFrom<CheckoutMachine>) => {
     await act(async () => {
       actor.send(event);
@@ -577,11 +576,11 @@ describe('parallel regions', () => {
 describe('an actor that moves on during a preview', () => {
   test('the preview keeps the context and the leaves that it started with', async () => {
     const machine = createCheckoutMachine();
-    const send = await mountConnected(machine);
-    await send({ type: 'START' });
+    const sendToReal = await mountConnected(machine);
+    await sendToReal({ type: 'START' });
 
     await preview(machine.id, ['paying.card.error']);
-    await send({ type: 'EXPRESS' });
+    await sendToReal({ type: 'EXPRESS' });
     expect({ shown: shown(), panel: panel() }).toEqual({
       shown: { value: { paying: { card: 'error', shipping: 'standard' } }, context: { step: 1, note: 'none' } },
       panel: {
@@ -600,19 +599,19 @@ describe('an actor that moves on during a preview', () => {
     const output = watchConsole();
     const machine = createCheckoutMachine();
 
-    const send = await mountConnected(machine, [
+    const sendToReal = await mountConnected(machine, [
       defineFixtures(machine, { 'paying.shipping.standard': { context: { step: 7, note: 'standard shipping' } } }),
     ]);
 
     await show(machine.id);
     const key = shownKey();
-    await send({ type: 'START' });
-    await send({ type: 'FAIL', note: 'declined' });
+    await sendToReal({ type: 'START' });
+    await sendToReal({ type: 'FAIL', note: 'declined' });
 
     // The fixture of the filled-in leaf paying.shipping.standard makes Fixture available.
     await preview(machine.id, ['paying.card.error']);
     const offered = sources();
-    await send({ type: 'EXPRESS' });
+    await sendToReal({ type: 'EXPRESS' });
     await pickSource('fixture');
     expect({ offered, shown: shown(), source: panel().source, filled: panel().filled, warnings: output.warn }).toEqual({
       offered: { recorded: 'checked', fixture: 'enabled', live: 'enabled' },
