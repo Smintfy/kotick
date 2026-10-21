@@ -1,14 +1,14 @@
 // Actors created outside React.
 
 import type { AnyActorRef } from 'xstate';
+import { warnOnce } from '../core/warn-once';
 import { isMachineActor } from './actor';
 import { nextInstanceId, resolveMachineId } from './identity';
 import type { DebugOptions } from './options';
 import { findBinding, getBinding, isProxy } from './proxy';
 
-// Proxies made here, and hook proxies already warned about.
+// Proxies made here.
 const connected = new WeakSet<object>();
-const warned = new WeakSet<object>();
 
 /**
  * Registers an actor created outside React and returns its proxy; use the proxy wherever the app reads the actor.
@@ -38,11 +38,11 @@ export function connect<TActor extends AnyActorRef>(actor: TActor, options?: Deb
 
 /** A hook's proxy keeps the hook's id and label; one connect() made doesn't need telling. */
 function existing<TActor extends AnyActorRef>(proxy: TActor, options: DebugOptions | undefined): TActor {
-  if (connected.has(proxy) || warned.has(proxy)) return proxy;
+  if (connected.has(proxy)) return proxy;
 
   if (options?.id === undefined && options?.label === undefined) return proxy;
-  warned.add(proxy);
-  console.warn(
+  warnOnce(
+    proxy,
     `[konat] connect() was given an actor that a hook already registers, so it keeps the hook's id and label.`,
   );
 

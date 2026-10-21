@@ -3,6 +3,7 @@
 // handles the shortcut.
 
 import * as React from 'react';
+import { warnOnce } from '../core/warn-once';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { useLatest } from '../hooks/use-latest';
 import { useRegistrySnapshot } from '../hooks/use-registry-snapshot';
@@ -351,9 +352,6 @@ function focusTarget(panel: HTMLElement, page: PanelPage, from: PanelPage | unde
   }
 }
 
-// StrictMode and Fast Refresh run the memo again, so each invalid shortcut warns once per page.
-const warnedShortcuts = new Set<string>();
-
 function useShortcut(value: string | false | undefined) {
   const source = value === undefined ? 'alt+s' : value;
 
@@ -362,10 +360,10 @@ function useShortcut(value: string | false | undefined) {
     const parsed = isShortcutText(source) ? parseShortcut(source) : undefined;
 
     if (!parsed) {
-      if (!warnedShortcuts.has(source)) {
-        warnedShortcuts.add(source);
-        console.warn(`[konat] Ignoring the shortcut "${String(source)}": expected something like "alt+s".`);
-      }
+      warnOnce(
+        `shortcut:${String(source)}`,
+        `[konat] Ignoring the shortcut "${String(source)}": expected something like "alt+s".`,
+      );
 
       return undefined;
     }
