@@ -1,7 +1,7 @@
 // Context for the signup states that come after a slow request.
 // DevTools.tsx loads this file only in development, so production builds don't include it.
 
-import { defineFixtures } from 'state-viewer/xstate';
+import { defineFixtures } from 'konat/xstate';
 import { signupMachine } from '@/machines/signup';
 
 export default [

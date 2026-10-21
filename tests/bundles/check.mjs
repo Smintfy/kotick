@@ -1,6 +1,6 @@
 // Confirms that production builds keep none of the debugger.
 //
-// The fixture app in this directory uses every public export. The script packs state-viewer as npm publishes it,
+// The fixture app in this directory uses every public export. The script packs konat as npm publishes it,
 // installs the tarball into a copy of the fixture in a temporary directory, and builds the copy for production with
 // esbuild, Vite, Next.js (Turbopack and webpack) and React Router. Then it builds the examples, which use the
 // workspace source. In each output, it looks for strings that only the registry, the overlay and the adapter contain.
@@ -85,9 +85,9 @@ function scan(dir) {
   return hits;
 }
 
-/** True when a server bundle leaves state-viewer to Node, which reads NODE_ENV when the server starts. */
+/** True when a server bundle leaves konat to Node, which reads NODE_ENV when the server starts. */
 function importsAtRuntime(dir) {
-  const load = /(?:\bfrom|\bimport|\brequire\()\s*\(?\s*["']state-viewer(?:\/xstate)?["']/;
+  const load = /(?:\bfrom|\bimport|\brequire\()\s*\(?\s*["']konat(?:\/xstate)?["']/;
 
   return jsFiles(dir).some((file) => load.test(readFileSync(file, 'utf8')));
 }
@@ -155,7 +155,7 @@ function check(name, output, dir, extra = '') {
   if (!existsSync(dir)) throw new Error(`${name}: no ${output} output in ${dir}.`);
   const hits = scan(dir);
   const runtime = output === 'server' && hits.length === 0 && importsAtRuntime(dir);
-  rows.push({ name, output, hits, note: runtime ? 'imports state-viewer at runtime' : extra });
+  rows.push({ name, output, hits, note: runtime ? 'imports konat at runtime' : extra });
 }
 
 function compare(name, app, baseline) {
@@ -249,15 +249,15 @@ const examples = [
 ];
 
 function prepareFixture() {
-  run('pnpm', ['--filter', 'state-viewer', 'build'], root);
-  const dir = mkdtempSync(join(tmpdir(), 'state-viewer-bundles-'));
+  run('pnpm', ['--filter', 'konat', 'build'], root);
+  const dir = mkdtempSync(join(tmpdir(), 'konat-bundles-'));
   cpSync(fixtureDir, dir, {
     recursive: true,
     filter: (source) => !/(node_modules|\.next[^/]*|\/out|\/build|check\.mjs)$/.test(source),
   });
-  run('pnpm', ['pack', '--pack-destination', dir], join(root, 'packages/state-viewer'));
-  const tarball = readdirSync(dir).find((file) => /^state-viewer-.*\.tgz$/.test(file));
-  renameSync(join(dir, tarball), join(dir, 'state-viewer.tgz'));
+  run('pnpm', ['pack', '--pack-destination', dir], join(root, 'packages/konat'));
+  const tarball = readdirSync(dir).find((file) => /^konat-.*\.tgz$/.test(file));
+  renameSync(join(dir, tarball), join(dir, 'konat.tgz'));
   // pnpm runs no install scripts it wasn't allowed to. esbuild's script puts its binary in place.
   writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'allowBuilds:\n  esbuild: true\n');
   run('pnpm', ['install', '--no-frozen-lockfile', '--reporter=silent'], dir);

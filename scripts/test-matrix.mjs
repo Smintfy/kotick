@@ -1,4 +1,4 @@
-// Runs the state-viewer test suite against other versions of React, XState and @xstate/react.
+// Runs the konat test suite against other versions of React, XState and @xstate/react.
 // The workspace installs one version of each, so every combination gets a copy of the package in a temporary
 // directory with its own install.
 //
@@ -16,9 +16,9 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
 const root = join(import.meta.dirname, '..');
-const packageDir = join(root, 'packages/state-viewer');
+const packageDir = join(root, 'packages/konat');
 
-// The minimum versions are the lowest that the peer ranges in packages/state-viewer/package.json allow.
+// The minimum versions are the lowest that the peer ranges in packages/konat/package.json allow.
 // Keep the two in sync.
 const MIN = { xstate: '5.28.0', xstateReact: '6.1.0' };
 const REACT_18 = { react: '18.3.1', types: '18.3.31', domTypes: '18.3.7' };
@@ -76,7 +76,7 @@ function run(command, args, cwd) {
 }
 
 function prepare(combo, catalog) {
-  const dir = mkdtempSync(join(tmpdir(), 'state-viewer-matrix-'));
+  const dir = mkdtempSync(join(tmpdir(), 'konat-matrix-'));
 
   for (const entry of ['src', 'test', 'tsconfig.json', 'vitest.config.ts']) {
     cpSync(join(packageDir, entry), join(dir, entry), { recursive: true });

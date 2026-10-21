@@ -1,5 +1,5 @@
-import { StateViewer } from 'state-viewer';
-import { useMachine } from 'state-viewer/xstate';
+import { Konat } from 'konat';
+import { useMachine } from 'konat/xstate';
 import { playerMachine } from '@/player.ts';
 
 const controls = [
@@ -32,7 +32,7 @@ export function App() {
         </div>
       </section>
 
-      <StateViewer />
+      <Konat />
     </>
   );
 }

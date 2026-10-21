@@ -14,7 +14,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { createHighlighter } from 'shiki';
 import { CopyCodeButton } from '@/components/CopyButton';
-import readme from '../../packages/state-viewer/README.md';
+import readme from '../../packages/konat/README.md';
 
 export type Heading = { id: string; text: string; depth: 2 | 3 };
 
@@ -43,7 +43,7 @@ const pageTable: readonly PageEntry[] = [
     slug: 'getting-started',
     title: 'Getting started',
     sections: ['install', 'quick-start'],
-    description: 'Install the package, mount the overlay, and import the XState hooks from state-viewer/xstate.',
+    description: 'Install the package, mount the overlay, and import the XState hooks from konat/xstate.',
   },
   {
     slug: 'concepts',
@@ -73,13 +73,13 @@ const pageTable: readonly PageEntry[] = [
     slug: 'api',
     title: 'API',
     sections: ['api'],
-    description: 'The props of <StateViewer /> and the exports of state-viewer/xstate.',
+    description: 'The props of <Konat /> and the exports of konat/xstate.',
   },
   {
     slug: 'nextjs',
     title: 'Next.js',
     sections: ['nextjs-and-server-components'],
-    description: 'Use state-viewer in the App Router, with server components.',
+    description: 'Use konat in the App Router, with server components.',
   },
   {
     slug: 'production',
@@ -91,7 +91,7 @@ const pageTable: readonly PageEntry[] = [
     slug: 'limitations',
     title: 'Limitations and FAQ',
     sections: ['limitations', 'faq'],
-    description: 'What state-viewer cannot do in this version, and answers to common questions.',
+    description: 'What konat cannot do in this version, and answers to common questions.',
   },
 ];
 
@@ -101,7 +101,7 @@ const footer = 'license';
 
 export const landingHeadings = [
   { id: 'how-it-works', text: 'How it works', depth: 2 },
-  { id: 'why', text: 'Why state-viewer', depth: 2 },
+  { id: 'why', text: 'Why konat', depth: 2 },
   { id: 'install', text: 'Install', depth: 2 },
   { id: 'explore', text: 'Explore', depth: 2 },
 ] as const satisfies readonly Heading[];
@@ -299,7 +299,7 @@ function loadOrThrow() {
 
   if (problems.length > 0 || packageName === undefined || transition === undefined || startup === undefined) {
     throw new Error(
-      'site/src/site.tsx and packages/state-viewer/README.md do not agree.\n' +
+      'site/src/site.tsx and packages/konat/README.md do not agree.\n' +
         problems.map((problem) => `- ${problem}`).join('\n'),
     );
   }

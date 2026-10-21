@@ -63,7 +63,7 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
       <div className="flex items-center justify-between max-md:h-bar max-md:px-4">
         <Link href="/" className="inline-flex items-center gap-2.5 font-medium no-underline" onClick={close}>
           <Mark size={24} />
-          state-viewer
+          konat
         </Link>
         <button
           type="button"

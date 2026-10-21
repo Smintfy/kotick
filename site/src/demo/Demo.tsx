@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { StateViewer } from 'state-viewer';
-import { useMachine } from 'state-viewer/xstate';
+import { Konat } from 'konat';
+import { useMachine } from 'konat/xstate';
 import { type CheckoutEvent, checkoutMachine, fixturesInEveryBuild } from '@/demo/checkout';
 
 const shippingOptions = [
@@ -150,7 +150,7 @@ export function Demo({ fixturesHref }: { fixturesHref: string }) {
            */}
           <div ref={setDock} className="relative [contain:layout]">
             <p className="absolute right-4 bottom-[58px] m-0 text-[13px] text-muted-on-surface">Click the bubble, or press Alt+S.</p>
-            {dock && <StateViewer portalTarget={dock} defaultOpen theme="light" fixtures={fixturesInEveryBuild} />}
+            {dock && <Konat portalTarget={dock} defaultOpen theme="light" fixtures={fixturesInEveryBuild} />}
           </div>
         </div>
       </figure>
@@ -228,8 +228,8 @@ export function Demo({ fixturesHref }: { fixturesHref: string }) {
           .
         </p>
         <p className="text-[13px] text-muted">
-          This site builds state-viewer in development mode for the demo. In your production build,{' '}
-          <code>&lt;StateViewer /&gt;</code> renders nothing.
+          This site builds konat in development mode for the demo. In your production build,{' '}
+          <code>&lt;Konat /&gt;</code> renders nothing.
         </p>
       </div>
     </>

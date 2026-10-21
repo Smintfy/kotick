@@ -1,7 +1,7 @@
 export type Example = {
   path: string;
   title: string;
-  /** The state-viewer/xstate API that the page uses to read its machine. */
+  /** The konat/xstate API that the page uses to read its machine. */
   api: string;
   summary: string;
 };
