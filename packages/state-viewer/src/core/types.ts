@@ -35,6 +35,7 @@ export interface MachineHandle {
 
   describe(): StateNodeInfo[];
   getActiveLeaves(): string[];
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- A context is the app's own data, and it has no schema.
   getContext(): unknown;
   /** Real state changes. */
   subscribe(onChange: () => void): () => void;
@@ -58,6 +59,7 @@ export interface Override {
 
 export interface EventLogEntry {
   instanceKey: string;
+  // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- An event's payload is the app's own data, and it has no schema.
   event: { type: string; [key: string]: unknown };
   /** State the UI showed when it sent the event. */
   leaves: string[];
@@ -115,6 +117,7 @@ export interface Registry {
   getOverride(instanceKey: string): Override | undefined;
   onOverride(instanceKey: string, listener: () => void): () => void;
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- A context is the app's own data, and it has no schema.
   record(instanceKey: string, leaves: string[], context: unknown): void;
   registerFixtures(sets: FixtureSet[]): void;
   /**

@@ -1,5 +1,7 @@
 // Recording store: the latest context per state configuration, in memory and in sessionStorage.
 
+import { isLeafId } from './ids';
+
 const STORAGE_PREFIX = 'state-viewer:recorded:';
 
 /** Configurations kept per machine. */
@@ -26,6 +28,7 @@ interface RecordedEntry {
 
 interface RecordingStore {
   /** Hot path: keeps a reference to `context` and schedules a write. */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- A context is the app's own data, and it has no schema.
   record(machineId: string, leaves: string[], context: unknown): void;
   /** The exact configuration first, then the most recent configuration containing a requested leaf. */
   lookup(machineId: string, requested: string[], normalized: string[]): RecordedEntry | undefined;
@@ -55,65 +58,96 @@ const EMPTY_LEAVES: ReadonlySet<string> = new Set();
 
 const UNSERIALIZABLE = Symbol('unserializable');
 
+/** The object of a context that JSON.stringify is walking, or its root wrapper. */
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- A context is the app's own data, and it has no schema.
+type ContextHolder = Record<string, unknown>;
+
+/** What JSON holds without loss: a string, a finite number, a boolean, or null. */
+type JsonScalar = string | number | boolean | null;
+
+/** What an actor ref has and a plain object of a context doesn't. */
+interface ActorRefLike {
+  send: Function;
+  getSnapshot: Function;
+  subscribe: Function;
+}
+
 /**
- * JSON for a context, or `undefined` when it can't be persisted faithfully and has to stay in memory.
+ * The stored form of an entry, or `null` when its context can't be persisted faithfully and has to stay in memory.
  * Functions held by objects are dropped. An actor ref anywhere keeps the whole context in memory, because a context
  * restored without it would crash the components that read it.
  */
-function serializeContext(context: unknown): string | undefined {
+function serializeEntry(entry: RecordedEntry): string | null {
   const seen = new Set<object>();
+  let context: string | undefined;
 
   try {
-    const json = JSON.stringify(context, function (this: Record<string, unknown>, key: string) {
+    context = JSON.stringify(entry.context, function (this: ContextHolder, key: string) {
       return replaceValue(this, key, seen);
     });
-
-    return json !== undefined && json.length <= MAX_ENTRY_SIZE ? json : undefined;
   } catch {
-    return undefined;
+    return null;
   }
+
+  if (context === undefined || context.length > MAX_ENTRY_SIZE || !Number.isFinite(entry.at)) return null;
+
+  return `{"leaves":${JSON.stringify(entry.leaves)},"at":${entry.at},"context":${context}}`;
 }
 
-function replaceValue(holder: Record<string, unknown>, key: string, seen: Set<object>): unknown {
+function replaceValue(holder: ContextHolder, key: string, seen: Set<object>): JsonScalar | object | undefined {
   // JSON.stringify applies toJSON before the replacer sees its value argument, which would hide a Date behind a string.
   const value = holder[key];
 
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
-
-  if (typeof value === 'number') {
-    if (Number.isFinite(value)) return value;
-    throw UNSERIALIZABLE;
-  }
+  if (isJsonScalar(value)) return value;
 
   // Checked before the plain-object case below, which would otherwise persist a ref as `{}`.
   if (isActorRef(value)) throw UNSERIALIZABLE;
 
-  if (typeof value === 'function' || typeof value === 'undefined') {
+  if (isDroppedByJson(value)) {
     // Dropping a property is fine, but an array would get a null in its place.
     if (Array.isArray(holder)) throw UNSERIALIZABLE;
 
     return undefined;
   }
 
-  if (typeof value === 'object' && !seen.has(value)) {
-    const prototype = Object.getPrototypeOf(value);
+  if (isJsonContainer(value) && !seen.has(value)) {
+    // An object reached twice would come back as two copies, so identity checks (`item === selected`) would differ.
+    seen.add(value);
 
-    if (Array.isArray(value) || prototype === Object.prototype || prototype === null) {
-      // An object reached twice would come back as two copies, so identity checks (`item === selected`) would differ.
-      seen.add(value);
-
-      return value;
-    }
+    return value;
   }
 
   throw UNSERIALIZABLE;
 }
 
-function isActorRef(value: unknown): boolean {
-  if (typeof value !== 'object' || value === null) return false;
-  const ref = value as { send?: unknown; getSnapshot?: unknown; subscribe?: unknown };
+function isJsonScalar(value: unknown): value is JsonScalar {
+  return value === null || typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value);
+}
 
-  return typeof ref.send === 'function' && typeof ref.getSnapshot === 'function' && typeof ref.subscribe === 'function';
+/** What JSON.stringify leaves out of an object. */
+function isDroppedByJson(value: unknown): value is Function | undefined {
+  return typeof value === 'function' || typeof value === 'undefined';
+}
+
+/** An array or a plain object, which JSON.stringify walks into. */
+function isJsonContainer(value: unknown): value is object {
+  if (typeof value !== 'object' || value === null) return false;
+  const prototype = Object.getPrototypeOf(value);
+
+  return Array.isArray(value) || prototype === Object.prototype || prototype === null;
+}
+
+function isActorRef(value: unknown): value is ActorRefLike {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'send' in value &&
+    typeof value.send === 'function' &&
+    'getSnapshot' in value &&
+    typeof value.getSnapshot === 'function' &&
+    'subscribe' in value &&
+    typeof value.subscribe === 'function'
+  );
 }
 
 function defaultStorage(): Storage | null {
@@ -129,8 +163,31 @@ function sameLeaves(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((leaf, index) => leaf === b[index]);
 }
 
-function isObject(value: unknown): value is Record<string, unknown> {
+/** What a `state-viewer:recorded:` key holds: a version and the entries, oldest first. */
+interface StoredPayload {
+  v: 1;
+  entries: unknown[];
+}
+
+function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStoredPayload(value: unknown): value is StoredPayload {
+  return isObject(value) && 'v' in value && value.v === 1 && 'entries' in value && Array.isArray(value.entries);
+}
+
+/** An entry of the payload. Its leaves are in the order they were written, and the reader sorts them. */
+function isStoredEntry(value: unknown): value is RecordedEntry {
+  return (
+    isObject(value) &&
+    'leaves' in value &&
+    Array.isArray(value.leaves) &&
+    value.leaves.every(isLeafId) &&
+    'at' in value &&
+    Number.isFinite(value.at) &&
+    'context' in value
+  );
 }
 
 /** Stored entries, oldest first, or `undefined` when nothing valid is stored. */
@@ -146,22 +203,12 @@ function readStored(storage: Storage, key: string): RecordedEntry[] | undefined 
     return undefined;
   }
 
-  if (!isObject(payload) || payload.v !== 1 || !Array.isArray(payload.entries)) return undefined;
+  if (!isStoredPayload(payload)) return undefined;
   const entries: RecordedEntry[] = [];
 
   for (const item of payload.entries) {
-    if (
-      !isObject(item) ||
-      !Array.isArray(item.leaves) ||
-      !item.leaves.every((leaf) => typeof leaf === 'string') ||
-      typeof item.at !== 'number' ||
-      !Number.isFinite(item.at) ||
-      !('context' in item)
-    ) {
-      return undefined;
-    }
-
-    entries.push({ leaves: [...(item.leaves as string[])].sort(), context: item.context, at: item.at });
+    if (!isStoredEntry(item)) return undefined;
+    entries.push({ leaves: [...item.leaves].sort(), context: item.context, at: item.at });
   }
 
   return entries;
@@ -256,7 +303,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
     onAvailabilityChange(machineId);
   }
 
-  function record(machineId: string, leaves: string[], context: unknown): void {
+  const record: RecordingStore['record'] = (machineId, leaves, context) => {
     const machine = machineFor(machineId);
     // Sorted, so the order of the leaves doesn't change the key. The entry keeps the sorted copy.
     const sorted = [...leaves].sort();
@@ -293,7 +340,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
     if (storage && timer === undefined) timer = setTimeout(flush, PERSIST_DELAY);
 
     if (changed) availabilityChanged(machineId, machine);
-  }
+  };
 
   function lookup(machineId: string, requested: string[], normalized: string[]): RecordedEntry | undefined {
     const machine = machines.get(machineId);
@@ -371,11 +418,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
       let item = serialized.get(entry);
 
       if (item === undefined) {
-        const context = serializeContext(entry.context);
-        item =
-          context === undefined || !Number.isFinite(entry.at)
-            ? null
-            : `{"leaves":${JSON.stringify(entry.leaves)},"at":${entry.at},"context":${context}}`;
+        item = serializeEntry(entry);
         serialized.set(entry, item);
       }
 

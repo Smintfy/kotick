@@ -2,6 +2,7 @@
 
 import { createEventLog } from './event-log';
 import { createFixtureStore } from './fixtures';
+import { isId, isLeafId } from './ids';
 import { createRecordingStore } from './recording';
 import type {
   DataAvailability,
@@ -413,7 +414,7 @@ function createRegistry(): Registry {
     const unknown: string[] = [];
 
     for (const leaf of new Set(given)) {
-      if (typeof leaf === 'string' && valid.has(leaf)) asked.push(leaf);
+      if (isLeafId(leaf) && valid.has(leaf)) asked.push(leaf);
       else unknown.push(`"${String(leaf)}"`);
     }
 
@@ -761,6 +762,7 @@ export function getPageRegistry(): Registry {
     return serverRegistry;
   }
 
+  // SAFETY: Every version of state-viewer keeps its Registry under this key of globalThis, and nothing else writes it.
   const scope = globalThis as typeof globalThis & { [REGISTRY_KEY]?: Registry };
   const existing = scope[REGISTRY_KEY];
 
@@ -783,33 +785,27 @@ export function getPageRegistry(): Registry {
   return registry;
 }
 
+// A JS app can register anything, so the ids are read through `?.` and checked.
 function isValidHandle(handle: MachineHandle): boolean {
-  return (
-    typeof handle === 'object' &&
-    handle !== null &&
-    typeof handle.machineId === 'string' &&
-    handle.machineId !== '' &&
-    typeof handle.instanceId === 'string' &&
-    handle.instanceId !== ''
-  );
+  return isId(handle?.machineId) && isId(handle?.instanceId);
 }
 
 function isLinkTarget(target: unknown): target is DeepLinkTarget {
-  if (typeof target !== 'object' || target === null) return false;
-  const { machineId, leaves } = target as { machineId?: unknown; leaves?: unknown };
-
   return (
-    typeof machineId === 'string' &&
-    machineId !== '' &&
-    Array.isArray(leaves) &&
-    leaves.length > 0 &&
-    leaves.every((leaf) => typeof leaf === 'string')
+    typeof target === 'object' &&
+    target !== null &&
+    'machineId' in target &&
+    isId(target.machineId) &&
+    'leaves' in target &&
+    Array.isArray(target.leaves) &&
+    target.leaves.length > 0 &&
+    target.leaves.every(isLeafId)
   );
 }
 
 // Keys come from machine ids, so a null prototype keeps ids like "constructor" or "__proto__" from misbehaving.
 function emptyRecord<T>(): Record<string, T> {
-  return Object.create(null) as Record<string, T>;
+  return Object.create(null);
 }
 
 function toRecord<T>(map: Map<string, T>): Record<string, T> {
