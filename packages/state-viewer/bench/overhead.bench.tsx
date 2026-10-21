@@ -13,8 +13,13 @@ import { StateViewer } from '../src';
 import { REGISTRY_KEY } from '../src/core/registry';
 import * as stateViewer from '../src/xstate';
 
+type CounterContext = { count: number };
+
+type CounterEvent = { type: 'INC' };
+
 const counterMachine = setup({
-  types: { context: {} as { count: number }, events: {} as { type: 'INC' } },
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+  types: { context: {} as CounterContext, events: {} as CounterEvent },
 }).createMachine({
   id: 'counter',
   initial: 'even',
@@ -25,17 +30,18 @@ const counterMachine = setup({
   },
 });
 
-type Hooks = Pick<typeof xstateReact, 'useMachine'>;
+/** The useMachine that the cases call, for the counter machine. The hook of each package has this type. */
+type Hooks = { useMachine: typeof xstateReact.useMachine<typeof counterMachine> };
 
 const IMPLEMENTATIONS: [name: string, hooks: Hooks, overlay: boolean][] = [
   ['@xstate/react', xstateReact, false],
-  ['state-viewer/xstate, no <StateViewer />', stateViewer as unknown as Hooks, false],
-  ['state-viewer/xstate, panel closed', stateViewer as unknown as Hooks, true],
+  ['state-viewer/xstate, no <StateViewer />', stateViewer, false],
+  ['state-viewer/xstate, panel closed', stateViewer, true],
 ];
 
 function reset(): void {
   cleanup();
-  delete (globalThis as Record<string, unknown>)[REGISTRY_KEY];
+  Reflect.deleteProperty(globalThis, REGISTRY_KEY);
   sessionStorage.clear();
   localStorage.clear();
 }
