@@ -10,14 +10,10 @@ import { getTree, leavesOfSnapshot } from './tree';
 
 const PREVIEW_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
   preview: true,
-  live: false,
-  children: true,
 });
 
 const READ_ONLY_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
   preview: false,
-  live: false,
-  children: true,
 });
 
 interface ObservedHandle {
@@ -45,7 +41,6 @@ export function createHandle(
   const handle: MachineHandle = {
     machineId: identity.machineId,
     instanceId: identity.instanceId,
-    adapter: 'xstate',
     capabilities: preview ? PREVIEW_CAPABILITIES : READ_ONLY_CAPABILITIES,
     // The config, not the machine: machine.provide() makes a new machine around the same config, and fixtures
     // defined for the machine should still match.

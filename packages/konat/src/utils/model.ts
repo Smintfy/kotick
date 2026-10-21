@@ -7,8 +7,6 @@ import type { MachineHandle, StateNodeInfo } from '../types';
 export interface InstanceEntry {
   key: string;
   handle: MachineHandle;
-  /** Position among the machine's instances, from 1, in registration order. */
-  ordinal: number;
   /** `checkout · 1`, or the handle's label in place of the machine id. */
   label: string;
 }
@@ -36,7 +34,6 @@ export function groupMachines(handles: readonly MachineHandle[]): MachineGroup[]
     group.instances.push({
       key: toInstanceKey(handle.machineId, handle.instanceId),
       handle,
-      ordinal,
       label: `${handle.label ?? handle.machineId} · ${ordinal}`,
     });
 

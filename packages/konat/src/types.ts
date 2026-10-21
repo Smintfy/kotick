@@ -15,18 +15,12 @@ export interface StateNodeInfo {
 
 export interface Capabilities {
   preview: boolean;
-  /** Live jumps (v0.2). */
-  live: boolean;
-  /** Can report child machines. */
-  children: boolean;
 }
 
 export interface MachineHandle {
   machineId: string;
   instanceId: string;
   label?: string;
-  /** Such as `xstate`. */
-  adapter: string;
   capabilities: Capabilities;
   /** Set for child machines. */
   parentKey?: string;
@@ -54,7 +48,6 @@ export interface Override {
   leaves: string[];
   context: unknown;
   source: DataSource;
-  createdAt: number;
 }
 
 export interface EventLogEntry {
