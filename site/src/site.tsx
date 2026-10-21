@@ -64,12 +64,6 @@ const pageTable: readonly PageEntry[] = [
     description: 'Give context to the states that you have not recorded yet.',
   },
   {
-    slug: 'deep-links',
-    title: 'Deep links',
-    sections: ['deep-links'],
-    description: 'Copy a link that opens the page with the same previews.',
-  },
-  {
     slug: 'api',
     title: 'API',
     sections: ['api'],

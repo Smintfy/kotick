@@ -14,8 +14,6 @@ const shippingOptions = [
 
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
-const reloadWithDeepLink = '/?debug-state=checkout:payment.error;shipping.express#how-it-works';
-
 function Checkout() {
   const [snapshot, send] = useMachine(checkoutMachine);
   const { items, total, cardNumber, error, receiptId } = snapshot.context;
@@ -219,13 +217,6 @@ export function Demo({ fixturesHref }: { fixturesHref: string }) {
         </div>
         <p>
           This demo has a <Link href={fixturesHref}>fixture</Link> for each state, so no preview uses the live context.
-        </p>
-        <p>
-          <strong>Copy link</strong> in the panel writes a URL that opens the page with the same previews.{' '}
-          <a href={reloadWithDeepLink}>
-            Open this page with payment.error and shipping.express
-          </a>
-          .
         </p>
         <p className="text-[13px] text-muted">
           This site builds konat in development mode for the demo. In your production build,{' '}

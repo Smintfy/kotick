@@ -405,13 +405,12 @@ describe('matching a set to a machine', () => {
 });
 
 describe('fixtures that register after a preview', () => {
-  test('a deep link waits for them, then moves from the live context to the fixture and keeps its configuration', async () => {
+  test('move a live preview to a lazily loaded fixture without a warning, and keep its configuration', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
-    window.history.replaceState(null, '', `/?debug-state=${machine.id}:paying.card.error`);
     const lazy = lazyFixtures();
     await renderPage(<App machine={machine} />, lazy.loader);
-    await show(machine.id);
+    await preview(machine.id, ['paying.card.error']);
     const before = { panel: panel(), shown: shown(), warnings: [...output.warn] };
 
     // The real actor moves on. A preview that fills in the shipping region now gets another leaf.
@@ -580,42 +579,12 @@ describe('fixtures that register after a preview', () => {
 });
 
 describe('the live-context warning while a lazy loader is pending', () => {
-  test('a deep link warns once for all the instances of a machine when the loader is done, for a state without a fixture', async () => {
+  test('a loader that fails gives no fixtures, and warns, and so does a preview that waited for it', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
-    window.history.replaceState(null, '', `/?debug-state=${machine.id}:done`);
-    const lazy = lazyFixtures();
-    await renderPage(
-      <>
-        <App key="first" machine={machine} name="first" />
-        <App key="second" machine={machine} name="second" />
-      </>,
-      lazy.loader,
-    );
-    const loading = [...output.warn];
-
-    await lazy.resolve([defineFixtures(machine, { 'paying.card.error': fixture('loaded') })]);
-    const sources: string[] = [];
-
-    for (const nth of [2, 1]) {
-      await show(machine.id, nth);
-      sources.push(panel().source);
-    }
-
-    expect({ loading, sources, loaded: output.warn }).toEqual({
-      loading: [],
-      sources: ['live', 'live'],
-      loaded: [liveWarning('done', shownKey())],
-    });
-  });
-
-  test('a loader that fails gives no fixtures, and warns, and so does the deep link that waited for it', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine(freshId('checkout'));
-    window.history.replaceState(null, '', `/?debug-state=${machine.id}:done`);
     const lazy = lazyFixtures();
     await renderPage(<App machine={machine} />, lazy.loader);
-    await show(machine.id);
+    await preview(machine.id, ['done']);
     const loading = [...output.warn];
 
     await lazy.reject(new TypeError('Failed to fetch dynamically imported module'));
@@ -629,15 +598,14 @@ describe('the live-context warning while a lazy loader is pending', () => {
     });
   });
 
-  test('a deep link waits for a new fixtures input that starts to load before the first is done', async () => {
+  test('a preview waits for a new fixtures input that starts to load before the first is done', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
-    window.history.replaceState(null, '', `/?debug-state=${machine.id}:done`);
     const first = lazyFixtures();
     const second = lazyFixtures();
     const page = await renderPage(<App machine={machine} />, first.loader);
+    await preview(machine.id, ['done']);
     await page.rerender(<App machine={machine} />, second.loader);
-    await show(machine.id);
 
     await first.resolve([defineFixtures(machine, { 'paying.card.error': fixture('first') })]);
     const afterFirst = [...output.warn];

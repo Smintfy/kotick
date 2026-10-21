@@ -54,7 +54,6 @@ The gap this fills: every state, in context, in the running app.
 - **G4** Give previews realistic data from recorded snapshots, fixtures or live context, and show which one is in use.
 - **G5** Integrate with an import-path swap plus `<Konat />`.
 - **G6** Leave nothing behind in production builds.
-- **G7** Make previews shareable through a URL.
 
 ### 3.2 Not in the MVP
 
@@ -81,7 +80,6 @@ The gap this fills: every state, in context, in the running app.
 
 - **U1 Visual QA:** step through every state of the checkout and compare each one against the design.
 - **U2 Bug reproduction:** QA reports a broken layout in `payment.error`; get there in one click.
-- **U3 Sharing:** send a designer a link that opens the page in `upload.failed`.
 - **U4 Behavior:** in `payment.error`, see what the UI tries to send when Retry is clicked (blocked-event log).
 - **U5 Onboarding:** see which states a component actually has.
 
@@ -139,16 +137,12 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 - **R20 (P0)** `<Konat />` renders into a shadow root (a host element appended to `document.body` by default; override with `portalTarget`). Styles don't leak in either direction.
 - **R21 (P0)** While any preview is active, the toolbar shows a badge with the count.
 - **R22 (P0)** Panel sections: machine list with instance picker, state tree, context viewer, event log.
-- **R23 (P0)** Keyboard support as described in §10.6. Shortcuts are ignored while typing.
+- **R23 (P0)** Keyboard support as described in §10.5. Shortcuts are ignored while typing.
 - **R24 (P0)** Panel open state, position and selected machine persist in localStorage.
 - **R25 (P1)** Theme: system, light or dark.
-- **R26 (P1)** Copy the current state as JSON, and copy a deep link.
+- **R26 (P1)** Copy the current state as JSON.
 
-### 6.6 Sharing
-
-- **R27 (P0)** A URL parameter applies previews when the named machines register (§10.4).
-
-### 6.7 Production
+### 6.6 Production
 
 - **R28 (P0)** In production builds, `<Konat />` renders nothing, `konat/xstate` hooks are plain re-exports of `@xstate/react`, and the registry and overlay are removed from the bundle.
 
@@ -167,7 +161,7 @@ flowchart TD
 
 | Layer | Package entry | Responsibility | Imports XState? |
 |---|---|---|---|
-| Core | `konat` | Protocol types, registry, overrides, recording, fixtures, event log, deep links | No |
+| Core | `konat` | Protocol types, registry, overrides, recording, fixtures, event log | No |
 | Overlay | `konat` | `<Konat />` toolbar and panel; reads the registry with `useSyncExternalStore` | No |
 | Adapter | `konat/xstate` | Hooks, actor proxy, `connect`, `defineFixtures`, state-tree extraction | Yes |
 
@@ -225,7 +219,6 @@ import { Konat } from 'konat';
   defaultOpen={false}
   theme="system"                               // 'system' | 'light' | 'dark'
   shortcut="alt+s"                             // toggles the panel
-  urlParam="debug-state"                       // deep-link query parameter
   fixtures={() => import('./debug/fixtures')}  // FixtureSet[] or a lazy loader
   portalTarget={undefined}                     // Element | ShadowRoot
 />
@@ -389,8 +382,8 @@ interface Registry {
 
 - **State tree:** walk `machine.root.states` recursively, skip `type: 'history'`, and use `node.path.join('.')` as the id.
 - **Leaves and state values:** convert `snapshot.value` (a string or nested object) to leaf ids, and leaf ids back into a nested value for `resolveState`.
-- **Forced snapshot:** `actor.logic.resolveState({ value, context })`, always passing context (§10.5). Cached by override identity so `getSnapshot()` stays referentially stable for `useSyncExternalStore`.
-- **Lifecycle:** instance ids come from a page-wide counter on `globalThis`, taken once per component in `useState`. `useId()` isn't enough: separately hydrated roots each start from the same ids, so two islands rendering one machine would share a key. Registration and the preview listener are set up in a layout effect, before @xstate/react starts the actor in its passive effect, so the registry records the configuration the component first rendered and everything `start()` goes through, as with `connect(createActor(m)).start()`. They're torn down in a passive cleanup, where @xstate/react stops the actor, so a Suspense boundary hiding the component (which runs only layout cleanups, while the actor keeps running) keeps it registered and previewed. There's one proxy per real actor, whatever `debug` options the hook gets, so StrictMode re-creation works and a label change doesn't re-render context consumers. The proxy listens to the registry only while one of its registrations is connected, or while the registry still keeps a preview for it (until its next flush after the unregister): nothing can preview an actor nobody registers, and subscribers that never unsubscribe, on a finished actor or made after the component unmounted, don't keep it alive. When `debug.disabled` turns on, the observer given to the hook leaves the preview as on a release, also when it turns on while an Activity hides the component (on the reveal). Which actor and binding the hook's observer follows is decided in the commit phase, so a render React throws away (a suspended transition that would replace the actor or turn `debug.disabled` on) doesn't move it. A preview applied as the actor registers (a deep link) shows in the first paint, whatever the priority of the commit that mounts the component: the observer hears it in the layout phase, and `useMachine`/`useActor` re-render from a layout effect when the snapshot changed since their render, since `useSyncExternalStore` checks only in a passive effect, after the paint.
+- **Forced snapshot:** `actor.logic.resolveState({ value, context })`, always passing context (§10.4). Cached by override identity so `getSnapshot()` stays referentially stable for `useSyncExternalStore`.
+- **Lifecycle:** instance ids come from a page-wide counter on `globalThis`, taken once per component in `useState`. `useId()` isn't enough: separately hydrated roots each start from the same ids, so two islands rendering one machine would share a key. Registration and the preview listener are set up in a layout effect, before @xstate/react starts the actor in its passive effect, so the registry records the configuration the component first rendered and everything `start()` goes through, as with `connect(createActor(m)).start()`. They're torn down in a passive cleanup, where @xstate/react stops the actor, so a Suspense boundary hiding the component (which runs only layout cleanups, while the actor keeps running) keeps it registered and previewed. There's one proxy per real actor, whatever `debug` options the hook gets, so StrictMode re-creation works and a label change doesn't re-render context consumers. The proxy listens to the registry only while one of its registrations is connected, or while the registry still keeps a preview for it (until its next flush after the unregister): nothing can preview an actor nobody registers, and subscribers that never unsubscribe, on a finished actor or made after the component unmounted, don't keep it alive. When `debug.disabled` turns on, the observer given to the hook leaves the preview as on a release, also when it turns on while an Activity hides the component (on the reveal). Which actor and binding the hook's observer follows is decided in the commit phase, so a render React throws away (a suspended transition that would replace the actor or turn `debug.disabled` on) doesn't move it. A change that the registration makes to a preview, such as the release of a preview that a new actor from Fast Refresh can't show, reaches the observer in the layout phase. `useMachine`/`useActor` re-render from a layout effect when the snapshot changed since their render, since `useSyncExternalStore` checks only in a passive effect, after the paint.
 - **Proxy:** it overrides `getSnapshot`, `subscribe`, `send`, `_send` (what `sendTo`, `forwardTo` and delayed sends call on their target), `select`, `start`, `stop` and `Symbol.observable`. Everything else goes to the real actor. During a preview, `send` and `_send` are blocked and logged, and an event that isn't an object with a string `type` is dropped with a warning. A previewed final state has status `'done'` and the output the machine's `output` mapper gives for it.
 - **Observers and the actor's ending:** observers see what the proxy shows, and hear how the real actor ended (complete or error) once no preview hides the real snapshot (R13). When the actor finishes, fails or stops during a preview, observers keep following previews, and when the preview ends they get the done snapshot, then `complete` (or `error`), so `waitFor` resolves rather than seeing the actor end without its final snapshot. A consumer that only re-renders (`useSelector`, the hooks' store) is also woken to leave the preview when the actor stopped, including one that subscribed after the stop, which XState tells nothing. An observer without `next`, such as `toPromise`'s, isn't told about previews at all and hears at once; the proxy shows the real snapshot while an observer hears how the actor ended, so `toPromise` resolves with the real output. Unsubscribing, even from inside `next`, ends all of it. What an observer's callback throws is reported from a timer, as XState reports it, and doesn't keep the observer from hearing the rest. After that:
   - `proxy.subscribe()` observers stop once their own `complete` or `error` has been called, or once the actor is stopped. `useSelector`'s observer has no `complete`, so it keeps receiving previews of a finished machine; a failure reaches its error callback, and it throws it as @xstate/react does. When @xstate/react stops a hook's actor (unmount, StrictMode's simulated unmount, a hidden Activity, Fast Refresh), it drops the actor's observers without telling them and puts the last active snapshot back; the hook ends the subscriptions made through the proxy along with them, so a pending `waitFor` hears no previews of an actor nothing serves any more, and doesn't keep it alive. One still owed how the actor ended, which a preview held back, hears it when the preview ends, as the registry drops the unregistered instance's preview at its next flush, and ends then.
@@ -410,19 +403,10 @@ interface Registry {
 - A leaf is marked recorded when at least one recorded configuration contains it, matching the lookup fallback.
 - Fixture sets match an instance by `source` (the same definition object), then by `machineId`. The id fallback covers HMR, which recreates the machine and its config. A set that matched by source keeps matching that registry id afterwards, so machines under `debug.id` or a generated id keep their fixtures across HMR. Sets for the same machine merge, and a later set wins per leaf id.
 - When fixtures register, every preview whose source came from the default order is checked again for the same configuration, and replaced only if its context or source changed. A live preview picks up a fixture that now matches, a fixture preview follows its fixture (or falls back to live if none matches any more), and a preview on a recording stays put. Recordings aren't consulted again, so a preview never changes with live traffic. Previews with an explicitly chosen source are left alone.
-- `<Konat fixtures>` calls `startFixtureLoad()` when a load starts, and the function it returns when the load settles: after its sets register, or when the loader fails. It starts the load in an insertion effect, like the deep link, so the registry expects the fixtures before the app's hooks register in layout effects and the link previews them. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't, and the instances of one linked machine warn once. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
-- Fixture lookup checks the requested leaves in the order given (the clicked leaf, or a deep link's order), then the leaves `normalizeTarget` filled in. The first leaf with a fixture wins.
+- `<Konat fixtures>` calls `startFixtureLoad()` when a load starts, and the function it returns when the load settles: after its sets register, or when the loader fails. It starts the load in an insertion effect, which StrictMode doesn't run a second time, so the loader runs once on mount. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
+- Fixture lookup checks the requested leaves in the order given (the clicked leaf first), then the leaves `normalizeTarget` filled in. The first leaf with a fixture wins.
 
-### 10.4 Deep links
-
-- Format: `?debug-state=<machineId>:<leaf>[;<leaf>…][,<machineId>:…]`
-  - `?debug-state=checkout:payment.error`
-  - `?debug-state=checkout:payment.error;shipping.express,cart:empty`
-- `;` separates parallel leaves and `,` separates machines. `+` is avoided because query strings decode it as a space. State keys containing reserved characters are percent-encoded.
-- Applied to every instance of the machine as it registers. Context follows the normal resolution order.
-- Links target machines, not instances. "Copy link" writes one preview per machine: the selected instance's if it's previewed, otherwise the first-registered previewed instance's. It writes the override's `requested` leaves, so after a reload the untouched regions follow each instance's own state (R9) and context resolves as it did originally. When other instances of that machine have different requested leaves, the panel says the link won't reproduce them.
-
-### 10.5 XState behaviors we design around
+### 10.4 XState behaviors we design around
 
 Checked in the XState source at tag `xstate@5.28.0`:
 
@@ -432,7 +416,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 - When the previewed configuration is final, `snapshot.status` is `'done'`.
 - `snapshot.can()` evaluates guards against the previewed context.
 
-### 10.6 Overlay
+### 10.5 Overlay
 
 - **Host:** a `<div data-konat-root>` appended to `document.body`, with an open shadow root, styles injected inside it, a system font stack and `z-index: 2147483647`. Only the toolbar and panel take pointer events.
 - **Toolbar:** a 40px bubble, bottom-right by default, carrying the preview badge.
@@ -441,7 +425,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
   - State tree (`role="tree"`): active leaves highlighted, previewed leaf marked, data indicator per state (recorded, fixture, none)
   - Context: read-only JSON viewer with a data-source switcher
   - Event log: blocked events with state and time, and a clear button
-  - Footer: copy link, copy JSON
+  - Footer: copy JSON
 - **Selecting a leaf** (click or `Enter`) adds it to the instance's preview, first, so its fixture is looked up first; `normalizeTarget` drops the previewed leaves it can't be active with, and leaves in other parallel regions stay. Selecting a previewed leaf takes it out, and taking out the last one releases the instance. Child machines are listed read-only.
 - **Focus:** opening the panel by hand (bubble or shortcut) moves focus to the tree; closing gives it back to where the shortcut was pressed, or to the bubble. A panel left open across a reload doesn't take focus.
 - **Shortcuts** (configurable; ignored in inputs, textareas and contenteditable):
@@ -458,7 +442,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 - Panel keys stay with the controls that use them: arrows in the selects and the source switcher, `Enter` on buttons.
 - **Accessibility:** everything is keyboard reachable, focus is visible, and `prefers-reduced-motion` is respected.
 
-### 10.7 Production and environments
+### 10.6 Production and environments
 
 - Debug code sits behind `process.env.NODE_ENV !== 'production'` so bundlers remove it: `<Konat />` becomes a component that renders nothing, and the hooks become re-exports of `@xstate/react`. The package is marked `sideEffects: false`.
 - The condition is written out at each use (D21). esbuild, webpack and Turbopack don't copy the value of a `const DEV = …` into its uses, so they'd keep both branches.
@@ -474,9 +458,6 @@ Checked in the XState source at tag `xstate@5.28.0`:
 - Actors not created through `konat/xstate` or `connect()` are invisible.
 - History states can't be selected.
 - The real actor keeps running during a preview, so releasing can land the UI somewhere other than where it started.
-- Deep links don't carry context.
-- Deep links target machines, not instances: every instance of a linked machine gets the same preview.
-- A router that parses and rebuilds the query string breaks deep links whose machine id contains `:`, whose leaf id contains `;`, or whose ids contain `,` or `%`.
 - Functions in context are dropped when a recording is persisted, so after a reload they're missing from a recorded preview.
 - Fixture markers in the tree follow the first-registered instance of a machine id. Another instance whose machine config differs (for example after HMR) can resolve different fixtures.
 - A machine without an id gets a generated id from its state tree's shape and context keys, so editing its states or context keys during HMR changes the id, and its previews and id-matched fixtures don't carry over.
@@ -488,7 +469,6 @@ Checked in the XState source at tag `xstate@5.28.0`:
   - A stable observer revealed by an Activity after a preview was released while it was hidden hears one extra real snapshot.
   - After an Activity reveal, an ending a preview held back is delivered by the hook and again by each @xstate/react restart.
   - An observer passed in the short window between a preview change in the layout phase and @xstate/react's subscribe may hear a preview of an actor that already ended.
-  - `useSelector` consumers may render one frame of the real state before a deep-link preview.
 - A preview snapshot is rebuilt, and observers hear it again, when the live children it carries over change or when the preview is updated (fixtures loading, an HMR edit adding a region).
 
 ## 12. Acceptance criteria for 0.1.0
@@ -502,7 +482,6 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 - [x] Previews never remount components (checked with mount counters in the vite-react example).
 - [x] Events sent during a preview are blocked and appear in the log.
 - [x] Releasing restores the real, current state.
-- [x] A deep link reproduces a preview after reload.
 - [x] Hostile global CSS doesn't change the panel, and the panel doesn't change the app (checked in the hostile-css example).
 - [x] The examples' production builds contain no registry or overlay code (checked by bundle analysis).
 - [x] Works on React 18 and 19 with StrictMode on.
@@ -511,7 +490,7 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 
 | Level | Tooling | Covers |
 |---|---|---|
-| Unit | Vitest | Registry, leaf/state-value conversion, deep-link parsing, context resolution, recording caps and serialization |
+| Unit | Vitest | Registry, leaf/state-value conversion, context resolution, recording caps and serialization |
 | Adapter | Vitest + React Testing Library | Proxy with `useMachine`, `useSelector` and `createActorContext`; blocked sends; release; StrictMode double mount; multiple instances; render and mount counts |
 | Types | `expectTypeOf` | `defineFixtures` keys and context types |
 | Version matrix | `pnpm test:matrix` (`scripts/test-matrix.mjs`) | The Vitest suite on React 18 and 19, each with the minimum and the latest `xstate` and `@xstate/react` (D24) |
@@ -544,7 +523,6 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 - [x] Recording store: memory, sessionStorage, caps, safe serializer
 - [x] Fixture registry and context resolution order
 - [x] Data availability per leaf in the snapshot
-- [x] Deep-link parsing and serializing
 - [x] Unit tests
 
 ### Milestone 2: XState adapter
@@ -568,14 +546,13 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 - [x] Panel: machine list and instance picker, state tree with data indicators, context viewer and source switcher, event log
 - [x] Keyboard shortcuts
 - [x] Persisted panel UI state
-- [x] Deep links applied on registration
-- [x] P1: copy JSON and copy link, theming, description and tag hints
+- [x] P1: copy JSON, theming, description and tag hints
 - [x] Accessibility pass
 - [x] Hostile-CSS example (`examples/hostile-css`)
 
 ### Milestone 4: Hardening and 0.1.0
 
-- [x] Confirm production removal with Vite, Next.js (webpack and Turbopack), React Router and esbuild (`pnpm check:bundles`, §10.7)
+- [x] Confirm production removal with Vite, Next.js (webpack and Turbopack), React Router and esbuild (`pnpm check:bundles`, §10.6)
 - [x] Next.js App Router example (`'use client'`, SSR safety): `examples/next-app`, on port 3100
 - [x] Test matrix: React 18 and 19; pin the minimum XState 5.x (`pnpm test:matrix`; `xstate` 5.28, `@xstate/react` 6.1)
 - [x] Measure overhead with the panel closed. In jsdom with StrictMode, against `@xstate/react`: about 8 µs more per transition that re-renders a `useMachine` component (27 → 34 µs), 22 µs more per mount (50 rows: 1.0 → 2.1 ms), and under 1 µs more per event to a `connect()`ed actor. Mounting `<Konat />` with its panel closed adds nothing measurable; the cost is the adapter's.
@@ -601,8 +578,7 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 
 - [ ] `window.__KONAT__` API: list, preview, release
 - [ ] Playwright helper that visits every state and takes a screenshot
-- [ ] "Copy repro" as agent-ready markdown: machine, state, context, link
-- [ ] Optional encoded context in deep links
+- [ ] "Copy repro" as agent-ready markdown: machine, state, context
 
 ### v0.5: Beyond XState
 
@@ -631,13 +607,12 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 1. ~~Name and npm package.~~ Resolved: `konat` (see Milestone 0).
 2. Default toggle shortcut: `Alt+S`, or a single key like Mesurer's.
 3. Data priority: recorded first (realistic, zero authoring) or fixtures first (deterministic)?
-4. Deep-link parameter name and format.
-5. Should a preview pause the real actor instead of letting it run underneath?
-6. ESM-only or dual ESM/CJS?
-7. License.
-8. ~~Minimum XState 5.x for 0.1.0.~~ Resolved: `xstate` 5.28 and `@xstate/react` 6.1 (D23).
-9. Should the MVP log also show real, non-blocked events through inspection?
-10. Should `<Konat />` be allowed in production-mode builds for staging?
+4. Should a preview pause the real actor instead of letting it run underneath?
+5. ESM-only or dual ESM/CJS?
+6. License.
+7. ~~Minimum XState 5.x for 0.1.0.~~ Resolved: `xstate` 5.28 and `@xstate/react` 6.1 (D23).
+8. Should the MVP log also show real, non-blocked events through inspection?
+9. Should `<Konat />` be allowed in production-mode builds for staging?
 
 ## 16. Decision log
 
@@ -654,11 +629,10 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 | D9 | Data availability lives in the registry snapshot | The panel reads everything through one `useSyncExternalStore` source, and the snapshot changes only when a marker flips |
 | D10 | Fixtures match by machine config, then by id | Works with `debug.id`, generated ids and `machine.provide()` copies without extra options; the id fallback survives HMR |
 | D11 | Parallel previews use the first fixture found, requested leaves before filled-in ones | Mirrors the recording fallback and keeps `defineFixtures` keys to single leaf ids |
-| D12 | Deep links stay machine-level | Registration order isn't stable across reloads, so instance ordinals could open the wrong row; instance targeting can come with v0.3 |
-| D13 | Previews on the default order are resolved again when fixtures register | Lazy fixtures load after deep links apply on page load; a preview shouldn't stay on live context |
+| D13 | Previews on the default order are resolved again when fixtures register | Lazy fixtures can load after an early click previews a state; a preview shouldn't stay on live context |
 | D14 | Contexts holding actor refs stay memory-only | A restored context missing its refs crashes the components that read them; falling back to a fixture or live context is safer |
 | D15 | Fixture sets remember the registry ids they matched by source | Keeps fixtures for `debug.id` and generated ids across HMR without a protocol change |
-| D16 | Overrides keep the requested leaves | Copy link, source switching and the previewed-leaf mark need what was asked for, not the filled-in configuration |
+| D16 | Overrides keep the requested leaves | Source switching and the previewed-leaf mark need what was asked for, not the filled-in configuration |
 | D17 | A total budget for persisted recordings | The debugger must never make the app's own sessionStorage writes fail |
 | D18 | Unregistering keeps the preview until the next flush | Fast Refresh re-runs effects on every save, and a preview should survive editing the component it previews |
 | D19 | Examples stay minimal, and there is no end-to-end suite for now | The examples read as usage documentation, without test ids, extra pages or Playwright setup. The Vitest suite tests the behavior in jsdom, and `pnpm check:bundles` tests the production builds |
@@ -667,7 +641,7 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 | D22 | Each entry is built on its own, without shared chunks | Turbopack keeps a shared chunk once a module imports it, even if only removed code used it; the `globalThis` registry makes the duplicated core safe |
 | D23 | Minimum versions: `xstate` 5.28, `@xstate/react` 6.1 | @xstate/react 6.1 forwards actor errors to error boundaries, which the adapter matches, and needs `xstate` ^5.28. The suite passes on both minimums and on the latest versions |
 | D24 | On React 18, tests built on `<Activity>` or `use()` are skipped, and identity checks record committed renders only | React 18 has neither API, and its StrictMode throws away the first render together with the actor it created |
-| D25 | A preview on the default order holds its live-context warning while fixtures load | A deep link applies before a lazy loader is done, and the fixtures that load then give most such previews context (D13), so an early warning would usually be false |
+| D25 | A preview on the default order holds its live-context warning while fixtures load | A click can preview a state before a lazy loader is done, and the fixtures that load then give most such previews context (D13), so an early warning would usually be false |
 
 ## 17. References
 

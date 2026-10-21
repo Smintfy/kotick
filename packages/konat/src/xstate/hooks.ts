@@ -216,12 +216,13 @@ function useProxiedActorRef(
   const connectListening = (key: Listening): (() => void) => listen(committed, key);
   // One layout effect for four steps, which keep this order. A step does nothing while its own values stay the same.
   useIsomorphicLayoutEffect(() => {
-    // Before the connections, which read them. A new observer follows the committed actor's previews from here on,
-    // before @xstate/react subscribes it: it hears a deep link before the first paint.
+    // Before the connections, which read them.
+    // A new observer follows the committed actor's previews from here on, before @xstate/react subscribes it.
     committed.actor = actor;
     committed.binding = binding;
     committed.view = view;
-    // Before the registration, so a preview applied when the actor registers (a deep link) reaches the observer.
+    // Before the registration, so the observer hears what the registration does to the preview.
+    // Fast Refresh registers a new actor in place of the old one, and the registry releases a preview it can't show.
     ensureConnection(hook.listening, listening, connectListening);
 
     // The observer leaves the preview here, as in listen()'s cleanup, when the hook stopped previewing while it wasn't
@@ -307,8 +308,9 @@ export function useActor<TLogic extends AnyActorLogic>(
 
   const snapshot = React.useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
   // useSyncExternalStore subscribes, and checks the snapshot it rendered, in a passive effect, which runs after the
-  // paint unless the commit was synchronous. A preview applied in this commit's layout phase (a deep link, as the actor
-  // registers) re-renders from here instead, synchronously, so the first paint shows it.
+  // paint unless the commit was synchronous.
+  // A preview applied in this commit's layout phase re-renders from here instead, synchronously.
+  // So the first paint shows it.
   const [, rerender] = React.useReducer((count: number) => count + 1, 0);
   useIsomorphicLayoutEffect(() => {
     if (!Object.is(getSnapshot(), snapshot)) rerender();

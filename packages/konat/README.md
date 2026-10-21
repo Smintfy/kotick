@@ -12,7 +12,6 @@ there.
   during a preview are blocked and logged.
 - **Realistic data.** Previews use context recorded from earlier visits, context you write as fixtures, or the live
   context. The panel shows which one it uses.
-- **Shareable.** Copy a link that opens the page with the same previews.
 - **Gone in production.** Production builds keep a component that renders nothing and re-exports of `@xstate/react`.
 
 ## Contents
@@ -22,7 +21,6 @@ there.
 - [Concepts](#concepts)
 - [The panel](#the-panel)
 - [Fixtures](#fixtures)
-- [Deep links](#deep-links)
 - [Keyboard](#keyboard)
 - [API](#api)
 - [Next.js and server components](#nextjs-and-server-components)
@@ -139,7 +137,7 @@ Select a machine to open its page:
 - **Context** shows the context of the instance. During a preview, select its source: **Recorded**, **Fixture** or
   **Live**.
 - **Blocked events** lists the events that the UI sent during a preview.
-- **Copy JSON** copies the state of the instance. **Copy link** copies a [deep link](#deep-links) to the previews.
+- **Copy JSON** copies the state of the instance.
 
 **Back** goes to the machine list again. **Settings**, at the bottom of the list, moves the bubble and the panel to
 another corner, and lists the keyboard shortcuts.
@@ -177,29 +175,12 @@ In Vite, you can use `import.meta.env.DEV` as the condition.
   type of the machine.
 - A fixture set applies to each instance of its machine, also to copies from `machine.provide()`, and to machines that
   `debug.id` renames.
-- The loader runs after the page loads. Previews that started before it finished, such as previews from a deep link,
-  change to the fixture when it arrives. Such a preview logs the warning about the live context only if the loader
-  gives no fixture for it.
+- The loader runs after the page loads. Previews that started before it finished change to the fixture when it
+  arrives. Such a preview logs the warning about the live context only if the loader gives no fixture for it.
 - In a parallel preview, the first leaf that has a fixture gives the context: the leaves you selected, in sequence,
   then the leaves of the other regions.
 - You can give an array of sets in place of a loader. Then the sets are in your main bundle, also in production.
   Use a loader with a development check to keep them out.
-
-## Deep links
-
-**Copy link** in the panel writes a URL that opens the page with the same previews:
-
-```
-http://localhost:5173/checkout?debug-state=checkout:payment.error;shipping.express,session:expired
-```
-
-- `:` separates the machine id from its leaves, `;` separates the leaves of a parallel machine, and `,` separates
-  machines.
-- A link applies to each instance of a machine when it registers. A machine on a different page gets the preview when
-  you go to that page. This continues until you preview or release that machine in the panel.
-- A link does not include context. The preview finds its context as usual, from a recording, a fixture or the live
-  context.
-- To use a different query parameter, set `urlParam`.
 
 ## Keyboard
 
@@ -227,7 +208,6 @@ shortcut, set `shortcut`.
   defaultOpen={false}        // Open the panel on the first visit.
   theme="system"             // 'system' | 'light' | 'dark'
   shortcut="alt+s"           // For example 'ctrl+shift+d'. false turns the shortcut off.
-  urlParam="debug-state"     // The query parameter of deep links.
   fixtures={loader}          // Fixture sets, or a function that loads them.
   portalTarget={undefined}   // The element that gets the overlay. The default is document.body.
 />
@@ -257,7 +237,7 @@ XState. `connect()` takes the same object as its second argument.
 
 ```ts
 type DebugOptions = {
-  id?: string;        // The machine id in the panel and in deep links. The default is machine.id.
+  id?: string;        // The machine id in the panel. The default is machine.id.
   label?: string;     // The name of the instance in the panel.
   disabled?: boolean; // Keep this actor out of konat.
 };
@@ -267,7 +247,7 @@ const [snapshot, send] = useMachine(checkoutMachine, { input, debug: { label: 'C
 
 Give each machine an `id`. A machine without one has the XState default id `(machine)`. konat then makes an id
 from the states and context keys of the machine, and logs a warning once. That id changes when you add or remove
-states or context keys, so links to the machine stop working after such a change.
+states or context keys, so the previews and recordings of the machine do not carry over after such a change.
 
 The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()`
 goes to the real actor when nothing is previewed.
@@ -295,7 +275,7 @@ Both entries start with `'use client'`, so you can import them in the App Router
 
 - Call the hooks and `createActorContext()` only in client components, as with `@xstate/react`.
 - On the server, konat does nothing: the overlay renders nothing, and nothing registers. The overlay mounts
-  after hydration, so it does not cause hydration errors. A deep link applies in the browser.
+  after hydration, so it does not cause hydration errors.
 
 In a monorepo that gives the TypeScript source of konat, add it to `transpilePackages`.
 
@@ -342,10 +322,6 @@ actor less than 1 µs more. Production builds do not have this cost.
   `snapshot.children`, so components that read them continue to work. This part is experimental.
 - **History states cannot be selected.**
 - **Releasing shows the real state at that time.** The real actor kept running during the preview.
-- **Deep links have no context, and apply to machines, not instances.** Each instance of a linked machine gets the same
-  preview.
-- **Some routers break deep links.** A router that parses and builds the query string again can break a link whose
-  machine id contains `:`, or whose leaf ids contain `;`, `,` or `%`.
 - **Functions in context are not recorded across reloads.** After a reload, a recorded preview does not have them.
 - **A transform on `body` moves the overlay.** If `body` has a `transform`, a `filter` or `contain`, it becomes the
   containing block of the overlay. Use `portalTarget={document.documentElement}` on such pages.

@@ -1,30 +1,18 @@
-// A machine's page: the instance picker, the state tree, context, the event log, and a footer to copy a link or
-// the state as JSON. It handles the keys that move through the tree and switch machines.
+// A machine's page: the instance picker, the state tree, context, the event log, and the Copy JSON button.
+// It handles the keys that move through the tree and switch machines.
 
 import * as React from 'react';
 import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../../core/types';
 import { copyText } from '../clipboard';
-import { writeDeepLink } from '../deep-link';
 import { toJson } from '../format';
 import { useHandleUpdates } from '../hooks';
-import {
-  attempt,
-  findInstance,
-  planLink,
-  shownLeaves,
-  toggleLeaf,
-  type InstanceEntry,
-  type MachineGroup,
-} from '../model';
+import { attempt, findInstance, shownLeaves, toggleLeaf, type InstanceEntry, type MachineGroup } from '../model';
 import { isElement, isTyping, moveIndex, moveOf, type Move } from '../shortcut';
 import { ContextView } from './ContextView';
 import { EventLog } from './EventLog';
 import { BODY } from './classes';
-import { CopyIcon, LinkIcon } from './icons';
+import { CopyIcon } from './icons';
 import { StatesSection } from './StatesSection';
-
-const FOOTER_BUTTON =
-  'flex h-7.5 min-w-0 cursor-pointer items-center justify-between gap-1.5 rounded-md bg-transparent px-1.5 py-0 text-lg whitespace-nowrap text-fg enabled:hover:bg-hover disabled:cursor-default disabled:opacity-45 [&>svg]:flex-none [&>svg]:text-muted';
 
 const EMPTY_DATA: DataAvailability = { recorded: new Set(), fixture: new Set() };
 
@@ -37,7 +25,6 @@ interface MachinePageProps {
   groups: readonly MachineGroup[];
   group: MachineGroup;
   instance: InstanceEntry;
-  urlParam: string;
   /** Shows another instance from the Instance picker. */
   onPickInstance(instanceKey: string): void;
   /** Shows another instance from a Children button. */
@@ -77,14 +64,14 @@ export function MachinePage(props: MachinePageProps) {
         leaves[0]);
 
   const pageRef = React.useRef<HTMLDivElement>(null);
-  // What the last copy did. The clicked button shows it in place of its label for 2 s.
-  const [copied, setCopied] = React.useState<{ button: 'json' | 'link'; status: string }>();
+  // What the last copy did. The button shows it in place of its label for 2 s.
+  const [copyStatus, setCopyStatus] = React.useState<string>();
   React.useEffect(() => {
-    if (!copied) return;
-    const timer = setTimeout(() => setCopied(undefined), 2000);
+    if (copyStatus === undefined) return;
+    const timer = setTimeout(() => setCopyStatus(undefined), 2000);
 
     return () => clearTimeout(timer);
-  }, [copied]);
+  }, [copyStatus]);
 
   function preview(leaf: string): void {
     if (!canPreview) return;
@@ -157,16 +144,7 @@ export function MachinePage(props: MachinePageProps) {
     }
   }
 
-  const plan = planLink(snapshot.machines, snapshot.overrides, key);
   const labelOf = (instanceKey: string) => findInstance(groups, instanceKey)?.label ?? instanceKey;
-
-  async function copyLink(): Promise<void> {
-    const { location } = window;
-    const search = writeDeepLink(location.search, plan.targets, props.urlParam);
-    const url = `${location.href.split(/[?#]/)[0]}${search}${location.hash}`;
-    const status = (await copyText(url, pageRef.current ?? document.body)) ? 'Link copied' : 'Copy failed';
-    setCopied({ button: 'link', status });
-  }
 
   async function copyJson(): Promise<void> {
     const json = toJson({
@@ -177,8 +155,7 @@ export function MachinePage(props: MachinePageProps) {
       context: override ? override.context : liveContext,
     });
 
-    const status = (await copyText(json, pageRef.current ?? document.body)) ? 'JSON copied' : 'Copy failed';
-    setCopied({ button: 'json', status });
+    setCopyStatus((await copyText(json, pageRef.current ?? document.body)) ? 'JSON copied' : 'Copy failed');
   }
 
   const available: Record<DataSource, boolean> = {
@@ -247,33 +224,19 @@ export function MachinePage(props: MachinePageProps) {
       </div>
 
       <footer className="flex-none border-t border-t-line px-1.5 py-1">
-        {/* The names stay the same while a label shows the status, so voice control and tests still find them. */}
-        <div className="grid grid-cols-[1fr_1fr] gap-1">
-          <button type="button" className={FOOTER_BUTTON} onClick={copyJson} aria-label="Copy JSON">
-            <span className="overflow-hidden text-ellipsis">{copied?.button === 'json' ? copied.status : 'Copy JSON'}</span>
-            <CopyIcon />
-          </button>
-          <button
-            type="button"
-            className={FOOTER_BUTTON}
-            onClick={copyLink}
-            disabled={plan.targets.length === 0}
-            aria-label="Copy link"
-            title={plan.targets.length === 0 ? 'Preview a state to link to it' : 'Copy a link that opens these previews'}
-          >
-            <span className="overflow-hidden text-ellipsis">{copied?.button === 'link' ? copied.status : 'Copy link'}</span>
-            <LinkIcon />
-          </button>
-        </div>
+        {/* The name stays the same while the label shows the status, so voice control and tests still find it. */}
+        <button
+          type="button"
+          className="flex h-7.5 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md bg-transparent px-1.5 py-0 text-lg whitespace-nowrap text-fg enabled:hover:bg-hover [&>svg]:flex-none [&>svg]:text-muted"
+          onClick={copyJson}
+          aria-label="Copy JSON"
+        >
+          <span className="overflow-hidden text-ellipsis">{copyStatus ?? 'Copy JSON'}</span>
+          <CopyIcon />
+        </button>
         <span className="visually-hidden" role="status">
-          {copied?.status}
+          {copyStatus}
         </span>
-        {plan.partial.length > 0 && (
-          <p className="mt-1 mb-0.5 px-1.5 text-base text-warn" data-part="warning">
-            Links preview every instance of a machine alike, so this one won&rsquo;t reproduce the current{' '}
-            {list(plan.partial)} previews exactly.
-          </p>
-        )}
       </footer>
     </div>
   );
@@ -281,10 +244,4 @@ export function MachinePage(props: MachinePageProps) {
 
 function childrenOf(groups: readonly MachineGroup[], parentKey: string): InstanceEntry[] {
   return groups.flatMap((group) => group.instances.filter((entry) => entry.handle.parentKey === parentKey));
-}
-
-function list(items: readonly string[]): string {
-  const quoted = items.map((item) => `“${item}”`);
-
-  return quoted.length < 2 ? quoted.join('') : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`;
 }

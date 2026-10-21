@@ -1,9 +1,8 @@
 // What the panel derives from the registry snapshot, as pure functions.
-// It groups machines by id, labels instances, names the panel's pages, finds the leaves a click previews, and plans
-// the targets of "Copy link".
+// It groups machines by id, labels instances, names the panel's pages, and finds the leaves a click previews.
 
 import { toInstanceKey } from '../core/registry';
-import type { DeepLinkTarget, MachineHandle, Override, StateNodeInfo } from '../core/types';
+import type { MachineHandle, StateNodeInfo } from '../core/types';
 
 export interface InstanceEntry {
   key: string;
@@ -81,68 +80,6 @@ export function toggleLeaf(requested: readonly string[] | undefined, leaf: strin
   const kept = requested.filter((other) => other !== leaf);
 
   return kept.length === 0 ? { action: 'release' } : { action: 'preview', leaves: kept };
-}
-
-interface LinkPlan {
-  targets: DeepLinkTarget[];
-  /** Machine ids whose instances aren't all previewed the same way, which a machine-level link can't reproduce. */
-  partial: string[];
-}
-
-interface LinkedInstance {
-  key: string;
-  override: Override | undefined;
-}
-
-/**
- * One target per previewed machine, with the requested leaves of the preview that linkedPreview() chooses.
- * After a reload, the regions that the preview didn't request follow the state of each instance.
- */
-export function planLink(
-  handles: readonly MachineHandle[],
-  overrides: Readonly<Record<string, Override>>,
-  selectedKey: string | undefined,
-): LinkPlan {
-  const byMachine = new Map<string, LinkedInstance[]>();
-
-  for (const handle of handles) {
-    // Child machines can't be previewed, and links skip them.
-    if (!handle.capabilities?.preview) continue;
-    const key = toInstanceKey(handle.machineId, handle.instanceId);
-    let instances = byMachine.get(handle.machineId);
-
-    if (!instances) {
-      instances = [];
-      byMachine.set(handle.machineId, instances);
-    }
-
-    instances.push({ key, override: overrides[key] });
-  }
-
-  const targets: DeepLinkTarget[] = [];
-  const partial: string[] = [];
-
-  for (const [machineId, instances] of byMachine) {
-    const chosen = linkedPreview(instances, selectedKey);
-
-    if (!chosen) continue;
-    targets.push({ machineId, leaves: [...chosen.requested] });
-
-    if (instances.some(({ override }) => !sameLeaves(override?.requested, chosen.requested))) partial.push(machineId);
-  }
-
-  return { targets, partial };
-}
-
-/** The preview of the selected instance, or else the preview of the first instance that registered. */
-function linkedPreview(instances: readonly LinkedInstance[], selectedKey: string | undefined): Override | undefined {
-  const selected = instances.find(({ key }) => key === selectedKey)?.override;
-
-  return selected ?? instances.find(({ override }) => override !== undefined)?.override;
-}
-
-function sameLeaves(a: readonly string[] | undefined, b: readonly string[]): boolean {
-  return a !== undefined && a.length === b.length && a.every((leaf, index) => leaf === b[index]);
 }
 
 /** The leaf ids in tree order, without the leaves inside a collapsed compound or parallel state. */

@@ -208,14 +208,14 @@ export function blockedEvents(): string[] {
 }
 
 /**
- * Clicks Copy link or Copy JSON, and returns the text it copied and the status it showed.
+ * Clicks Copy JSON, and returns the text it copied and the status it showed.
  * jsdom has no clipboard and no execCommand, so the overlay copies through a textarea in its shadow root and
  * shows "Copy failed". A MutationObserver reads the textarea before the overlay removes it.
  */
-export async function copy(label: 'Copy link' | 'Copy JSON'): Promise<{ copied: string[]; status: string }> {
-  const found = overlay().querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+export async function copy(): Promise<{ copied: string[]; status: string }> {
+  const found = overlay().querySelector<HTMLButtonElement>('button[aria-label="Copy JSON"]');
 
-  if (!found) throw new Error(`The panel has no ${label} button.`);
+  if (!found) throw new Error('The panel has no Copy JSON button.');
   const copied: string[] = [];
 
   const read = (records: MutationRecord[]) => {
