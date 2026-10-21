@@ -108,7 +108,7 @@ export const landingHeadings = [
 
 export type LandingId = (typeof landingHeadings)[number]['id'];
 
-const themes = { light: 'github-light-high-contrast', dark: 'github-dark-default' } as const;
+const theme = 'github-light-high-contrast';
 
 const languages = ['bash', 'diff', 'ts', 'tsx'] as const;
 
@@ -359,8 +359,7 @@ function render(nodes: RootContent[]): ReactNode {
 function highlight(_state: State, node: Code): ElementContent[] {
   const root = highlighter.codeToHast(node.value, {
     lang: node.lang ?? 'text',
-    themes,
-    defaultColor: 'light-dark()',
+    theme,
     rootStyle: false,
   });
 
@@ -373,10 +372,13 @@ function DocLink({ href = '', children }: ComponentProps<'a'>) {
   return target.startsWith('/') ? <Link href={target}>{children}</Link> : <a href={target}>{children}</a>;
 }
 
-function CodeBlock(props: ComponentProps<'pre'>) {
+function CodeBlock({ className = '', ...props }: ComponentProps<'pre'>) {
   return (
-    <figure className="code">
-      <pre {...props} />
+    <figure className="group relative mb-4">
+      <pre
+        {...props}
+        className={`m-0 overflow-x-auto rounded-xl bg-surface px-5 py-4 text-[13.5px] leading-[1.6] [@media(hover:none)]:pt-10 ${className}`}
+      />
       <CopyCodeButton />
     </figure>
   );
@@ -384,7 +386,7 @@ function CodeBlock(props: ComponentProps<'pre'>) {
 
 function ScrollTable(props: ComponentProps<'table'>) {
   return (
-    <div className="table-scroll">
+    <div className="mb-4 overflow-x-auto">
       <table {...props} />
     </div>
   );
@@ -396,18 +398,22 @@ const components = {
   table: ScrollTable,
   h2: ({ id, children }: ComponentProps<'h2'>) => (
     <h2 id={id}>
-      <a href={`#${id}`}>{children}</a>
+      <a href={`#${id}`} className="no-underline hover:underline">
+        {children}
+      </a>
     </h2>
   ),
   h3: ({ id, children }: ComponentProps<'h3'>) => (
     <h3 id={id}>
-      <a href={`#${id}`}>{children}</a>
+      <a href={`#${id}`} className="no-underline hover:underline">
+        {children}
+      </a>
     </h3>
   ),
 };
 
 const site = loadOrThrow();
-const highlighter = await createHighlighter({ themes: Object.values(themes), langs: [...languages] });
+const highlighter = await createHighlighter({ themes: [theme], langs: [...languages] });
 
 export const pages: readonly DocsPage[] = site.pages;
 

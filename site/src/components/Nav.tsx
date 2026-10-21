@@ -56,28 +56,51 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
   const close = () => setOpen(false);
 
   return (
-    <header className="sidebar" data-open={open || undefined}>
-      <div className="bar">
-        <Link href="/" className="wordmark" onClick={close}>
+    <header
+      className="group sticky top-0 h-dvh overflow-y-auto py-10 max-md:z-10 max-md:h-auto max-md:overflow-visible max-md:border-b max-md:border-line max-md:bg-bg max-md:p-0"
+      data-open={open || undefined}
+    >
+      <div className="flex items-center justify-between max-md:h-bar max-md:px-4">
+        <Link href="/" className="inline-flex items-center gap-2.5 font-medium no-underline" onClick={close}>
           <Mark size={24} />
           state-viewer
         </Link>
-        <button type="button" className="menu" aria-expanded={open} aria-controls="nav" onClick={() => setOpen(!open)}>
+        <button
+          type="button"
+          className="hidden cursor-pointer rounded-lg bg-surface px-3 py-1.5 text-[14px] max-md:block"
+          aria-expanded={open}
+          aria-controls="nav"
+          onClick={() => setOpen(!open)}
+        >
           Menu
         </button>
       </div>
-      <nav id="nav" aria-label="Docs">
+      <nav
+        id="nav"
+        aria-label="Docs"
+        className="mt-8 text-[14px] max-md:absolute max-md:inset-x-0 max-md:top-full max-md:m-0 max-md:hidden max-md:max-h-[calc(100dvh-var(--spacing-bar))] max-md:overflow-y-auto max-md:border-b max-md:border-line max-md:bg-bg max-md:px-4 max-md:pt-2 max-md:pb-6 max-md:group-data-open:block"
+      >
         <ul>
           {items.map((item) => (
             <li key={item.href}>
-              <Link href={item.href} aria-current={item === current ? 'page' : undefined} onClick={close}>
+              <Link
+                href={item.href}
+                aria-current={item === current ? 'page' : undefined}
+                className="block py-1 text-muted no-underline hover:text-fg aria-[current=page]:font-medium aria-[current=page]:text-fg"
+                onClick={close}
+              >
                 {item.title}
               </Link>
               {item === current && item.headings.length > 0 && (
-                <ul>
+                <ul className="mt-0.5 mb-2 border-l border-line pl-3">
                   {item.headings.map((heading) => (
-                    <li key={heading.id} data-depth={heading.depth}>
-                      <a href={`#${heading.id}`} data-active={heading.id === active || undefined} onClick={close}>
+                    <li key={heading.id}>
+                      <a
+                        href={`#${heading.id}`}
+                        data-active={heading.id === active || undefined}
+                        className={`relative block py-[3px] text-muted no-underline hover:text-fg data-active:text-fg data-active:before:absolute data-active:before:top-1/2 data-active:before:-left-[15.5px] data-active:before:-mt-[3px] data-active:before:size-1.5 data-active:before:rounded-full data-active:before:bg-live ${heading.depth === 3 ? 'pl-3' : ''}`}
+                        onClick={close}
+                      >
                         {heading.text}
                       </a>
                     </li>

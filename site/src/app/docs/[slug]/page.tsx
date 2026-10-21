@@ -22,10 +22,10 @@ export default async function DocsPage({ params }: PageProps<'/docs/[slug]'>) {
 
   return (
     <article className="prose">
-      <header className="page-header">
+      <header className="mb-8">
         <h1 id={page.id}>{page.title}</h1>
-        <p className="description">{page.description}</p>
-        <CopyButton text={page.markdown} label="Copy Markdown" />
+        <p className="mt-2 mb-4 text-muted">{page.description}</p>
+        <CopyButton text={page.markdown} label="Copy Markdown" className="bg-surface" />
       </header>
       {page.render()}
     </article>

@@ -39,12 +39,15 @@ export default function Home() {
       </>
     ),
     explore: (
-      <ul className="cards">
+      <ul className="grid grid-cols-2 gap-3 @max-[600px]:grid-cols-1">
         {pages.map((page) => (
           <li key={page.slug}>
-            <Link href={page.href}>
+            <Link
+              href={page.href}
+              className="grid h-full content-start gap-1 rounded-xl bg-surface px-5 py-4 no-underline transition-[background-color] duration-120 ease-[ease] hover:bg-selected motion-reduce:transition-none"
+            >
               <strong>{page.title}</strong>
-              <span>{page.description}</span>
+              <span className="text-[14px] leading-normal text-muted-on-surface">{page.description}</span>
             </Link>
           </li>
         ))}
@@ -54,17 +57,17 @@ export default function Home() {
 
   return (
     <>
-      <header className="hero">
-        <Mark size={64} />
-        <h1 className="pitch">{pitch}</h1>
-        <p className="hero-links">
+      <header>
+        <Mark size={64} className="mb-7" />
+        <h1 className="text-[24px] leading-[1.4] font-normal text-balance max-md:text-[22px]">{pitch}</h1>
+        <p className="mt-5 mb-0 flex flex-wrap gap-x-6 gap-y-2">
           <a href="#install">Install</a>
           <Link href={pages[0].href}>Read the docs</Link>
         </p>
       </header>
       {landingHeadings.map(({ id, text }) => (
-        <section key={id} className="landing-section" aria-labelledby={id}>
-          <h2 id={id}>{text}</h2>
+        <section key={id} className="@container" aria-labelledby={id}>
+          <h2 id={id} className="mt-18">{text}</h2>
           {bodies[id]}
         </section>
       ))}
