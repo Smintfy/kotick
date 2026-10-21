@@ -12,8 +12,11 @@ import {
   spawnChild,
   type ActorRefFrom,
   type AnyActorRef,
+  type AnyEventObject,
+  type AnyMachineSnapshot,
   type AnyStateMachine,
 } from 'xstate';
+import { systemActor } from './support/anti-slop-b';
 import {
   flush,
   freshId,
@@ -27,12 +30,14 @@ import {
   shownMachine,
 } from './support/panel';
 
+type WorkerContext = { progress: number };
+
+type WorkerEvent = { type: 'PROGRESS' } | { type: 'PAUSE' } | { type: 'FINISH' };
+
 function createWorkerMachine() {
   return setup({
-    types: {
-      context: {} as { progress: number },
-      events: {} as { type: 'PROGRESS' } | { type: 'PAUSE' } | { type: 'FINISH' },
-    },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    types: { context: {} as WorkerContext, events: {} as WorkerEvent },
   }).createMachine({
     id: freshId('worker'),
     context: { progress: 0 },
@@ -58,6 +63,7 @@ type ParentEvent = { type: 'OPEN' } | { type: 'CLOSE' } | { type: 'PROGRESS' } |
 /** Invokes a worker as "job" while busy, and passes the worker's events on to it. It's idle again when the job ends. */
 function createParentMachine(worker: WorkerMachine, initial: 'idle' | 'busy' = 'idle') {
   return setup({
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
     types: { events: {} as ParentEvent },
     actors: { worker },
   }).createMachine({
@@ -80,13 +86,13 @@ function createParentMachine(worker: WorkerMachine, initial: 'idle' | 'busy' = '
 
 type ParentMachine = ReturnType<typeof createParentMachine>;
 
-const PARENT_BUTTONS: Record<string, ParentEvent['type']> = {
+const PARENT_BUTTONS = {
   Open: 'OPEN',
   Close: 'CLOSE',
   Progress: 'PROGRESS',
   Pause: 'PAUSE',
   Finish: 'FINISH',
-};
+} satisfies Record<string, ParentEvent['type']>;
 
 function Parent({ machine, label }: { machine: ParentMachine; label?: string }) {
   const [snapshot, send] = useMachine(machine, label === undefined ? undefined : { debug: { label } });
@@ -180,7 +186,7 @@ const RUNS = {
   },
 };
 
-async function send(actor: AnyActorRef, event: { type: string; [key: string]: unknown }) {
+async function send(actor: AnyActorRef, event: AnyEventObject) {
   await act(async () => {
     actor.send(event);
   });
@@ -198,7 +204,8 @@ function shown(name: string) {
 
 /** The live child under `id` in an actor's snapshot. */
 function childOf(actor: AnyActorRef, id: string): AnyActorRef {
-  const child = (actor.getSnapshot() as { children: Record<string, AnyActorRef | undefined> }).children[id];
+  const snapshot: AnyMachineSnapshot = actor.getSnapshot();
+  const child = snapshot.children[id];
 
   if (!child) throw new Error(`No child "${id}".`);
 
@@ -225,12 +232,17 @@ function hidePage() {
   window.dispatchEvent(new Event('pagehide'));
 }
 
+/** What a pagehide stores for a machine. The test reads only the entries. */
+interface StoredRecording {
+  entries: { leaves: string[]; context: unknown }[];
+}
+
 /** The recordings that a pagehide stored for the machine, without their times, oldest first. */
 function storedEntries(machineId: string) {
   const raw = sessionStorage.getItem(`state-viewer:recorded:${machineId}`);
 
   if (raw === null) return null;
-  const { entries } = JSON.parse(raw) as { entries: { leaves: string[]; context: unknown }[] };
+  const { entries }: StoredRecording = JSON.parse(raw);
 
   return entries.map(({ leaves, context }) => ({ leaves, context }));
 }
@@ -293,11 +305,13 @@ describe('children that an action spawns', () => {
   test('spawnChild and spawn in assign each list a child, named by its id', async () => {
     const worker = createWorkerMachine();
 
+    type CrewContext = { workers: ActorRefFrom<WorkerMachine>[] };
+
+    type CrewEvent = { type: 'SPAWN' } | { type: 'HIRE' };
+
     const crew = setup({
-      types: {
-        context: {} as { workers: ActorRefFrom<WorkerMachine>[] },
-        events: {} as { type: 'SPAWN' } | { type: 'HIRE' },
-      },
+      // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+      types: { context: {} as CrewContext, events: {} as CrewEvent },
       actors: { worker },
     }).createMachine({
       id: freshId('crew'),
@@ -333,10 +347,15 @@ describe('children that an action spawns', () => {
   });
 });
 
+type TaskContext = { result: string };
+
+type TaskEvent = { type: 'FINISH'; result: string };
+
 /** A wizard invokes a step, which invokes a task. The task finishes on FINISH, and the step finishes with it. */
 function createWizardMachines() {
   const task = setup({
-    types: { context: {} as { result: string }, events: {} as { type: 'FINISH'; result: string } },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    types: { context: {} as TaskContext, events: {} as TaskEvent },
   }).createMachine({
     id: freshId('task'),
     context: { result: 'none' },
@@ -388,12 +407,12 @@ describe('grandchildren', () => {
 });
 
 describe("a child that the parent's initial state invokes", () => {
-  test.each(Object.keys(RUNS) as (keyof typeof RUNS)[])(
+  test.each(Object.entries(RUNS))(
     'with %s, it is listed once and followed, the next child takes its place, and it leaves with the parent',
-    async (run) => {
+    async (_, run) => {
       const worker = createWorkerMachine();
       const parent = createParentMachine(worker, 'busy');
-      const { actor, stop } = await RUNS[run](parent);
+      const { actor, stop } = await run(parent);
 
       const atChild = async () => {
         const listed = await machines();
@@ -505,7 +524,7 @@ describe('a child that finishes', () => {
     const tree = createWizardMachines();
     const { actor } = await RUNS[run](tree[root]);
 
-    await send(actor.system.get('task') as AnyActorRef, { type: 'FINISH', result: 'shipped' });
+    await send(systemActor(actor, 'task'), { type: 'FINISH', result: 'shipped' });
     hidePage();
     expect({ machines: await machines(), stored: storedEntries(tree.task.id) }).toEqual({
       machines: root === 'wizard' ? [tree.wizard.id] : [],
@@ -517,12 +536,19 @@ describe('a child that finishes', () => {
   });
 });
 
+type TickerEvent = { type: 'TICK' };
+
+type FlakyEvent = { type: 'POKE' };
+
+type SupervisorEvent = { type: 'POKE' } | { type: 'RETRY' } | { type: 'START_BROKEN' };
+
 /** A supervisor invokes a flaky child that fails on POKE, or a broken one that fails while it starts. */
 function createSupervisorMachines() {
   // XState takes the children of a failed actor out of its tree and its system, so they put themselves here.
   const tickers: AnyActorRef[] = [];
 
-  const ticker = setup({ types: { events: {} as { type: 'TICK' } } }).createMachine({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+  const ticker = setup({ types: { events: {} as TickerEvent } }).createMachine({
     id: freshId('ticker'),
     entry: ({ self }) => {
       tickers.push(self);
@@ -532,7 +558,8 @@ function createSupervisorMachines() {
   });
 
   const flaky = setup({
-    types: { events: {} as { type: 'POKE' } },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+    types: { events: {} as FlakyEvent },
     actors: { ticker },
     actions: {
       explode: () => {
@@ -559,7 +586,8 @@ function createSupervisorMachines() {
   });
 
   const supervisor = setup({
-    types: { events: {} as { type: 'POKE' } | { type: 'RETRY' } | { type: 'START_BROKEN' } },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+    types: { events: {} as SupervisorEvent },
     actors: { flaky, broken },
   }).createMachine({
     id: freshId('supervisor'),
@@ -635,9 +663,12 @@ describe('a child that fails', () => {
   });
 });
 
+type TimerEvent = { type: 'LAP' };
+
 /** Parents of a child named "timer": one invokes it while active, the other spawns it when it starts. */
 function createTimerParents() {
-  const timer = setup({ types: { events: {} as { type: 'LAP' } } }).createMachine({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+  const timer = setup({ types: { events: {} as TimerEvent } }).createMachine({
     id: freshId('timer'),
     initial: 'running',
     states: { running: { on: { LAP: 'lapped' } }, lapped: {} },
