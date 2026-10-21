@@ -395,7 +395,6 @@ function createBinding(actor: MachineActor): Binding {
         connections++;
         setKey(registrationKey);
 
-        // Before registering, so a change that the registration makes to the preview reaches the subscribers.
         if (!stopWatching) watch();
         const unregister = registry.register(handle);
         record(actor.getSnapshot());
