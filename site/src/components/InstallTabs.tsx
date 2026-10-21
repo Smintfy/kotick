@@ -22,9 +22,10 @@ export function InstallTabs({ name }: { name: string }) {
   };
 
   return (
-    <div className="install">
+    <div className="mb-6 rounded-xl bg-surface">
       <div
         role="tablist"
+        className="flex gap-1 px-2 pt-2"
         aria-label="Package manager"
         onKeyDown={(event) => {
           if (event.key === 'ArrowRight') select(selected + 1);
@@ -40,6 +41,7 @@ export function InstallTabs({ name }: { name: string }) {
             }}
             type="button"
             role="tab"
+            className="cursor-pointer rounded-md px-2.5 py-1.5 text-[13px] text-muted-on-surface aria-selected:bg-bg aria-selected:text-fg"
             id={`install-${manager.name}`}
             aria-selected={index === selected}
             aria-controls="install-command"
@@ -51,13 +53,13 @@ export function InstallTabs({ name }: { name: string }) {
         ))}
       </div>
       <div
-        className="install-command"
+        className="flex items-center justify-between gap-4 py-3 pr-3 pl-5"
         role="tabpanel"
         id="install-command"
         aria-labelledby={`install-${managers[selected].name}`}
       >
-        <code>{command}</code>
-        <CopyButton text={command} />
+        <code className="bg-transparent p-0 text-[13.5px]">{command}</code>
+        <CopyButton text={command} className="bg-bg" />
       </div>
     </div>
   );

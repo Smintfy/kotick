@@ -1,7 +1,14 @@
-export function Mark({ size }: { size: number }) {
+export function Mark({ size, className = '' }: { size: number; className?: string }) {
   return (
-    <svg className="mark" width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <rect x="0.5" y="0.5" width="31" height="31" rx="7.5" />
+    <svg
+      className={`block flex-none ${className}`}
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x="0.5" y="0.5" width="31" height="31" rx="7.5" fill="#0a0a0a" />
       <g
         transform="translate(8 8)"
         fill="none"
