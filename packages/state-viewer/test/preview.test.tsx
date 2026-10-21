@@ -10,6 +10,7 @@ import {
   setup,
   type Actor,
   type AnyStateMachine,
+  type AnyStateNodeConfig,
   type EventFrom,
 } from 'xstate';
 import { watchConsole } from './support/console';
@@ -33,12 +34,14 @@ import {
   shownKey,
 } from './support/panel';
 
+type CheckoutContext = { step: number; note: string };
+
+type CheckoutEvent = { type: 'START' } | { type: 'FAIL'; note: string } | { type: 'EXPRESS' };
+
 function createCheckoutMachine() {
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   return setup({
-    types: {
-      context: {} as { step: number; note: string },
-      events: {} as { type: 'START' } | { type: 'FAIL'; note: string } | { type: 'EXPRESS' },
-    },
+    types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
     actions: { count: assign({ step: ({ context }) => context.step + 1 }) },
   }).createMachine({
     id: freshId('checkout'),
@@ -158,13 +161,22 @@ function liveWarning(leaves: string, key: string) {
   return `[state-viewer] No recorded or fixture context for "${leaves}" on "${key}", so the preview uses the live context.`;
 }
 
+type CartContext = { items: number[] };
+
+type CartEvent = { type: 'ADD'; price: number } | { type: 'PAY' } | { type: 'RETRY' };
+
+type CartEmitted = { type: 'added'; price: number };
+
+type CartOutput = { total: number };
+
 function createCartMachine() {
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   return setup({
     types: {
-      context: {} as { items: number[] },
-      events: {} as { type: 'ADD'; price: number } | { type: 'PAY' } | { type: 'RETRY' },
-      emitted: {} as { type: 'added'; price: number },
-      output: {} as { total: number },
+      context: {} as CartContext,
+      events: {} as CartEvent,
+      emitted: {} as CartEmitted,
+      output: {} as CartOutput,
     },
     guards: { hasItems: ({ context }) => context.items.length > 0 },
   }).createMachine({
@@ -210,7 +222,7 @@ async function connectCart(machine: CartMachine, fixtures?: FixturesInput) {
 }
 
 /** Runs what a module does outside React, such as a send, and lets the overlay render what follows. */
-async function outsideReact(run: () => unknown) {
+async function outsideReact(run: () => void) {
   await act(async () => {
     run();
   });
@@ -278,10 +290,11 @@ type Edit = 'as written' | 'without paying.card.error' | 'with paying made compo
 
 /** A checkout edited in its source file. Fast Refresh evaluates the file again, so each call makes a new machine. */
 function createEditedMachine(id: string, edit: Edit = 'as written') {
-  const cardStates: Record<string, object> =
-    edit === 'without paying.card.error' ? { idle: {} } : { idle: {}, error: {} };
+  const card: AnyStateNodeConfig =
+    edit === 'without paying.card.error'
+      ? { initial: 'idle', states: { idle: {} } }
+      : { initial: 'idle', states: { idle: {}, error: {} } };
 
-  const card = { initial: 'idle', states: cardStates };
   const shipping = { initial: 'standard', states: { standard: {}, express: {} } };
   const gift = { initial: 'none', states: { none: {}, wrapped: {} } };
 
@@ -793,7 +806,7 @@ describe('an actor read outside React', () => {
         status: snapshot.status,
         matches: states.filter((state) => snapshot.matches(state)),
         tags: ['editable', 'busy', 'failed'].filter((tag) => snapshot.hasTag(tag)),
-        can: events.filter((event) => snapshot.can(event)).map((event) => event.type),
+        can: events.flatMap((event) => (snapshot.can(event) ? [event.type] : [])),
       };
     };
 
@@ -876,10 +889,14 @@ describe('an actor read outside React', () => {
     await outsideReact(() => proxy.send({ type: 'ADD', price: 3 }));
 
     await preview(machine.id, ['paying.declined']);
-    const { value, context, status } = proxy.getPersistedSnapshot() as Record<string, unknown>;
+    const persisted = proxy.getPersistedSnapshot();
 
     const during = {
-      persisted: { value, context, status },
+      persisted: {
+        value: 'value' in persisted ? persisted.value : undefined,
+        context: 'context' in persisted ? persisted.context : undefined,
+        status: persisted.status,
+      },
       toJSON: proxy.toJSON(),
       json: JSON.stringify({ ref: proxy }),
     };
@@ -915,8 +932,9 @@ describe('an actor read outside React', () => {
     const machine = createCartMachine();
     const { actor, proxy } = await connectCart(machine);
     // XState reads Symbol.observable when something defines it, and '@@observable' when nothing does.
-    const interop = (Symbol as { observable?: symbol }).observable ?? '@@observable';
-    const observable = (proxy as unknown as Record<PropertyKey, () => unknown>)[interop]();
+    const interop = 'observable' in Symbol ? Symbol.observable : '@@observable';
+    // SAFETY: Partial says only that the proxy can have the method. When it does not, the test fails.
+    const observable = (proxy as Partial<Record<typeof interop, () => object>>)[interop]?.();
     const started = proxy.start();
     let stopped: unknown;
     await outsideReact(() => {
