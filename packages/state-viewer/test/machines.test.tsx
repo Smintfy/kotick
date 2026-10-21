@@ -759,6 +759,31 @@ describe('machine ids', () => {
     });
   });
 
+  test('an id that is not a string, as a JavaScript machine can give, counts as no id', async () => {
+    const output = watchConsole();
+
+    const machine = createMachine({
+      ...createFetchConfig(freshId('open')),
+      // @ts-expect-error A JavaScript app can give a machine a number as its id.
+      id: 42,
+    });
+
+    const id = defineFixtures(machine, {}).machineId;
+    render(
+      <>
+        <Instance machine={machine} label="Numbered" />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+
+    expect({ id, machines: await machines(), warnings: output.warn }).toEqual({
+      id: expect.stringMatching(MADE_ID),
+      machines: [id],
+      warnings: [madeIdWarning(id)],
+    });
+  });
+
   test('a made id stays through edits of context values, transitions and state order, and changes with the states or the context keys', () => {
     const state = freshId('open');
     const idOf = (config: MachineConfig) => defineFixtures(createMachine(config), {}).machineId;

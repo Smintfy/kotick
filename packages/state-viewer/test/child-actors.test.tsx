@@ -738,6 +738,27 @@ function timerShown() {
   return screen.queryByRole('region', { name: 'timer' }) ? shown('timer') : null;
 }
 
+describe('a child id that is not a string, as a JavaScript machine can give', () => {
+  test('does not name the child, which is named by its machine', async () => {
+    const worker = createWorkerMachine();
+
+    const parent = setup({ actors: { worker } }).createMachine({
+      id: freshId('parent'),
+      // @ts-expect-error A JavaScript app can give a child a number as its id.
+      invoke: { id: 7, src: 'worker' },
+    });
+
+    await RUNS.useActorRef(parent);
+    await show(parent.id);
+    const atParent = { children: family().children, machines: await machines() };
+    await show(worker.id);
+    expect({ atParent, atChild: { instances: instances(), hint: family().hint } }).toEqual({
+      atParent: { children: [`${worker.id} · 1`], machines: [parent.id, `${worker.id} · child`] },
+      atChild: { instances: [`${worker.id} · 1`], hint: `Child of ${parent.id} · 1. ${READ_ONLY}` },
+    });
+  });
+});
+
 describe('an event without a string type, sent to a child', () => {
   test('reaches a callback child, and the parent keeps running', async () => {
     const received: AnyEventObject[] = [];
