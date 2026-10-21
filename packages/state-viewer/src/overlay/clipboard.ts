@@ -19,7 +19,7 @@ export async function copyText(text: string, container: Node): Promise<boolean> 
   textarea.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
   // Selecting moves focus; it goes back to the button that copied.
   const root = container.getRootNode();
-  const focused = root instanceof Document || root instanceof ShadowRoot ? root.activeElement : null;
+  const focused = hasActiveElement(root) ? root.activeElement : null;
   // Inside the overlay's shadow root, so the page's focus and selection listeners don't see it.
   container.appendChild(textarea);
 
@@ -32,6 +32,19 @@ export async function copyText(text: string, container: Node): Promise<boolean> 
   } finally {
     textarea.remove();
 
-    if (focused instanceof HTMLElement || focused instanceof SVGElement) focused.focus();
+    if (isFocusable(focused)) focused.focus();
   }
+}
+
+// The checks read properties, not instanceof, so they hold for a node of another window too.
+// The overlay can be in the document of an iframe or a popup.
+
+/** Whether a root node is a document or a shadow root, which know their focused element. */
+function hasActiveElement(root: Node): root is Document | ShadowRoot {
+  return 'activeElement' in root;
+}
+
+/** Whether an element can take focus back, as an HTML or an SVG element can. */
+function isFocusable(element: Element | null): element is HTMLElement | SVGElement {
+  return element !== null && 'focus' in element && typeof element.focus === 'function';
 }

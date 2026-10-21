@@ -16,7 +16,7 @@ import {
   type InstanceEntry,
   type MachineGroup,
 } from '../model';
-import { isTyping, moveIndex, moveOf, type Move } from '../shortcut';
+import { isElement, isTyping, moveIndex, moveOf, type Move } from '../shortcut';
 import { ContextView } from './ContextView';
 import { EventLog } from './EventLog';
 import { BODY } from './classes';
@@ -125,7 +125,7 @@ export function MachinePage(props: MachinePageProps) {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     const { target } = event;
 
-    if (!(target instanceof Element) || isTyping(target)) return;
+    if (!isElement(target) || isTyping(target)) return;
     // Form controls and buttons keep their own keys: arrows change a select or radio, Enter clicks a button.
     const control = target.closest('select, input, textarea');
     const move = moveOf(event.key);

@@ -105,11 +105,16 @@ function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   return host;
 }
 
+/** Whether the fixtures prop is a loader. A function of another window is one too. */
+function isLoader(input: FixturesInput): input is Exclude<FixturesInput, readonly FixtureSet[]> {
+  return typeof input === 'function';
+}
+
 async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
   let result: unknown;
 
   try {
-    result = input instanceof Function ? await input() : input;
+    result = isLoader(input) ? await input() : input;
   } catch (error) {
     console.warn('[state-viewer] The fixtures loader failed.', error);
 
