@@ -12,7 +12,16 @@ import {
   type DebugOptions,
 } from 'state-viewer/xstate';
 import { describe, expect, onTestFinished, test, vi } from 'vitest';
-import { assign, createActor, createMachine, setup, type AnyActorRef, type AnyStateMachine } from 'xstate';
+import {
+  assign,
+  createActor,
+  createMachine,
+  setup,
+  type Actor,
+  type AnyActorRef,
+  type AnyStateMachine,
+  type AnyStateNodeConfig,
+} from 'xstate';
 import { watchConsole } from './support/console';
 import {
   badge,
@@ -56,7 +65,7 @@ type Edit = 'as written' | 'without paying.card.error' | 'with paying made compo
 
 /** A machine edited in the source file: HMR evaluates the file again, so each call makes a new machine object. */
 function createCheckoutMachine(id: string, edit: Edit = 'as written') {
-  const cardStates: Record<string, object> =
+  const cardStates: Record<string, AnyStateNodeConfig> =
     edit === 'without paying.card.error' ? { idle: {} } : { idle: {}, error: {} };
 
   const card = { initial: 'idle', states: cardStates };
@@ -83,8 +92,10 @@ type MachineConfig = Parameters<typeof createMachine>[0];
  * A fresh state name gives a fresh id, and so a fresh warning.
  */
 function createFetchConfig(state: string) {
+  const items: string[] = [];
+
   return {
-    context: { items: [] as string[], error: '' },
+    context: { items, error: '' },
     initial: 'idle',
     states: {
       idle: { on: { FETCH: 'loading' } },
@@ -99,6 +110,7 @@ function createFetchConfig(state: string) {
 type FetchConfig = ReturnType<typeof createFetchConfig>;
 
 function reversed<T extends object>(states: T): T {
+  // SAFETY: The result has the entries of `states`, only in another order.
   return Object.fromEntries(Object.entries(states).reverse()) as T;
 }
 
@@ -132,10 +144,16 @@ const FETCH_EDITS = {
   'a removed context key': (config: FetchConfig) => ({ ...config, context: { items: [] } }),
 } satisfies Record<string, (config: FetchConfig) => MachineConfig>;
 
+/** The items of a list, under a key that the caller names. */
+type ListContext = Record<string, string[]>;
+
+type ListEvent = { type: 'LOAD'; items: string[] };
+
 /** A list without an id that loads its items. A list of other things has another context key, and so another id. */
 function createListMachine(key: string, loaded: string) {
   return createMachine({
-    types: {} as { context: Record<string, string[]>; events: { type: 'LOAD'; items: string[] } },
+    // SAFETY: XState reads the types of createMachine() only at compile time. It never reads these values.
+    types: { context: {} as ListContext, events: {} as ListEvent },
     context: { [key]: [] },
     initial: 'idle',
     states: {
@@ -848,7 +866,10 @@ describe('machine ids', () => {
 
 describe('debug options', () => {
   test('debug.id and debug.label name the machine and the instance, and only the other options reach XState', async () => {
-    const machine = setup({ types: { input: {} as { name: string }, context: {} as { name: string } } }).createMachine({
+    type GreetingInput = { name: string };
+
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    const machine = setup({ types: { input: {} as GreetingInput, context: {} as GreetingInput } }).createMachine({
       id: freshId('greeting'),
       context: ({ input }) => ({ name: input.name }),
       initial: 'hello',
@@ -856,7 +877,7 @@ describe('debug options', () => {
     });
 
     const debugId = freshId('greeter');
-    const actors: AnyActorRef[] = [];
+    const actors: Actor<typeof machine>[] = [];
 
     function Greeting() {
       const [snapshot, , actorRef] = useMachine(machine, {
@@ -881,7 +902,7 @@ describe('debug options', () => {
     await flush();
 
     await show(debugId);
-    const actor = actors[0] as AnyActorRef & { options: Record<string, unknown> };
+    const actor = actors[0];
     expect({
       shown: shown('greeting'),
       page: machinePage(),
