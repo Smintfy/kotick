@@ -67,13 +67,12 @@ These techniques replace a mock. Each one was tried in this package.
   errors.
 - **Recordings in sessionStorage.** Dispatch a `pagehide` event on `window` to write them at once, under
   `konat:recorded:<machine id>` as `{"v":1,"entries":[{"leaves","at","context"}]}`. Assert that `at` lies
-  between two `Date.now()` reads. Dispatch one in `afterEach` too, so a pending write can't land in the next test. The
-  page also writes them 500 ms after the first visit, and under load the presses of a test can take longer than that.
-  When a test asserts what one write stores or warns, make the visits and the `pagehide` in one task. Click them with
-  `click()` from `test/recording.test.tsx`, which doesn't wait for React. To test the 500 ms delay, wait for real time,
-  and run each step in a timer with `after()` from the same file. Node runs due timers in the order of their deadlines,
-  also when the page runs late. The page counts the stored recordings against the 1,000,000-character budget once per
-  test file, so put the tests at the storage limits last.
+  between two `Date.now()` reads. `test/setup.ts` dispatches one after each test, so a pending write can't land in the
+  next test. The page also writes them 500 ms after the first visit, and under load the presses of a test can take
+  longer than that. When a test asserts what one write stores or warns, make the visits and the `pagehide` in one task.
+  Click them with `clickInSameTask()` from `test/recording.test.tsx`, which doesn't wait for React. To test the 500 ms
+  delay, wait for real time, and run each step in a timer with `after()` from the same file. Node runs due timers in
+  the order of their deadlines, also when the page runs late.
 - **An actor that the page must let go.** Hold it only in a `WeakRef`, and call `collected()` from
   `test/support/gc.ts`. It runs three rounds of one real tick and a full collection, then tells which targets are gone.
   Never call `deref()` before it, because a `WeakRef` keeps the target it gave back alive until the task ends. The

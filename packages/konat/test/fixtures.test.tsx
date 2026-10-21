@@ -248,6 +248,35 @@ describe('the fixtures prop', () => {
       ],
     });
   });
+
+  test('a loader that runs again on a new render adds no set twice, so each set warns once', async () => {
+    const output = watchConsole();
+    const machine = createCheckoutMachine(freshId('checkout'));
+    const set = { machineId: machine.id, states: { done: fixture('given'), idle: { note: 'no context key' } } };
+    // @ts-expect-error The fixtures prop takes only sets. A JavaScript app can give a fixture without a context.
+    const page = await renderPage(<App machine={machine} />, () => [set]);
+    // @ts-expect-error As above.
+    await page.rerender(<App machine={machine} />, () => [set]);
+
+    await show(machine.id);
+    expect({ marks: marks(), warnings: output.warn }).toEqual({
+      marks: checkoutMarks({ done: ['fixture'] }),
+      warnings: [`[konat] Ignoring fixture "idle" for "${machine.id}": expected an object with a context.`],
+    });
+  });
+
+  test('a new input takes over from a pending loader, whose sets never register', async () => {
+    const machine = createCheckoutMachine(freshId('checkout'));
+    const first = lazyFixtures();
+    const second = lazyFixtures();
+    const page = await renderPage(<App machine={machine} />, first.loader);
+    await page.rerender(<App machine={machine} />, second.loader);
+
+    await second.resolve([defineFixtures(machine, { done: fixture('second') })]);
+    await first.resolve([defineFixtures(machine, { 'paying.card.error': fixture('first') })]);
+    await show(machine.id);
+    expect(marks()).toEqual(checkoutMarks({ done: ['fixture'] }));
+  });
 });
 
 describe('merging', () => {
@@ -297,9 +326,6 @@ describe('merging', () => {
 
 describe('a leaf with a recording and a fixture', () => {
   test('has both marks, and its preview takes the recording until the developer picks the fixture', async () => {
-    // Earlier tests leave a write of their recordings pending. A write also reads the stored recordings.
-    // pagehide does that write now, so only the registration can read this machine's stored recordings.
-    window.dispatchEvent(new Event('pagehide'));
     const machine = createCheckoutMachine(freshId('checkout'));
     sessionStorage.setItem(
       `konat:recorded:${machine.id}`,
@@ -368,14 +394,14 @@ describe('matching a set to a machine', () => {
     });
   });
 
-  test('sets made for the machine win over sets that only share its id', async () => {
+  test('sets made for the machine and for an equivalent machine merge, and a later set wins per leaf', async () => {
     const output = watchConsole();
     const id = freshId('checkout');
     const machine = createCheckoutMachine(id);
     const equivalent = createCheckoutMachine(id);
     await renderPage(<App machine={machine} />, [
-      defineFixtures(equivalent, { 'paying.card.error': fixture('by id'), done: fixture('by id') }),
       defineFixtures(machine, { 'paying.card.error': fixture('by machine') }),
+      defineFixtures(equivalent, { 'paying.card.error': fixture('by id'), done: fixture('by id') }),
     ]);
 
     await preview(id, ['paying.card.error']);
@@ -387,10 +413,10 @@ describe('matching a set to a machine', () => {
       done: { source: panel().source, note: shown().context.note },
       warnings: output.warn,
     }).toEqual({
-      marks: checkoutMarks({ 'paying.card.error': ['fixture'] }),
-      error: { source: 'fixture', note: 'by machine' },
-      done: { source: 'live', note: 'live' },
-      warnings: [liveWarning('done', shownKey())],
+      marks: checkoutMarks({ 'paying.card.error': ['fixture'], done: ['fixture'] }),
+      error: { source: 'fixture', note: 'by id' },
+      done: { source: 'fixture', note: 'by id' },
+      warnings: [],
     });
   });
 });

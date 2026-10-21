@@ -129,7 +129,7 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 
 - **R16 (P0)** Context resolution order: recorded, then fixture, then live. The panel shows which source was used and lets you switch it per preview. Previews that used the default order are resolved again when fixtures register, so a preview made before a lazy loader finishes picks up its fixture.
 - **R17 (P0)** The latest context per state configuration is recorded in memory and persisted best-effort to sessionStorage.
-- **R18 (P0)** Fixtures are written with `defineFixtures(machine, …)`, keyed by leaf id, and registered through `<Konat fixtures>`, which accepts a lazy loader. A fixture set matches instances of the same machine definition first (its config, which `machine.provide()` copies share), then of the same machine id, so `debug.id` and generated ids need no extra setup.
+- **R18 (P0)** Fixtures are written with `defineFixtures(machine, …)`, keyed by leaf id, and registered through `<Konat fixtures>`, which accepts a lazy loader. A fixture set matches instances by the machine's own id, which `debug.id` doesn't change: copies from `machine.provide()`, the machine that an edit makes again, and instances under `debug.id` all share it. Generated ids need no extra setup.
 - **R19 (P0)** States with neither a recording nor a fixture are marked in the tree. Previewing one falls back to live context with a warning. While a fixtures loader is pending, a preview on the default order waits to warn until the loader settles, and warns only if no fixture then gives it context (§10.3).
 
 ### 6.5 Overlay
@@ -299,27 +299,29 @@ interface MachineHandle {
   machineId: string;
   instanceId: string;
   label?: string;
-  adapter: string;       // "xstate"
   capabilities: Capabilities;
   parentKey?: string;    // set for child machines
-  source?: unknown;      // definition object (the XState machine's config); matched against FixtureSet.source
+  definitionId: string;  // the machine's own id, which debug.id doesn't change; FixtureSet.machineId matches it
 
   describe(): StateNodeInfo[];
   getActiveLeaves(): string[];
   getContext(): unknown;
   subscribe(onChange: () => void): () => void;   // real state changes
-  normalizeTarget(leaves: string[]): string[];   // e.g. fill untouched parallel regions
+  normalizeTarget(leaves: string[]): PreviewLeaves;
 }
 
 type DataSource = 'recorded' | 'fixture' | 'live';
 
-interface Override {
+interface PreviewLeaves {
+  requested: string[];   // leaves asked for that can be active together, in order
+  filled: string[];      // current or initial leaves of the regions that `requested` leaves alone
+}
+
+interface Override extends PreviewLeaves {
   instanceKey: string;   // `${machineId}#${instanceId}`
-  requested: string[];   // leaves asked for, in order
-  leaves: string[];      // full configuration: requested first, then filled-in regions
+  leaves: string[];      // requested, then filled
   context: unknown;
   source: DataSource;
-  createdAt: number;
 }
 
 interface EventLogEntry {
@@ -332,7 +334,6 @@ interface EventLogEntry {
 
 interface FixtureSet {
   machineId: string;
-  source?: unknown;      // definition object from defineFixtures; matched before machineId
   states: Record<string, { context: unknown }>;
 }
 
@@ -360,8 +361,7 @@ interface Registry {
   onOverride(instanceKey: string, listener: () => void): () => void;
 
   record(instanceKey: string, leaves: string[], context: unknown): void;
-  registerFixtures(sets: FixtureSet[]): void;
-  startFixtureLoad(): () => void;                // a fixture load starts; call the result when it ends (§10.3)
+  loadFixtures(input: FixturesInput): () => void;   // loads the sets once per pending input; the result cancels this call (§10.3)
   logEvent(entry: EventLogEntry): void;
   clearLog(): void;
 }
@@ -401,9 +401,9 @@ interface Registry {
 - Lookup: the exact configuration first, then the most recent configuration containing the selected leaf.
 - Stay off the hot path: each transition only stores a reference; serialization happens later.
 - A leaf is marked recorded when at least one recorded configuration contains it, matching the lookup fallback.
-- Fixture sets match an instance by `source` (the same definition object), then by `machineId`. The id fallback covers HMR, which recreates the machine and its config. A set that matched by source keeps matching that registry id afterwards, so machines under `debug.id` or a generated id keep their fixtures across HMR. Sets for the same machine merge, and a later set wins per leaf id.
+- Fixture sets match an instance when their `machineId` equals its `definitionId`, the machine's own id. `debug.id` doesn't change it, and an HMR edit keeps it, so machines under `debug.id` or a generated id keep their fixtures across HMR. Sets for the same machine id merge, and a later set wins per leaf id.
 - When fixtures register, every preview whose source came from the default order is checked again for the same configuration, and replaced only if its context or source changed. A live preview picks up a fixture that now matches, a fixture preview follows its fixture (or falls back to live if none matches any more), and a preview on a recording stays put. Recordings aren't consulted again, so a preview never changes with live traffic. Previews with an explicitly chosen source are left alone.
-- `<Konat fixtures>` calls `startFixtureLoad()` when a load starts, and the function it returns when the load settles: after its sets register, or when the loader fails. It starts the load in an insertion effect, which StrictMode doesn't run a second time, so the loader runs once on mount. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
+- `<Konat fixtures>` calls `loadFixtures(input)` in an effect, and the function it returns on cleanup. A call with the input of a pending load joins that load, so StrictMode's second run of the effect doesn't call the loader again. A load's sets register only if a call that wasn't cancelled still waits for them, so a new input takes over from a pending one. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
 - Fixture lookup checks the requested leaves in the order given (the clicked leaf first), then the leaves `normalizeTarget` filled in. The first leaf with a fixture wins.
 
 ### 10.4 XState behaviors we design around

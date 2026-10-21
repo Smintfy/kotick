@@ -59,9 +59,7 @@ export type LeafToggle = { action: 'preview'; leaves: string[] } | { action: 're
 
 /**
  * A requested leaf is taken out again, and the preview is released when no leaf stays.
- * Any other leaf goes first, so the registry resolves its fixture first.
- * normalizeTarget then drops the requested leaves that can't be active with the new leaf.
- * Requested leaves in other parallel regions stay.
+ * Another leaf goes first, so it wins over the requested leaves.
  */
 export function toggleLeaf(requested: readonly string[] | undefined, leaf: string): LeafToggle {
   if (!requested) return { action: 'preview', leaves: [leaf] };

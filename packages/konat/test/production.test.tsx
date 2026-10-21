@@ -121,7 +121,7 @@ test('konat/xstate is @xstate/react: the same hooks, a connect() that returns it
   }).toEqual({
     hooks: [true, true, true, true, true, true],
     connected: true,
-    set: { machineId: machine.id, source: machine.config, states: { offf: { context: {} } } },
+    set: { machineId: machine.id, states: { offf: { context: {} } } },
     output: { warn: [], error: [] },
   });
 });

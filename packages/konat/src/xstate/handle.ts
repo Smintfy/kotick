@@ -39,9 +39,7 @@ export function createHandle(
     machineId: identity.machineId,
     instanceId: identity.instanceId,
     capabilities: preview ? PREVIEW_CAPABILITIES : READ_ONLY_CAPABILITIES,
-    // The config, not the machine: machine.provide() makes a new machine around the same config, and fixtures
-    // defined for the machine should still match.
-    source: machine.config,
+    definitionId: resolveMachineId(machine),
     describe: () => getTree(machine).nodes,
     getActiveLeaves: () => leavesOfSnapshot(machine, actor.getSnapshot()),
     getContext: () => contextOf(actor.getSnapshot()),

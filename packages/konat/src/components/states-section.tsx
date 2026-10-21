@@ -159,8 +159,7 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
   const { active, override, data, cursor, readOnly, onSelect } = tree;
   const isActive = active.has(node.id);
   const requested = override?.requested.includes(node.id) === true;
-  // Shown by the preview because its region was left alone: the real leaf, carried into the forced snapshot.
-  const filled = !requested && override?.leaves.includes(node.id) === true;
+  const filled = override?.filled.includes(node.id) === true;
   const recorded = data.recorded.has(node.id);
   const fixture = data.fixture.has(node.id);
 

@@ -30,7 +30,7 @@ export function isFallbackId(machine: AnyStateMachine, machineId: string): boole
 
 /**
  * An id derived from the machine's state tree and the keys of its initial context.
- * HMR recreates the machine object, and fixtures follow the registry id once it changes.
+ * HMR recreates the machine object, and recordings and fixtures find the machine by this id.
  * So the id must come out the same for the recreated machine.
  * It changes when states are added, removed, renamed or change type, or when context keys come and go.
  * It doesn't change when states or keys are reordered.

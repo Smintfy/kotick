@@ -123,16 +123,14 @@ function useConnection<T extends object>(
 function listen(committed: HookState['committed'], { binding, view }: Listening): () => void {
   const stop = binding.onPreviewChange(view.showCurrent);
 
-  // The preview that held back how the actor ended can end while the hook isn't listening (an Activity hid it), and a
-  // replaced actor's owed ending isn't held by a preview of another key. XState repeats a finished or failed actor's
-  // ending when @xstate/react restarts it, but tells a stopped one nothing.
+  // XState repeats a finished or failed actor's ending when @xstate/react restarts it, but tells a stopped one nothing.
   if (view.owes()) view.showCurrent();
 
   return () => {
     stop();
 
-    // The hook no longer previews the actor (debug.disabled): the observer leaves the preview, as on a release. The
-    // committed view's, which @xstate/react subscribes to the new actor when one replaced this one in the same render.
+    // The hook no longer previews the actor (debug.disabled).
+    // When a new actor replaced this one in the same render, @xstate/react subscribes the committed view to it.
     if (committed.binding === undefined) (committed.view ?? view).detach(binding);
   };
 }
@@ -213,10 +211,8 @@ function useProxiedActorRef(
     // Fast Refresh registers a new actor in place of the old one, and the registry releases a preview it can't show.
     ensureConnection(hook.listening, listening, connectListening);
 
-    // The observer leaves the preview here, as in listen()'s cleanup, when the hook stopped previewing while it wasn't
-    // listening (debug.disabled while an Activity hid it): layout effects run again on the reveal, before
-    // @xstate/react restarts the actor. With a new actor too, so the memory moves to it in the commit, before the
-    // replaced actor tells the observer anything more.
+    // An Activity reveal runs this layout effect again before @xstate/react restarts the actor.
+    // With a new actor, settle() moves the memory to it before the replaced actor tells the observer more.
     if (!listening) view?.settle();
     // @xstate/react starts the actor in a passive effect, after this layout effect.
     // So the registry records the first rendered snapshot and every snapshot that start() goes through.

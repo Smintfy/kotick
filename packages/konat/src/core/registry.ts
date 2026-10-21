@@ -1,16 +1,18 @@
 import type {
   DataAvailability,
   DataSource,
-  EndFixtureLoad,
+  FixtureSet,
+  FixturesInput,
   MachineHandle,
   Override,
+  PreviewLeaves,
   PreviewTarget,
   Registry,
   RegistrySnapshot,
   StateNodeInfo,
 } from '../types';
 import { createEventLog } from './event-log';
-import { createFixtureStore } from './fixtures';
+import { createFixtureStore, readFixtures } from './fixtures';
 import { isId, isLeafId } from './ids';
 import { createRecordingStore } from './recording';
 import { VERSION } from './version';
@@ -23,8 +25,6 @@ type SnapshotPart = 'machines' | 'overrides' | 'log' | 'data';
 /** `${machineId}#${instanceId}`, from toInstanceKey(). */
 type InstanceKey = string;
 
-type HeldWarning = () => void;
-
 /** One registration of a handle; unregister removes only the registration it came from. */
 interface Registration {
   handle: MachineHandle;
@@ -35,18 +35,9 @@ interface ResolvedContext {
   context: unknown;
 }
 
-const DEFAULT_SOURCE_ORDER: readonly DataSource[] = ['recorded', 'fixture', 'live'];
+type StoredSource = Exclude<DataSource, 'live'>;
 
-/**
- * The default order as a preview found it, by its source, for when fixtures register. A recording that arrived since
- * would move the preview with live traffic, so none is looked up, and a preview on a recording, which fixtures can't
- * outrank, stays. A live preview keeps the context it captured rather than taking the actor's current one.
- */
-const REFRESH_ORDER: Readonly<Record<DataSource, readonly DataSource[]>> = {
-  recorded: [],
-  fixture: ['fixture', 'live'],
-  live: ['fixture'],
-};
+const STORED_SOURCES: readonly StoredSource[] = ['recorded', 'fixture'];
 
 const noop = (): void => {};
 
@@ -75,11 +66,10 @@ function createRegistry(): Registry {
   // the mark goes with it when it's released, dropped or replaced.
   const chosenSource = new WeakSet<Override>();
   const overrideListeners = new Map<InstanceKey, Set<() => void>>();
-  // Fixture loads that startFixtureLoad() started and that are not done yet.
-  let pendingFixtureLoads = 0;
-  // The warnings that previews hold until no fixture load is pending.
-  // The fixtures that load can still give the preview context, so the preview warns only if they don't.
-  const heldWarnings = new Map<InstanceKey, HeldWarning>();
+  // The pending loads by input, each with the calls that wait for its sets.
+  const fixtureLoads = new Map<FixturesInput, Set<object>>();
+  // A fixture that is still loading can give a live preview its context, so its warning waits for the loads.
+  const heldWarnings = new Map<InstanceKey, string>();
   const listeners = new Set<() => void>();
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
   const eventLog = createEventLog();
@@ -177,7 +167,7 @@ function createRegistry(): Registry {
 
       if (machineId in data) continue;
       const recorded = recording.recordedLeaves(machineId);
-      const fixture = fixtures.fixtureLeaves(handle);
+      const fixture = fixtures.fixtureLeaves(handle.definitionId);
       const before = previous[machineId];
 
       if (before && before.recorded === recorded && before.fixture === fixture) {
@@ -221,7 +211,6 @@ function createRegistry(): Registry {
       // Map.set keeps an existing key's position, so a replacement stays where the first registration was.
       registrations.set(key, registration);
       recording.hydrate(handle.machineId);
-      fixtures.recordAlias(handle);
       markDirty('machines');
       markDirty('data');
 
@@ -267,20 +256,17 @@ function createRegistry(): Registry {
       return;
     }
 
-    const kept: unknown = attempt('normalizeTarget', () => handle.normalizeTarget([...override.leaves]));
+    const completed: unknown = attempt('normalizeTarget', () => handle.normalizeTarget([...override.leaves]));
 
-    if (!Array.isArray(kept) || !override.leaves.every((leaf) => kept.includes(leaf))) {
+    if (!isPreviewLeaves(completed) || !override.leaves.every((leaf) => completed.requested.includes(leaf))) {
       releaseOverride(key);
 
       return;
     }
 
-    // Regions that the edit added, which the preview shows.
-    // The configuration names them, as the blocked-event log does.
-    const added = kept.filter((leaf): leaf is string => typeof leaf === 'string' && !override.leaves.includes(leaf));
-
-    if (added.length === 0) return;
-    const updated: Override = freeze({ ...override, leaves: freeze([...override.leaves, ...added]) });
+    if (completed.filled.length === 0) return;
+    const leaves = { requested: override.requested, filled: [...override.filled, ...completed.filled] };
+    const updated = toOverride(key, leaves, { source: override.source, context: override.context });
 
     if (chosenSource.has(override)) chosenSource.add(updated);
     overrides.set(key, updated);
@@ -317,46 +303,47 @@ function createRegistry(): Registry {
     return leaves;
   }
 
-  function lookupContext(
+  function lookupStored(
     handle: MachineHandle,
-    source: DataSource,
-    requested: string[],
-    normalized: string[],
-  ): { context: unknown } | undefined {
+    source: StoredSource,
+    leaves: PreviewLeaves,
+  ): ResolvedContext | undefined {
     switch (source) {
       case 'recorded': {
-        const entry = recording.lookup(handle.machineId, requested, normalized);
+        const { requested, filled } = leaves;
+        const entry = recording.lookup(handle.machineId, requested, [...requested, ...filled]);
 
-        return entry && { context: entry.context };
+        return entry && { source, context: entry.context };
       }
 
       case 'fixture': {
-        const match = fixtures.lookup(handle, requested, normalized);
+        const match = fixtures.lookup(handle.definitionId, leaves);
 
-        return match && { context: match.context };
+        return match && { source, context: match.context };
       }
 
-      case 'live':
-        return { context: handle.getContext() };
       default:
         return undefined;
     }
   }
 
-  /** Context from the first source in `order` that has some. Throws when getContext() throws. */
   function resolveContext(
     handle: MachineHandle,
-    order: readonly DataSource[],
-    requested: string[],
-    leaves: string[],
-  ): ResolvedContext | undefined {
-    for (const source of order) {
-      const found = lookupContext(handle, source, requested, leaves);
+    explicit: DataSource | undefined,
+    leaves: PreviewLeaves,
+  ): ResolvedContext {
+    if (explicit !== 'live') {
+      const order =
+        explicit === undefined ? STORED_SOURCES : [explicit, ...STORED_SOURCES.filter((source) => source !== explicit)];
 
-      if (found) return { source, context: found.context };
+      for (const source of order) {
+        const found = lookupStored(handle, source, leaves);
+
+        if (found) return found;
+      }
     }
 
-    return undefined;
+    return { source: 'live', context: handle.getContext() };
   }
 
   function applyPreview(instanceKey: string, target: PreviewTarget): void {
@@ -415,80 +402,60 @@ function createRegistry(): Registry {
       console.warn(`[konat] Ignoring ${list} in the preview of "${instanceKey}": ${what}.`);
     }
 
-    let normalized: string[];
+    let leaves: unknown;
 
     try {
-      normalized = handle.normalizeTarget([...asked]);
+      leaves = handle.normalizeTarget([...asked]);
     } catch (error) {
       console.warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() threw.`, error);
 
       return;
     }
 
-    if (!Array.isArray(normalized)) {
-      console.warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() didn't return an array.`);
+    if (!isPreviewLeaves(leaves)) {
+      console.warn(
+        `[konat] Can't preview "${instanceKey}": normalizeTarget() didn't return the requested and filled leaves.`,
+      );
 
       return;
     }
 
-    // A leaf normalizeTarget dropped as conflicting isn't shown, so it stays out and can't pick the context.
-    const requested = asked.filter((leaf) => normalized.includes(leaf));
-
-    if (requested.length === 0) {
-      // Nothing that was asked for would be shown, and the override would have no leaves to mark.
+    if (leaves.requested.length === 0) {
       console.warn(`[konat] Can't preview "${instanceKey}": normalizeTarget() kept none of the requested leaves.`);
 
       return;
     }
 
-    // Requested leaves first, in the order given, so previewing the whole configuration again still resolves the
-    // same context whatever order normalizeTarget returns.
-    const leaves = [...requested, ...normalized.filter((leaf) => !requested.includes(leaf))];
-
     const explicit = target.source;
-
-    const order =
-      explicit === undefined
-        ? DEFAULT_SOURCE_ORDER
-        : [explicit, ...DEFAULT_SOURCE_ORDER.filter((source) => source !== explicit)];
-
-    let resolved: ResolvedContext | undefined;
+    let resolved: ResolvedContext;
 
     try {
-      resolved = resolveContext(handle, order, requested, leaves);
+      resolved = resolveContext(handle, explicit, leaves);
     } catch (error) {
       console.warn(`[konat] Can't preview "${instanceKey}": getContext() threw.`, error);
 
       return;
     }
 
-    // Live always has context, and every order includes it.
-    const { source, context }: ResolvedContext = resolved ?? { source: 'live', context: undefined };
-
-    const shown = `"${requested.join(', ')}" on "${instanceKey}"`;
-    let held: HeldWarning | undefined;
+    const { source } = resolved;
+    const shown = `"${leaves.requested.join(', ')}" on "${instanceKey}"`;
+    let held: string | undefined;
 
     if (source === 'live' && explicit !== 'live') {
       const message = `[konat] No recorded or fixture context for ${shown}, so the preview uses the live context.`;
 
       // Only a preview on the default order takes the fixtures that register later.
-      if (explicit === undefined && pendingFixtureLoads > 0) held = () => console.warn(message);
+      if (explicit === undefined && fixtureLoads.size > 0) held = message;
       else console.warn(message);
     } else if (explicit !== undefined && source !== explicit) {
       console.warn(`[konat] No ${explicit} context for ${shown}, so the preview uses the ${source} context.`);
     }
 
     // Before the listeners are notified, because a listener can preview the instance again.
-    if (held) heldWarnings.set(instanceKey, held);
-    else heldWarnings.delete(instanceKey);
+    if (held === undefined) heldWarnings.delete(instanceKey);
+    else heldWarnings.set(instanceKey, held);
 
-    const override: Override = freeze({
-      instanceKey,
-      requested: freeze(requested),
-      leaves: freeze(leaves),
-      context,
-      source,
-    });
+    const override = toOverride(instanceKey, leaves, resolved);
 
     if (explicit !== undefined) chosenSource.add(override);
     overrides.set(instanceKey, override);
@@ -497,54 +464,72 @@ function createRegistry(): Registry {
   }
 
   /**
-   * Resolves the context of previews left to the default order again.
-   * So a preview made before the fixtures loaded, such as an early click, picks them up.
-   * The configuration stays as it was.
-   * Only fixtures registering calls this.
-   * It looks up no recordings, because those would move a preview along with live traffic.
+   * Gives new fixtures to the previews on the default order, such as a click before the fixtures loaded.
+   * It looks up no recordings, because a recording would move the preview with live traffic.
+   * A live preview keeps the context that it captured.
    */
-  function reresolve(): void {
+  function applyFixtures(): void {
     for (const [key, override] of Array.from(overrides)) {
       // A listener notified earlier in this loop can have replaced or released this one.
-      if (overrides.get(key) !== override || chosenSource.has(override)) continue;
+      if (overrides.get(key) !== override || chosenSource.has(override) || override.source === 'recorded') continue;
       const handle = registeredHandle(key);
 
       if (!handle) continue;
-      let resolved: ResolvedContext | undefined;
+      let resolved = lookupStored(handle, 'fixture', override);
 
-      try {
-        resolved = resolveContext(handle, REFRESH_ORDER[override.source], override.requested, override.leaves);
-      } catch {
-        continue;
+      if (!resolved && override.source === 'fixture') {
+        try {
+          resolved = { source: 'live', context: handle.getContext() };
+        } catch {
+          continue;
+        }
       }
 
       if (!resolved || (resolved.source === override.source && Object.is(resolved.context, override.context))) continue;
-      overrides.set(key, freeze({ ...override, source: resolved.source, context: resolved.context }));
+      overrides.set(key, freeze({ ...override, ...resolved }));
       markDirty('overrides');
       notifyOverride(key);
     }
   }
 
-  function startFixtureLoad(): EndFixtureLoad {
-    pendingFixtureLoads++;
-    let pending = true;
+  function registerFixtures(sets: readonly FixtureSet[]): void {
+    if (!fixtures.register(sets)) return;
+    markDirty('data');
+    applyFixtures();
+  }
 
-    // One-shot, so calling it again can't end a different load.
+  function loadFixtures(input: FixturesInput): () => void {
+    const waiting = fixtureLoads.get(input) ?? startFixtureLoad(input);
+    const call = {};
+    waiting.add(call);
+
     return () => {
-      if (!pending) return;
-      pending = false;
-      pendingFixtureLoads--;
-
-      if (pendingFixtureLoads === 0) giveHeldWarnings();
+      waiting.delete(call);
     };
+  }
+
+  function startFixtureLoad(input: FixturesInput): Set<object> {
+    const waiting = new Set<object>();
+    fixtureLoads.set(input, waiting);
+    void readFixtures(input)
+      .then((sets) => {
+        if (waiting.size > 0) registerFixtures(sets);
+      })
+      .finally(() => {
+        fixtureLoads.delete(input);
+
+        if (fixtureLoads.size === 0) giveHeldWarnings();
+      });
+
+    return waiting;
   }
 
   function giveHeldWarnings(): void {
     const held = [...heldWarnings];
     heldWarnings.clear();
 
-    for (const [key, warn] of held) {
-      if (overrides.get(key)?.source === 'live') warn();
+    for (const [key, message] of held) {
+      if (overrides.get(key)?.source === 'live') console.warn(message);
     }
   }
 
@@ -613,15 +598,7 @@ function createRegistry(): Registry {
       // A stale actor can still report after its component unmounted.
       if (handle) recording.record(handle.machineId, leaves, context);
     },
-    registerFixtures(sets) {
-      fixtures.register(sets);
-
-      // The new sets can match machines that registered earlier. Record those aliases before HMR replaces the machines.
-      for (const { handle } of registrations.values()) fixtures.recordAlias(handle);
-      markDirty('data');
-      reresolve();
-    },
-    startFixtureLoad,
+    loadFixtures,
     logEvent(entry) {
       eventLog.push(entry);
       markDirty('log');
@@ -652,8 +629,7 @@ function createNoopRegistry(): Registry {
     getOverride: () => undefined,
     onOverride: () => noop,
     record: noop,
-    registerFixtures: noop,
-    startFixtureLoad: () => noop,
+    loadFixtures: () => noop,
     logEvent: noop,
     clearLog: noop,
   };
@@ -691,6 +667,28 @@ export function getPageRegistry(): Registry {
   scope[REGISTRY_KEY] = registry;
 
   return registry;
+}
+
+function toOverride(instanceKey: string, { requested, filled }: PreviewLeaves, resolved: ResolvedContext): Override {
+  return freeze({
+    instanceKey,
+    requested: freeze([...requested]),
+    filled: freeze([...filled]),
+    leaves: freeze([...requested, ...filled]),
+    context: resolved.context,
+    source: resolved.source,
+  });
+}
+
+function isPreviewLeaves(value: unknown): value is PreviewLeaves {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'requested' in value &&
+    Array.isArray(value.requested) &&
+    'filled' in value &&
+    Array.isArray(value.filled)
+  );
 }
 
 // A JS app can register anything, so the ids are read through `?.` and checked.

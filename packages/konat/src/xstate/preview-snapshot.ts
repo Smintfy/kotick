@@ -7,7 +7,7 @@ import type {
   Mapper,
   StateValue,
 } from 'xstate';
-import type { Override } from '../types';
+import type { Override, PreviewLeaves } from '../types';
 import { getTree, leavesOfValue, nodeId, type AnyStateNode, type MachineTree } from './tree';
 
 interface NestedStateValue {
@@ -58,12 +58,12 @@ function orthogonal(a: AnyStateNode, b: AnyStateNode): boolean {
   return ancestor?.type === 'parallel';
 }
 
-/**
- * Completes a preview target: requested leaves in order, skipping any that conflict with an earlier one, then
- * the current leaves of regions the request leaves alone, then the initial leaves of regions neither covers, the way
- * XState enters them. The requested leaves that were kept come first.
- */
-export function completeTarget(machine: AnyStateMachine, requested: readonly string[], current: readonly string[]) {
+/** XState enters the initial leaves of the regions that neither the requested nor the current leaves cover. */
+export function completeTarget(
+  machine: AnyStateMachine,
+  requested: readonly string[],
+  current: readonly string[],
+): PreviewLeaves {
   const tree = getTree(machine);
   const kept: AnyStateNode[] = [];
 
@@ -74,16 +74,16 @@ export function completeTarget(machine: AnyStateMachine, requested: readonly str
   };
 
   for (const leaf of requested) add(leaf);
-  const requestedCount = kept.length;
+  const keptRequested = kept.map(nodeId);
 
-  if (requestedCount === 0) return [];
+  if (keptRequested.length === 0) return { requested: [], filled: [] };
 
   for (const leaf of current) add(leaf);
 
   const resolved = machine.resolveState({ value: toStateValue(kept), context: {} });
-  const first = kept.slice(0, requestedCount).map(nodeId);
+  const filled = leavesOfValue(machine, resolved.value).filter((leaf) => !keptRequested.includes(leaf));
 
-  return [...first, ...leavesOfValue(machine, resolved.value).filter((leaf) => !first.includes(leaf))];
+  return { requested: keptRequested, filled };
 }
 
 /**
