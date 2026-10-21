@@ -20,8 +20,11 @@ import { createActor, fromPromise, setup } from 'xstate';
 import { watchConsole } from './support/console';
 import { freshId } from './support/panel';
 
+type ToggleEvent = { type: 'TOGGLE' };
+
 function createToggleMachine() {
-  return setup({ types: { events: {} as { type: 'TOGGLE' } } }).createMachine({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+  return setup({ types: { events: {} as ToggleEvent } }).createMachine({
     id: freshId('toggle'),
     initial: 'off',
     states: {

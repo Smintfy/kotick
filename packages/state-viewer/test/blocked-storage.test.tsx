@@ -12,8 +12,13 @@ import { flush, freshId, isOpen, marks, overlay, panel, pickCorner, preview, sho
 // throws. The registry reads sessionStorage once per page, and test/setup.ts can't clear storage on about:blank, so
 // this file holds one test.
 
+type CheckoutContext = { step: number; note: string };
+
+type CheckoutEvent = { type: 'START' } | { type: 'FAIL' };
+
+// SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
 const machine = setup({
-  types: { context: {} as { step: number; note: string }, events: {} as { type: 'START' } | { type: 'FAIL' } },
+  types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
 }).createMachine({
   id: freshId('checkout'),
   context: { step: 0, note: 'none' },

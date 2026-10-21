@@ -7,8 +7,11 @@ import { expect, test } from 'vitest';
 import { createActor, setup } from 'xstate';
 import { watchConsole } from './support/console';
 
+type ToggleEvent = { type: 'TOGGLE' };
+
 // The server has no page registry, so the tests in this file can share a machine id.
-const toggleMachine = setup({ types: { events: {} as { type: 'TOGGLE' } } }).createMachine({
+// SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+const toggleMachine = setup({ types: { events: {} as ToggleEvent } }).createMachine({
   id: 'toggle',
   initial: 'off',
   states: { off: { on: { TOGGLE: 'on' } }, on: { on: { TOGGLE: 'off' } } },
@@ -24,8 +27,12 @@ const globalsAtLoad = Reflect.ownKeys(globalThis);
  */
 function objectsAdded(): PropertyKey[] {
   return Reflect.ownKeys(globalThis).filter(
-    (key) => !globalsAtLoad.includes(key) && typeof Reflect.get(globalThis, key) !== 'number',
+    (key) => !globalsAtLoad.includes(key) && !isCount(Object.getOwnPropertyDescriptor(globalThis, key)?.value),
   );
+}
+
+function isCount(value: unknown): value is number {
+  return typeof value === 'number';
 }
 
 test('renders nothing, loads no fixtures, and leaves globalThis as it was', () => {

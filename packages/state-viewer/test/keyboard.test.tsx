@@ -4,7 +4,18 @@ import { useMachine } from 'state-viewer/xstate';
 import { describe, expect, test } from 'vitest';
 import { createMachine, setup, type AnyStateMachine } from 'xstate';
 import { watchConsole } from './support/console';
-import { flush, freshId, isOpen, overlay, panel, preview, show, shownMachine, toggleState } from './support/panel';
+import {
+  flush,
+  focused,
+  freshId,
+  isOpen,
+  overlay,
+  panel,
+  preview,
+  show,
+  shownMachine,
+  toggleState,
+} from './support/panel';
 
 const ALT_S = { key: 's', code: 'KeyS', altKey: true };
 
@@ -45,7 +56,7 @@ function focusedInOverlay(): HTMLElement {
 
 /** The leaf that has focus, or `none`. */
 function focusedLeaf(): string {
-  return (overlay().activeElement as HTMLElement | null)?.dataset.leaf ?? 'none';
+  return focused(HTMLElement)?.dataset.leaf ?? 'none';
 }
 
 /** The leaf in the tab order. Tab moves into the tree there. */
@@ -74,11 +85,11 @@ function control(selector: string): HTMLElement {
 
 /** The row of the machine list that has focus: its machine id, or else its label. `none` when no row has focus. */
 function focusedRow(): string {
-  const focused = overlay().activeElement as HTMLElement | null;
+  const row = focused(HTMLElement);
 
-  if (!focused?.hasAttribute('data-row')) return 'none';
+  if (!row?.hasAttribute('data-row')) return 'none';
 
-  return focused.dataset.machine ?? focused.querySelector('[data-part="row-label"]')?.textContent ?? '';
+  return row.dataset.machine ?? row.querySelector('[data-part="row-label"]')?.textContent ?? '';
 }
 
 async function click(element: Element): Promise<void> {
@@ -231,7 +242,7 @@ describe('focus', () => {
     await press(ALT_S);
 
     await click(control('[data-row="settings"]'));
-    const corner = (overlay().activeElement as HTMLInputElement | null)?.value;
+    const corner = focused(HTMLInputElement)?.value;
     await click(control('button[aria-label="Back"]'));
     expect({ corner, back: focusedRow() }).toEqual({ corner: 'bottom-left', back: 'Settings' });
   });

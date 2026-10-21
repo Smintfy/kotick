@@ -21,9 +21,14 @@ import {
   shownKey,
 } from './support/panel';
 
+type CheckoutContext = { note: string };
+
+type CheckoutEvent = { type: 'FAIL' } | { type: 'EXPRESS' };
+
 function createCheckoutMachine() {
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   return setup({
-    types: { context: {} as { note: string }, events: {} as { type: 'FAIL' } | { type: 'EXPRESS' } },
+    types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
   }).createMachine({
     id: freshId('checkout'),
     type: 'parallel',
@@ -35,8 +40,13 @@ function createCheckoutMachine() {
   });
 }
 
+type CartContext = { items: string[] };
+
+type CartEvent = { type: 'ADD' };
+
 function createCartMachine() {
-  return setup({ types: { context: {} as { items: string[] }, events: {} as { type: 'ADD' } } }).createMachine({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+  return setup({ types: { context: {} as CartContext, events: {} as CartEvent } }).createMachine({
     id: freshId('cart'),
     context: { items: ['apple'] },
     initial: 'filled',
@@ -256,6 +266,11 @@ test('a link in the URL previews its state when the page loads', async () => {
 
 type Mount = 'root.render()' | 'a transition' | 'flushSync';
 
+declare global {
+  /** While it is true, React warns about each update outside act(). Testing Library sets it to true. */
+  var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
 /**
  * Mounts `app` in a new root with createRoot and without act, as an app starts.
  * Returns the text of its first output at the end of the task that commits the mount, where the browser paints.
@@ -267,9 +282,8 @@ async function firstPaint(
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
-  const scope = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
-  const previous = scope.IS_REACT_ACT_ENVIRONMENT;
-  scope.IS_REACT_ACT_ENVIRONMENT = false;
+  const previous = globalThis.IS_REACT_ACT_ENVIRONMENT;
+  globalThis.IS_REACT_ACT_ENVIRONMENT = false;
 
   try {
     return await new Promise<string | null>((resolve) => {
@@ -297,7 +311,7 @@ async function firstPaint(
   } finally {
     root.unmount();
     container.remove();
-    scope.IS_REACT_ACT_ENVIRONMENT = previous;
+    globalThis.IS_REACT_ACT_ENVIRONMENT = previous;
   }
 }
 
