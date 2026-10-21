@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import * as React from 'react';
+import { createRoot } from 'react-dom/client';
 import { Konat, type FixturesInput } from 'konat';
 import { connect, defineFixtures, useMachine, useSelector } from 'konat/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
@@ -14,7 +16,7 @@ import {
   type EventFrom,
 } from 'xstate';
 import { watchConsole } from './support/console';
-import { REACT_MAJOR } from './support/react';
+import { describeWithActivity, REACT_MAJOR } from './support/react';
 import {
   badge,
   blockedEvents,
@@ -33,6 +35,11 @@ import {
   show,
   shownKey,
 } from './support/panel';
+
+declare global {
+  /** While it is true, React warns about each update outside act(). Testing Library sets it to true. */
+  var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
 
 type CheckoutContext = { step: number; note: string };
 
@@ -940,6 +947,65 @@ describe('a machine that Fast Refresh replaces', () => {
         context: { note: 'gift fixture' },
       },
       rows: [`CONFIRM · ${id} · 1 · in paying.card.error, paying.shipping.standard, paying.gift.none`],
+    });
+  });
+});
+
+describeWithActivity('an Activity that hides the component', () => {
+  test('a preview that ends while the component is hidden is not in the first paint that shows it again', async () => {
+    const machine = createCheckoutMachine();
+    // The same element on each render, as children from a parent are, so React shows it again without a new render.
+    const checkout = <Checkout machine={machine} />;
+    const container = document.body.appendChild(document.createElement('div'));
+    const root = createRoot(container);
+    onTestFinished(() => {
+      act(() => root.unmount());
+      container.remove();
+    });
+    let onPaint: ((text: string | null) => void) | undefined;
+
+    // React runs this layout effect after those of the components before it, at the end of the commit.
+    function EndOfCommit({ mode }: { mode: string }) {
+      React.useLayoutEffect(() => {
+        const resolve = onPaint;
+
+        // A microtask runs after the synchronous renders that the commit starts, and before the browser paints.
+        if (resolve) queueMicrotask(() => resolve(screen.getByRole('status', { name: 'checkout' }).textContent));
+      }, [mode]);
+
+      return null;
+    }
+
+    const app = (mode: 'visible' | 'hidden') => (
+      <React.StrictMode>
+        <React.Activity mode={mode}>{checkout}</React.Activity>
+        <EndOfCommit mode={mode} />
+        <Konat defaultOpen />
+      </React.StrictMode>
+    );
+
+    await act(async () => root.render(app('visible')));
+    await flush();
+    await preview(machine.id, ['done']);
+    const previewing = shown();
+    // The hidden component unregisters, and the registry ends its preview.
+    await act(async () => root.render(app('hidden')));
+    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
+    let painted: string | null;
+
+    try {
+      // Outside act, as in an app, so React runs the passive effects after the paint.
+      painted = await new Promise((resolve) => {
+        onPaint = resolve;
+        root.render(app('visible'));
+      });
+    } finally {
+      globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+    }
+
+    expect({ previewing, firstPaint: JSON.parse(painted ?? 'null') }).toEqual({
+      previewing: { value: 'done', context: { step: 0, note: 'none' } },
+      firstPaint: { value: 'idle', context: { step: 0, note: 'none' } },
     });
   });
 });

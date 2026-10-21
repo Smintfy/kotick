@@ -309,8 +309,9 @@ export function useActor<TLogic extends AnyActorLogic>(
   const snapshot = React.useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
   // useSyncExternalStore subscribes, and checks the snapshot it rendered, in a passive effect, which runs after the
   // paint unless the commit was synchronous.
-  // A preview applied in this commit's layout phase re-renders from here instead, synchronously.
-  // So the first paint shows it.
+  // A hidden Activity unregisters the component, and the registry then ends its preview.
+  // The Activity can show the component again without a new render, so the last render can still show that preview.
+  // This layout effect re-renders it synchronously, so the first paint shows the real snapshot.
   const [, rerender] = React.useReducer((count: number) => count + 1, 0);
   useIsomorphicLayoutEffect(() => {
     if (!Object.is(getSnapshot(), snapshot)) rerender();
