@@ -5,7 +5,12 @@ import vm from 'node:vm';
 
 v8.setFlagsFromString('--expose-gc');
 
-const collectGarbage = vm.runInNewContext('gc') as () => void;
+// V8 gives gc() only to a context that it makes after the flag is set. The context of the page is older.
+const collector = vm.createContext();
+
+function collectGarbage(): void {
+  vm.runInContext('gc()', collector);
+}
 
 /**
  * Runs three rounds of one real tick and a full collection, then tells which targets are gone.

@@ -17,14 +17,14 @@ export type Hooks = typeof xstateReact;
  */
 export const IMPLEMENTATIONS: [name: string, hooks: Hooks, previews: boolean][] = [
   ['@xstate/react (control)', xstateReact, false],
-  ['state-viewer/xstate', stateViewer as unknown as Hooks, true],
+  ['state-viewer/xstate', stateViewer, true],
 ];
 
 /**
  * True when XState's own actors have select(), which XState 5.29 added.
  * The proxies of state-viewer have select() with every supported XState, so only the @xstate/react rows need this.
  */
-export const ACTOR_SELECT = typeof (createActor(createMachine({})) as { select?: unknown }).select === 'function';
+export const ACTOR_SELECT = 'select' in createActor(createMachine({}));
 
 /** True when React has <Activity>, which React 19.2 added. */
 export const HAS_ACTIVITY = 'Activity' in React;

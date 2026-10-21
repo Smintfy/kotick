@@ -1,5 +1,5 @@
 import { act } from '@testing-library/react';
-import { subscribe, unsubscribe } from 'node:diagnostics_channel';
+import { subscribe, unsubscribe, type ChannelListener } from 'node:diagnostics_channel';
 import { format } from 'node:util';
 import { onTestFinished } from 'vitest';
 
@@ -14,7 +14,12 @@ export function watchConsole(): ConsoleOutput {
 
   for (const level of ['warn', 'error'] as const) {
     const channel = `console.${level}`;
-    const record = (args: unknown) => output[level].push(format(...(args as unknown[])));
+
+    const record: ChannelListener = (message) => {
+      if (!Array.isArray(message)) throw new TypeError(`${channel} published no list of arguments.`);
+      output[level].push(format(...message));
+    };
+
     subscribe(channel, record);
     onTestFinished(() => {
       unsubscribe(channel, record);
@@ -29,10 +34,11 @@ export function watchConsole(): ConsoleOutput {
  * XState throws an error that no observer handles from a timer, so the tick lets that timer run.
  * React runs the effects of a render in `run` when its act() ends, so the tick comes after that act().
  */
+// oxlint-disable-next-line anti-slop/no-unknown-returns -- run can return any value, and uncaught() only waits for it.
 export async function uncaught(run: () => unknown): Promise<unknown[]> {
   const errors: unknown[] = [];
 
-  const record = (error: unknown) => {
+  const record = (error: Error) => {
     errors.push(error);
   };
 
