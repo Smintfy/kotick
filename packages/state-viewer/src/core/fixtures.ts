@@ -1,6 +1,17 @@
+import { isId } from './ids';
 import type { FixtureSet, MachineHandle } from './types';
 
 type FixtureTarget = Pick<MachineHandle, 'machineId' | 'source'>;
+
+/** One fixture of a set: the context of a leaf, as defineFixtures() declares it. */
+type Fixture = FixtureSet['states'][string];
+
+/** A set as the app gave it: a machine id and an object of states, whose fixtures are checked one by one. */
+interface FixtureSetInput {
+  machineId: string;
+  source?: unknown;
+  states: object;
+}
 
 interface FixtureMatch {
   leaf: string;
@@ -47,7 +58,7 @@ export function createFixtureStore(): FixtureStore {
   // '(machine)', which get distinct generated ids, don't share sets. Never cleared: an old source stays an alias.
   const aliases = new Map<string, Set<unknown>>();
 
-  function addAlias(machineId: string, source: unknown): void {
+  function addAlias({ machineId, source }: FixtureTarget): void {
     let sources = aliases.get(machineId);
 
     if (!sources) {
@@ -60,9 +71,10 @@ export function createFixtureStore(): FixtureStore {
     byId.delete(machineId);
   }
 
-  /** The sets whose source is `source`, merged, or undefined when no set has that source. */
-  function matchSource(source: unknown): MergedFixtures | undefined {
-    if (!hasSource(source)) return undefined;
+  /** The sets whose source is the target's, merged, or undefined when no set has that source. */
+  function matchSource(target: FixtureTarget): MergedFixtures | undefined {
+    if (!hasSource(target)) return undefined;
+    const { source } = target;
     let merged = bySource.get(source);
 
     if (!merged) {
@@ -76,10 +88,11 @@ export function createFixtureStore(): FixtureStore {
     return merged;
   }
 
-  function resolve({ machineId, source }: FixtureTarget): MergedFixtures {
-    const sourceMatch = matchSource(source);
+  function resolve(target: FixtureTarget): MergedFixtures {
+    const sourceMatch = matchSource(target);
 
     if (sourceMatch) return sourceMatch;
+    const { machineId } = target;
     let merged = byId.get(machineId);
 
     if (!merged) {
@@ -100,11 +113,9 @@ export function createFixtureStore(): FixtureStore {
       }
 
       let added = false;
-      input.forEach((value: unknown, index) => {
-        const set = toStoredSet(value, index);
-
-        if (!set) return;
-        sets.push(set);
+      input.forEach((value, index) => {
+        if (!isFixtureSetInput(value, index)) return;
+        sets.push(toStoredSet(value));
         added = true;
       });
 
@@ -135,14 +146,14 @@ export function createFixtureStore(): FixtureStore {
       return resolve(target).leaves;
     },
 
-    recordAlias({ machineId, source }) {
-      if (matchSource(source)) addAlias(machineId, source);
+    recordAlias(target) {
+      if (matchSource(target)) addAlias(target);
     },
   };
 }
 
 // `null` counts as no source, so handles and sets that report `null` don't all match each other.
-function hasSource(source: unknown): boolean {
+function hasSource({ source }: FixtureTarget): boolean {
   return source !== undefined && source !== null;
 }
 
@@ -156,32 +167,38 @@ function merge(matched: StoredSet[]): MergedFixtures {
   return contexts.size > 0 ? { contexts, leaves: new Set(contexts.keys()) } : NO_FIXTURES;
 }
 
-function toStoredSet(value: unknown, index: number): StoredSet | undefined {
-  if (!isRecord(value)) {
+/** Whether the app gave a set that can register. The app's typing can't be relied on, so a warning says what is wrong. */
+function isFixtureSetInput(value: unknown, index: number): value is FixtureSetInput {
+  if (!isObject(value)) {
     console.warn(`[state-viewer] Ignoring fixture set at index ${index}: expected an object from defineFixtures().`);
 
-    return undefined;
+    return false;
   }
 
-  const { machineId, source, states } = value;
-
-  if (typeof machineId !== 'string' || machineId === '') {
+  if (!('machineId' in value) || !isId(value.machineId)) {
     console.warn(`[state-viewer] Ignoring fixture set at index ${index}: machineId must be a non-empty string.`);
 
-    return undefined;
+    return false;
   }
 
-  if (!isRecord(states)) {
-    console.warn(`[state-viewer] Ignoring fixture set "${machineId}": states must be an object keyed by leaf id.`);
+  if (!('states' in value) || !isObject(value.states)) {
+    console.warn(
+      `[state-viewer] Ignoring fixture set "${value.machineId}": states must be an object keyed by leaf id.`,
+    );
 
-    return undefined;
+    return false;
   }
 
+  return true;
+}
+
+function toStoredSet({ machineId, source, states }: FixtureSetInput): StoredSet {
   const contexts = new Map<string, unknown>();
+  const fixtures: [string, unknown][] = Object.entries(states);
 
-  for (const [leaf, entry] of Object.entries(states)) {
-    if (isRecord(entry) && Object.hasOwn(entry, 'context')) {
-      contexts.set(leaf, entry.context);
+  for (const [leaf, fixture] of fixtures) {
+    if (isFixture(fixture)) {
+      contexts.set(leaf, fixture.context);
     } else {
       console.warn(`[state-viewer] Ignoring fixture "${leaf}" for "${machineId}": expected an object with a context.`);
     }
@@ -190,6 +207,10 @@ function toStoredSet(value: unknown, index: number): StoredSet | undefined {
   return { machineId, source, contexts };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isFixture(value: unknown): value is Fixture {
+  return isObject(value) && Object.hasOwn(value, 'context');
+}
+
+function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
