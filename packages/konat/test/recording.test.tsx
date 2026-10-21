@@ -111,7 +111,6 @@ function ConnectedCheckout({ actor }: { actor: Actor<CheckoutMachine> }) {
   return <CheckoutView name="checkout" snapshot={snapshot} send={actor.send} />;
 }
 
-/** An app that renders nothing of its machine: one button per event, in a region when `name` is given. */
 function Controls(props: { machine: AnyStateMachine; events?: Record<string, AnyEventObject>; name?: string }) {
   const actorRef = useActorRef(props.machine);
 
@@ -124,7 +123,6 @@ function Controls(props: { machine: AnyStateMachine; events?: Record<string, Any
   return props.name === undefined ? <>{buttons}</> : <section aria-label={props.name}>{buttons}</section>;
 }
 
-/** States s0 to s<count - 1>, and NEXT goes from each one to the next. */
 function steps(count: number) {
   const states: Record<string, { on?: { NEXT: string } }> = {};
 
@@ -135,7 +133,6 @@ function steps(count: number) {
   return states;
 }
 
-/** Renders the app with an open overlay, or without one when only sessionStorage matters. */
 async function mount(app: ReactElement, { overlay = true } = {}) {
   const view = render(
     <>
@@ -162,13 +159,11 @@ async function press(name: string, where?: string) {
   await flush();
 }
 
-/** What a checkout renders: its value and context, which follow the preview. */
 function shown(where = 'checkout') {
   return JSON.parse(region(where).getByRole('status').textContent ?? 'null');
 }
 
 /**
- * Runs `step` in a timer after `ms` milliseconds, and resolves with its result.
  * Timers run in the order of their deadlines, also when the page runs late, so the step keeps its place among them.
  */
 function after<T>(ms: number, step: () => T): Promise<T> {
@@ -181,7 +176,7 @@ function hidePage() {
   window.dispatchEvent(new Event('pagehide'));
 }
 
-/** The stored entries without their times, oldest first. */
+/** Oldest first. */
 function storedEntries(machineId: string) {
   return readStored(machineId)?.entries.map(({ leaves, context }) => ({ leaves, context })) ?? null;
 }
@@ -200,7 +195,6 @@ const CHECKOUT_LEAVES = [
   'done',
 ];
 
-/** The marks of the checkout tree when exactly the given leaves have recordings. */
 function recordedMarks(leaves: string[], all = CHECKOUT_LEAVES) {
   return Object.fromEntries(all.map((leaf) => [leaf, [leaves.includes(leaf) ? 'recorded' : 'none']]));
 }
@@ -423,7 +417,6 @@ describe('with more than 50 configurations', () => {
   const PAGE_LEAVES = Array.from({ length: PAGES }, (_, index) => `page.s${index}`);
   const ALL_LEAVES = [...PAGE_LEAVES, 'help.hidden'];
 
-  // Every configuration holds help.hidden, so it stays recorded while one of them is kept.
   function createWizardMachine() {
     return createMachine({
       id: freshId('wizard'),
@@ -590,10 +583,7 @@ describe('with a context that JSON cannot hold as it is', () => {
 });
 
 describe('after a reload', () => {
-  /**
-   * Records a checkout on an earlier page load and stores its payload for `machineId`, as a reload finds it.
-   * Steps 1 to 3: idle + standard, error + standard, idle + standard again.
-   */
+  /** Steps 1 to 3: idle + standard, error + standard, idle + standard again. */
   async function storeEarlierLoad(machineId: string) {
     const earlier = createCheckoutMachine();
     const view = await mount(<Checkout machine={earlier} />, { overlay: false });
@@ -658,8 +648,9 @@ describe('after a reload', () => {
   });
 });
 
-// The registry counts what it stored in earlier tests of the file against the budget, though test/setup.ts clears the
-// storage. So these tests come last, the budget test first, and each one leaves little stored.
+// The registry counts what it stored in earlier tests of the file against the budget.
+// It does this although test/setup.ts clears the storage.
+// So these tests come last, the budget test first, and each one leaves little stored.
 describe('at the storage limits', () => {
   test('all machines share 1,000,000 characters, and a key that goes gives its share back', async () => {
     const output = watchConsole();

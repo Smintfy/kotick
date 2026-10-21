@@ -53,7 +53,6 @@ function clearButton(): HTMLButtonElement {
   return found;
 }
 
-/** The Blocked events section: its title, its rows newest first, and whether Clear can be clicked. */
 function eventLog() {
   const titles = [...overlay().querySelectorAll('section h3')].map((title) => title.textContent ?? '');
 
@@ -64,7 +63,6 @@ function eventLog() {
   };
 }
 
-/** The time each row shows, newest first. */
 function times(): string[] {
   return [...overlay().querySelectorAll('[data-part="log-entry"] [data-part="time"]')].map((time) => time.textContent ?? '');
 }
@@ -252,7 +250,6 @@ describe('events from another actor', () => {
   test('an event sent with sendTo is blocked too, and reaches the actor once the preview is released', async () => {
     const machine = createPaymentMachine();
     const { real, proxy } = startPayment(machine);
-    // Another actor of the app, which holds the actor that connect() gave back.
     const sender = createActor(createMachine({ on: { PING: { actions: sendTo(proxy, { type: 'PAY' }) } } })).start();
     onTestFinished(() => {
       sender.stop();

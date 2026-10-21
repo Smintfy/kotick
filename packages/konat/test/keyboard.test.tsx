@@ -46,7 +46,6 @@ function Run({ machine }: { machine: AnyStateMachine }) {
   return null;
 }
 
-/** The element that has focus inside the overlay. */
 function focusedInOverlay(): HTMLElement {
   const found = overlay().activeElement;
 
@@ -55,12 +54,10 @@ function focusedInOverlay(): HTMLElement {
   return found;
 }
 
-/** The leaf that has focus, or `none`. */
 function focusedLeaf(): string {
   return focused(HTMLElement)?.dataset.leaf ?? 'none';
 }
 
-/** The leaf in the tab order. Tab moves into the tree there. */
 function tabStop(): HTMLElement {
   const stop = overlay().querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
 
@@ -69,7 +66,6 @@ function tabStop(): HTMLElement {
   return stop;
 }
 
-/** Every leaf in the tab order. The tree has one. */
 function tabStops(): string {
   return [...overlay().querySelectorAll<HTMLElement>('[role="treeitem"][tabindex="0"]')]
     .map((stop) => stop.dataset.leaf)
@@ -84,7 +80,6 @@ function control(selector: string): HTMLElement {
   return found;
 }
 
-/** The row of the machine list that has focus: its machine id, or else its label. `none` when no row has focus. */
 function focusedRow(): string {
   const row = focused(HTMLElement);
 
@@ -262,7 +257,6 @@ describe('in the panel', () => {
     await show(checkout.id);
     tabStop().focus();
 
-    // The bubble names the number of previews on the page.
     const step = (key: string) => {
       const bubble = control('button[aria-expanded]').getAttribute('aria-label');
 
@@ -271,7 +265,8 @@ describe('in the panel', () => {
 
     const steps = [step('start')];
 
-    // A control keeps the keys it handles itself: arrows change a select, and Enter clicks a button.
+    // A control keeps the keys that it handles itself.
+    // Arrows change a select, and Enter clicks a button.
     const keys: [string, HTMLElement?][] = [
       ['ArrowDown'],
       ['ArrowDown'],
@@ -322,7 +317,6 @@ describe('in the panel', () => {
     }
 
     expect(seen).toEqual([
-      // The live shipping leaf is hidden, so the tab stop is on the live payment leaf.
       'start: payment.editing',
       'ArrowUp: payment.editing',
       'End: payment.success',

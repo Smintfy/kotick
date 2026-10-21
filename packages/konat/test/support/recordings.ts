@@ -1,8 +1,5 @@
-// What the overlay stores in sessionStorage, read and checked as a page reload would find it.
-
 import type { Json } from './json';
 
-/** A recording as the overlay stores it. */
 type Entry = { leaves: string[]; at: number; context: Json };
 
 type Payload = { v: number; entries: Entry[] };
@@ -11,7 +8,6 @@ export function recordedKey(machineId: string): string {
   return `konat:recorded:${machineId}`;
 }
 
-/** The stored recordings of a machine, or null when it has none. A payload of the wrong form fails the test. */
 export function readStored(machineId: string): Payload | null {
   const raw = sessionStorage.getItem(recordedKey(machineId));
 

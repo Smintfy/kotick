@@ -1,5 +1,3 @@
-// Renders the components under test next to the overlay, and uses them as a user does.
-
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Konat, type KonatProps } from 'konat';
@@ -7,7 +5,6 @@ import { onTestFinished } from 'vitest';
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { flush } from './panel';
 
-/** The app next to an open overlay, for render() and rerender(). */
 export function page(app: ReactNode, props?: KonatProps) {
   return (
     <>
@@ -17,7 +14,6 @@ export function page(app: ReactNode, props?: KonatProps) {
   );
 }
 
-/** Renders the app next to an open overlay, and waits for the overlay to list its machines. */
 export async function mount(app: ReactNode, props?: KonatProps) {
   const view = render(page(app, props));
   await flush();
@@ -25,7 +21,6 @@ export async function mount(app: ReactNode, props?: KonatProps) {
   return view;
 }
 
-/** Starts an actor outside React, as a module that owns it does. The actor stops when the test ends. */
 export function start<TMachine extends AnyStateMachine>(machine: TMachine): Actor<TMachine> {
   const actor = createActor(machine).start();
   onTestFinished(() => {
@@ -35,10 +30,7 @@ export function start<TMachine extends AnyStateMachine>(machine: TMachine): Acto
   return actor;
 }
 
-/**
- * The actor that the system of `actor` holds under `systemId`.
- * If the system has no such actor, the test fails here, not at a later call on `undefined`.
- */
+/** If the system has no such actor, the test fails here, not at a later call on `undefined`. */
 export function systemActor(actor: AnyActorRef, systemId: string): AnyActorRef {
   const found = actor.system.get(systemId);
 
@@ -47,7 +39,6 @@ export function systemActor(actor: AnyActorRef, systemId: string): AnyActorRef {
   return found;
 }
 
-/** Clicks the app's button with this name, and waits for React to render. */
 export async function press(name: string): Promise<void> {
   fireEvent.click(screen.getByRole('button', { name }));
   await flush();

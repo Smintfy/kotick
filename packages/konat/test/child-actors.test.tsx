@@ -46,7 +46,6 @@ type WorkerMachine = ReturnType<typeof createWorkerMachine>;
 
 type ParentEvent = { type: 'OPEN' } | { type: 'CLOSE' } | { type: 'PROGRESS' } | { type: 'PAUSE' };
 
-/** Invokes a worker as "job" while busy, and passes the worker's events on to it. It's idle again when the job ends. */
 function createParentMachine(worker: WorkerMachine, initial: 'idle' | 'busy' = 'idle') {
   return setup({
     // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
@@ -103,7 +102,6 @@ function shown(name: string) {
   return JSON.parse(within(screen.getByRole('region', { name })).getByRole('status').textContent ?? 'null');
 }
 
-/** The live child under `id` in an actor's snapshot. */
 function childOf(actor: AnyActorRef, id: string): AnyActorRef {
   const snapshot: AnyMachineSnapshot = actor.getSnapshot();
   const child = snapshot.children[id];
@@ -113,7 +111,6 @@ function childOf(actor: AnyActorRef, id: string): AnyActorRef {
   return child;
 }
 
-/** What the States section shows about the parent and the children of the shown instance. */
 function family() {
   const states = [...overlay().querySelectorAll('section[aria-labelledby]')].find(
     (section) => section.querySelector('h3')?.textContent === 'States',
@@ -133,7 +130,6 @@ function hidePage() {
   window.dispatchEvent(new Event('pagehide'));
 }
 
-/** The recordings that a pagehide stored for the machine, without their times, oldest first. */
 function storedEntries(machineId: string) {
   return readStored(machineId)?.entries.map(({ leaves, context }) => ({ leaves, context })) ?? null;
 }
@@ -182,7 +178,6 @@ type TaskContext = { result: string };
 
 type TaskEvent = { type: 'FINISH'; result: string };
 
-/** A wizard invokes a step, which invokes a task. The task finishes on FINISH, and the step finishes with it. */
 function createWizardMachines() {
   const task = setup({
     // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
@@ -219,8 +214,8 @@ function createWizardMachines() {
 }
 
 describe('grandchildren', () => {
-  // XState tells the parent that the grandchild is done, and the parent finishes and takes the grandchild out of the
-  // tree before the grandchild's own last snapshot comes in.
+  // XState tells the parent that the grandchild is done.
+  // The parent finishes and takes the grandchild out of the tree before the grandchild's own last snapshot comes in.
   test('a grandchild is listed under its own parent, and its final state is recorded when its finish ends its parent', async () => {
     const { task, step, wizard } = createWizardMachines();
     const actor = await run(wizard);
@@ -291,7 +286,6 @@ type TickerEvent = { type: 'TICK' };
 
 type SupervisorEvent = { type: 'POKE' } | { type: 'RETRY' } | { type: 'START_BROKEN' };
 
-/** A supervisor invokes a flaky child that fails on POKE, or a broken one that fails while it starts. */
 function createSupervisorMachines() {
   // XState takes the children of a failed actor out of its tree and its system, so they put themselves here.
   const tickers: AnyActorRef[] = [];
@@ -405,7 +399,6 @@ describe('an event without a string type, sent to a child', () => {
 
 type TimerEvent = { type: 'LAP' };
 
-/** A parent that invokes a child named "timer" while active. */
 function createInvokerMachine() {
   // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
   const timer = setup({ types: { events: {} as TimerEvent } }).createMachine({
@@ -434,7 +427,6 @@ function Timer({ actor }: { actor: AnyActorRef }) {
   );
 }
 
-/** Shows what a component reads from the parent's snapshot, and renders the timer child that the snapshot holds. */
 function Watcher({ actor }: { actor: AnyActorRef }) {
   const snapshot = useSelector(actor, (current) => current);
   const timer: AnyActorRef | undefined = snapshot.children.timer;
@@ -449,7 +441,6 @@ function Watcher({ actor }: { actor: AnyActorRef }) {
   );
 }
 
-/** Starts the parent outside React, and shows it through connect(). */
 async function mountWatcher(machine: AnyStateMachine) {
   const actor = start(machine);
   await mount(<Watcher actor={connect(actor)} />);

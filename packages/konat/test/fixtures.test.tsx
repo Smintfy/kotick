@@ -11,7 +11,6 @@ type CheckoutContext = { step: number; note: string };
 
 type CheckoutEvent = { type: 'START' } | { type: 'FAIL'; note: string } | { type: 'RETRY' } | { type: 'EXPRESS' };
 
-/** A factory. A test makes the machine again with it, as HMR does. Each transition adds one to the step. */
 function createCheckoutMachine(id: string) {
   // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   return setup({
@@ -49,13 +48,8 @@ function createCheckoutMachine(id: string) {
 
 type CheckoutMachine = ReturnType<typeof createCheckoutMachine>;
 
-/** The context key of an anonymous machine is a parameter. */
 type AnonymousMachineTypes = { context: Record<string, string> };
 
-/**
- * A machine without an id. Its state name and its context key set its generated id.
- * A fresh state name gives a fresh id, and so a fresh warning.
- */
 function createAnonymousMachine(state: string, contextKey = 'label') {
   // SAFETY: XState reads the types of a machine only at compile time. It never reads this value.
   return createMachine({
@@ -70,7 +64,7 @@ function fixture(note: string) {
   return { context: { step: 99, note } };
 }
 
-/** The marks of a checkout that has not moved. The actor starts in idle, so idle is recorded. */
+/** The actor starts in idle, so idle is recorded. */
 function checkoutMarks(changes: Record<string, string[]> = {}) {
   return {
     idle: ['recorded'],
@@ -97,7 +91,6 @@ function firstLines(lines: string[]): string[] {
 const ROOT_SYSTEM_ID = 'root';
 const actors = new Map<string, AnyActorRef>();
 
-/** Shows its machine's value and context. Give each one a name when the page renders several. */
 function App({ machine, debugId, name = 'app' }: { machine: AnyStateMachine; debugId?: string; name?: string }) {
   const [snapshot, , actor] = useMachine(machine, {
     systemId: ROOT_SYSTEM_ID,
@@ -113,7 +106,6 @@ function shown(name = 'app') {
   return JSON.parse(screen.getByTestId(name).textContent ?? 'null');
 }
 
-/** Sends an event to the real actor behind the preview. The real actor continues under a preview, as on a timer. */
 async function sendToRealActor(event: { type: string; note?: string }, name = 'app') {
   const actor = actors.get(name);
 
@@ -144,7 +136,6 @@ async function renderPage(app: React.ReactNode, fixtures?: FixturesInput) {
 
 type Settle = { resolve(result: FixturesResult): void; reject(reason: Error): void };
 
-/** A loader such as `() => import('./fixtures')`. It loads when the test resolves or rejects it. */
 function lazyFixtures() {
   let settle!: Settle;
 
@@ -413,7 +404,7 @@ describe('fixtures that register after a preview', () => {
     await preview(machine.id, ['paying.card.error']);
     const before = { panel: panel(), shown: shown(), warnings: [...output.warn] };
 
-    // The real actor moves on. A preview that fills in the shipping region now gets another leaf.
+    // A preview that fills in the shipping region now gets another leaf.
     await sendToRealActor({ type: 'START' });
     await sendToRealActor({ type: 'EXPRESS' });
     await lazy.resolve([defineFixtures(machine, { 'paying.card.error': fixture('loaded late') })]);
@@ -470,7 +461,7 @@ describe('fixtures that register after a preview', () => {
     // The live preview keeps the context it captured.
     await sendToRealActor({ type: 'START' }, 'live');
 
-    // This is what a change to the fixtures file does. The recording of idle comes before its new fixture.
+    // The recording of idle comes before its new fixture.
     await page.rerender(apps, [defineFixtures(machine, { done: fixture('v2'), idle: fixture('idle') })]);
     const sources: string[] = [];
 
@@ -527,7 +518,6 @@ describe('fixtures that register after a preview', () => {
     await preview(machine.id, ['paying.card.error'], { nth: 1 });
     const liveKey = shownKey();
     await preview(machine.id, ['paying.shipping.express'], { nth: 2 });
-    // The real actor of the first instance goes through both leaves, which records them.
     await sendToRealActor({ type: 'START' }, 'live');
     await sendToRealActor({ type: 'FAIL', note: 'recorded' }, 'live');
     await sendToRealActor({ type: 'EXPRESS' }, 'live');

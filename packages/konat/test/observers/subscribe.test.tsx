@@ -57,7 +57,6 @@ type ResultContext = { result: number };
 
 type JobEvent = { type: 'FINISH' };
 
-/** Finishes with output 42 on FINISH. `waiting` and `cancelled` are there to be previewed. */
 function createJobMachine() {
   return setup({
     // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
@@ -82,27 +81,20 @@ async function send(actor: Checkout, ...events: EventFrom<CheckoutMachine>[]) {
   });
 }
 
-/** Waits one real tick, so the promises that a request settles have run. */
 async function tick(): Promise<void> {
   await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 }
 
-/** A snapshot as a subscriber of the checkout records it: its value, then its item count. */
 function summary(snapshot: SnapshotFrom<CheckoutMachine>): string {
   return `${JSON.stringify(snapshot.value)} ${snapshot.context.items}`;
 }
 
-/** What an app reads from the actor: its status, its state value, and its output when it is done. */
 function read(actor: AnyActorRef) {
   const { status, value, output } = actor.getSnapshot();
 
   return { status, value, output };
 }
 
-/**
- * Records how a promise settles, as a string, so that a rejection shows in the assertion.
- * The record is 'pending' until then.
- */
 function outcome(promise: Promise<unknown>): () => string {
   let settled = 'pending';
   void promise.then(
@@ -117,14 +109,12 @@ function outcome(promise: Promise<unknown>): () => string {
   return () => settled;
 }
 
-/** Waits for the final state of a job, and records the status and output of the snapshot that the wait resolves with. */
 function waitForFinished(job: AnyActorRef): () => string {
   const finished = waitFor(job, (snapshot) => snapshot.matches('finished'));
 
   return outcome(finished.then((snapshot) => `${snapshot.status} ${snapshot.output}`));
 }
 
-/** Subscribes an observer with next and complete, and returns its calls: the status and state value, or complete. */
 function observe(job: AnyActorRef): string[] {
   const calls: string[] = [];
   job.subscribe({
@@ -135,7 +125,6 @@ function observe(job: AnyActorRef): string[] {
   return calls;
 }
 
-/** Subscribes an observer that unsubscribes once it gets the done snapshot, and returns its calls. */
 function observeUntilDone(job: AnyActorRef): string[] {
   const calls: string[] = [];
 
@@ -151,11 +140,9 @@ function observeUntilDone(job: AnyActorRef): string[] {
   return calls;
 }
 
-/** A job that the app runs, with how the app finishes it, and how the preview of the job then ends. */
 type Run = { job: AnyActorRef; finishReal: () => void; end: () => Promise<void> };
 
 /**
- * The actors that an app subscribes to: the actor that connect() returns, and the actor that a hook returns.
  * connect() unlists the finished actor, and the overlay drops it and its preview at its next flush.
  * A hook keeps the finished actor listed until the developer releases the preview.
  */
@@ -380,7 +367,6 @@ test('toPromise stays pending while a final state is previewed, and resolves wit
   const actor = start(machine);
   const job = connect(actor);
   const done = outcome(toPromise(job));
-  // A fixture gives the previewed final state another output.
   await mount(null, { fixtures: [defineFixtures(machine, { cancelled: { context: { result: -1 } } })] });
   await preview(machine.id, ['cancelled']);
 

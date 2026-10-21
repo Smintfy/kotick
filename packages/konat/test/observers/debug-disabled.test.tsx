@@ -14,7 +14,6 @@ function createToggleMachine() {
   });
 }
 
-/** An upload that its socket, an invoked callback actor, finishes when the test calls `finish()`. */
 function createUpload() {
   let answer: (() => void) | undefined;
 
@@ -50,7 +49,6 @@ type Snapshot = { status: string; value: unknown };
 
 const label = (snapshot: Snapshot): string => `${snapshot.status}:${String(snapshot.value)}`;
 
-/** An observer object, new on each render, as apps usually write it. It records each snapshot as `status:value`. */
 function recorder(heard: string[]): Observer<Snapshot> {
   return { next: (snapshot) => heard.push(label(snapshot)), complete: () => heard.push('complete') };
 }
@@ -99,7 +97,6 @@ test('turning debug.disabled on, with nothing previewed, sends an observer that 
     heard.push(label(snapshot));
   };
 
-  // The component listens only while its panel is open, as an onChange prop or an analytics hook may.
   function Toggle({ panelOpen, disabled }: { panelOpen: boolean; disabled: boolean }) {
     const actorRef = useActorRef(machine, { debug: { disabled } }, panelOpen ? onChange : undefined);
 
@@ -113,7 +110,6 @@ test('turning debug.disabled on, with nothing previewed, sends an observer that 
   const view = render(page(<Toggle panelOpen={false} disabled={false} />));
   await flush();
 
-  // The user flips the toggle, then opens the panel that listens to it.
   await press('Toggle');
   view.rerender(page(<Toggle panelOpen disabled={false} />));
   await flush();
@@ -131,7 +127,6 @@ test('turning debug.disabled on, with nothing previewed, sends an observer that 
 });
 
 describe('debug.disabled turns on while a preview shows', () => {
-  /** Mounts the upload with an inline observer, and previews `failed` on it. `disable()` renders it with debug.disabled. */
   async function mountAndPreview() {
     const upload = createUpload();
     const heard: string[] = [];
@@ -165,7 +160,6 @@ describe('debug.disabled turns on while a preview shows', () => {
     const finished = heard.splice(0);
     await disable();
     const disabled = { heard: heard.splice(0), listed: await machines() };
-    // A later render with debug still disabled.
     await disable();
     expect({ previewed, finished, disabled, later: heard }).toEqual({
       previewed: PREVIEWING,

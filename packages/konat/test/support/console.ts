@@ -29,14 +29,12 @@ export function watchConsole(): ConsoleOutput {
   return output;
 }
 
-/** The message of an error that an observer or the page received. A thrown value can be of any type. */
 export function errorMessage(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
 /**
- * Runs `run`, waits one real tick, and returns the errors that reached the page uncaught meanwhile.
- * XState throws an error that no observer handles from a timer, so the tick lets that timer run.
+ * XState throws an error that no observer handles from a timer, so one real tick lets that timer run.
  * React runs the effects of a render in `run` when its act() ends, so the tick comes after that act().
  */
 // oxlint-disable-next-line anti-slop/no-unknown-returns -- run can return any value, and uncaught() only waits for it.

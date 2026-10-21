@@ -25,10 +25,6 @@ const listener =
     heard.push(`next ${snapshot.status}`);
   };
 
-/**
- * Runs a connected job to its final state, and lets go of it.
- * The subscriber subscribes before the job finishes or after it, and never unsubscribes.
- */
 function finishJob(subscriber: Observer<JobSnapshot>, subscribe: 'before' | 'after'): WeakRef<object> {
   const actor = createActor(createJobMachine()).start();
   const job = connect(actor);
@@ -66,7 +62,6 @@ test('a connect()ed job that finishes while a preview shows gets the held-back d
   await flush();
   const heard: string[] = [];
 
-  /** Previews a connected job in the state it is in, finishes the real job meanwhile, and lets go of it. */
   const finishDuringPreview = async (): Promise<WeakRef<object>> => {
     const machine = createJobMachine();
     const real = createActor(machine).start();
@@ -106,7 +101,6 @@ function createFormMachine() {
 
 type FormMachine = ReturnType<typeof createFormMachine>;
 
-/** Where the form puts its actor, as an app keeps it for a handler that runs later. */
 type Hand = { actorRef?: AnyActorRef };
 
 function Form({ machine, hand }: { machine: FormMachine; hand: Hand }) {
@@ -127,22 +121,16 @@ function shown(): Json {
   return JSON.parse(screen.getByRole('status', { name: 'form' }).textContent ?? 'null');
 }
 
-/** A waitFor that the app never sees settle, as a handler that awaits the save does. */
 function awaitSaved(actorRef: AnyActorRef): void {
   void waitFor(actorRef, (snapshot) => snapshot.status === 'done').catch(() => {});
 }
 
-/**
- * Mounts a form, then unmounts it, as when the user navigates away. The app starts a waitFor on the form's actor
- * while the form is mounted, or after it unmounted, as a handler that awaits does.
- * Returns a weak reference to the actor's system.
- */
 async function navigateAway(when: 'while mounted' | 'after unmount'): Promise<WeakRef<object>> {
   const hand: Hand = {};
   const { unmount } = render(<Form machine={createFormMachine()} hand={hand} />);
   await flush();
-  // Takes the actor out of the hand, so only this function holds it. React still reaches the props of an unmounted
-  // form, and the hand with them.
+  // Takes the actor out of the hand, so only this function holds it.
+  // React still reaches the props of an unmounted form, and the hand with them.
   const actorRef = actorOf(hand);
   hand.actorRef = undefined;
 

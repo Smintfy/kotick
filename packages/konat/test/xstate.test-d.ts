@@ -1,5 +1,5 @@
-// Type tests for konat/xstate. Vitest typechecks this file and never runs it, so hooks are called outside
-// components and actors are never started.
+// Vitest typechecks this file but never runs it.
+// So the tests call hooks outside components and never start actors.
 
 import * as xstateReact from '@xstate/react';
 import * as konat from 'konat/xstate';
@@ -19,7 +19,6 @@ type CheckoutContext = { items: string[]; total: number; error?: string; receipt
 
 type CheckoutEvent = { type: 'PAY' } | { type: 'RETRY' } | { type: 'UPDATE_CARD'; cardNumber: string };
 
-// Compound root: nested compound states, a history state and final states at two depths.
 const checkoutMachine = setup({
   // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
@@ -58,7 +57,7 @@ const base: CheckoutContext = { items: ['sku_1'], total: 4800 };
 
 type EditorContext = { text: string };
 
-// A parallel root with atomic regions, which appear as `{}` in the state value, and a parallel state nested in a region.
+// XState shows an atomic region as `{}` in the state value.
 // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
 const editorMachine = setup({ types: { context: {} as EditorContext } }).createMachine({
   id: 'editor',
@@ -96,7 +95,6 @@ type EditorLeaf =
 
 type ProfileInput = { userId: string };
 
-// A machine whose actors must be given input.
 const profileMachine = setup({
   // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: { input: {} as ProfileInput, context: {} as ProfileInput },
@@ -147,8 +145,8 @@ describe('hooks', () => {
 
     expectTypeOf(ours.useSelector).toEqualTypeOf(theirs.useSelector);
     expectTypeOf(ours.useActorRef).toEqualTypeOf(theirs.useActorRef);
-    // Everything XState's Provider accepts is still accepted, and the context can stand in wherever XState's type is
-    // expected.
+    // The context can replace XState's context in any place that expects it.
+    // So its Provider accepts all the props that XState's Provider accepts.
     expectTypeOf(ours).toExtend<typeof theirs>();
     expectTypeOf(ours.Provider).toBeCallableWith({
       children: null,

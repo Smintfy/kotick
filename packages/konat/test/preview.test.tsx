@@ -97,7 +97,6 @@ function Checkout({ machine, name = 'checkout' }: { machine: CheckoutMachine; na
   );
 }
 
-/** Shows what a component sees through the proxy that connect() returns. */
 function Connected({ actor }: { actor: Actor<CheckoutMachine> }) {
   const snapshot = useSelector(actor, (current) => current);
 
@@ -114,7 +113,6 @@ async function mount(machine: CheckoutMachine, fixtures?: FixturesInput) {
   await flush();
 }
 
-/** Starts an actor outside React and shows it through connect(), as an app does for an actor that a module owns. */
 async function mountConnected(machine: CheckoutMachine, fixtures?: FixturesInput) {
   const actor = createActor(machine).start();
   onTestFinished(() => {
@@ -144,7 +142,6 @@ function shown(name = 'checkout') {
   return JSON.parse(screen.getByRole('status', { name }).textContent ?? 'null');
 }
 
-/** Each source of the context switcher: `checked`, `enabled`, or `disabled` when it has no context to give. */
 function sources(): Record<string, string> {
   const inputs = overlay().querySelectorAll<HTMLInputElement>('[aria-label="Context source"] input');
 
@@ -153,10 +150,7 @@ function sources(): Record<string, string> {
   );
 }
 
-/**
- * The labels of the rows under the machines on the machine list: `Release all` while a preview is on, then `Settings`.
- * Call it on the machine list, such as after machines().
- */
+/** Call it on the machine list, such as after machines(). */
 function listActions(): string[] {
   return [...overlay().querySelectorAll('[data-part="row-label"]')].map((label) => label.textContent ?? '');
 }
@@ -214,7 +208,6 @@ function createCartMachine() {
 
 type CartMachine = ReturnType<typeof createCartMachine>;
 
-/** Starts a cart outside React and connects it, as a module that owns an actor does, next to the open overlay. */
 async function connectCart(machine: CartMachine, fixtures?: FixturesInput) {
   const actor = createActor(machine, { id: 'main-cart' }).start();
   onTestFinished(() => {
@@ -234,10 +227,6 @@ async function outsideReact(run: () => void) {
   });
 }
 
-/**
- * Shows the state value, context and status of any machine, with a button for each event in `events`.
- * `rendered` collects the state value of each render.
- */
 function MachineView({
   machine,
   events = [],
@@ -829,8 +818,7 @@ describe('an actor read outside React', () => {
 });
 
 describe('a machine that Fast Refresh replaces', () => {
-  // The edited machine keeps its id. @xstate/react starts a new actor for its new config, from the old actor's
-  // persisted snapshot.
+  // @xstate/react starts a new actor for the new config, from the old actor's persisted snapshot.
   function App({
     machine,
     fixtures,
@@ -912,7 +900,7 @@ describe('a machine that Fast Refresh replaces', () => {
         edited,
         paid: shown('app').value,
         blocked: blockedEvents(),
-        // Only the first line of each warning. The rest is the stack of the error.
+        // After its first line, each warning holds the stack of the error.
         warnings: output.warn.slice(before).map((warning) => warning.split('\n')[0]),
       }).toEqual({
         edited: { rendered: ['"cart"'], previewing: '', note: 'typed before the edit' },
@@ -950,14 +938,12 @@ describe('a machine that Fast Refresh replaces', () => {
   });
 });
 
-/** Reads the actor of useActorRef with useSelector. */
 function Selected({ machine }: { machine: CheckoutMachine }) {
   const snapshot = useSelector(useActorRef(machine), (current) => current);
 
   return <output aria-label="checkout">{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>;
 }
 
-/** Reads the actor of a createActorContext Provider with the context's useSelector. */
 function FromContext({ actors }: { actors: ReturnType<typeof createActorContext<CheckoutMachine>> }) {
   const snapshot = actors.useSelector((current) => current);
 
@@ -992,7 +978,7 @@ describeWithActivity('an Activity that hides the component', () => {
     });
     let onPaint: ((text: string | null) => void) | undefined;
 
-    // React runs this layout effect after those of the components before it, at the end of the commit.
+    // React runs this layout effect after those of the components before it.
     function EndOfCommit({ mode }: { mode: string }) {
       React.useLayoutEffect(() => {
         const resolve = onPaint;

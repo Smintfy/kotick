@@ -31,7 +31,6 @@ function createToggleMachine(name: string) {
   });
 }
 
-/** A machine edited in the source file: HMR evaluates the file again, so each call makes a new machine object. */
 function createCheckoutMachine(id: string) {
   return createMachine({
     id,
@@ -50,10 +49,7 @@ function createCheckoutMachine(id: string) {
 
 type MachineConfig = Parameters<typeof createMachine>[0];
 
-/**
- * The config of a fetch machine without an id. Its states, their types and its context keys make its id.
- * A fresh state name gives a fresh id, and so a fresh warning.
- */
+/** A fresh state name gives a fresh generated id, and so a fresh warning. */
 function createFetchConfig(state: string) {
   const items: string[] = [];
 
@@ -90,12 +86,10 @@ function shown(name: string) {
   return JSON.parse(screen.getByRole('status', { name }).textContent ?? 'null');
 }
 
-/** What the shown machine page names: its machine, its instances and the shown instance. */
 function machinePage() {
   return { machine: shownMachine(), instances: instances(), instance: panel().instance };
 }
 
-/** What the States section shows about the parent and the children of the shown instance. */
 function family() {
   const states = [...overlay().querySelectorAll('section[aria-labelledby]')].find(
     (section) => section.querySelector('h3')?.textContent === 'States',
@@ -317,8 +311,7 @@ test('a child machine opens from its parent read-only, and an instance of it tha
 });
 
 describe('editing a machine, as Fast Refresh does', () => {
-  // The edited machine keeps its id. @xstate/react starts a new actor for its new config, which registers in the
-  // place of the old one.
+  // @xstate/react starts a new actor for its new config, which registers in the place of the old one.
   test('keeps the preview, and each row in its place', async () => {
     const id = freshId('checkout');
     const toggle = createToggleMachine('toggle');
@@ -489,8 +482,9 @@ describe('machine ids', () => {
 });
 
 test('content that Suspense hides stays listed in its place, previewed and recording, while it is hidden', async () => {
-  // Suspense hides content that it showed already when a sibling suspends outside a transition, as a lazy dialog
-  // does. The content stays mounted, and the actors that @xstate/react started keep running.
+  // Suspense hides content that it showed already when a sibling suspends outside a transition.
+  // A lazy dialog can cause this.
+  // The content stays mounted, and the actors that @xstate/react started keep running.
   const machine = createToggleMachine('lamp');
   const observed: unknown[] = [];
   let observedActor: AnyActorRef | undefined;
@@ -525,7 +519,6 @@ test('content that Suspense hides stays listed in its place, previewed and recor
   await preview(machine.id, ['on']);
   const before = marks();
 
-  // The code of the dialog loads when the test calls load().
   let load = () => {};
 
   const code = new Promise<{ default: React.ComponentType }>((resolve) => {

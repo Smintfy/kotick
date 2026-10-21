@@ -1,5 +1,4 @@
 // The xstate-production project in vitest.config.ts runs this file on XState's production build.
-// A bundler without the development condition, such as esbuild, gives an app that build in development too.
 
 import { connect } from 'konat/xstate';
 import { expect, onTestFinished, test } from 'vitest';
