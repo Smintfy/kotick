@@ -16,18 +16,21 @@ import {
   type EventFrom,
   type SnapshotFrom,
 } from 'xstate';
+import { errorMessage } from '../support/anti-slop-b';
 import { mount, start } from '../support/app';
 import { uncaught } from '../support/console';
 import { collected } from '../support/gc';
 import { IMPLEMENTATIONS } from '../support/hooks';
 import { badge, clickLeaf, flush, freshId, machines, panel, preview, release } from '../support/panel';
 
+type CheckoutContext = { items: number };
+
+type CheckoutEvent = { type: 'ADD' } | { type: 'PAY' } | { type: 'SUCCEED' } | { type: 'NOOP' };
+
 function createCheckoutMachine() {
   return setup({
-    types: {
-      context: {} as { items: number },
-      events: {} as { type: 'ADD' } | { type: 'PAY' } | { type: 'SUCCEED' } | { type: 'NOOP' },
-    },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
     guards: { hasItems: ({ context }) => context.items > 0 },
   }).createMachine({
     id: freshId('checkout'),
@@ -56,10 +59,15 @@ type CheckoutMachine = ReturnType<typeof createCheckoutMachine>;
 
 type Checkout = Actor<CheckoutMachine>;
 
+type ResultContext = { result: number };
+
+type JobEvent = { type: 'FINISH' };
+
 /** Finishes with output 42 on FINISH. `waiting` and `cancelled` are there to be previewed. */
 function createJobMachine() {
   return setup({
-    types: { context: {} as { result: number }, events: {} as { type: 'FINISH' } },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    types: { context: {} as ResultContext, events: {} as JobEvent },
   }).createMachine({
     id: freshId('job'),
     context: { result: 0 },
@@ -83,7 +91,8 @@ function createFetchMachine() {
   let settle: (response: number) => void = () => {};
 
   const machine = setup({
-    types: { context: {} as { result: number } },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+    types: { context: {} as ResultContext },
     actors: {
       request: fromPromise(
         () =>
@@ -116,19 +125,19 @@ async function mountHook(
   use: (machine: AnyStateMachine) => AnyActorRef,
   props?: StateViewerProps,
 ): Promise<AnyActorRef> {
-  const held: { actor?: AnyActorRef } = {};
+  let actor: AnyActorRef | undefined;
 
   function Job() {
-    held.actor = use(machine);
+    actor = use(machine);
 
     return null;
   }
 
   await mount(<Job />, props);
 
-  if (!held.actor) throw new Error('The job did not render.');
+  if (!actor) throw new Error('The job did not render.');
 
-  return held.actor;
+  return actor;
 }
 
 async function send(actor: Checkout, ...events: EventFrom<CheckoutMachine>[]) {
@@ -381,7 +390,7 @@ describe('an error in the actor', () => {
     return start(machine);
   }
 
-  const messages = (errors: unknown[]) => errors.map((error) => (error as Error).message);
+  const messages = (errors: unknown[]) => errors.map(errorMessage);
 
   // XState reports an error as uncaught unless each observer of the actor has an error callback.
   // connect() adds no observer, so the observers of the app decide, as without connect().
@@ -405,7 +414,7 @@ describe('an error in the actor', () => {
     const faulty = connect(startFaulty());
     const calls: string[] = [];
     faulty.subscribe({
-      error: (error) => calls.push(`error ${(error as Error).message}`),
+      error: (error) => calls.push(`error ${errorMessage(error)}`),
       complete: () => calls.push('complete'),
     });
 
@@ -417,7 +426,7 @@ describe('an error in the actor', () => {
     const actor = startFaulty();
     connect(actor);
     const calls: string[] = [];
-    actor.subscribe({ error: (error) => calls.push(`error ${(error as Error).message}`) });
+    actor.subscribe({ error: (error) => calls.push(`error ${errorMessage(error)}`) });
 
     const errors = await uncaught(() => actor.send({ type: 'BOOM' }));
     expect({ uncaught: messages(errors), calls }).toEqual({ uncaught: [], calls: ['error boom'] });
@@ -673,11 +682,11 @@ describe('a subscriber that subscribes again as it hears the end of an actor tha
   const WHERES: Where[] = ['next', 'complete'];
   const POSITIONS: Position[] = ['first', 'middle', 'last'];
 
+  type Case = [where: Where, how: string, position: Position, resubscribe: Resubscribe];
+
   /** Every combination of where the subscriber subscribes again, how, and its place among the three subscribers. */
   const CASES = WHERES.flatMap((where) =>
-    HOWS.flatMap(([how, resubscribe]) =>
-      POSITIONS.map((position) => [where, how, position, resubscribe] as [Where, string, Position, Resubscribe]),
-    ),
+    HOWS.flatMap(([how, resubscribe]) => POSITIONS.map((position): Case => [where, how, position, resubscribe])),
   );
 
   /**
