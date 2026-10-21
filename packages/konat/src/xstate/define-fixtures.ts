@@ -34,10 +34,10 @@ export type FixtureStates<TMachine extends AnyStateMachine> = {
 };
 
 /**
- * Hand-written context for a machine's states, keyed by leaf id. Register the result through
- * `<Konat fixtures>`. The set carries the machine's config as its source, which `machine.provide()` copies
- * share, so it matches instances of this machine whatever their registry id, and falls back to the machine id once
- * HMR replaces the config.
+ * Hand-written context for a machine's states, keyed by leaf id.
+ * Register the result through `<Konat fixtures>`.
+ * The set applies to each machine with this machine's id: its copies from `machine.provide()`, the machine that an
+ * edit makes again, and instances that `debug.id` renames.
  */
 export function defineFixtures<TMachine extends AnyStateMachine>(
   machine: TMachine,
@@ -45,7 +45,6 @@ export function defineFixtures<TMachine extends AnyStateMachine>(
 ): FixtureSet {
   const set: FixtureSet = {
     machineId: resolveMachineId(machine),
-    source: machine.config,
     // SAFETY: The states are keyed by leaf id, as the registry's record is. TypeScript can't relate the mapped type of
     // a generic machine to that record.
     states: states as FixtureSet['states'],

@@ -1,167 +1,125 @@
-import type { FixtureSet, MachineHandle } from '../types';
+import type { FixtureSet, FixturesInput, PreviewLeaves } from '../types';
 import { isId } from './ids';
-
-type FixtureTarget = Pick<MachineHandle, 'machineId' | 'source'>;
 
 type Fixture = FixtureSet['states'][string];
 
 interface FixtureSetInput {
   machineId: string;
-  source?: unknown;
   states: object;
 }
 
 interface FixtureMatch {
-  leaf: string;
   context: unknown;
 }
 
 interface FixtureStore {
-  /** Adds sets; for the same machine, a later set wins per leaf id. */
-  register(sets: FixtureSet[]): void;
-  /** The first fixture found: requested leaves in order, then the other normalized leaves. */
-  lookup(target: FixtureTarget, requested: string[], normalized: string[]): FixtureMatch | undefined;
-  /** Leaf ids with a fixture for this target; the same Set until fixtures change or a new alias adds sets. */
-  fixtureLeaves(target: FixtureTarget): ReadonlySet<string>;
   /**
-   * Records the target's machine id as an alias of its source, when sets match the source.
-   * HMR replaces the machine object, and the alias keeps the sets of the old source for the id.
+   * Skips the sets that it registered before.
+   * Returns whether the fixtures changed.
    */
-  recordAlias(target: FixtureTarget): void;
+  register(sets: readonly FixtureSet[]): boolean;
+  lookup(definitionId: string, leaves: PreviewLeaves): FixtureMatch | undefined;
+  /** The same Set until the fixtures of `definitionId` change. */
+  fixtureLeaves(definitionId: string): ReadonlySet<string>;
 }
 
-interface StoredSet {
-  machineId: string;
-  source: unknown;
+interface MachineFixtures {
   /** Leaf id to context, captured at registration. */
-  contexts: Map<string, unknown>;
-}
-
-interface MergedFixtures {
   contexts: ReadonlyMap<string, unknown>;
   leaves: ReadonlySet<string>;
 }
 
 const NO_LEAVES: ReadonlySet<string> = new Set();
-const NO_FIXTURES: MergedFixtures = { contexts: new Map(), leaves: NO_LEAVES };
 
 export function createFixtureStore(): FixtureStore {
-  const sets: StoredSet[] = [];
-  // Separate caches so a primitive source can't collide with a machine id.
-  const bySource = new Map<unknown, MergedFixtures>();
-  const byId = new Map<string, MergedFixtures>();
-  // Target machine id to every source that matched it. HMR replaces the machine object, so the id fallback takes
-  // these sources' sets too; otherwise a machine under debug.id ('checkout-v2' for sets of 'checkout') loses its
-  // fixtures until a reload. Keyed by the target's id, not set.machineId, so machines left on XState's default id
-  // '(machine)', which get distinct generated ids, don't share sets. Never cleared: an old source stays an alias.
-  const aliases = new Map<string, Set<unknown>>();
-
-  function addAlias({ machineId, source }: FixtureTarget): void {
-    let sources = aliases.get(machineId);
-
-    if (!sources) {
-      sources = new Set();
-      aliases.set(machineId, sources);
-    }
-
-    if (sources.has(source)) return;
-    sources.add(source);
-    byId.delete(machineId);
-  }
-
-  function matchSource(target: FixtureTarget): MergedFixtures | undefined {
-    if (!hasSource(target)) return undefined;
-    const { source } = target;
-    let merged = bySource.get(source);
-
-    if (!merged) {
-      const matched = sets.filter((set) => set.source === source);
-
-      if (matched.length === 0) return undefined;
-      merged = merge(matched);
-      bySource.set(source, merged);
-    }
-
-    return merged;
-  }
-
-  function resolve(target: FixtureTarget): MergedFixtures {
-    const sourceMatch = matchSource(target);
-
-    if (sourceMatch) return sourceMatch;
-    const { machineId } = target;
-    let merged = byId.get(machineId);
-
-    if (!merged) {
-      const sources = aliases.get(machineId);
-      merged = merge(sets.filter((set) => set.machineId === machineId || sources?.has(set.source) === true));
-      byId.set(machineId, merged);
-    }
-
-    return merged;
-  }
+  const byMachine = new Map<string, MachineFixtures>();
+  const registered = new WeakSet<FixtureSet>();
 
   return {
-    register(input) {
-      if (!Array.isArray(input)) {
-        console.warn('[konat] Ignoring fixtures: expected an array of fixture sets.');
+    register(sets) {
+      let changed = false;
 
-        return;
-      }
+      sets
+        .filter((set) => !registered.has(set))
+        .forEach((value, index) => {
+          registered.add(value);
 
-      let added = false;
-      input.forEach((value, index) => {
-        if (!isFixtureSetInput(value, index)) return;
-        sets.push(toStoredSet(value));
-        added = true;
-      });
+          if (!isFixtureSetInput(value, index)) return;
+          const added = fixturesOf(value);
 
-      if (added) {
-        bySource.clear();
-        byId.clear();
-      }
+          if (added.length === 0) return;
+          const contexts = new Map([...(byMachine.get(value.machineId)?.contexts ?? []), ...added]);
+          byMachine.set(value.machineId, { contexts, leaves: new Set(contexts.keys()) });
+          changed = true;
+        });
+
+      return changed;
     },
 
-    lookup(target, requested, normalized) {
-      const { contexts } = resolve(target);
+    lookup(definitionId, { requested, filled }) {
+      const contexts = byMachine.get(definitionId)?.contexts;
 
-      if (contexts.size === 0) return undefined;
+      if (!contexts) return undefined;
+      const leaf = requested.find((id) => contexts.has(id)) ?? filled.find((id) => contexts.has(id));
 
-      for (const leaf of requested) {
-        if (contexts.has(leaf)) return { leaf, context: contexts.get(leaf) };
-      }
-
-      // Requested leaves repeated here already came up empty, so they can't match a second time.
-      for (const leaf of normalized) {
-        if (contexts.has(leaf)) return { leaf, context: contexts.get(leaf) };
-      }
-
-      return undefined;
+      return leaf === undefined ? undefined : { context: contexts.get(leaf) };
     },
 
-    fixtureLeaves(target) {
-      return resolve(target).leaves;
-    },
-
-    recordAlias(target) {
-      if (matchSource(target)) addAlias(target);
+    fixtureLeaves(definitionId) {
+      return byMachine.get(definitionId)?.leaves ?? NO_LEAVES;
     },
   };
 }
 
-// `null` counts as no source, so handles and sets that report `null` don't all match each other.
-function hasSource({ source }: FixtureTarget): boolean {
-  return source !== undefined && source !== null;
-}
+export async function readFixtures(input: FixturesInput): Promise<FixtureSet[]> {
+  let result: unknown;
 
-function merge(matched: StoredSet[]): MergedFixtures {
-  const contexts = new Map<string, unknown>();
+  try {
+    result = isLoader(input) ? await input() : input;
+  } catch (error) {
+    console.warn('[konat] The fixtures loader failed.', error);
 
-  for (const set of matched) {
-    for (const [leaf, context] of set.contexts) contexts.set(leaf, context);
+    return [];
   }
 
-  return contexts.size > 0 ? { contexts, leaves: new Set(contexts.keys()) } : NO_FIXTURES;
+  if (hasDefaultExport(result)) result = result.default;
+
+  if (!Array.isArray(result)) {
+    console.warn(
+      '[konat] Expected fixtures to be an array of sets from defineFixtures(), ' +
+        'or a module whose default export is one.',
+    );
+
+    return [];
+  }
+
+  const sets = result.filter(isFixtureSet);
+
+  if (sets.length < result.length) {
+    console.warn('[konat] Ignoring fixture entries that are not sets from defineFixtures().');
+  }
+
+  return sets;
+}
+
+function isLoader(input: FixturesInput): input is Exclude<FixturesInput, readonly FixtureSet[]> {
+  return typeof input === 'function';
+}
+
+function hasDefaultExport(value: unknown): value is { default: unknown } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && 'default' in value;
+}
+
+function isFixtureSet(value: unknown): value is FixtureSet {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'machineId' in value &&
+    typeof value.machineId === 'string' &&
+    'states' in value &&
+    typeof value.states === 'object' &&
+    value.states !== null
+  );
 }
 
 /** The app's typing can't be relied on, so a warning says what is wrong. */
@@ -189,19 +147,19 @@ function isFixtureSetInput(value: unknown, index: number): value is FixtureSetIn
   return true;
 }
 
-function toStoredSet({ machineId, source, states }: FixtureSetInput): StoredSet {
-  const contexts = new Map<string, unknown>();
-  const fixtures: [string, unknown][] = Object.entries(states);
+function fixturesOf({ machineId, states }: FixtureSetInput): [string, unknown][] {
+  const fixtures: [string, unknown][] = [];
+  const entries: [string, unknown][] = Object.entries(states);
 
-  for (const [leaf, fixture] of fixtures) {
+  for (const [leaf, fixture] of entries) {
     if (isFixture(fixture)) {
-      contexts.set(leaf, fixture.context);
+      fixtures.push([leaf, fixture.context]);
     } else {
       console.warn(`[konat] Ignoring fixture "${leaf}" for "${machineId}": expected an object with a context.`);
     }
   }
 
-  return { machineId, source, contexts };
+  return fixtures;
 }
 
 function isFixture(value: unknown): value is Fixture {

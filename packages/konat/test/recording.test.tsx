@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { Konat } from 'konat';
 import { connect, useActorRef, useMachine, useSelector } from 'konat/xstate';
-import { afterEach, describe, expect, onTestFinished, test } from 'vitest';
+import { describe, expect, onTestFinished, test } from 'vitest';
 import {
   assign,
   createActor,
@@ -198,10 +198,6 @@ const CHECKOUT_LEAVES = [
 function recordedMarks(leaves: string[], all = CHECKOUT_LEAVES) {
   return Object.fromEntries(all.map((leaf) => [leaf, [leaves.includes(leaf) ? 'recorded' : 'none']]));
 }
-
-// The page keeps one registry for the file, and with it one timer for the delayed write.
-// A pagehide writes what a test left pending, so the timer can't fire during a later test.
-afterEach(hidePage);
 
 test('the states the app visits are marked recorded, and their preview shows the context the app had there', async () => {
   const output = watchConsole();
@@ -648,34 +644,28 @@ describe('after a reload', () => {
   });
 });
 
-// The registry counts what it stored in earlier tests of the file against the budget.
-// It does this although test/setup.ts clears the storage.
-// So these tests come last, the budget test first, and each one leaves little stored.
 describe('at the storage limits', () => {
-  test('all machines share 1,000,000 characters, and a key that goes gives its share back', async () => {
-    const output = watchConsole();
-    const text = 'x'.repeat(95_000);
+  const text = 'x'.repeat(95_000);
 
-    type BulkContext = { text: string; stamped?: Date };
+  type BulkContext = { text: string; stamped?: Date };
 
-    type BulkEvent = { type: 'NEXT' } | { type: 'FIRST' } | { type: 'STAMP' };
+  type BulkEvent = { type: 'NEXT' } | { type: 'FIRST' } | { type: 'STAMP' };
 
-    function createBulkMachine() {
-      // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
-      return setup({
-        types: { context: {} as BulkContext, events: {} as BulkEvent },
-      }).createMachine({
-        id: freshId('bulk'),
-        context: { text },
-        initial: 's0',
-        on: { FIRST: '.s0', STAMP: { target: '.s0', actions: assign({ stamped: () => new Date(0) }) } },
-        states: steps(6),
-      });
-    }
+  function createBulkMachine() {
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    return setup({
+      types: { context: {} as BulkContext, events: {} as BulkEvent },
+    }).createMachine({
+      id: freshId('bulk'),
+      context: { text },
+      initial: 's0',
+      on: { FIRST: '.s0', STAMP: { target: '.s0', actions: assign({ stamped: () => new Date(0) }) } },
+      states: steps(6),
+    });
+  }
 
+  async function mountBulk() {
     const events = { Next: { type: 'NEXT' }, First: { type: 'FIRST' }, Stamp: { type: 'STAMP' } };
-    // The app's own data stays.
-    sessionStorage.setItem('cart', 'x'.repeat(60_000));
     const first = createBulkMachine();
     const second = createBulkMachine();
     await mount(
@@ -685,6 +675,15 @@ describe('at the storage limits', () => {
       </>,
       { overlay: false },
     );
+
+    return { first, second };
+  }
+
+  test('all machines share 1,000,000 characters, and a key that goes gives its share back', async () => {
+    const output = watchConsole();
+    // The app's own data stays.
+    sessionStorage.setItem('cart', 'x'.repeat(60_000));
+    const { first, second } = await mountBulk();
 
     // No write can come between these clicks and the pagehide.
     // So the one warning counts all 6 recordings of the second machine.
@@ -713,6 +712,30 @@ describe('at the storage limits', () => {
         '[konat] Recordings are limited to 1,000,000 characters of storage in total, so only the newest 4 of ' +
           `the 6 recordings for "${second.id}" were saved. All of them stay available until the page reloads.`,
       ],
+    });
+  });
+
+  test('recordings that the app clears from sessionStorage give their share back', async () => {
+    const output = watchConsole();
+    const { first, second } = await mountBulk();
+
+    for (let index = 0; index < 5; index++) clickInSameTask('Next', 'first');
+    hidePage();
+    const stored = storedLeaves(first.id);
+    sessionStorage.clear();
+
+    for (let index = 0; index < 5; index++) clickInSameTask('Next', 'second');
+    hidePage();
+    expect({
+      stored,
+      cleared: storedLeaves(first.id),
+      second: storedLeaves(second.id),
+      warnings: output.warn,
+    }).toEqual({
+      stored: [['s0'], ['s1'], ['s2'], ['s3'], ['s4'], ['s5']],
+      cleared: null,
+      second: [['s0'], ['s1'], ['s2'], ['s3'], ['s4'], ['s5']],
+      warnings: [],
     });
   });
 

@@ -270,7 +270,7 @@ Thus, a transition costs approximately 8 µs more, a mount approximately 22 µs 
 - **Functions in context are not recorded across reloads.** After a reload, a recorded preview does not have them.
 - **A transform on `body` moves the overlay.** If `body` has a `transform`, a `filter` or `contain`, it becomes the containing block of the overlay. Use `portalTarget={document.documentElement}` on such pages.
 - **The arrow keys move through the leaves that show.** Compound and parallel states cannot get focus, so only a click collapses or expands them. The arrow keys skip the leaves of a collapsed state.
-- **The state tree shows the fixtures of the first instance of a machine id.** Another instance with the same id, but with a changed machine config, for example after a Fast Refresh edit, can get other fixtures.
+- **The state tree shows the fixtures of the first instance of a machine id.** When `debug.id` gives two different machines the same id, the instance of the second machine can get other fixtures.
 - **Around a preview, observers can get a snapshot one more or one less time than with `@xstate/react`.** Without a preview, an observer given to a hook gets the same calls as with `@xstate/react`. A few rare sequences around a preview, such as a Fast Refresh edit or an `<Activity>` that hides the component, can give it one more, one less or a later snapshot. The number of `complete` and `error` calls stays the same. An observer also gets the preview again each time the preview is built again. That happens when its live children change, when fixtures load, or when an edit adds a region.
 - **Development builds only.** For staging builds in production mode, the overlay is not available.
 

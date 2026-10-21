@@ -206,25 +206,23 @@ function readStored(storage: Storage, key: string): RecordedEntry[] | undefined 
   return entries;
 }
 
-/** The size, key plus value, of each stored recordings key, including keys from earlier page loads. */
-function readStoredSizes(storage: Storage): Map<string, number> {
-  const sizes = new Map<string, number>();
+/** The size, key plus value, of the other stored recordings keys, including keys from earlier page loads. */
+function otherRecordingsSize(storage: Storage, ownKey: string): number {
+  let size = 0;
 
   try {
     for (let i = 0; i < storage.length; i++) {
       const key = storage.key(i);
 
-      if (key === null || !key.startsWith(STORAGE_PREFIX)) continue;
-      const value = storage.getItem(key);
-
-      if (value !== null) sizes.set(key, key.length + value.length);
+      if (key === null || key === ownKey || !key.startsWith(STORAGE_PREFIX)) continue;
+      size += key.length + (storage.getItem(key)?.length ?? 0);
     }
   } catch {
     // Counted as empty: writes to storage this broken fail too, and the quota fallback handles them.
-    return new Map();
+    return 0;
   }
 
-  return sizes;
+  return size;
 }
 
 const EMPTY_PAYLOAD = '{"v":1,"entries":[]}';
@@ -234,8 +232,6 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
   const machines = new Map<string, MachineRecordings>();
   // Persisted form of each entry, or null when its context stays in memory. Entries are never mutated.
   const serialized = new WeakMap<RecordedEntry, string | null>();
-  // Sizes of the stored recordings keys, read on the first write and kept current by this store's writes.
-  let storedSizes: Map<string, number> | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   function machineFor(machineId: string): MachineRecordings {
@@ -416,10 +412,8 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
     }
 
     const key = STORAGE_PREFIX + machineId;
-    const sizes = (storedSizes ??= readStoredSizes(target));
-    let budget = MAX_TOTAL_SIZE;
-
-    for (const [storedKey, size] of sizes) if (storedKey !== key) budget -= size;
+    // The app or the user can change the storage between two writes, so each write reads it again.
+    const budget = MAX_TOTAL_SIZE - otherRecordingsSize(target, key);
 
     // The newest items that fit what the other keys leave of the budget.
     let count = 0;
@@ -440,7 +434,6 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
 
       try {
         target.setItem(key, value);
-        sizes.set(key, key.length + value.length);
         break;
       } catch {
         count = Math.floor(count / 2);
@@ -450,7 +443,6 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
     if (count === 0) {
       try {
         target.removeItem(key);
-        sizes.delete(key);
       } catch {
         // Nothing else to do with storage that can't be written.
       }

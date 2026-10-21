@@ -21,8 +21,11 @@ export interface MachineHandle {
   label?: string;
   capabilities: Capabilities;
   parentKey?: string;
-  /** Definition object (the XState machine), matched against `FixtureSet.source`. */
-  source?: unknown;
+  /**
+   * The machine's own id, which `debug.id` doesn't change.
+   * Fixture sets match it by their `machineId`.
+   */
+  definitionId: string;
 
   describe(): StateNodeInfo[];
   getActiveLeaves(): string[];
@@ -30,18 +33,22 @@ export interface MachineHandle {
   getContext(): unknown;
   /** Real state changes. */
   subscribe(onChange: () => void): () => void;
-  /** Completes a target, such as filling untouched parallel regions with their current leaves. */
-  normalizeTarget(leaves: string[]): string[];
+  normalizeTarget(leaves: string[]): PreviewLeaves;
 }
 
 export type DataSource = 'recorded' | 'fixture' | 'live';
 
-export interface Override {
+export interface PreviewLeaves {
+  /** The leaves that were asked for and can be active together, in the order given. */
+  requested: string[];
+  /** The leaves of the regions that `requested` leaves alone: their current leaves, or else their initial leaves. */
+  filled: string[];
+}
+
+export interface Override extends PreviewLeaves {
   /** `${machineId}#${instanceId}` */
   instanceKey: string;
-  /** Leaves that were asked for, in order. */
-  requested: string[];
-  /** The full configuration: the requested leaves first, then the leaves filled in for untouched regions. */
+  /** `requested`, then `filled`. */
   leaves: string[];
   context: unknown;
   source: DataSource;
@@ -59,8 +66,6 @@ export interface EventLogEntry {
 
 export interface FixtureSet {
   machineId: string;
-  /** Definition object from `defineFixtures`, matched before `machineId`. */
-  source?: unknown;
   states: Record<string, { context: unknown }>;
 }
 
@@ -81,12 +86,13 @@ export interface RegistrySnapshot {
 }
 
 export interface PreviewTarget {
+  /**
+   * An earlier leaf wins over a later one.
+   * A later leaf that can't be active with an earlier one is dropped, and context comes from the earlier leaves first.
+   */
   leaves: string[];
   source?: DataSource;
 }
-
-/** Ends a fixture load. A second call does nothing. */
-export type EndFixtureLoad = () => void;
 
 export interface Registry {
   version: string;
@@ -103,14 +109,11 @@ export interface Registry {
 
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- A context is the app's own data, and it has no schema.
   record(instanceKey: string, leaves: string[], context: unknown): void;
-  registerFixtures(sets: FixtureSet[]): void;
   /**
-   * Starts a fixture load, such as a lazy loader of `<Konat fixtures>`.
-   * The caller ends the load after it registers the sets, or when the load fails.
-   * While a load is pending, a preview on the default order that finds only live context holds its warning.
-   * It warns when the last load ends, and only if no fixture that registered gave it context.
+   * Loads the sets, or joins the pending load of the same input, and returns a function that cancels this call.
+   * When the load ends, its sets register only if a call that has not been cancelled waits for them.
    */
-  startFixtureLoad(): EndFixtureLoad;
+  loadFixtures(input: FixturesInput): () => void;
   logEvent(entry: EventLogEntry): void;
   clearLog(): void;
 }

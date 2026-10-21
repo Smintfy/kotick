@@ -1,6 +1,6 @@
 import { act, screen, within } from '@testing-library/react';
 import { connect, useActorRef, useSelector } from 'konat/xstate';
-import { afterEach, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
   assign,
   forwardTo,
@@ -133,10 +133,6 @@ function hidePage() {
 function storedEntries(machineId: string) {
   return readStored(machineId)?.entries.map(({ leaves, context }) => ({ leaves, context })) ?? null;
 }
-
-// The page keeps one registry for the file, and with it one timer for the delayed write.
-// A pagehide writes what a test left pending, so the timer can't fire during a later test.
-afterEach(hidePage);
 
 test('an invoked child is listed under its parent while the invoking state is active, and the panel follows it', async () => {
   const worker = createWorkerMachine();

@@ -3,54 +3,17 @@ import { createPortal } from 'react-dom';
 import { getPageRegistry } from '../core/registry';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { overlayStyles } from '../styles.generated';
-import type { FixtureSet, FixturesInput, KonatProps, Registry } from '../types';
+import type { KonatProps } from '../types';
 import { createHost, type OverlayHost } from '../utils/host';
 import { Overlay } from './overlay';
 
 export function Konat(props: KonatProps): React.ReactNode {
   const registry = getPageRegistry();
-  useFixtures(registry, props.fixtures);
+  const { fixtures } = props;
+  React.useEffect(() => (fixtures === undefined ? undefined : registry.loadFixtures(fixtures)), [registry, fixtures]);
   const host = useHost(props.portalTarget);
 
   return host && createPortal(<Overlay {...props} registry={registry} host={host} />, host.container);
-}
-
-// Sets already registered, so a loader that runs again (an inline arrow on a re-render, StrictMode) adds nothing new.
-const registeredSets = new WeakMap<Registry, WeakSet<FixtureSet>>();
-
-function useFixtures(registry: Registry, input: FixturesInput | undefined): void {
-  // An insertion effect, because StrictMode doesn't run it a second time.
-  // So the loader runs once when the overlay mounts, and its warnings show once.
-  React.useInsertionEffect(() => {
-    if (input === undefined) return;
-    let current = true;
-    // Ended when the load settles, not on cleanup: StrictMode and a new input start the next load after the cleanup,
-    // and an end between them would give the held warnings too early.
-    const endLoad = registry.startFixtureLoad();
-    void loadFixtures(input)
-      .then((sets) => {
-        // A newer input took over; its sets win.
-        if (!current) return;
-        let seen = registeredSets.get(registry);
-
-        if (!seen) {
-          seen = new WeakSet();
-          registeredSets.set(registry, seen);
-        }
-
-        const fresh = sets.filter((set) => !seen.has(set));
-
-        if (fresh.length === 0) return;
-
-        for (const set of fresh) seen.add(set);
-        registry.registerFixtures(fresh);
-      })
-      .finally(endLoad);
-
-    return () => {
-      current = false;
-    };
-  }, [registry, input]);
 }
 
 function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
@@ -71,56 +34,4 @@ function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   }, [host, css]);
 
   return host;
-}
-
-/** A function of another window is a loader too. */
-function isLoader(input: FixturesInput): input is Exclude<FixturesInput, readonly FixtureSet[]> {
-  return typeof input === 'function';
-}
-
-async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
-  let result: unknown;
-
-  try {
-    result = isLoader(input) ? await input() : input;
-  } catch (error) {
-    console.warn('[konat] The fixtures loader failed.', error);
-
-    return [];
-  }
-
-  if (hasDefaultExport(result)) result = result.default;
-
-  if (!Array.isArray(result)) {
-    console.warn(
-      '[konat] Expected fixtures to be an array of sets from defineFixtures(), ' +
-        'or a module whose default export is one.',
-    );
-
-    return [];
-  }
-
-  const sets = result.filter(isFixtureSet);
-
-  if (sets.length < result.length) {
-    console.warn('[konat] Ignoring fixture entries that are not sets from defineFixtures().');
-  }
-
-  return sets;
-}
-
-function hasDefaultExport(value: unknown): value is { default: unknown } {
-  return typeof value === 'object' && value !== null && !Array.isArray(value) && 'default' in value;
-}
-
-function isFixtureSet(value: unknown): value is FixtureSet {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'machineId' in value &&
-    typeof value.machineId === 'string' &&
-    'states' in value &&
-    typeof value.states === 'object' &&
-    value.states !== null
-  );
 }
