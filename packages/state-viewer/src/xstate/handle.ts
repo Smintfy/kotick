@@ -1,9 +1,9 @@
 // The machine handle: what the registry sees of an actor and of the child machines it starts.
 
-import type { AnyActorRef, AnyMachineSnapshot, AnyStateMachine } from 'xstate';
+import { isMachineSnapshot, type AnyActorRef, type AnyStateMachine, type MachineContext, type Snapshot } from 'xstate';
 import { callLoggingErrors, toInstanceKey } from '../core/registry';
-import type { Capabilities, MachineHandle, Registry, StateNodeInfo } from '../core/types';
-import { isMachineActor, liveChildren, statusOf, type MachineActor } from './actor';
+import type { Capabilities, MachineHandle, Registry } from '../core/types';
+import { isMachineActor, liveChildren, type MachineActor } from './actor';
 import { isFallbackId, resolveMachineId, warnFallbackId, type Identity } from './identity';
 import { completeTarget } from './preview-snapshot';
 import { getTree, leavesOfSnapshot } from './tree';
@@ -24,7 +24,7 @@ interface ObservedHandle {
   handle: MachineHandle;
   notify(): void;
   /** Hot path: keeps a reference to the context; serialization happens later. */
-  record(snapshot: unknown): void;
+  record(snapshot: Snapshot<unknown>): void;
 }
 
 export function createHandle(
@@ -39,7 +39,7 @@ export function createHandle(
   // Made on the first subscribe(). Only the open panel subscribes, and only to the handle it shows.
   let listeners: Set<() => void> | undefined;
   // The leaves of the snapshot recorded last. An actor records the same snapshot when it connects and when it starts.
-  let recordedSnapshot: unknown;
+  let recordedSnapshot: Snapshot<unknown> | undefined;
   let recordedLeaves: string[] = [];
 
   const handle: MachineHandle = {
@@ -50,7 +50,7 @@ export function createHandle(
     // The config, not the machine: machine.provide() makes a new machine around the same config, and fixtures
     // defined for the machine should still match.
     source: machine.config,
-    describe: () => getTree(machine).nodes as StateNodeInfo[],
+    describe: () => getTree(machine).nodes,
     getActiveLeaves: () => leavesOfSnapshot(machine, actor.getSnapshot()),
     getContext: () => contextOf(actor.getSnapshot()),
     subscribe(onChange) {
@@ -79,16 +79,14 @@ export function createHandle(
       }
     },
     record(snapshot) {
-      const status = statusOf(snapshot);
-
-      if (status !== 'active' && status !== 'done') return;
+      if (snapshot.status !== 'active' && snapshot.status !== 'done') return;
 
       if (snapshot !== recordedSnapshot) {
         recordedSnapshot = snapshot;
         recordedLeaves = leavesOfSnapshot(machine, snapshot);
       }
 
-      if (recordedLeaves.length > 0) registry.record(key, recordedLeaves, (snapshot as AnyMachineSnapshot).context);
+      if (recordedLeaves.length > 0) registry.record(key, recordedLeaves, contextOf(snapshot));
     },
   };
 }
@@ -105,7 +103,7 @@ export function inspect(
   root: MachineActor,
   rootKey: string,
   registry: Registry,
-  onRootSnapshot: (snapshot: unknown) => void,
+  onRootSnapshot: (snapshot: Snapshot<unknown>) => void,
 ): () => void {
   // Made when the first child comes in: most machines have no child machines.
   let connected: Map<AnyActorRef, { child: ObservedHandle; unregister: () => void }> | undefined;
@@ -125,7 +123,7 @@ export function inspect(
 
     if (parentKey === undefined) return;
 
-    if (statusOf(ref.getSnapshot()) !== 'active') return;
+    if (ref.getSnapshot().status !== 'active') return;
     let child = childHandles.get(ref);
 
     if (child?.handle.parentKey !== parentKey) {
@@ -168,7 +166,7 @@ export function inspect(
     if (!connected) return;
 
     for (const child of [...connected.keys()]) {
-      if (statusOf(child.getSnapshot()) !== 'active') remove(child);
+      if (child.getSnapshot().status !== 'active') remove(child);
     }
   }
 
@@ -177,6 +175,8 @@ export function inspect(
   const subscription = root.system.inspect({
     next(event) {
       if (event.type === '@xstate.snapshot') {
+        // SAFETY: The system reports its own actors, which have every member of an actor ref. XState's event types
+        // name only the members an inspector needs.
         const ref = event.actorRef as AnyActorRef;
 
         if (ref === root) {
@@ -186,7 +186,7 @@ export function inspect(
           return;
         }
 
-        if (statusOf(event.snapshot) !== 'active') {
+        if (event.snapshot.status !== 'active') {
           remove(ref);
 
           return;
@@ -203,10 +203,11 @@ export function inspect(
         entry.child.record(event.snapshot);
         entry.child.notify();
       } else if (event.type === '@xstate.event' && event.sourceRef) {
-        // A child that fails sends its parent an error event, and no last snapshot.
-        const type: unknown = event.event?.type;
+        // SAFETY: As for the snapshot event's ref above: the source is one of the system's own actors.
+        const source = event.sourceRef as AnyActorRef;
 
-        if (typeof type === 'string' && type.startsWith('xstate.error.actor')) remove(event.sourceRef as AnyActorRef);
+        // A child that fails sends its parent an error event, and no last snapshot.
+        if (event.event.type.startsWith('xstate.error.actor')) remove(source);
       }
     },
   });
@@ -232,9 +233,10 @@ export function inspect(
 
 /** An invoke or spawn id names the child better than its session id. */
 function childLabel(ref: AnyActorRef): string | undefined {
-  return typeof ref.id === 'string' && ref.id !== ref.sessionId ? ref.id : undefined;
+  return ref.id !== ref.sessionId ? ref.id : undefined;
 }
 
-function contextOf(snapshot: unknown): unknown {
-  return typeof snapshot === 'object' && snapshot !== null ? (snapshot as { context?: unknown }).context : undefined;
+/** The context of a machine snapshot; an actor that failed on start has a snapshot without one. */
+function contextOf(snapshot: Snapshot<unknown>): MachineContext | undefined {
+  return isMachineSnapshot(snapshot) ? snapshot.context : undefined;
 }

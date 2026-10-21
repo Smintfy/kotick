@@ -1,12 +1,13 @@
 // The state tree of an XState machine, and the leaves that a state value names.
 
-import type { AnyMachineSnapshot, AnyStateMachine, StateValue } from 'xstate';
-import type { StateNodeInfo, StateNodeType } from '../core/types';
+import { isMachineSnapshot, type AnyStateMachine, type Snapshot, type StateValue } from 'xstate';
+import type { StateNodeInfo } from '../core/types';
 
 export type AnyStateNode = AnyStateMachine['root'];
 
 export interface MachineTree {
-  nodes: readonly StateNodeInfo[];
+  /** Frozen, as are the infos and their lists. The registry's types write these lists as mutable. */
+  nodes: StateNodeInfo[];
   /** Leaf id to its state node, for every atomic and final node. */
   leaves: ReadonlyMap<string, AnyStateNode>;
 }
@@ -15,10 +16,17 @@ const trees = new WeakMap<AnyStateMachine, MachineTree>();
 
 /** True for XState machines, checked by shape so a second copy of xstate still counts. */
 export function isMachine(logic: unknown): logic is AnyStateMachine {
-  if (typeof logic !== 'object' || logic === null) return false;
-  const machine = logic as { resolveState?: unknown; root?: { states?: unknown } };
-
-  return typeof machine.resolveState === 'function' && typeof machine.root?.states === 'object';
+  return (
+    typeof logic === 'object' &&
+    logic !== null &&
+    'resolveState' in logic &&
+    typeof logic.resolveState === 'function' &&
+    'root' in logic &&
+    typeof logic.root === 'object' &&
+    logic.root !== null &&
+    'states' in logic.root &&
+    typeof logic.root.states === 'object'
+  );
 }
 
 /** The machine's tree, built once per machine object. */
@@ -34,7 +42,7 @@ export function getTree(machine: AnyStateMachine): MachineTree {
   return tree;
 }
 
-function describeChildren(node: AnyStateNode, leaves: Map<string, AnyStateNode>): readonly StateNodeInfo[] {
+function describeChildren(node: AnyStateNode, leaves: Map<string, AnyStateNode>): StateNodeInfo[] {
   const children: StateNodeInfo[] = [];
 
   for (const child of childNodes(node)) {
@@ -46,28 +54,33 @@ function describeChildren(node: AnyStateNode, leaves: Map<string, AnyStateNode>)
     const info: StateNodeInfo = {
       id,
       key: child.key,
-      type: child.type as StateNodeType,
-      children: describeChildren(child, leaves) as StateNodeInfo[],
+      type: child.type,
+      children: describeChildren(child, leaves),
     };
 
-    if (typeof child.description === 'string' && child.description !== '') info.description = child.description;
+    if (child.description !== undefined && child.description !== '') info.description = child.description;
 
-    if (child.tags.length > 0) info.tags = Object.freeze([...child.tags]) as string[];
+    if (child.tags.length > 0) info.tags = frozen([...child.tags]);
     children.push(Object.freeze(info));
   }
 
-  return Object.freeze(children);
+  return frozen(children);
 }
 
-function childNodes(node: AnyStateNode): AnyStateNode[] {
-  return Object.values(node.states ?? {}) as AnyStateNode[];
+/** Freezes a list that the registry's types write as mutable. The overlay reads the tree, and nothing writes to it. */
+function frozen<T>(list: T[]): T[] {
+  Object.freeze(list);
+
+  return list;
+}
+
+export function childNodes(node: AnyStateNode): AnyStateNode[] {
+  return Object.values(node.states);
 }
 
 /** Own child by key, so keys such as `constructor` don't reach the prototype. */
 function childNode(node: AnyStateNode, key: string): AnyStateNode | undefined {
-  const states = node.states as Record<string, AnyStateNode> | undefined;
-
-  return states && Object.hasOwn(states, key) ? states[key] : undefined;
+  return Object.hasOwn(node.states, key) ? node.states[key] : undefined;
 }
 
 export function nodeId(node: AnyStateNode): string {
@@ -83,8 +96,13 @@ export function leavesOfValue(machine: AnyStateMachine, value: StateValue | unde
   return leaves;
 }
 
+/** A string value names one child by its key. A map names a child per key, with the value below it. */
+function isChildKey(value: StateValue): value is string {
+  return typeof value === 'string';
+}
+
 function collectLeaves(node: AnyStateNode, value: StateValue, into: string[]): void {
-  if (typeof value === 'string') {
+  if (isChildKey(value)) {
     const child = childNode(node, value);
 
     if (child) collectLeaves(child, {}, into);
@@ -92,7 +110,6 @@ function collectLeaves(node: AnyStateNode, value: StateValue, into: string[]): v
     return;
   }
 
-  if (typeof value !== 'object') return;
   const keys = Object.keys(value);
 
   if (keys.length === 0) {
@@ -111,8 +128,6 @@ function collectLeaves(node: AnyStateNode, value: StateValue, into: string[]): v
 }
 
 /** Leaf ids of a snapshot's configuration; empty for snapshots without a value, such as an error on start. */
-export function leavesOfSnapshot(machine: AnyStateMachine, snapshot: unknown): string[] {
-  if (typeof snapshot !== 'object' || snapshot === null || !('value' in snapshot)) return [];
-
-  return leavesOfValue(machine, (snapshot as AnyMachineSnapshot).value);
+export function leavesOfSnapshot(machine: AnyStateMachine, snapshot: Snapshot<unknown>): string[] {
+  return isMachineSnapshot(snapshot) ? leavesOfValue(machine, snapshot.value) : [];
 }

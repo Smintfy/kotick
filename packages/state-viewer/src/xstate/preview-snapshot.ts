@@ -1,7 +1,21 @@
 // What a preview of some leaves shows: the complete set of leaves, and a real snapshot of the machine in them.
 
-import type { AnyMachineSnapshot, AnyStateMachine, StateValue } from 'xstate';
+import type {
+  AnyActorRef,
+  AnyMachineSnapshot,
+  AnyStateMachine,
+  EventObject,
+  MachineContext,
+  Mapper,
+  StateValue,
+} from 'xstate';
+import type { Override } from '../core/types';
 import { getTree, leavesOfValue, nodeId, type AnyStateNode, type MachineTree } from './tree';
+
+/** A state value made of maps alone: an atomic node is written as `{}`. */
+interface NestedStateValue {
+  [key: string]: NestedStateValue;
+}
 
 /**
  * A nested state value naming the given leaf nodes. Atomic nodes are written as `{}`, which XState's state-value
@@ -9,25 +23,19 @@ import { getTree, leavesOfValue, nodeId, type AnyStateNode, type MachineTree } f
  * follow document order, as in snapshots XState makes itself, whatever order the leaves were asked for in.
  */
 function toStateValue(nodes: readonly AnyStateNode[]): StateValue {
-  const value: Record<string, Record<string, unknown>> = {};
+  const value: NestedStateValue = {};
 
   for (const node of [...nodes].sort((a, b) => a.order - b.order)) {
-    let level: Record<string, unknown> = value;
+    let level = value;
 
     for (const key of node.path) {
-      const next = Object.hasOwn(level, key) ? level[key] : undefined;
-
-      if (typeof next === 'object' && next !== null) {
-        level = next as Record<string, unknown>;
-      } else {
-        const created: Record<string, unknown> = {};
-        level[key] = created;
-        level = created;
-      }
+      // Own keys only, so a state named `constructor` doesn't reach the prototype.
+      if (!Object.hasOwn(level, key)) level[key] = {};
+      level = level[key];
     }
   }
 
-  return value as StateValue;
+  return value;
 }
 
 function leafNodes(tree: MachineTree, leaves: readonly string[]): AnyStateNode[] {
@@ -89,7 +97,12 @@ export function completeTarget(machine: AnyStateMachine, requested: readonly str
  * without it XState uses `{}`, not the initial context. Throws when a leaf isn't part of the machine, or when
  * two leaves can't be active together, which an override kept across an HMR edit can ask for.
  */
-export function resolveSnapshot(machine: AnyStateMachine, leaves: readonly string[], context: unknown, self?: unknown) {
+export function resolveSnapshot(
+  machine: AnyStateMachine,
+  leaves: readonly string[],
+  context: Override['context'],
+  self: AnyActorRef,
+): AnyMachineSnapshot {
   const tree = getTree(machine);
   const nodes = [...new Set(leafNodes(tree, leaves))];
 
@@ -101,24 +114,29 @@ export function resolveSnapshot(machine: AnyStateMachine, leaves: readonly strin
     }
   }
 
-  let snapshot = machine.resolveState({ value: toStateValue(nodes), context: context as never }) as AnyMachineSnapshot;
+  let snapshot = machine.resolveState({ value: toStateValue(nodes), context });
   const resolved = leavesOfValue(machine, snapshot.value);
 
   if (resolved.length !== nodes.length) {
     // XState entered regions the leaves left out (a region HMR added) after the given ones; resolving the complete
     // configuration again puts the value's keys back in document order.
     const complete = resolved.map((leaf) => tree.leaves.get(leaf)).filter((node) => node !== undefined);
-    snapshot = machine.resolveState({ value: toStateValue(complete), context: context as never }) as AnyMachineSnapshot;
+    snapshot = machine.resolveState({ value: toStateValue(complete), context });
   }
 
   if (snapshot.status === 'done' && machine.root.output !== undefined) {
     // resolveState leaves out the output a machine has once done, which components read alongside status.
     const output = machineOutput(machine, nodes, context, self);
-    snapshot = machine.resolveState({ value: snapshot.value, context: context as never, output }) as AnyMachineSnapshot;
+    snapshot = machine.resolveState({ value: snapshot.value, context, output });
   }
 
   return snapshot;
 }
+
+/** A state node's output: a mapper, which XState calls with the context, the event and the actor, or a plain value. */
+type StateOutput = AnyStateNode['output'];
+
+type OutputMapper = Mapper<MachineContext, EventObject, unknown, EventObject>;
 
 /** Event that output mappers of a previewed final state get, since no real event led there. */
 const PREVIEW_EVENT = { type: 'state-viewer.preview' };
@@ -127,7 +145,12 @@ const PREVIEW_EVENT = { type: 'state-viewer.preview' };
  * The machine's output in a final configuration, as XState computes it on reaching one: the root's `output`, given
  * the done event of what completed the machine, a top-level final state (with its own output) or a parallel root.
  */
-function machineOutput(machine: AnyStateMachine, nodes: readonly AnyStateNode[], context: unknown, self: unknown) {
+function machineOutput(
+  machine: AnyStateMachine,
+  nodes: readonly AnyStateNode[],
+  context: Override['context'],
+  self: AnyActorRef,
+) {
   const { root } = machine;
 
   try {
@@ -147,6 +170,15 @@ function machineOutput(machine: AnyStateMachine, nodes: readonly AnyStateNode[],
   }
 }
 
-function resolveOutput(mapper: unknown, context: unknown, event: unknown, self: unknown): unknown {
-  return typeof mapper === 'function' ? mapper({ context, event, self }) : mapper;
+function isOutputMapper(output: StateOutput): output is OutputMapper {
+  return typeof output === 'function';
+}
+
+// oxlint-disable-next-line anti-slop/no-unknown-returns -- A machine's output is the app's own value. It has no schema.
+function resolveOutput(output: StateOutput, context: Override['context'], event: EventObject, self: AnyActorRef): unknown {
+  if (!isOutputMapper(output)) return output;
+
+  // SAFETY: A mapper gets the context of its machine, which XState types as an object. The override's context is the
+  // app's own value for this machine: what the registry recorded from a snapshot, or what a fixture wrote.
+  return output({ context: context as MachineContext, event, self });
 }
