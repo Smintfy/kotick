@@ -1,5 +1,9 @@
 import { assign, fromPromise, setup } from 'xstate';
 
+type SignupContext = { email: string; error: string | null };
+
+type SignupEvent = { type: 'EDIT'; email: string } | { type: 'SUBMIT' } | { type: 'RESET' };
+
 /** The request fails for addresses at example.com. Thus, the failed state is easy to get to by hand. */
 const subscribe = fromPromise<void, { email: string }>(async ({ input }) => {
   await new Promise((resolve) => setTimeout(resolve, 800));
@@ -8,9 +12,10 @@ const subscribe = fromPromise<void, { email: string }>(async ({ input }) => {
 });
 
 export const signupMachine = setup({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: {
-    context: {} as { email: string; error: string | null },
-    events: {} as { type: 'EDIT'; email: string } | { type: 'SUBMIT' } | { type: 'RESET' },
+    context: {} as SignupContext,
+    events: {} as SignupEvent,
   },
   actors: { subscribe },
   guards: { validEmail: ({ context }) => /^\S+@\S+\.\S+$/.test(context.email) },

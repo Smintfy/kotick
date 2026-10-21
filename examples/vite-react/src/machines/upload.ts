@@ -46,6 +46,7 @@ const transfer = fromCallback<EventObject, { failAt?: number }>(({ sendBack, inp
 });
 
 export const uploadMachine = setup({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: {
     context: {} as UploadContext,
     events: {} as UploadEvent,

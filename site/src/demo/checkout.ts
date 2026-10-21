@@ -38,6 +38,7 @@ const charge = fromPromise<{ receiptId: string }, { cardNumber: string }>(async 
 });
 
 export const checkoutMachine = setup({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: {
     context: {} as CheckoutContext,
     events: {} as CheckoutEvent,

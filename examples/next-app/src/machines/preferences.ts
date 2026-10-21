@@ -1,12 +1,15 @@
 import { setup } from 'xstate';
 import { createActorContext } from 'state-viewer/xstate';
 
+type PreferencesEvent = { type: 'TOGGLE_THEME' } | { type: 'DAILY' } | { type: 'WEEKLY' } | { type: 'OFF' };
+
 // Import this file only from client components.
 // state-viewer/xstate is a client module, so server components can't call createActorContext.
 
 export const preferencesMachine = setup({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: {
-    events: {} as { type: 'TOGGLE_THEME' } | { type: 'DAILY' } | { type: 'WEEKLY' } | { type: 'OFF' },
+    events: {} as PreferencesEvent,
   },
 }).createMachine({
   id: 'preferences',

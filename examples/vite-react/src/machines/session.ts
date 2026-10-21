@@ -3,6 +3,10 @@ import { connect } from 'state-viewer/xstate';
 
 type User = { name: string };
 
+type SessionContext = { user: User | null };
+
+type SessionEvent = { type: 'SIGN_IN' } | { type: 'SIGN_OUT' };
+
 /** The time from sign-in to the `expired` state. */
 export const SESSION_TTL = 5 * 60 * 1000;
 
@@ -13,9 +17,10 @@ const authenticate = fromPromise<User>(async () => {
 });
 
 export const sessionMachine = setup({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: {
-    context: {} as { user: User | null },
-    events: {} as { type: 'SIGN_IN' } | { type: 'SIGN_OUT' },
+    context: {} as SessionContext,
+    events: {} as SessionEvent,
   },
   actors: { authenticate },
   delays: { ttl: SESSION_TTL },
