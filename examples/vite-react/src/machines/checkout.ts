@@ -3,8 +3,7 @@ import type { LineItem } from '@/lib/products.ts';
 
 export type CheckoutContext = {
   items: LineItem[];
-  /** The total of the items in cents, without shipping. */
-  total: number;
+  subtotalCents: number;
   cardNumber: string;
   error?: string;
   receiptId?: string;
@@ -45,8 +44,8 @@ export const checkoutMachine = setup({
   id: 'checkout',
   type: 'parallel',
   context: {
-    items: [{ id: 'sku_1', name: 'Linen tote', price: 2400, qty: 2 }],
-    total: 4800,
+    items: [{ id: 'sku_1', name: 'Linen tote', priceCents: 2400, qty: 2 }],
+    subtotalCents: 4800,
     cardNumber: '',
   },
   states: {

@@ -43,7 +43,7 @@ function Catalog() {
         {products.map((product) => (
           <li key={product.id}>
             <span>
-              {product.name} <span className="muted">{formatPrice(product.price)}</span>
+              {product.name} <span className="muted">{formatPrice(product.priceCents)}</span>
             </span>
             <button type="button" aria-label={`Add ${product.name}`} onClick={() => cart.send({ type: 'ADD', product })}>
               Add
@@ -61,7 +61,7 @@ function CartLines() {
   const isEmpty = CartContext.useSelector((snapshot) => snapshot.matches('empty'));
   const items = CartContext.useSelector((snapshot) => snapshot.context.items);
   const stats = useRenderStats('cart-lines');
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const subtotal = items.reduce((sum, item) => sum + item.priceCents * item.qty, 0);
 
   return (
     <div className="stack">

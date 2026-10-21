@@ -13,9 +13,9 @@ export function CheckoutForm() {
   const [snapshot, send] = useMachine(checkoutMachine);
   const stats = useRenderStats('checkout');
 
-  const { items, total, cardNumber, error, receiptId } = snapshot.context;
+  const { items, subtotalCents, cardNumber, error, receiptId } = snapshot.context;
   const shipping = shippingOptions.find((option) => snapshot.matches({ shipping: option.key })) ?? shippingOptions[0];
-  const grandTotal = formatPrice(total + shipping.fee);
+  const grandTotal = formatPrice(subtotalCents + shipping.fee);
 
   return (
     <section className="card" aria-label="Checkout">
@@ -27,7 +27,7 @@ export function CheckoutForm() {
             <span>
               {item.name} × {item.qty}
             </span>
-            <span>{formatPrice(item.price * item.qty)}</span>
+            <span>{formatPrice(item.priceCents * item.qty)}</span>
           </li>
         ))}
       </ul>

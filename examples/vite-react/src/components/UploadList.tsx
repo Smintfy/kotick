@@ -8,9 +8,9 @@ import { uploadMachine, type UploadInput } from '@/machines/upload.ts';
 type FileEntry = UploadInput & { id: number };
 
 const initialFiles: FileEntry[] = [
-  { id: 1, fileName: 'hero.png', size: 2_400_000 },
-  { id: 2, fileName: 'specs.pdf', size: 860_000 },
-  { id: 3, fileName: 'walkthrough.mov', size: 48_000_000, failAt: 60 },
+  { id: 1, fileName: 'hero.png', sizeBytes: 2_400_000 },
+  { id: 2, fileName: 'specs.pdf', sizeBytes: 860_000 },
+  { id: 3, fileName: 'walkthrough.mov', sizeBytes: 48_000_000, firstAttemptFailsAtPercent: 60 },
 ];
 
 export function UploadList() {
@@ -20,7 +20,7 @@ export function UploadList() {
 
   function addFile() {
     const id = nextId.current++;
-    setFiles((current) => [...current, { id, fileName: `photo-${id}.jpg`, size: 1_200_000 }]);
+    setFiles((current) => [...current, { id, fileName: `photo-${id}.jpg`, sizeBytes: 1_200_000 }]);
   }
 
   function removeFile(id: number) {
@@ -48,13 +48,13 @@ function UploadRow({ file, onRemove }: { file: FileEntry; onRemove: () => void }
   const { id, ...input } = file;
   const [snapshot, send, actorRef] = useActor(uploadMachine, { input });
   const stats = useRenderStats(`upload-${id}`);
-  const { fileName, size, error } = snapshot.context;
+  const { fileName, sizeBytes, error } = snapshot.context;
 
   return (
     <li className="upload">
       <div className="upload-heading">
         <strong>{fileName}</strong>
-        <span className="muted">{formatSize(size)}</span>
+        <span className="muted">{formatSize(sizeBytes)}</span>
         <small ref={stats} className="stats" />
       </div>
 
