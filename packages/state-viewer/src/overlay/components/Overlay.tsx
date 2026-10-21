@@ -10,7 +10,7 @@ import type { OverlayHost } from '../host';
 import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../model';
 import type { StateViewerProps, Theme } from '../props';
 import { isPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../settings';
-import { eventOrigin, isTyping, matchesShortcut, parseShortcut } from '../shortcut';
+import { eventOrigin, isShortcutText, isTyping, matchesShortcut, parseShortcut } from '../shortcut';
 import { CHIP } from './classes';
 import { HexagonIcon } from './icons';
 import { MachineList, PathChip } from './MachineList';
@@ -20,6 +20,10 @@ import { SettingsPage } from './SettingsPage';
 
 const THEMES: readonly Theme[] = ['system', 'light', 'dark'];
 
+function isTheme(value: unknown): value is Theme {
+  return THEMES.some((theme) => theme === value);
+}
+
 interface OverlayProps extends StateViewerProps {
   registry: Registry;
   host: OverlayHost;
@@ -28,7 +32,7 @@ interface OverlayProps extends StateViewerProps {
 export function Overlay(props: OverlayProps) {
   const { registry, host } = props;
   const defaultPosition = isPosition(props.position) ? props.position : 'bottom-right';
-  const theme = THEMES.includes(props.theme as Theme) ? (props.theme as Theme) : 'system';
+  const theme = isTheme(props.theme) ? props.theme : 'system';
   const urlParam = resolveUrlParam(props.urlParam);
   const shortcut = useShortcut(props.shortcut);
   const snapshot = useRegistrySnapshot(registry);
@@ -357,7 +361,7 @@ function useShortcut(value: string | false | undefined) {
 
   return React.useMemo(() => {
     if (source === false) return undefined;
-    const parsed = parseShortcut(source);
+    const parsed = isShortcutText(source) ? parseShortcut(source) : undefined;
 
     if (!parsed) {
       if (!warnedShortcuts.has(source)) {

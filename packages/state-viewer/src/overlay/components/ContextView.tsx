@@ -133,7 +133,8 @@ function JsonEntry({ name, value, depth, ancestors }: JsonEntryProps) {
     </>
   );
 
-  const circular = typeof value === 'object' && value !== null && ancestors.includes(value);
+  // The ancestors are branches, so a leaf can't be among them.
+  const circular = ancestors.includes(value);
   const inspected = circular ? undefined : inspect(value);
 
   if (!inspected || inspected.kind === 'leaf' || inspected.size === 0) {

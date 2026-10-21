@@ -1,5 +1,6 @@
 // Panel UI state kept in localStorage: whether the panel is open, its corner, and the machine whose page it shows.
 
+import { isId } from '../core/ids';
 import type { Position } from './props';
 
 const SETTINGS_KEY = 'state-viewer:ui';
@@ -19,10 +20,23 @@ export interface Settings {
   machine?: string;
 }
 
+/** What the settings key holds: the version, then each setting as it was written, checked on its own. */
+interface StoredSettings {
+  v: 1;
+  open?: unknown;
+  position?: unknown;
+  positionDefault?: unknown;
+  machine?: unknown;
+}
+
 const POSITIONS: readonly Position[] = ['top-left', 'top-right', 'bottom-right', 'bottom-left'];
 
 export function isPosition(value: unknown): value is Position {
-  return POSITIONS.includes(value as Position);
+  return POSITIONS.some((position) => position === value);
+}
+
+function isStoredSettings(value: unknown): value is StoredSettings {
+  return typeof value === 'object' && value !== null && 'v' in value && value.v === 1;
 }
 
 function defaultStorage(): Storage | null {
@@ -50,18 +64,18 @@ export function readSettings(): Settings {
     return {};
   }
 
-  if (typeof payload !== 'object' || payload === null || (payload as { v?: unknown }).v !== 1) return {};
-  const { open, position, positionDefault, machine } = payload as Record<string, unknown>;
+  if (!isStoredSettings(payload)) return {};
+  const { open, position, positionDefault, machine } = payload;
   const settings: Settings = {};
 
-  if (typeof open === 'boolean') settings.open = open;
+  if (open === true || open === false) settings.open = open;
 
   if (isPosition(position) && isPosition(positionDefault)) {
     settings.position = position;
     settings.positionDefault = positionDefault;
   }
 
-  if (typeof machine === 'string' && machine !== '') settings.machine = machine;
+  if (isId(machine)) settings.machine = machine;
 
   return settings;
 }

@@ -109,16 +109,14 @@ async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
   let result: unknown;
 
   try {
-    result = typeof input === 'function' ? await input() : input;
+    result = input instanceof Function ? await input() : input;
   } catch (error) {
     console.warn('[state-viewer] The fixtures loader failed.', error);
 
     return [];
   }
 
-  if (!Array.isArray(result) && typeof result === 'object' && result !== null && 'default' in result) {
-    result = (result as { default: unknown }).default;
-  }
+  if (hasDefaultExport(result)) result = result.default;
 
   if (!Array.isArray(result)) {
     console.warn(
@@ -138,9 +136,19 @@ async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
   return sets;
 }
 
-function isFixtureSet(value: unknown): value is FixtureSet {
-  if (typeof value !== 'object' || value === null) return false;
-  const { machineId, states } = value as Partial<FixtureSet>;
+/** A module namespace, as a loader that returns `import()` resolves to. */
+function hasDefaultExport(value: unknown): value is { default: unknown } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && 'default' in value;
+}
 
-  return typeof machineId === 'string' && typeof states === 'object' && states !== null;
+function isFixtureSet(value: unknown): value is FixtureSet {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'machineId' in value &&
+    typeof value.machineId === 'string' &&
+    'states' in value &&
+    typeof value.states === 'object' &&
+    value.states !== null
+  );
 }
