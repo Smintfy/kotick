@@ -6,7 +6,7 @@ import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import type { Code, Heading as MdastHeading, Nodes, RootContent } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
-import { toHast } from 'mdast-util-to-hast';
+import { toHast, type State } from 'mdast-util-to-hast';
 import { toString } from 'mdast-util-to-string';
 import { gfm } from 'micromark-extension-gfm';
 import Link from 'next/link';
@@ -356,7 +356,7 @@ function render(nodes: RootContent[]): ReactNode {
   return toJsxRuntime(raw(tree), { Fragment, jsx, jsxs, components });
 }
 
-function highlight(_state: unknown, node: Code): ElementContent[] {
+function highlight(_state: State, node: Code): ElementContent[] {
   const root = highlighter.codeToHast(node.value, {
     lang: node.lang ?? 'text',
     themes,
