@@ -1,7 +1,7 @@
 // The overlay's host element: a <div data-konat-root> with an open shadow root holding the styles
 // and the container React renders the overlay into.
 
-import { overlayStyles } from './styles.generated';
+import { overlayStyles } from '../styles.generated';
 
 const HOST_ATTRIBUTE = 'data-konat-root';
 

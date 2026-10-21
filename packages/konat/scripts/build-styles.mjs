@@ -1,4 +1,4 @@
-// Compiles styles.css with Tailwind and writes the minified CSS to src/overlay/styles.generated.ts.
+// Compiles styles.css with Tailwind and writes the minified CSS to src/styles.generated.ts.
 // The package exports its TypeScript source, so every bundler gets the CSS as a string, with no CSS pipeline.
 //
 // Usage:
@@ -14,8 +14,8 @@ import { parseArgs } from 'node:util';
 
 const root = join(import.meta.dirname, '..');
 const input = join(root, 'styles.css');
-const output = join(root, 'src/overlay/styles.generated.ts');
-const components = join(root, 'src/overlay/components');
+const output = join(root, 'src/styles.generated.ts');
+const components = join(root, 'src/components');
 
 // The root dev scripts give their arguments, such as Vite's --port, to each dev script, so unknown options are ignored.
 const { values } = parseArgs({

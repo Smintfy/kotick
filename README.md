@@ -37,11 +37,11 @@ pnpm install
 | `pnpm lint` | Runs oxlint over the repository with the rules in `.oxlintrc.json` |
 | `pnpm test:matrix` | Runs the tests on React 18 and 19, each with the minimum and the latest XState |
 | `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, and looks for debug code |
-| `pnpm --filter konat styles` | Writes the overlay's CSS from `styles.css` to `src/overlay/styles.generated.ts` |
+| `pnpm --filter konat styles` | Writes the overlay's CSS from `styles.css` to `src/styles.generated.ts` |
 | `pnpm --filter konat bench` | Measures the cost of the adapter in development, against `@xstate/react` |
 
 The overlay's components use Tailwind v4 utilities. Tailwind is a devDependency: it compiles
-`packages/konat/styles.css` into `src/overlay/styles.generated.ts`, and the package ships that CSS as a string.
+`packages/konat/styles.css` into `src/styles.generated.ts`, and the package ships that CSS as a string.
 The style watcher writes the file again when a component or `styles.css` changes. Commit the file with the change.
 
 `test:matrix` and `check:bundles` install packages in temporary directories, so they need network access and take a

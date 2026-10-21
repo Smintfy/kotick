@@ -9,7 +9,7 @@ import {
   type Snapshot,
 } from 'xstate';
 import { callLoggingErrors, getPageRegistry, toInstanceKey } from '../core/registry';
-import type { EventLogEntry, MachineHandle, Override } from '../core/types';
+import type { EventLogEntry, MachineHandle, Override } from '../types';
 import { EMPTY_CHILDREN, liveChildren, type ChildActors, type MachineActor } from './actor';
 import { createHandle, inspect } from './handle';
 import { isFallbackId, warnFallbackId, type Identity } from './identity';

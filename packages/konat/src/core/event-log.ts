@@ -1,4 +1,4 @@
-import type { EventLogEntry } from './types';
+import type { EventLogEntry } from '../types';
 
 export interface EventLog {
   push(entry: EventLogEntry): void;

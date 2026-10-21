@@ -1,5 +1,5 @@
+import type { FixtureSet, MachineHandle } from '../types';
 import { isId } from './ids';
-import type { FixtureSet, MachineHandle } from './types';
 
 type FixtureTarget = Pick<MachineHandle, 'machineId' | 'source'>;
 

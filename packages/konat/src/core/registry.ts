@@ -1,9 +1,5 @@
 // Registry: one per page, shared by every copy of the package through globalThis.
 
-import { createEventLog } from './event-log';
-import { createFixtureStore } from './fixtures';
-import { isId, isLeafId } from './ids';
-import { createRecordingStore } from './recording';
 import type {
   DataAvailability,
   DataSource,
@@ -14,7 +10,11 @@ import type {
   Registry,
   RegistrySnapshot,
   StateNodeInfo,
-} from './types';
+} from '../types';
+import { createEventLog } from './event-log';
+import { createFixtureStore } from './fixtures';
+import { isId, isLeafId } from './ids';
+import { createRecordingStore } from './recording';
 import { VERSION } from './version';
 
 export const REGISTRY_KEY = '__KONAT_REGISTRY__';

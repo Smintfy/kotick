@@ -1,5 +1,5 @@
 import type { AnyStateMachine, ContextFrom, SnapshotFrom } from 'xstate';
-import type { FixtureSet } from '../core/types';
+import type { FixtureSet } from '../types';
 import { resolveMachineId } from './identity';
 import { getTree } from './tree';
 

@@ -1,5 +1,5 @@
 /*
- * The overlay's CSS. scripts/build-styles.mjs compiles it into src/overlay/styles.generated.ts.
+ * The overlay's CSS. scripts/build-styles.mjs compiles it into src/styles.generated.ts.
  * The overlay is in a shadow root, so these rules reach only the overlay.
  * Sizes are in px, never rem, because the page sets the root font size.
  */
@@ -10,9 +10,10 @@
 /* No preflight: it changes svg, button and img, and the reset in the base layer is all the overlay needs. */
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
-@source "./src/overlay/components";
-/* The scanner reads words in comments too. "ring buffer" in EventLog.tsx is not a class. */
+@source "./src/components";
+/* The scanner reads words in comments too. "ring buffer" in event-log.tsx and "inline arrow" in konat.tsx are not classes. */
 @source not inline("ring");
+@source not inline("inline");
 
 /*
  * Only these tokens, so no default token leaks in.

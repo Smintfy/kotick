@@ -1,8 +1,8 @@
 // The event log: events the UI sent during a preview, newest first, with the state it showed and when.
 
 import { useId } from 'react';
-import type { EventLogEntry } from '../../core/types';
-import { formatTime, summarizePayload } from '../format';
+import type { EventLogEntry } from '../types';
+import { formatTime, summarizePayload } from '../utils/format';
 import { BUTTON, HINT, SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
 
 // Entries have no id, and the ring buffer shifts their positions; React keys come from the objects themselves.

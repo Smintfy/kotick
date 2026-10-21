@@ -2,7 +2,7 @@
 // It groups machines by id, labels instances, names the panel's pages, and finds the leaves a click previews.
 
 import { toInstanceKey } from '../core/registry';
-import type { MachineHandle, StateNodeInfo } from '../core/types';
+import type { MachineHandle, StateNodeInfo } from '../types';
 
 export interface InstanceEntry {
   key: string;

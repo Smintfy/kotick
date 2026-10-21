@@ -2,17 +2,17 @@
 // It handles the keys that move through the tree and switch machines.
 
 import * as React from 'react';
-import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../../core/types';
-import { copyText } from '../clipboard';
-import { toJson } from '../format';
-import { useHandleUpdates } from '../hooks';
-import { attempt, findInstance, shownLeaves, toggleLeaf, type InstanceEntry, type MachineGroup } from '../model';
-import { isElement, isTyping, moveIndex, moveOf, type Move } from '../shortcut';
-import { ContextView } from './ContextView';
-import { EventLog } from './EventLog';
+import { useHandleUpdates } from '../hooks/use-handle-updates';
+import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../types';
+import { copyText } from '../utils/clipboard';
+import { toJson } from '../utils/format';
+import { attempt, findInstance, shownLeaves, toggleLeaf, type InstanceEntry, type MachineGroup } from '../utils/model';
+import { isElement, isTyping, moveIndex, moveOf, type Move } from '../utils/shortcut';
 import { BODY } from './classes';
+import { ContextView } from './context-view';
+import { EventLog } from './event-log';
 import { CopyIcon } from './icons';
-import { StatesSection } from './StatesSection';
+import { StatesSection } from './states-section';
 
 const EMPTY_DATA: DataAvailability = { recorded: new Set(), fixture: new Set() };
 

@@ -9,7 +9,7 @@ import type {
   Mapper,
   StateValue,
 } from 'xstate';
-import type { Override } from '../core/types';
+import type { Override } from '../types';
 import { getTree, leavesOfValue, nodeId, type AnyStateNode, type MachineTree } from './tree';
 
 /** A state value made of maps alone: an atomic node is written as `{}`. */

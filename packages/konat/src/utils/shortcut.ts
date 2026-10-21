@@ -1,7 +1,7 @@
 // Keyboard shortcuts. The toggle is configurable, such as 'alt+s' or 'ctrl+shift+d', and every shortcut
 // is ignored while the user types. The arrows, Home and End move through the rows of a page.
 
-import type { KonatProps } from './props';
+import type { KonatProps } from '../types';
 
 interface Shortcut {
   /** `KeyboardEvent.key`, lowercased: 's', 'escape', 'f2'. */

@@ -2,7 +2,7 @@
 
 import { isMachineSnapshot, type AnyActorRef, type AnyEventObject, type AnyStateMachine, type Snapshot } from 'xstate';
 import { callLoggingErrors, toInstanceKey } from '../core/registry';
-import type { Capabilities, MachineHandle, Registry } from '../core/types';
+import type { Capabilities, MachineHandle, Registry } from '../types';
 import { isMachineActor, liveChildren, type MachineActor } from './actor';
 import { isFallbackId, resolveMachineId, warnFallbackId, type Identity } from './identity';
 import { completeTarget } from './preview-snapshot';
