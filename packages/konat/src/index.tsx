@@ -1,12 +1,10 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import type { KonatProps } from './overlay/props';
-import { Konat as DevKonat } from './overlay/Konat';
+import { Konat as DevKonat } from './components/konat';
+import type { KonatProps } from './types';
 
-export type { FixtureSet } from './core/types';
-
-export type { FixturesInput, FixturesResult, Position, KonatProps, Theme } from './overlay/props';
+export type { FixtureSet, FixturesInput, FixturesResult, Position, KonatProps, Theme } from './types';
 
 // As in xstate.ts: declared here rather than through @types/node, for apps that typecheck this source without it.
 declare const process: { env: { NODE_ENV?: string } };

@@ -4,12 +4,11 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { getPageRegistry } from '../core/registry';
-import type { FixtureSet, Registry } from '../core/types';
-import { Overlay } from './components/Overlay';
-import { useIsomorphicLayoutEffect } from './hooks';
-import { createHost, type OverlayHost } from './host';
-import type { FixturesInput, KonatProps } from './props';
-import { overlayStyles } from './styles.generated';
+import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
+import { overlayStyles } from '../styles.generated';
+import type { FixtureSet, FixturesInput, KonatProps, Registry } from '../types';
+import { createHost, type OverlayHost } from '../utils/host';
+import { Overlay } from './overlay';
 
 export function Konat(props: KonatProps): React.ReactNode {
   const registry = getPageRegistry();

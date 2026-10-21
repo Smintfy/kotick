@@ -2,11 +2,11 @@
 // The arrows, Home and End move focus through the rows.
 
 import type * as React from 'react';
-import { leavesOf } from '../../core/registry';
-import type { RegistrySnapshot } from '../../core/types';
-import { usePathname } from '../hooks';
-import { attempt, type MachineGroup } from '../model';
-import { moveIndex, moveOf } from '../shortcut';
+import { leavesOf } from '../core/registry';
+import { usePathname } from '../hooks/use-pathname';
+import type { RegistrySnapshot } from '../types';
+import { attempt, type MachineGroup } from '../utils/model';
+import { moveIndex, moveOf } from '../utils/shortcut';
 import { CHIP, TAG } from './classes';
 import { GearIcon } from './icons';
 

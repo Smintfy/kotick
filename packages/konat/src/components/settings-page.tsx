@@ -1,7 +1,7 @@
 // The settings page: the corner of the bubble and the panel, and the keyboard shortcuts.
 
 import { useId } from 'react';
-import type { Position } from '../props';
+import type { Position } from '../types';
 import { BODY, SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
 
 const CORNERS: readonly { position: Position; label: string }[] = [

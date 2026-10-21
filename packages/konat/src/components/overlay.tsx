@@ -3,19 +3,20 @@
 // handles the shortcut.
 
 import * as React from 'react';
-import type { Registry } from '../../core/types';
-import { useIsomorphicLayoutEffect, useLatest, useRegistrySnapshot } from '../hooks';
-import type { OverlayHost } from '../host';
-import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../model';
-import type { KonatProps, Theme } from '../props';
-import { isPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../settings';
-import { eventOrigin, isShortcutText, isTyping, matchesShortcut, parseShortcut } from '../shortcut';
+import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
+import { useLatest } from '../hooks/use-latest';
+import { useRegistrySnapshot } from '../hooks/use-registry-snapshot';
+import type { KonatProps, Registry, Theme } from '../types';
+import type { OverlayHost } from '../utils/host';
+import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../utils/model';
+import { isPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../utils/settings';
+import { eventOrigin, isShortcutText, isTyping, matchesShortcut, parseShortcut } from '../utils/shortcut';
 import { CHIP } from './classes';
 import { HexagonIcon } from './icons';
-import { MachineList, PathChip } from './MachineList';
-import { MachinePage } from './MachinePage';
-import { Panel } from './Panel';
-import { SettingsPage } from './SettingsPage';
+import { MachineList, PathChip } from './machine-list';
+import { MachinePage } from './machine-page';
+import { Panel } from './panel';
+import { SettingsPage } from './settings-page';
 
 const THEMES: readonly Theme[] = ['system', 'light', 'dark'];
 

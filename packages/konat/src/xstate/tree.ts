@@ -1,7 +1,7 @@
 // The state tree of an XState machine, and the leaves that a state value names.
 
 import { isMachineSnapshot, type AnyStateMachine, type Snapshot, type StateValue } from 'xstate';
-import type { StateNodeInfo } from '../core/types';
+import type { StateNodeInfo } from '../types';
 
 export type AnyStateNode = AnyStateMachine['root'];
 

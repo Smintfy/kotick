@@ -3,8 +3,8 @@
 // A click on a compound or parallel state collapses or expands it.
 
 import { useId, type CSSProperties } from 'react';
-import type { DataAvailability, Override, RegistrySnapshot, StateNodeInfo } from '../../core/types';
-import type { InstanceEntry } from '../model';
+import type { DataAvailability, Override, RegistrySnapshot, StateNodeInfo } from '../types';
+import type { InstanceEntry } from '../utils/model';
 import { BUTTON, HINT, SECTION, SECTION_HEAD, SECTION_TITLE, TAG } from './classes';
 import { ChevronIcon } from './icons';
 

@@ -2,8 +2,8 @@
 // with a switcher for it.
 
 import { useId, useState } from 'react';
-import type { DataSource, Override } from '../../core/types';
-import { inspect } from '../format';
+import type { DataSource, Override } from '../types';
+import { inspect } from '../utils/format';
 import { SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
 import { ChevronIcon } from './icons';
 

@@ -1,7 +1,7 @@
 // Panel UI state kept in localStorage: whether the panel is open, its corner, and the machine whose page it shows.
 
 import { isId } from '../core/ids';
-import type { Position } from './props';
+import type { Position } from '../types';
 
 const SETTINGS_KEY = 'konat:ui';
 

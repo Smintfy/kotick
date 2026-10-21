@@ -2,8 +2,8 @@
 // Escape releases every preview on every page. Each page handles its other keys.
 
 import type * as React from 'react';
-import type { PanelPage } from '../model';
-import { isTyping } from '../shortcut';
+import type { PanelPage } from '../utils/model';
+import { isTyping } from '../utils/shortcut';
 import { BackIcon, CloseIcon } from './icons';
 
 interface PanelProps {

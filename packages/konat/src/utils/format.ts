@@ -1,7 +1,7 @@
 // Turning contexts and events into text for the panel and the clipboard. Contexts can hold anything: actor refs,
 // functions, Maps, cycles; none of it may throw.
 
-import type { EventLogEntry } from '../core/types';
+import type { EventLogEntry } from '../types';
 
 /** An object inside a context or an event's payload, as the panel walks it. */
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- A context or an event is the app's own data, with no schema.
