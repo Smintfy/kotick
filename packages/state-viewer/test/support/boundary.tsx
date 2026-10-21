@@ -10,7 +10,7 @@ type Caught = { message: string | null };
 export class Boundary extends React.Component<{ children: React.ReactNode }, Caught> {
   override state: Caught = { message: null };
 
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- React gives the thrown value, and code can throw any value.
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- React gives what was thrown, which can be any value.
   static getDerivedStateFromError(error: unknown): Caught {
     return { message: error instanceof Error ? error.message : String(error) };
   }

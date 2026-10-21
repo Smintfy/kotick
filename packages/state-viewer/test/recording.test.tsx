@@ -17,21 +17,24 @@ import {
   type SnapshotFrom,
 } from 'xstate';
 import { watchConsole } from './support/console';
+import type { Json } from './support/json';
 import { flush, freshId, marks, panel, preview, release, show, shownKey } from './support/panel';
 
+type CheckoutContext = { step: number; note: string };
+
+type CheckoutEvent =
+  | { type: 'START' }
+  | { type: 'FAIL' }
+  | { type: 'RETRY' }
+  | { type: 'STANDARD' }
+  | { type: 'EXPRESS' }
+  | { type: 'PICKUP' }
+  | { type: 'FINISH' };
+
 function createCheckoutMachine() {
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   return setup({
-    types: {
-      context: {} as { step: number; note: string },
-      events: {} as
-        | { type: 'START' }
-        | { type: 'FAIL' }
-        | { type: 'RETRY' }
-        | { type: 'STANDARD' }
-        | { type: 'EXPRESS' }
-        | { type: 'PICKUP' }
-        | { type: 'FINISH' },
-    },
+    types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
     actions: { count: assign({ step: ({ context }) => context.step + 1 }) },
   }).createMachine({
     id: freshId('checkout'),
@@ -167,10 +170,10 @@ function hidePage() {
   window.dispatchEvent(new Event('pagehide'));
 }
 
-interface Payload {
-  v: number;
-  entries: { leaves: string[]; at: number; context: unknown }[];
-}
+/** A recording as the overlay stores it. */
+type Entry = { leaves: string[]; at: number; context: Json };
+
+type Payload = { v: number; entries: Entry[] };
 
 function recordedKey(machineId: string) {
   return `state-viewer:recorded:${machineId}`;
@@ -179,7 +182,35 @@ function recordedKey(machineId: string) {
 function readStored(machineId: string): Payload | null {
   const raw = sessionStorage.getItem(recordedKey(machineId));
 
-  return raw === null ? null : (JSON.parse(raw) as Payload);
+  if (raw === null) return null;
+
+  const stored: Json = JSON.parse(raw);
+
+  if (!isPayload(stored)) throw new Error(`The recordings of ${machineId} are not a payload: ${raw.slice(0, 200)}`);
+
+  return stored;
+}
+
+function isPayload(value: Json): value is Payload {
+  return isRecord(value) && typeof value.v === 'number' && Array.isArray(value.entries) && value.entries.every(isEntry);
+}
+
+function isEntry(value: Json): value is Entry {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.leaves) &&
+    value.leaves.every(isLeafId) &&
+    typeof value.at === 'number' &&
+    'context' in value
+  );
+}
+
+function isLeafId(value: Json): value is string {
+  return typeof value === 'string';
+}
+
+function isRecord(value: Json): value is { [key: string]: Json } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** The stored entries without their times, oldest first. */
@@ -439,9 +470,14 @@ describe('with connect()', () => {
 describe('with an actor that moves while it starts', () => {
   // A callback child answers at once, so the actor leaves `restoring` as it starts.
   // The component renders `restoring` first, so its context is worth a preview.
+  type SessionContext = { user: string | null };
+
+  type SessionEvent = { type: 'RESTORED'; user: string };
+
   function createSessionMachine() {
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
     return setup({
-      types: { context: {} as { user: string | null }, events: {} as { type: 'RESTORED'; user: string } },
+      types: { context: {} as SessionContext, events: {} as SessionEvent },
       actors: {
         restore: fromCallback(({ sendBack }) => {
           sendBack({ type: 'RESTORED', user: 'ada' });
@@ -660,17 +696,20 @@ describe('in sessionStorage', () => {
 });
 
 describe('with a context that JSON cannot hold as it is', () => {
-  function createKeeperMachine(kept: unknown) {
-    return setup({ types: { context: {} as { value: unknown }, events: {} as { type: 'KEEP' } } }).createMachine({
+  type KeeperContext = { value: unknown };
+
+  type KeeperEvent = { type: 'KEEP' };
+
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- A context can hold any value, such as a Map or a cycle.
+  async function storeKept(kept: unknown) {
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    const machine = setup({ types: { context: {} as KeeperContext, events: {} as KeeperEvent } }).createMachine({
       id: freshId('keeper'),
       context: { value: 'plain' },
       initial: 'plain',
       states: { plain: { on: { KEEP: { target: 'kept', actions: assign({ value: () => kept }) } } }, kept: {} },
     });
-  }
 
-  async function storeKept(value: unknown) {
-    const machine = createKeeperMachine(value);
     await mount(<Controls machine={machine} events={{ Keep: { type: 'KEEP' } }} />, { overlay: false });
     await press('Keep');
     hidePage();
@@ -691,7 +730,7 @@ describe('with a context that JSON cannot hold as it is', () => {
     ],
     [
       'null-prototype objects and arrays',
-      { bare: Object.assign(Object.create(null) as object, { x: 1 }), list: [1, 'two', null, { ok: true }, [3]] },
+      { bare: Object.assign(Object.create(null), { x: 1 }), list: [1, 'two', null, { ok: true }, [3]] },
       { bare: { x: 1 }, list: [1, 'two', null, { ok: true }, [3]] },
     ],
     ['equal objects that are separate', { a: { id: 1 }, b: { id: 1 }, c: [], d: [] }, { a: { id: 1 }, b: { id: 1 }, c: [], d: [] }],
@@ -712,7 +751,9 @@ describe('with a context that JSON cannot hold as it is', () => {
     subscribe() {}
   }
 
-  const cycle: Record<string, unknown> = { n: 1 };
+  type Loop = { n: number; self?: Loop };
+
+  const cycle: Loop = { n: 1 };
   cycle.self = cycle;
   const ref = { id: 'child', send() {}, getSnapshot() {}, subscribe() {} };
   const item = { id: 1 };
@@ -757,11 +798,15 @@ describe('with a context that JSON cannot hold as it is', () => {
   });
 
   test('an object held twice stays in memory, so the preview keeps the identity the app checks', async () => {
+    type Item = { id: number };
+
+    type CartContext = { items: Item[]; selected: Item | null };
+
+    type CartEvent = { type: 'PICK' } | { type: 'CLEAR' };
+
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
     const machine = setup({
-      types: {
-        context: {} as { items: { id: number }[]; selected: { id: number } | null },
-        events: {} as { type: 'PICK' } | { type: 'CLEAR' },
-      },
+      types: { context: {} as CartContext, events: {} as CartEvent },
     }).createMachine({
       id: freshId('cart'),
       context: { items: [], selected: null },
@@ -816,11 +861,13 @@ describe('with a context that JSON cannot hold as it is', () => {
   test('a spawned actor in the context stays in memory, and the child machine stores its own recordings', async () => {
     const worker = createMachine({ id: freshId('worker'), context: {}, initial: 'working', states: { working: {} } });
 
+    type CrewContext = { workers: ActorRefFrom<typeof worker>[] };
+
+    type CrewEvent = { type: 'HIRE' } | { type: 'DISMISS' };
+
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
     const crew = setup({
-      types: {
-        context: {} as { workers: ActorRefFrom<typeof worker>[] },
-        events: {} as { type: 'HIRE' } | { type: 'DISMISS' },
-      },
+      types: { context: {} as CrewContext, events: {} as CrewEvent },
       actors: { worker },
     }).createMachine({
       id: freshId('crew'),
@@ -960,12 +1007,14 @@ describe('at the storage limits', () => {
     const output = watchConsole();
     const text = 'x'.repeat(95_000);
 
+    type BulkContext = { text: string; stamped?: Date };
+
+    type BulkEvent = { type: 'NEXT' } | { type: 'FIRST' } | { type: 'STAMP' };
+
     function createBulkMachine() {
+      // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
       return setup({
-        types: {
-          context: {} as { text: string; stamped?: Date },
-          events: {} as { type: 'NEXT' } | { type: 'FIRST' } | { type: 'STAMP' },
-        },
+        types: { context: {} as BulkContext, events: {} as BulkEvent },
       }).createMachine({
         id: freshId('bulk'),
         context: { text },
@@ -1019,11 +1068,13 @@ describe('at the storage limits', () => {
   test('a context of up to 100,000 characters of JSON is stored, and a larger one stays in memory', async () => {
     const output = watchConsole();
 
+    type NotesContext = { text: string };
+
+    type NotesEvent = { type: 'WRITE'; length: number } | { type: 'CLEAR' };
+
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
     const machine = setup({
-      types: {
-        context: {} as { text: string },
-        events: {} as { type: 'WRITE'; length: number } | { type: 'CLEAR' },
-      },
+      types: { context: {} as NotesContext, events: {} as NotesEvent },
     }).createMachine({
       id: freshId('notes'),
       context: { text: '' },
@@ -1087,8 +1138,13 @@ describe('at the storage limits', () => {
   test('a full storage keeps the newest recordings that fit, warns once, and drops the key when none fit', async () => {
     const output = watchConsole();
 
+    type PadContext = { pad: string };
+
+    type PadEvent = { type: 'NEXT' } | { type: 'GROW' };
+
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
     const machine = setup({
-      types: { context: {} as { pad: string }, events: {} as { type: 'NEXT' } | { type: 'GROW' } },
+      types: { context: {} as PadContext, events: {} as PadEvent },
     }).createMachine({
       id: freshId('full'),
       context: { pad: 'x'.repeat(200) },
