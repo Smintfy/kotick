@@ -1,5 +1,3 @@
-// Recording store: the latest context per state configuration, in memory and in sessionStorage.
-
 import { isLeafId } from './ids';
 
 const STORAGE_PREFIX = 'konat:recorded:';
@@ -35,7 +33,6 @@ interface RecordingStore {
   recordedLeaves(machineId: string): ReadonlySet<string>;
   /** Loads persisted recordings for a machine, once. Recordings already in memory win. */
   hydrate(machineId: string): void;
-  /** Writes pending changes now. */
   flush(): void;
 }
 
@@ -64,7 +61,6 @@ type ContextHolder = Record<string, unknown>;
 /** What JSON holds without loss: a string, a finite number, a boolean, or null. */
 type JsonScalar = string | number | boolean | null;
 
-/** What an actor ref has and a plain object of a context doesn't. */
 interface ActorRefLike {
   send: Function;
   getSnapshot: Function;
@@ -72,9 +68,9 @@ interface ActorRefLike {
 }
 
 /**
- * The stored form of an entry, or `null` when its context can't be persisted faithfully and has to stay in memory.
- * Functions held by objects are dropped. An actor ref anywhere keeps the whole context in memory, because a context
- * restored without it would crash the components that read it.
+ * Returns `null` when the context can't be persisted faithfully and has to stay in memory.
+ * An actor ref anywhere keeps the whole context in memory.
+ * A context restored without the ref would crash the components that read it.
  */
 function serializeEntry(entry: RecordedEntry): string | null {
   const seen = new Set<object>();
@@ -123,12 +119,10 @@ function isJsonScalar(value: unknown): value is JsonScalar {
   return value === null || typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value);
 }
 
-/** What JSON.stringify leaves out of an object. */
 function isDroppedByJson(value: unknown): value is Function | undefined {
   return typeof value === 'function' || typeof value === 'undefined';
 }
 
-/** An array or a plain object, which JSON.stringify walks into. */
 function isJsonContainer(value: unknown): value is object {
   if (typeof value !== 'object' || value === null) return false;
   const prototype = Object.getPrototypeOf(value);
@@ -176,7 +170,7 @@ function isStoredPayload(value: unknown): value is StoredPayload {
   return isObject(value) && 'v' in value && value.v === 1 && 'entries' in value && Array.isArray(value.entries);
 }
 
-/** An entry of the payload. Its leaves are in the order they were written, and the reader sorts them. */
+/** Its leaves are in the order that they were written. The reader sorts them. */
 function isStoredEntry(value: unknown): value is RecordedEntry {
   return (
     isObject(value) &&
@@ -189,7 +183,6 @@ function isStoredEntry(value: unknown): value is RecordedEntry {
   );
 }
 
-/** Stored entries, oldest first, or `undefined` when nothing valid is stored. */
 function readStored(storage: Storage, key: string): RecordedEntry[] | undefined {
   let payload: unknown;
 
@@ -213,7 +206,7 @@ function readStored(storage: Storage, key: string): RecordedEntry[] | undefined 
   return entries;
 }
 
-/** Size (key plus value) of every stored recordings key, including ones written by earlier page loads. */
+/** The size, key plus value, of each stored recordings key, including keys from earlier page loads. */
 function readStoredSizes(storage: Storage): Map<string, number> {
   const sizes = new Map<string, number>();
 
@@ -236,7 +229,6 @@ function readStoredSizes(storage: Storage): Map<string, number> {
 
 const EMPTY_PAYLOAD = '{"v":1,"entries":[]}';
 
-/** `onAvailabilityChange` is called when the set of recorded leaves for a machine changes. */
 export function createRecordingStore(onAvailabilityChange: (machineId: string) => void): RecordingStore {
   const storage = defaultStorage();
   const machines = new Map<string, MachineRecordings>();

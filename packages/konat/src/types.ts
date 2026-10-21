@@ -1,5 +1,3 @@
-// The core protocol: the registry, and what the overlay and the adapter give it or read from it.
-
 export type StateNodeType = 'atomic' | 'compound' | 'parallel' | 'final';
 
 export interface StateNodeInfo {
@@ -22,7 +20,6 @@ export interface MachineHandle {
   instanceId: string;
   label?: string;
   capabilities: Capabilities;
-  /** Set for child machines. */
   parentKey?: string;
   /** Definition object (the XState machine), matched against `FixtureSet.source`. */
   source?: unknown;

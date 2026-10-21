@@ -1,5 +1,3 @@
-// Registry: one per page, shared by every copy of the package through globalThis.
-
 import type {
   DataAvailability,
   DataSource,
@@ -25,7 +23,6 @@ type SnapshotPart = 'machines' | 'overrides' | 'log' | 'data';
 /** `${machineId}#${instanceId}`, from toInstanceKey(). */
 type InstanceKey = string;
 
-/** Prints the live-context warning that a preview holds. */
 type HeldWarning = () => void;
 
 /** One registration of a handle; unregister removes only the registration it came from. */
@@ -125,7 +122,6 @@ function createRegistry(): Registry {
     }
   }
 
-  /** Drops the registrations unregistered since the last flush, and their overrides. */
   function sweep(): void {
     if (removing.size === 0) return;
     const keys = [...removing];
@@ -279,7 +275,8 @@ function createRegistry(): Registry {
       return;
     }
 
-    // Regions the edit added, which the preview shows: the configuration names them, as the blocked-event log does.
+    // Regions that the edit added, which the preview shows.
+    // The configuration names them, as the blocked-event log does.
     const added = kept.filter((leaf): leaf is string => typeof leaf === 'string' && !override.leaves.includes(leaf));
 
     if (added.length === 0) return;
@@ -346,7 +343,7 @@ function createRegistry(): Registry {
     }
   }
 
-  /** Context from the first source in `order` that has some. Throws when getContext() does. */
+  /** Context from the first source in `order` that has some. Throws when getContext() throws. */
   function resolveContext(
     handle: MachineHandle,
     order: readonly DataSource[],
@@ -465,7 +462,7 @@ function createRegistry(): Registry {
       return;
     }
 
-    // Live always has context, and the order always ends with it.
+    // Live always has context, and every order includes it.
     const { source, context }: ResolvedContext = resolved ?? { source: 'live', context: undefined };
 
     const shown = `"${requested.join(', ')}" on "${instanceKey}"`;
@@ -644,7 +641,6 @@ const EMPTY_SNAPSHOT: RegistrySnapshot = /* @__PURE__ */ freeze({
   data: /* @__PURE__ */ freeze(/* @__PURE__ */ emptyRecord()),
 });
 
-/** A registry that does nothing, for the server. */
 function createNoopRegistry(): Registry {
   return {
     version: VERSION,
@@ -665,7 +661,6 @@ function createNoopRegistry(): Registry {
 
 let serverRegistry: Registry | undefined;
 
-/** The page's registry, created on first use. Returns a no-op registry on the server. */
 export function getPageRegistry(): Registry {
   // globalThis is shared by every request on a server, so a real registry there would mix up users' instances.
   if (typeof window === 'undefined' || typeof document === 'undefined') {
