@@ -490,7 +490,6 @@ function createRegistry(): Registry {
       leaves: freeze(leaves),
       context,
       source,
-      createdAt: Date.now(),
     });
 
     if (explicit !== undefined) chosenSource.add(override);
@@ -522,10 +521,7 @@ function createRegistry(): Registry {
       }
 
       if (!resolved || (resolved.source === override.source && Object.is(resolved.context, override.context))) continue;
-      overrides.set(
-        key,
-        freeze({ ...override, source: resolved.source, context: resolved.context, createdAt: Date.now() }),
-      );
+      overrides.set(key, freeze({ ...override, source: resolved.source, context: resolved.context }));
       markDirty('overrides');
       notifyOverride(key);
     }
