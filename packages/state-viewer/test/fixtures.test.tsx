@@ -8,13 +8,15 @@ import { watchConsole } from './support/console';
 import { REACT_MAJOR } from './support/hooks';
 import { flush, freshId, marks, panel, pickSource, preview, release, show, shownKey } from './support/panel';
 
+type CheckoutContext = { step: number; note: string };
+
+type CheckoutEvent = { type: 'START' } | { type: 'FAIL'; note: string } | { type: 'RETRY' } | { type: 'EXPRESS' };
+
 /** A factory. A test makes the machine again with it, as HMR does. Each transition adds one to the step. */
 function createCheckoutMachine(id: string) {
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   return setup({
-    types: {
-      context: {} as { step: number; note: string },
-      events: {} as { type: 'START' } | { type: 'FAIL'; note: string } | { type: 'RETRY' } | { type: 'EXPRESS' },
-    },
+    types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
     actions: { count: assign({ step: ({ context }) => context.step + 1 }) },
   }).createMachine({
     id,
@@ -48,13 +50,17 @@ function createCheckoutMachine(id: string) {
 
 type CheckoutMachine = ReturnType<typeof createCheckoutMachine>;
 
+/** The context key of an anonymous machine is a parameter. */
+type AnonymousMachineTypes = { context: Record<string, string> };
+
 /**
  * A machine without an id. Its state name and its context key set its generated id.
  * A fresh state name gives a fresh id, and so a fresh warning.
  */
 function createAnonymousMachine(state: string, contextKey = 'label') {
+  // SAFETY: XState reads the types of a machine only at compile time. It never reads this value.
   return createMachine({
-    types: {} as { context: Record<string, string> },
+    types: {} as AnonymousMachineTypes,
     context: { [contextKey]: 'live' },
     initial: 'closed',
     states: { closed: { on: { OPEN: state } }, [state]: {} },
@@ -66,7 +72,7 @@ function fixture(note: string) {
 }
 
 /** The marks of a checkout that has not moved. The actor starts in idle, so idle is recorded. */
-function checkoutMarks(changes: Record<string, string[]> = {}): Record<string, string[]> {
+function checkoutMarks(changes: Record<string, string[]> = {}) {
   return {
     idle: ['recorded'],
     'paying.card.idle': ['none'],
@@ -137,9 +143,11 @@ async function renderPage(app: React.ReactNode, fixtures?: FixturesInput) {
   };
 }
 
+type Settle = { resolve(result: FixturesResult): void; reject(reason: Error): void };
+
 /** A loader such as `() => import('./fixtures')`. It loads when the test resolves or rejects it. */
 function lazyFixtures() {
-  let settle!: { resolve(result: FixturesResult): void; reject(reason: unknown): void };
+  let settle!: Settle;
 
   const loaded = new Promise<FixturesResult>((resolve, reject) => {
     settle = { resolve, reject };
@@ -151,7 +159,7 @@ function lazyFixtures() {
       await act(async () => settle.resolve({ default: sets }));
       await flush();
     },
-    async reject(reason: unknown) {
+    async reject(reason: Error) {
       await act(async () => settle.reject(reason));
       await flush();
     },
@@ -227,14 +235,18 @@ describe('the fixtures prop', () => {
     });
   });
 
-  test.each<[string, (set: FixtureSet) => unknown]>([
+  /** One set without an array, as is or as the default export of a module. The fixtures prop does not take it. */
+  type LoneSet = FixtureSet | (() => { default: FixtureSet });
+
+  test.each<[string, (set: FixtureSet) => LoneSet]>([
     ['one set without an array', (set) => set],
     ['a loader of a module whose default export is one set', (set) => () => ({ default: set })],
   ])('%s gives no fixtures, and warns', async (_, given) => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
     const set = defineFixtures(machine, { done: fixture('not in an array') });
-    await renderPage(<App machine={machine} />, given(set) as FixturesInput);
+    // @ts-expect-error The fixtures prop takes an array of sets. A JavaScript app can give it one set.
+    await renderPage(<App machine={machine} />, given(set));
 
     await show(machine.id);
     expect({ marks: marks(), warnings: output.warn }).toEqual({
@@ -250,7 +262,8 @@ describe('the fixtures prop', () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
     const given = [defineFixtures(machine, { done: fixture('kept') }), null, { machineId: machine.id }];
-    await renderPage(<App machine={machine} />, given as FixtureSet[]);
+    // @ts-expect-error The fixtures prop takes only sets. A JavaScript app can give it other values.
+    await renderPage(<App machine={machine} />, given);
 
     await show(machine.id);
     expect({ marks: marks(), warnings: output.warn }).toEqual({
@@ -278,7 +291,8 @@ describe('the fixtures prop', () => {
       },
     ];
 
-    await renderPage(<App machine={machine} />, given as unknown as FixtureSet[]);
+    // @ts-expect-error A JavaScript app can give sets and fixtures with the wrong properties.
+    await renderPage(<App machine={machine} />, given);
 
     await preview(machine.id, ['paying.card.error']);
     expect({ marks: marks(), panel: panel(), shown: shown(), warnings: output.warn }).toEqual({
@@ -638,9 +652,12 @@ describe('matching a set to a machine', () => {
   });
 
   test('a leaf named like an Object method has a fixture only when a set gives it one', async () => {
+    type ObjectMachineTypes = { context: { note: string } };
+
+    // SAFETY: XState reads the types of a machine only at compile time. It never reads this value.
     const machine = createMachine({
       id: freshId('object'),
-      types: {} as { context: { note: string } },
+      types: {} as ObjectMachineTypes,
       context: { note: 'live' },
       initial: 'valueOf',
       states: { valueOf: {}, constructor: {}, toString: {} },
@@ -1002,13 +1019,17 @@ describe('defineFixtures', () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
 
-    defineFixtures(machine, {
+    // TypeScript rejects other keys only in an object literal at the call, so a variable gives them, as JavaScript can.
+    const withOtherKeys = {
       paying: fixture('compound'),
       'paying.card': fixture('region'),
       'paying.card.error': fixture('leaf'),
       missing: fixture('nothing'),
-    } as FixtureStates<CheckoutMachine>);
-    defineFixtures(machine, { missing: fixture('nothing') } as FixtureStates<CheckoutMachine>);
+    };
+
+    defineFixtures(machine, withOtherKeys);
+    // @ts-expect-error The keys of fixtures are the leaf ids of the machine. A JavaScript app can give other keys.
+    defineFixtures(machine, { missing: fixture('nothing') });
     defineFixtures(machine, { 'paying.card.error': fixture('leaf'), done: fixture('final') });
     expect(output.warn).toEqual([
       `[state-viewer] Fixtures for "${machine.id}" name "paying", "paying.card", "missing", which aren't leaf states of the machine. ` +
