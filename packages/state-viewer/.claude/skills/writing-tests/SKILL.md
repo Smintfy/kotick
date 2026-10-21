@@ -111,3 +111,9 @@ These techniques replace a mock. Each one was tried in this package.
   tests. The project also sets `oxc: { jsx: { development: false } }`, because production React has no `jsxDEV`. React
   has no `act` in production, so render with `createRoot`, wait for real time, and click with `element.click()`, because
   Testing Library's events go through `act`.
+- **XState's production build.** An app that a bundler builds without the development condition, such as esbuild, gets
+  XState's production build next to the package's development code. That build gives no snapshot while an actor is
+  created, where the development build throws. `test/xstate-production.test.tsx` runs in its own Vitest project,
+  `xstate-production`, which imports `xstate` from its production entry. Vitest adds the development condition to every
+  project, so the project sets an alias, not a condition. `@xstate/react` still gets the development build there, so
+  put no hook test in that file.
