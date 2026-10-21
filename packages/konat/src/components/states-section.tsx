@@ -116,8 +116,7 @@ function StateTree(props: StateTreeProps) {
 }
 
 function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; tree: StateTreeProps }) {
-  // SAFETY: React sets a custom property through style.setProperty, and CSSProperties has no key for one.
-  const style = { '--konat-depth': depth } as CSSProperties;
+  const style: CSSProperties & Record<`--${string}`, number> = { '--konat-depth': depth };
   const tags = Array.isArray(node.tags) ? node.tags : [];
   const description = node.description === '' ? undefined : node.description;
 
