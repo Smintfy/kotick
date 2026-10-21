@@ -1,5 +1,3 @@
-// The actor proxy: what consumers hold in place of the real actor.
-
 import {
   toObserver,
   type AnyActorRef,
@@ -16,34 +14,26 @@ import { isFallbackId, warnFallbackId, type Identity } from './identity';
 import { resolveSnapshot } from './preview-snapshot';
 import { createView, type View, type ViewSource } from './view';
 
-/** One identity of an actor in the registry. A new label or id makes a new one; the proxy stays the same. */
 export interface Registration {
   readonly key: string;
   readonly handle: MachineHandle;
-  /**
-   * Points the proxy at this registration's key, registers the handle, records the current snapshot and every later
-   * one, and lists child machines. Returns the cleanup, which unregisters. With `untilStopped`, the cleanup also runs
-   * once the actor is done, failed or stopped.
-   */
+  /** With `untilStopped`, the returned cleanup also runs once the actor is done, failed or stopped. */
   connect(options?: { untilStopped?: boolean }): () => void;
 }
 
 export interface Binding<TActor extends AnyActorRef = AnyActorRef> extends ViewSource {
-  /** Stands in for the real actor everywhere consumers can reach it; one per real actor. */
   readonly proxy: TActor;
-  /** The registration for an identity; the same object while the identity stays the same. */
+  /** The same object while the identity stays the same. */
   registration(identity: Identity): Registration;
-  /** Calls the listener when what the proxy shows changes because of a preview, rather than the real actor. */
   onPreviewChange(listener: () => void): () => void;
   /**
-   * Ends the proxy.subscribe()s of the actor, as unsubscribing does. @xstate/react drops the actor's XState observers
-   * without telling them when it stops a hook's actor, and those subscriptions would otherwise keep following previews.
-   * One still owed how the actor ended, which a preview held back, stays until the preview ends and it hears it.
+   * @xstate/react drops the actor's XState observers without telling them when it stops a hook's actor.
+   * The proxy.subscribe()s would otherwise keep following previews.
+   * A subscription that a preview kept from hearing how the actor ended stays until the preview ends and it hears it.
    */
   dropObservers(): void;
 }
 
-/** The forced snapshot for an override, with what it was built from. */
 interface ForcedSnapshot {
   override: Override;
   base: AnyMachineSnapshot | undefined;
@@ -51,7 +41,6 @@ interface ForcedSnapshot {
   snapshot: AnyMachineSnapshot | undefined;
 }
 
-/** A function read from the real actor, which the proxy binds to the actor. */
 type ActorMethod = (this: MachineActor, ...args: never[]) => void;
 
 interface BoundMethod {
@@ -73,7 +62,6 @@ export function isProxy(actor: AnyActorRef): boolean {
   return proxies.has(actor);
 }
 
-/** The actor's binding, if a hook or connect() made one. */
 export function findBinding<TActor extends AnyActorRef>(actor: TActor): Binding<TActor> | undefined {
   // SAFETY: The map holds each binding under its own actor, so the one found here has a proxy of `actor`.
   return bindings.get(actor) as Binding<TActor> | undefined;
@@ -132,7 +120,6 @@ function createBinding(actor: MachineActor): Binding {
     return key !== undefined && previewListeners.size > 0 && (connections > 0 || currentOverride() !== undefined);
   }
 
-  // One registry listener for all of the proxy's subscribers, moved along when the key changes.
   function watch(): void {
     stopWatching?.();
     stopWatching = shouldWatch() ? registry.onOverride(key!, emitPreviewChange) : undefined;
@@ -167,8 +154,8 @@ function createBinding(actor: MachineActor): Binding {
     emitPreviewChange();
   }
 
-  // The forced snapshot for the current override, kept until the override or the carried-over children change,
-  // so getSnapshot() returns the same object for useSyncExternalStore.
+  // Kept until the override or the carried-over children change.
+  // useSyncExternalStore needs getSnapshot() to return the same object until then.
   let forced: ForcedSnapshot | undefined;
 
   function forcedSnapshot(override: Override, live: Snapshot<unknown>): AnyMachineSnapshot | undefined {
@@ -225,7 +212,6 @@ function createBinding(actor: MachineActor): Binding {
     showingLive,
   };
 
-  // The proxy.subscribe() views still open, for dropObservers().
   let views: Set<View> | undefined;
 
   function subscribe(
@@ -256,7 +242,6 @@ function createBinding(actor: MachineActor): Binding {
     };
   }
 
-  /** Logs an event sent during a preview as blocked, and drops it. Returns false when there's no preview. */
   function blockIfPreviewing(event: AnyEventObject): boolean {
     const override = currentOverride();
 
@@ -295,7 +280,6 @@ function createBinding(actor: MachineActor): Binding {
 
   let proxy: MachineActor;
 
-  // The members the proxy answers itself. Every other read goes to the real actor.
   const members = {
     getSnapshot,
     subscribe,
@@ -303,7 +287,8 @@ function createBinding(actor: MachineActor): Binding {
     send: (event: AnyEventObject): void => {
       if (isStringEvent(event) || !blockIfPreviewing(event)) actor.send(event);
     },
-    // What sendTo, forwardTo and delayed sends call on their target, so an actor handed the proxy is blocked too.
+    // XState's sendTo, forwardTo and delayed sends call this on their target.
+    // So sends through the proxy are blocked too.
     _send: (event: AnyEventObject): void => {
       if (!blockIfPreviewing(event)) actor._send(event);
     },
@@ -358,7 +343,7 @@ function createBinding(actor: MachineActor): Binding {
   proxies.add(proxy);
 
   // When an actor stops before it starts, or fails, XState sends nothing that the adapter can observe.
-  // Thus connect() wraps stop() and _error() on the actor itself. The proxy's stop() calls stop() too.
+  // So this wraps stop() and _error() on the real actor. The proxy's stop() calls the real stop() too.
   function onEnd(listener: () => void): void {
     if (!endListeners) {
       const listeners = (endListeners = new Set());
@@ -469,14 +454,11 @@ function isActorMethod(value: unknown): value is ActorMethod {
   return typeof value === 'function';
 }
 
-// The two checks below are for callers without types, which can send anything.
-
-/** XState throws on a string event itself, so the proxy passes one on, preview or not. */
 function isStringEvent(event: AnyEventObject | string): event is string {
   return typeof event === 'string';
 }
 
-/** An event the registry can log: one with a string type, as XState requires of events. */
+/** A caller without types can send any value. The registry logs only events with a string type. */
 function isEventObject(event: AnyEventObject): event is EventLogEntry['event'] {
   return typeof event === 'object' && event !== null && 'type' in event && typeof event.type === 'string';
 }

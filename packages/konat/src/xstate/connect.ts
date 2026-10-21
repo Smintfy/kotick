@@ -1,5 +1,3 @@
-// Actors created outside React.
-
 import type { AnyActorRef } from 'xstate';
 import { warnOnce } from '../core/warn-once';
 import { isMachineActor } from './actor';
@@ -7,7 +5,6 @@ import { nextInstanceId, resolveMachineId } from './identity';
 import type { DebugOptions } from './options';
 import { findBinding, getBinding, isProxy } from './proxy';
 
-// Proxies made here.
 const connected = new WeakSet<object>();
 
 /**
@@ -36,7 +33,7 @@ export function connect<TActor extends AnyActorRef>(actor: TActor, options?: Deb
   return created.proxy;
 }
 
-/** A hook's proxy keeps the hook's id and label; one connect() made doesn't need telling. */
+/** A hook's proxy keeps the id and label of the hook. A proxy that connect() made needs no warning. */
 function existing<TActor extends AnyActorRef>(proxy: TActor, options: DebugOptions | undefined): TActor {
   if (connected.has(proxy)) return proxy;
 

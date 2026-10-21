@@ -1,5 +1,3 @@
-// The machine handle: what the registry sees of an actor and of the child machines it starts.
-
 import { isMachineSnapshot, type AnyActorRef, type AnyEventObject, type AnyStateMachine, type Snapshot } from 'xstate';
 import { callLoggingErrors, toInstanceKey } from '../core/registry';
 import type { Capabilities, MachineHandle, Registry } from '../types';
@@ -19,7 +17,6 @@ const READ_ONLY_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
 interface ObservedHandle {
   handle: MachineHandle;
   notify(): void;
-  /** Hot path: keeps a reference to the context; serialization happens later. */
   record(snapshot: Snapshot<unknown>): void;
 }
 
@@ -32,9 +29,9 @@ export function createHandle(
   registry: Registry,
 ): ObservedHandle {
   const key = toInstanceKey(identity.machineId, identity.instanceId);
-  // Made on the first subscribe(). Only the open panel subscribes, and only to the handle it shows.
+  // Only the open panel subscribes, and only to the handle it shows.
   let listeners: Set<() => void> | undefined;
-  // The leaves of the snapshot recorded last. An actor records the same snapshot when it connects and when it starts.
+  // An actor records the same snapshot when it connects and when it starts.
   let recordedSnapshot: Snapshot<unknown> | undefined;
   let recordedLeaves: string[] = [];
 
@@ -90,9 +87,8 @@ export function createHandle(
 const childHandles = new WeakMap<AnyActorRef, ObservedHandle>();
 
 /**
- * Watches an actor's system: snapshots of the actor itself go to `onRootSnapshot`, and its child machines
- * are listed read-only under it. The system takes an inspector after creation, which covers hooks and connect()
- * alike; children that already exist are found through the snapshot.
+ * The system takes an inspector after creation, which covers hooks and connect() alike.
+ * The inspector doesn't report earlier events, so children that already exist are found through the snapshot.
  */
 export function inspect(
   root: MachineActor,
@@ -226,10 +222,7 @@ export function inspect(
   };
 }
 
-/**
- * Whether a relayed event is the error event of a child that failed.
- * XState relays an event from one actor to another without a check, so an app can send one with no string type.
- */
+/** XState relays an event from one actor to another without a check, so an app can send one with no string type. */
 function isActorErrorEvent(event: AnyEventObject | undefined): event is AnyEventObject {
   return typeof event?.type === 'string' && event.type.startsWith('xstate.error.actor');
 }
@@ -239,12 +232,11 @@ function childLabel(ref: AnyActorRef): string | undefined {
   return isChildId(ref.id) && ref.id !== ref.sessionId ? ref.id : undefined;
 }
 
-/** Whether an invoke or spawn id is text. A JavaScript app can give any value, such as a number. */
+/** A JavaScript app can give any value, such as a number. */
 function isChildId(id: AnyActorRef['id']): id is string {
   return typeof id === 'string';
 }
 
-/** The context of a machine snapshot; an actor that failed on start has a snapshot without one. */
 // oxlint-disable-next-line anti-slop/no-unknown-returns -- A context is the app's own data, and it has no schema.
 function contextOf(snapshot: Snapshot<unknown>): unknown {
   return isMachineSnapshot(snapshot) ? snapshot.context : undefined;

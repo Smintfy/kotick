@@ -9,12 +9,12 @@ export type DebugOptions = {
   disabled?: boolean;
 };
 
-/** The one option the hooks add to XState's; it's stripped before the options reach XState. */
+/** The hooks remove `debug` before the options reach XState. */
 export interface WithDebug {
   debug?: DebugOptions;
 }
 
-/** XState's actor options, with the keys the logic requires (such as `input`) and `debug`. */
+/** XState's actor options, with the keys that the logic requires (such as `input`) and `debug`. */
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The type is public. unknown makes each key required, and ActorOptions types it.
 export type HookActorOptions<TLogic extends AnyActorLogic> = ActorOptions<TLogic> & {
   [K in RequiredActorOptionsKeys<TLogic>]: unknown;

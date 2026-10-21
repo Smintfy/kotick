@@ -3,13 +3,12 @@ import type { FixtureSet } from '../types';
 import { resolveMachineId } from './identity';
 import { getTree } from './tree';
 
-// As in xstate.ts: bundlers replace process.env.NODE_ENV, and apps may typecheck this source without Node types.
+// Declared here, not through @types/node, so apps that typecheck this source without Node types still compile.
 declare const process: { env: { NODE_ENV?: string } };
 
 /**
- * Leaf ids of a state value type: `'idle' | { payment: 'error' }` gives `'idle' | 'payment.error'`. An atomic region
- * of a parallel state is `{}` in the value, so an empty object ends a path too; it's checked before anything else,
- * since `string extends {}` holds. XState's general `StateValue`, which has an index signature, gives `string`.
+ * An atomic region of a parallel state is `{}` in the value, so an empty object ends a path too.
+ * XState's general `StateValue` has an index signature, so it gives `string`.
  */
 type LeafIdsOf<TValue, TPrefix extends string = ''> = TValue extends string
   ? `${TPrefix}${TValue}`
@@ -57,7 +56,7 @@ export function defineFixtures<TMachine extends AnyStateMachine>(
   return set;
 }
 
-/** Whether the fixtures are an object. A JavaScript app can give defineFixtures() any value. */
+/** A JavaScript app can give defineFixtures() any value. */
 function isStatesObject(states: FixtureSet['states'] | null | undefined): states is FixtureSet['states'] {
   return typeof states === 'object' && states !== null;
 }

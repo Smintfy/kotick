@@ -1,15 +1,9 @@
-// What an observer of a proxied actor sees: the proxy's snapshot, and the real actor's ending.
-
 import type { AnyActorRef, Observer, Snapshot, SnapshotStatus } from 'xstate';
 
-/** What a view reads from the actor's binding. */
 export interface ViewSource {
-  /** What the proxy shows: the forced snapshot during a preview, otherwise the real one. */
   getSnapshot(): Snapshot<unknown>;
-  /** The real actor's snapshot, whatever the proxy shows. */
   getLiveSnapshot(): Snapshot<unknown>;
   isPreviewing(): boolean;
-  /** Calls `fn` with the proxy showing the real snapshot. */
   showingLive(fn: () => void): void;
 }
 
@@ -26,11 +20,10 @@ export type ViewLifetime = 'stopped' | 'notified' | 'ended';
 
 export interface View {
   /**
-   * Subscribed to the real actor. It has an error callback only when the target has one: XState reports an error as
-   * unhandled when an observer has none, and an extra one here would swallow it.
+   * It has an error callback only when the target has one.
+   * XState reports an error as unhandled when an observer has none, and an extra one here would swallow it.
    */
   readonly observer: Observer<Snapshot<unknown>>;
-  /** Shows the target what the proxy shows now; called when a preview changes it. */
   showCurrent(): void;
   /**
    * Shows the target the real snapshot of `source`, and how the actor ended if that was held back, as a release would.
@@ -47,7 +40,6 @@ export interface View {
    * before, so a hook that starts listening again checks whether the preview that held it back is still on.
    */
   owes(): boolean;
-  /** Ends the view, as unsubscribing does: the target hears nothing more. */
   close(): void;
   /** Ends the view as close() does, or, while it holds back how the actor ended, right after it delivers that. */
   drop(): void;
@@ -62,7 +54,6 @@ interface Ending {
 /** Marks a target that hasn't been shown a snapshot of the actor. */
 const UNSET = Symbol('unset');
 
-/** What a target was shown last of an actor, once it was shown anything. */
 type LastShown = Snapshot<unknown> | typeof UNSET;
 
 /**
@@ -76,7 +67,6 @@ interface Owed {
   ending?: Ending;
 }
 
-/** How a hook's observer stands with @xstate/react, which subscribes it to an actor in an effect of its own. */
 interface Attachment {
   /**
    * False from the commit that passes a new observer until @xstate/react subscribes it and starts the actor, which
@@ -91,8 +81,8 @@ interface Attachment {
    */
   replaced(): { source?: ViewSource } | undefined;
   /**
-   * True when @xstate/react subscribed the observer to an actor that had already ended and stopped: XState completes
-   * or fails it inside subscribe() and tells it nothing more. It followed none of the actor's previews.
+   * True when @xstate/react subscribed the observer to an actor that had already stopped.
+   * XState completes or fails such an observer inside subscribe(), and then tells it nothing more.
    */
   subscribedAfterStop(): boolean;
 }
@@ -107,11 +97,12 @@ export interface ViewMemory {
   actor?: AnyActorRef | ViewSource;
   /** Tells the actor apart even while nothing previews it (`debug.disabled`); the source otherwise. */
   identify?: () => AnyActorRef | undefined;
-  /** The source the target last saw the actor through. */
   source?: ViewSource;
-  /** What the target saw last, so a real update during a preview, which doesn't change what's shown, isn't repeated. */
+  /**
+   * A real update during a preview does not change what the target sees.
+   * The view compares with this value, so it does not send the same snapshot again.
+   */
   last: LastShown;
-  /** Whether the target has heard how the actor ended. */
   told: boolean;
   /**
    * How the real actor ended, held back while a preview hides the real snapshot. The target hears it once the
@@ -131,10 +122,6 @@ export function createViewMemory(identify?: () => AnyActorRef | undefined): View
   return { identify, last: UNSET, told: false, owed: [] };
 }
 
-/**
- * `getSource` is what previews the actor: for a hook, its actor's binding, unless `debug.disabled`. The view shows the
- * target that source only while the `attachment`, when there is one, says the target follows the actor.
- */
 export function createView(
   target: Observer<Snapshot<unknown>>,
   getSource: () => ViewSource | undefined,
@@ -144,7 +131,6 @@ export function createView(
   attachment?: Attachment,
 ): View {
   const memory = shared ?? createViewMemory();
-  // The source the target sees the actor through.
   const current = (): ViewSource | undefined => (attachment?.replaced() ? undefined : getSource());
 
   const remember = (): ViewMemory => {
@@ -189,7 +175,6 @@ export function createView(
     onClose();
   };
 
-  // True while a preview shows something other than the real snapshot.
   const hides = (source: ViewSource | undefined): boolean =>
     !!source && source.isPreviewing() && source.getSnapshot() !== source.getLiveSnapshot();
 
@@ -223,7 +208,6 @@ export function createView(
     else end({ failed, cause });
   };
 
-  // Whether show() hands a hook's observer a snapshot of an actor that hasn't ended for it.
   const shows = (source: ViewSource, isHidden: boolean, last: LastShown, status: SnapshotStatus): boolean => {
     if (!attachment) return true;
 
@@ -235,7 +219,6 @@ export function createView(
     return isHidden || last !== UNSET || (attachment.subscribed() && source.isPreviewing());
   };
 
-  // What the target sees of `source`, with or without a preview hiding the real snapshot.
   const show = (source: ViewSource, isHidden: boolean): void => {
     if (closed || heardEnding()) return;
     const { last, heldEnding } = remember();
@@ -266,7 +249,7 @@ export function createView(
       return;
     }
 
-    // The preview that hid the ending is gone. XState sends a done snapshot through next.
+    // XState sends a done snapshot through next.
     if (shown !== last && (status === 'done' || wakes)) deliver(shown);
 
     if (!closed && memory.heldEnding) end(memory.heldEnding, source);
@@ -316,7 +299,7 @@ export function createView(
   // left to show.
   const detach = (source: ViewSource): void => {
     if (getSource()) return;
-    // What's owed about replaced actors first, as on a release.
+    // What the target is owed about replaced actors comes first, as on a release.
     settleOwed(true);
 
     if (remember().source === source) show(source, false);
