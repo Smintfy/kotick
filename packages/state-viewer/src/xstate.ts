@@ -17,15 +17,20 @@ declare const process: { env: { NODE_ENV?: string } };
 // Write the condition at each use.
 // esbuild doesn't copy the value of a `const DEV = …` into its uses, so it keeps both branches.
 
+// SAFETY: In production, each export is @xstate/react's own hook. The dev hook has the same signature, plus the `debug`
+// option in the options, which XState ignores.
 export const useActorRef: typeof hooks.useActorRef =
   process.env.NODE_ENV !== 'production' ? hooks.useActorRef : (xstateReact.useActorRef as typeof hooks.useActorRef);
 
+// SAFETY: As for useActorRef.
 export const useActor: typeof hooks.useActor =
   process.env.NODE_ENV !== 'production' ? hooks.useActor : (xstateReact.useActor as typeof hooks.useActor);
 
+// SAFETY: As for useActorRef.
 export const useMachine: typeof hooks.useMachine =
   process.env.NODE_ENV !== 'production' ? hooks.useMachine : (xstateReact.useMachine as typeof hooks.useMachine);
 
+// SAFETY: As for useActorRef.
 export const createActorContext: typeof hooks.createActorContext =
   process.env.NODE_ENV !== 'production'
     ? hooks.createActorContext
