@@ -79,7 +79,6 @@ function createToggleMachine() {
   });
 }
 
-/** Shows what a component reads from the actor that connect() returns. */
 function CheckoutView({ actor }: { actor: Checkout }) {
   const snapshot = useSelector(actor, (current) => current);
 
@@ -284,14 +283,13 @@ describe('an actor that a hook runs', () => {
 
   type Actors = { hook: AnyActorRef; real: AnyActorRef };
 
-  /** Keeps the actor that useMachine returns in `hook`, as an app that hands it on does. */
   function Toggle({ machine, hook }: { machine: ToggleMachine; hook: Hook }) {
     hook.actor = useMachine(machine, { systemId: SYSTEM_ID })[2];
 
     return null;
   }
 
-  /** The hook's actor, and the real actor behind it, which app code finds through the system. */
+  /** App code finds the real actor behind the hook's actor through the system. */
   function actorsOf(hook: Hook): Actors {
     if (!hook.actor) throw new Error('The toggle did not render.');
 

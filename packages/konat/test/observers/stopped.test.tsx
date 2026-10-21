@@ -6,7 +6,6 @@ import { createActor, createMachine, type AnyActorRef, type Observer, type Snaps
 import { page, press } from '../support/app';
 import { badge, flush, freshId, instances, panel, preview, release } from '../support/panel';
 
-/** Makes the upload machine. Called again with the same id, it makes a new machine, as Fast Refresh does. */
 function createUploadMachine(id = freshId('upload')) {
   return createMachine({
     id,
@@ -24,7 +23,6 @@ type UploadMachine = ReturnType<typeof createUploadMachine>;
 
 type UploadSnapshot = SnapshotFrom<UploadMachine>;
 
-/** What a consumer shows of a snapshot, as `status:value`. */
 function label(snapshot: { status: string; value: unknown }): string {
   return `${snapshot.status}:${String(snapshot.value)}`;
 }
@@ -33,7 +31,7 @@ function shown(name: string): string | null {
   return screen.getByRole('status', { name }).textContent;
 }
 
-/** Clicks Cancel, which stops the actor as an app does. stop() is not an event, so a preview doesn't block it. */
+/** stop() is not an event, so a preview doesn't block it. */
 async function cancel(): Promise<void> {
   await press('Cancel');
 }
@@ -43,7 +41,6 @@ const Reader = React.memo(function Reader({ upload, name }: { upload: AnyActorRe
   return <output aria-label={name}>{useSelector(upload, label)}</output>;
 });
 
-/** The upload as useMachine shows it, and as a useSelector consumer of its actor shows it. */
 function Upload({ machine }: { machine: UploadMachine }) {
   const [snapshot, , actorRef] = useMachine(machine);
 
@@ -62,7 +59,6 @@ function both() {
   return { upload: shown('upload'), reader: shown('reader') };
 }
 
-/** An upload that useActorRef runs, with a useSelector consumer named after each of `readers`. */
 function Cancellable({ machine, readers }: { machine: UploadMachine; readers: string[] }) {
   const actorRef = useActorRef(machine);
 
@@ -78,7 +74,6 @@ function Cancellable({ machine, readers }: { machine: UploadMachine; readers: st
   );
 }
 
-/** An observer that logs each call it gets, tagged with `tag()`, so the log tells which render's observer heard it. */
 function logTo(calls: string[], tag: () => string): Observer<UploadSnapshot> {
   return {
     next: (snapshot) => calls.push(`${tag()}: next ${label(snapshot)}`),
@@ -142,7 +137,6 @@ test('after the app stopped a hook actor during a preview, nothing previews the 
 });
 
 describe('a consumer that subscribes after a stop during a preview', () => {
-  /** Previews `failed`, cancels, and edits the machine, as Fast Refresh does, which gives useMachine a new actor. */
   async function fastRefreshAfterStop(): Promise<{ id: string; consumer: string }> {
     const id = freshId('upload');
 
@@ -169,7 +163,6 @@ describe('a consumer that subscribes after a stop during a preview', () => {
     return { id, consumer: 'upload' };
   }
 
-  /** Previews `failed`, cancels, and mounts a Cancelled panel that reads the stopped actor with useSelector. */
   async function mountReaderAfterStop(): Promise<{ id: string; consumer: string }> {
     const machine = createUploadMachine();
     const view = render(page(<Cancellable machine={machine} readers={[]} />));
@@ -197,7 +190,6 @@ test('an inline observer given to useActorRef hears complete once, on the releas
   const machine = createUploadMachine();
   const calls: string[] = [];
 
-  // The observer is tagged with the hint its parent passed, so the log tells which render's observer heard it.
   function Hinted({ hint }: { hint: string }) {
     const actorRef = useActorRef(machine, undefined, logTo(calls, () => hint));
 

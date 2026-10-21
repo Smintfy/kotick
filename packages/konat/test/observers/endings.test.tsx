@@ -37,14 +37,13 @@ function createUploadMachine() {
   });
 }
 
-/** What an observer records of a snapshot. Every machine snapshot has these. */
 type Recorded = { status: string; value: unknown };
 
 function entry(snapshot: Recorded): string {
   return `${snapshot.status} ${String(snapshot.value)}`;
 }
 
-/** An observer object that records each call in `heard`. Without `error`, XState reports a failure as unhandled. */
+/** Without `error`, XState reports a failure as unhandled. */
 function observerInto(heard: string[], { error = true } = {}): Observer<Recorded> {
   const observer: Observer<Recorded> = {
     next: (snapshot) => heard.push(`next ${entry(snapshot)}`),
@@ -56,7 +55,6 @@ function observerInto(heard: string[], { error = true } = {}): Observer<Recorded
   return observer;
 }
 
-/** What the server sends to the upload, as a socket would. */
 function Server({ actorRef }: { actorRef: AnyActorRef }) {
   const sendToReal = (type: 'UPLOADED' | 'BREAK') => systemActor(actorRef, UPLOAD_SYSTEM_ID).send({ type });
 
@@ -76,7 +74,6 @@ function shown(name = 'upload'): string | null {
   return screen.getByRole('status', { name }).textContent;
 }
 
-/** Previews `first`, clicks `then`, and releases the preview, as a developer who looks around does. */
 async function lookAround(machineId: string, first: string, then: string): Promise<void> {
   await preview(machineId, [first]);
   await clickLeaf(then);
@@ -117,7 +114,8 @@ test('the observer given to useActorRef gets the done snapshot, then complete, o
   });
 });
 
-// Apps usually pass an inline observer, a new one on each render, which @xstate/react subscribes again each time.
+// Apps usually pass an inline observer, a new one on each render.
+// @xstate/react subscribes the new observer on each render.
 test('an inline observer follows the next preview, and hears the done snapshot once, at the release, though the component renders again before it', async () => {
   const machine = createUploadMachine();
   const heard: string[] = [];
@@ -141,17 +139,15 @@ test('an inline observer follows the next preview, and hears the done snapshot o
 
   await preview(machine.id, ['failed']);
   await press('Finish upload');
-  // A change in the parent renders the component again with a new prop.
   view.rerender(page(<Upload hint="Still uploading" />));
   await flush();
-  // The developer clicks another state, and useSelector renders the component again.
   await clickLeaf('uploading');
   const previewing = { shown: shown(), heard: heard.splice(0) };
   await release(machine.id);
   expect({ previewing, released: { shown: shown(), heard } }).toEqual({
     previewing: { shown: 'uploading', heard: ['next active failed', 'next active uploading'] },
-    // useSelector renders the component again on the release. @xstate/react subscribes the observer of that render to
-    // the ended actor, and XState completes it at once.
+    // useSelector renders the component again on the release.
+    // @xstate/react subscribes the observer of that render to the ended actor, and XState completes it at once.
     released: { shown: 'uploaded', heard: ['next done uploaded', 'complete', 'complete'] },
   });
 });
@@ -183,8 +179,7 @@ test.each([
 });
 
 test('an observer passed only after the upload finished hears complete at once, and nothing of the previews', async () => {
-  // The component passes its observer only while its panel is open: `panelOpen ? onChange : undefined`.
-  // @xstate/react subscribes it to an actor that XState stopped, and XState calls only its complete.
+  // @xstate/react subscribes the observer to an actor that XState stopped, and XState calls only its complete.
   const machine = createUploadMachine();
   const heard: string[] = [];
   const observer = observerInto(heard);
@@ -210,11 +205,6 @@ test('an observer passed only after the upload finished hears complete at once, 
 });
 
 describe('a waitFor on the actor of a hook whose component unmounts while a preview holds back the ending', () => {
-  /**
-   * A dialog runs the upload, and the page awaits waitFor on its actor. The developer previews `failed`, the server
-   * sends `answer` to the real actor, if there is one, and the dialog closes before the preview ends. The log gets
-   * `answer` before the server answers, and `close` before the dialog closes.
-   */
   async function closeDuringPreview(answer?: UploadEvent['type']) {
     const machine = createUploadMachine();
     const log: string[] = [];
@@ -249,7 +239,6 @@ describe('a waitFor on the actor of a hook whose component unmounts while a prev
     return { log, previewing: badge(), machines: await machines() };
   }
 
-  // konat tells waitFor when the overlay drops the preview of the instance that left.
   test.each([
     ['finishes', 'UPLOADED', 'resolved done uploaded'],
     ['fails', 'BREAK', `rejected ${BROKEN}`],
@@ -262,7 +251,7 @@ describe('a waitFor on the actor of a hook whose component unmounts while a prev
   });
 });
 
-// XState reports what an observer throws from a timer, and continues. The actor that konat returns does too.
+// XState reports what an observer throws from a timer, and continues.
 test('a subscriber of the connected actor whose next throws on the done snapshot that a preview held back still hears complete', async () => {
   const machine = createUploadMachine();
   const actor = createActor(machine).start();
@@ -284,7 +273,7 @@ test('a subscriber of the connected actor whose next throws on the done snapshot
 
   let held: string[] = [];
 
-  // The overlay drops the preview of the actor that left at its next flush, and that ends the preview.
+  // The overlay drops the preview of the actor that left at its next flush.
   const reported = await uncaught(() => {
     actor.send({ type: 'UPLOADED' });
     held = [...heard];
@@ -298,15 +287,10 @@ test('a subscriber of the connected actor whose next throws on the done snapshot
 });
 
 describe('an actor that fails while a preview hides the failure', () => {
-  /** What the app shows: the status, or the error that its boundary caught. */
   function shownUpload(): string | null {
     return screen.queryByRole('status', { name: 'upload' })?.textContent ?? alerts()[0] ?? null;
   }
 
-  /**
-   * Renders `app` in an error boundary, previews `failed` on the upload, and lets the server break the real actor under
-   * the preview. Returns the errors that reached the page uncaught, and a rerender that keeps the boundary.
-   */
   async function breakDuringPreview(machineId: string, app: React.ReactNode) {
     const view = render(page(<Boundary>{app}</Boundary>));
     await flush();
@@ -364,7 +348,6 @@ describe('an actor that fails while a preview hides the failure', () => {
     }
 
     const broken = await breakDuringPreview(machine.id, <SelectorApp showStatus={false} />);
-    // A tab opens, for example, while the developer keeps the preview.
     await broken.rerender(<SelectorApp showStatus />);
     const steps = [shownUpload()];
     await clickLeaf('paused');
@@ -404,7 +387,6 @@ describe('an actor that fails while a preview hides the failure', () => {
     const listed = await machines();
     expect({ previewed, held, uncaught: messages(errors), heard, machines: listed, previewing: badge() }).toEqual({
       previewed: ['next failed'],
-      // The preview holds back the error until the overlay drops the preview of the actor that left.
       held: [],
       uncaught: [],
       heard: [`error ${BROKEN}`],

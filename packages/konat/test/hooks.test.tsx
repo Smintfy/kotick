@@ -53,8 +53,8 @@ function commitsOf<T>(): Commits<T> {
 }
 
 /**
- * Counts the mounts of a component, and keeps `value` from each render that React commits.
- * StrictMode runs the layout effects of a mount twice with the same closure, so the render object tells the runs apart.
+ * StrictMode runs the layout effects of a mount twice with the same closure.
+ * The render object tells the runs apart.
  * A remount makes new refs, so it counts as a mount.
  */
 function useCommits<T>(commits: Commits<T>, value: T): void {
@@ -122,7 +122,6 @@ describe('a preview', () => {
 
     function Provided() {
       const value = ToggleContext.useSelector((snapshot) => snapshot.value);
-      // A second reader of the same actor.
       const lit = useSelector(ToggleContext.useActorRef(), (snapshot) => snapshot.hasTag('lit'));
 
       return <output aria-label="provided">{JSON.stringify({ value, lit })}</output>;
@@ -209,7 +208,6 @@ describe('what the hooks return', () => {
     function Inbox({ debug }: { debug: { label?: string; id?: string } }) {
       const [snapshot, send, actorRef] = useMachine(machine, { debug });
       useCommits(commits, { send, actorRef, loads: snapshot.context.loads });
-      // An app loads on mount in an effect that depends on send, so a new send loads again.
       React.useEffect(() => {
         send({ type: 'LOAD' });
       }, [send]);
@@ -233,7 +231,6 @@ describe('what the hooks return', () => {
     }).toEqual({
       mounts: 1,
       // StrictMode runs the effects of a mount twice, so the mount loads twice.
-      // The preview and the release render two more times.
       // On React 18, the loads during StrictMode's second run of the effects make the hook render once more.
       loads: [0, 2, ...(REACT_MAJOR < 19 ? [2] : []), 2, 2, 2, 2],
       sends: 1,

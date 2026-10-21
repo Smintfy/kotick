@@ -17,11 +17,9 @@ const toggleMachine = setup({ types: { events: {} as ToggleEvent } }).createMach
   states: { off: { on: { TOGGLE: 'on' } }, on: { on: { TOGGLE: 'off' } } },
 });
 
-// Read when the file loads, before the test renders.
 const globalsAtLoad = Reflect.ownKeys(globalThis);
 
 /**
- * The keys added to globalThis since this file loaded, except keys that hold a number.
  * The hooks and connect() count instances in a number on globalThis, also on the server.
  * A registry is an object, so it shows here.
  */

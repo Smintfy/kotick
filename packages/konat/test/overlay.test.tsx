@@ -75,8 +75,8 @@ function Run({ machine }: { machine: AnyStateMachine }) {
 }
 
 /**
- * Goes to `path` as the Next.js App Router does: it calls pushState() in an insertion effect, and Chrome tells the
- * listeners of the Navigation API in that call.
+ * The Next.js App Router calls pushState() in an insertion effect.
+ * Chrome tells the listeners of the Navigation API during that call.
  */
 function Router({ path }: { path: string }) {
   React.useInsertionEffect(() => {
@@ -111,14 +111,12 @@ function button(label: string): HTMLButtonElement {
   return found;
 }
 
-/** The corner and the color scheme of the overlay. */
 function look() {
   const { position, theme } = overlay().querySelector<HTMLElement>('[data-position]')?.dataset ?? {};
 
   return { corner: position, theme };
 }
 
-/** The shown tree, a row per state: indented by its level, then its key, description, type and tags. */
 function treeRows(): string[] {
   return [...overlay().querySelectorAll<HTMLElement>('[role="treeitem"]')].map((item) => {
     const row = item.hasAttribute('data-leaf') ? item : item.firstElementChild;
@@ -136,12 +134,10 @@ function treeRows(): string[] {
   });
 }
 
-/** The leaf ids of the shown tree, in the order it lists them. */
 function leaves(): string[] {
   return [...overlay().querySelectorAll<HTMLElement>('[data-leaf]')].map((leaf) => leaf.dataset.leaf ?? '');
 }
 
-/** What a screen reader announces after each leaf's name, by leaf id. */
 function announced(): Record<string, string> {
   return Object.fromEntries(
     [...overlay().querySelectorAll<HTMLElement>('[data-leaf]')].map((leaf) => [
@@ -151,7 +147,6 @@ function announced(): Record<string, string> {
   );
 }
 
-/** The machine list: the title and chips of its header, and each row with the states on its right. */
 async function machineList() {
   const rows = await machines();
   const states = [...overlay().querySelectorAll('button[data-machine] [data-part="row-end"]')].map((end) => end.textContent);
@@ -503,7 +498,6 @@ describe('the state tree', () => {
     });
   });
 
-  /** Whether each shown compound or parallel state is expanded, by its key. */
   function expanded(): Record<string, string | null> {
     return Object.fromEntries(
       [...overlay().querySelectorAll('[role="treeitem"][aria-expanded]')].map((item) => [

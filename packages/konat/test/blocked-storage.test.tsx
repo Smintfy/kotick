@@ -8,9 +8,10 @@ import { assign, setup } from 'xstate';
 import { watchConsole } from './support/console';
 import { flush, freshId, isOpen, marks, overlay, panel, pickCorner, preview, show } from './support/panel';
 
-// A sandboxed frame, or a browser that blocks site data, has no storage: reading localStorage or sessionStorage
-// throws. The registry reads sessionStorage once per page, and test/setup.ts can't clear storage on about:blank, so
-// this file holds one test.
+// A sandboxed frame, or a browser that blocks site data, has no storage.
+// There, a read of localStorage or sessionStorage throws.
+// The registry reads sessionStorage one time per page, and test/setup.ts can't clear storage on about:blank.
+// So this file holds one test.
 
 type CheckoutContext = { step: number; note: string };
 

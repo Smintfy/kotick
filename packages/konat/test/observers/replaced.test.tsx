@@ -12,18 +12,10 @@ type SocketEvent = { type: 'FINISH' | 'BREAK' };
 
 type Socket = (event: SocketEvent) => void;
 
-/** What Fast Refresh changed in the machine's states. */
 type Edit = 'as written' | 'without failed';
 
-/** The states of each edit between `uploading` and `uploaded`. */
 const EDITED_STATES = { 'as written': { failed: {} }, 'without failed': {} };
 
-/**
- * An upload whose invoked socket reports what the server says. The test reports through `realSockets`, by the
- * machine's version.
- * A new machine each call, as Fast Refresh or a machine built from props gives the hook. `version` names the machine
- * in what an observer hears.
- */
 function createUploadMachine(
   { id, version, edit = 'as written' }: { id: string; version: string; edit?: Edit },
   realSockets: Map<string, Socket>,
@@ -62,14 +54,11 @@ type UploadMachine = ReturnType<typeof createUploadMachine>;
 
 type UploadSnapshot = SnapshotFrom<UploadMachine>;
 
-/** A new observer on every render, as apps usually write it, or the first render's throughout. */
 type Kind = 'inline' | 'stable';
 
-/** What an observer hears of a snapshot: its status and value, and the version of the machine it is of. */
 const label = (snapshot: UploadSnapshot): string =>
   `${snapshot.status}:${String(snapshot.value)} (${snapshot.machine.version})`;
 
-/** An observer that logs each call: a snapshot as `status:value (version)`, an error as `error:message`. */
 function observe(calls: string[]): Observer<UploadSnapshot> {
   return {
     next: (snapshot) => calls.push(label(snapshot)),
@@ -78,11 +67,6 @@ function observe(calls: string[]): Observer<UploadSnapshot> {
   };
 }
 
-/**
- * Mounts an upload next to the overlay, with useActorRef given an inline or a stable observer that logs what it hears
- * to `calls`. `calls` starts empty after the mount, and each step pushes a marker before it acts, so `calls` shows
- * what the observer heard after which step.
- */
 async function mountUpload(kind: Kind) {
   const calls: string[] = [];
   const realSockets = new Map<string, Socket>();
@@ -114,7 +98,6 @@ async function mountUpload(kind: Kind) {
     return send;
   };
 
-  /** Pushes the marker, runs the step, and logs each error that reached the page uncaught meanwhile. */
   const step = async (marker: string, run: () => void | Promise<void>): Promise<void> => {
     calls.push(marker);
     const errors = await uncaught(run);
@@ -124,19 +107,17 @@ async function mountUpload(kind: Kind) {
   return {
     calls,
     preview: async (leaf: string) => {
-      // The step runs inside act(), where React 18 doesn't show a new page of the panel. So the page opens first.
+      // The step runs inside act(), where React 18 doesn't show a new page of the panel.
+      // So the page opens first.
       await show(machine.id);
       await step(`[preview ${leaf}]`, () => preview(machine.id, [leaf]));
     },
-    /** Closes the preview of the upload, through its Release button. */
     release: () => step('[release]', () => release(machine.id)),
     finish: () => step('[finish]', () => socket()({ type: 'FINISH' })),
-    /** The socket reports an error the machine crashes on. */
     fail: () => step('[fail]', () => socket()({ type: 'BREAK' })),
     /**
-     * A new machine replaces the actor: the same config again, as Fast Refresh gives it, or an edit of it.
-     * With `report`, the socket of the replaced upload reports it in the commit that replaces it. In a browser, a
-     * message from the server can arrive there, because React runs the passive effects after the paint.
+     * With `report`, the socket of the replaced upload reports it in the commit that replaces it.
+     * In a browser, a server message can arrive there, because React runs the passive effects after the paint.
      */
     replace: async (edit?: Edit, report?: SocketEvent['type']): Promise<void> => {
       const replaced = realSockets.get(String(machine.version));
@@ -223,7 +204,6 @@ describe('the actor is replaced during a preview', () => {
     await flush();
     const replaced = status();
     await release(id);
-    // The stable observer stays with the replaced actor, so the release shows it that actor's real snapshot.
     expect({ mounted, previewed, replaced, released: status() }).toEqual({
       mounted: 'uploading',
       previewed: 'failed',
@@ -279,9 +259,8 @@ describe('the actor ends during a preview, and a new machine replaces it', () =>
     [
       'finishes',
       'finish',
-      // The preview of the finished upload loses its invoked socket, and the observer, which follows the new actor,
-      // sees that actor's preview. XState repeats the ending when @xstate/react starts the new actor from the done
-      // snapshot.
+      // The preview of the finished upload loses its invoked socket, so the observer hears the preview again.
+      // XState repeats the ending when @xstate/react starts the new actor from the done snapshot.
       [
         '[finish]',
         'active:failed (old)',
@@ -318,7 +297,6 @@ describe('the actor ends during a preview, and a new machine replaces it', () =>
   );
 });
 
-/** Data that never arrives. */
 const never = new Promise<never>(() => {});
 
 // The files list suspends with use(), which React 18 doesn't have.
@@ -332,7 +310,6 @@ describeWithActivity('a render React throws away gives the hook a new machine', 
     const realSockets = new Map<string, Socket>();
     const id = freshId('upload');
 
-    // `loading` is a view whose data the files list next to the upload doesn't have yet.
     type AppState = { machine: UploadMachine; loading: boolean };
 
     const committed: AppState = { machine: createUploadMachine({ id, version: 'old' }, realSockets), loading: false };
@@ -386,7 +363,6 @@ describeWithActivity('a render React throws away gives the hook a new machine', 
     const shown = screen.queryByText('loading') === null ? 'the committed view' : 'the fallback';
     await step('[preview failed]', () => preview(id, ['failed']));
     await step('[release]', () => release(id));
-    // The socket of the committed upload reports it finished.
     await step('[finish]', () => realSockets.get('old')?.({ type: 'FINISH' }));
     expect({ shown, calls }).toEqual({
       shown: shows,
