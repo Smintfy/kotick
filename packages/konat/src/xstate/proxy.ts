@@ -117,7 +117,7 @@ function createBinding(actor: MachineActor): Binding {
     emitting++;
 
     try {
-      for (const listener of [...previewListeners]) {
+      for (const listener of Array.from(previewListeners)) {
         if (previewListeners.has(listener)) callLoggingErrors(listener, `A subscriber of "${key}" threw.`);
       }
     } finally {
@@ -364,7 +364,7 @@ function createBinding(actor: MachineActor): Binding {
       const listeners = (endListeners = new Set());
 
       const ended = (message: string): void => {
-        for (const end of [...listeners]) callLoggingErrors(end, message);
+        for (const end of Array.from(listeners)) callLoggingErrors(end, message);
       };
 
       const { stop, _error } = actor;
@@ -451,7 +451,7 @@ function createBinding(actor: MachineActor): Binding {
     },
     onPreviewChange,
     dropObservers() {
-      if (views) for (const view of [...views]) view.drop();
+      if (views) for (const view of Array.from(views)) view.drop();
     },
   };
 }

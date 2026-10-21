@@ -120,7 +120,7 @@ function createRegistry(): Registry {
     if (current === notified) return;
     notified = current;
 
-    for (const listener of [...listeners]) {
+    for (const listener of Array.from(listeners)) {
       if (listeners.has(listener)) callLoggingErrors(listener, 'A registry listener threw.');
     }
   }
@@ -202,7 +202,7 @@ function createRegistry(): Registry {
 
     if (!set) return;
 
-    for (const listener of [...set]) {
+    for (const listener of Array.from(set)) {
       if (set.has(listener)) callLoggingErrors(listener, `An override listener for "${instanceKey}" threw.`);
     }
   }
@@ -507,7 +507,7 @@ function createRegistry(): Registry {
    * It looks up no recordings, because those would move a preview along with live traffic.
    */
   function reresolve(): void {
-    for (const [key, override] of [...overrides]) {
+    for (const [key, override] of Array.from(overrides)) {
       // A listener notified earlier in this loop can have replaced or released this one.
       if (overrides.get(key) !== override || chosenSource.has(override)) continue;
       const handle = registeredHandle(key);
