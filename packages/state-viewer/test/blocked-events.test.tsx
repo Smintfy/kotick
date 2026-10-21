@@ -7,12 +7,14 @@ import { assign, createActor, sendTo, setup, type AnyActorRef } from 'xstate';
 import { watchConsole } from './support/console';
 import { blockedEvents, flush, freshId, overlay, preview, release, show, shownKey } from './support/panel';
 
+type PaymentContext = { note: string };
+
+type PaymentEvent = { type: 'PAY' } | { type: 'FAIL'; note: string };
+
 function createPaymentMachine() {
   return setup({
-    types: {
-      context: {} as { note: string },
-      events: {} as { type: 'PAY' } | { type: 'FAIL'; note: string },
-    },
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+    types: { context: {} as PaymentContext, events: {} as PaymentEvent },
   }).createMachine({
     id: freshId('payment'),
     context: { note: 'none' },
@@ -260,7 +262,8 @@ describe('events that are not objects with a string type', () => {
     const machine = createPaymentMachine();
     const { real, proxy } = startPayment(machine);
     await mount(null);
-    const sendString = () => proxy.send('PAY' as never);
+    // @ts-expect-error an event is an object, and the test sends a string as a JavaScript app can
+    const sendString = () => proxy.send('PAY');
 
     const idle = messageOf(sendString);
     await preview(machine.id, ['processing']);
@@ -282,7 +285,8 @@ describe('events that are not objects with a string type', () => {
     await preview(machine.id, ['processing']);
     const key = shownKey();
 
-    act(() => proxy.send({ type: 42 } as never));
+    // @ts-expect-error the type of an event is a string, and the test sends a number as a JavaScript app can
+    act(() => proxy.send({ type: 42 }));
     await flush();
     expect({ log: eventLog(), warnings: output.warn }).toEqual({
       log: { title: 'Blocked events', rows: [], clear: 'disabled' },
@@ -295,8 +299,15 @@ describe('events that are not objects with a string type', () => {
 });
 
 describe('events from another actor', () => {
+  type TargetEvent = { type: 'NEXT' };
+
+  type SenderInput = { target: AnyActorRef };
+
+  type SenderEvent = { type: 'PING' } | { type: 'PING_LATER' };
+
   function createMachines() {
-    const target = setup({ types: { events: {} as { type: 'NEXT' } } }).createMachine({
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+    const target = setup({ types: { events: {} as TargetEvent } }).createMachine({
       id: freshId('target'),
       initial: 'a',
       states: { a: { on: { NEXT: 'b' } }, b: { on: { NEXT: 'c' } }, c: {} },
@@ -305,11 +316,8 @@ describe('events from another actor', () => {
     // Another actor of the app, handed the target through its input.
     // The hook gives it the actor that the app holds.
     const sender = setup({
-      types: {
-        context: {} as { target: AnyActorRef },
-        input: {} as { target: AnyActorRef },
-        events: {} as { type: 'PING' } | { type: 'PING_LATER' },
-      },
+      // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+      types: { context: {} as SenderInput, input: {} as SenderInput, events: {} as SenderEvent },
     }).createMachine({
       id: freshId('sender'),
       context: ({ input }) => ({ target: input.target }),
