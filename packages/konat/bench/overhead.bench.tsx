@@ -1,9 +1,5 @@
 // What konat adds in development while the panel is closed.
-// Each case runs the same work with @xstate/react and with konat/xstate.
-// The konat rows run without <Konat />, and with it mounted and its panel closed.
 // The benchmarks run in jsdom under StrictMode, as the tests do, so compare the rows of a case, not absolute times.
-//
-// Run with: pnpm --filter konat bench
 
 import { act, cleanup, render } from '@testing-library/react';
 import * as xstateReact from '@xstate/react';
@@ -30,7 +26,6 @@ const counterMachine = setup({
   },
 });
 
-/** The useMachine that the cases call, for the counter machine. The hook of each package has this type. */
 type Hooks = { useMachine: typeof xstateReact.useMachine<typeof counterMachine> };
 
 const IMPLEMENTATIONS: [name: string, hooks: Hooks, overlay: boolean][] = [

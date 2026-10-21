@@ -1,5 +1,5 @@
 // Compiles styles.css with Tailwind and writes the minified CSS to src/styles.generated.ts.
-// The package exports its TypeScript source, so every bundler gets the CSS as a string, with no CSS pipeline.
+// The CSS goes into a TypeScript module, so every bundler gets it as a string, with no CSS pipeline.
 //
 // Usage:
 //   node scripts/build-styles.mjs            write the file
@@ -51,7 +51,6 @@ export function overlayStyles(): string {
 /**
  * Shadow roots ignore @property, so the --tw-* properties that Tailwind registers have no initial values there.
  * A utility that reads one, such as a border width or a pseudo-element's content, then gets an invalid value.
- * This gives each property its initial value on every element, as Tailwind does for browsers without @property.
  * The properties layer comes first, so the utilities that set a property win.
  */
 function withPropertyFallbacks(css) {

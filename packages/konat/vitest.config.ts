@@ -17,7 +17,6 @@ export default defineConfig({
         test: {
           name: 'default',
           exclude: [...configDefaults.exclude, PRODUCTION, XSTATE_PRODUCTION],
-          // Runs *.test-d.ts files through tsc, for expectTypeOf checks on the public API.
           typecheck: { enabled: true },
         },
       },
