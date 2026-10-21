@@ -1,6 +1,6 @@
 // The @xstate/react hooks, built on the actor proxy. Same names and signatures, plus `debug`.
 
-import { useActorRef as useXStateActorRef, useSelector } from '@xstate/react';
+import { useActorRef as useXStateActorRef, useSelector as useXStateSelector } from '@xstate/react';
 import * as React from 'react';
 import {
   toObserver,
@@ -260,6 +260,33 @@ function createStore() {
   };
 }
 
+/**
+ * Re-renders from a layout effect when `read()` gives another snapshot than the render read.
+ * useSyncExternalStore subscribes, and checks the snapshot it rendered, in a passive effect, which runs after the paint
+ * unless the commit was synchronous.
+ * A hidden Activity unregisters the hooks in it, and the registry then ends their previews.
+ * The Activity can show a component again without a new render, so the last render can still show that preview.
+ * This layout effect re-renders it synchronously, so the first paint shows the real snapshot.
+ */
+function useSnapshotCheck<T>(read: () => T, rendered: T): void {
+  const [, rerender] = React.useReducer((count: number) => count + 1, 0);
+  useIsomorphicLayoutEffect(() => {
+    if (!Object.is(read(), rendered)) rerender();
+  });
+}
+
+/** @xstate/react's useSelector, with the check of useActor before the paint. */
+export function useSelector<TActor extends Pick<AnyActorRef, 'subscribe' | 'getSnapshot'> | undefined, T>(
+  actor: TActor,
+  selector: (snapshot: TActor extends { getSnapshot(): infer TSnapshot } ? TSnapshot : undefined) => T,
+  compare?: (a: T, b: T) => boolean,
+): T {
+  const selection = useXStateSelector(actor, selector, compare);
+  useSnapshotCheck(() => actor?.getSnapshot(), actor?.getSnapshot());
+
+  return selection;
+}
+
 export function useActorRef<TLogic extends AnyActorLogic>(
   machine: TLogic,
   ...[options, observerOrListener]: IsNotNever<RequiredActorOptionsKeys<TLogic>> extends true
@@ -307,15 +334,7 @@ export function useActor<TLogic extends AnyActorLogic>(
   );
 
   const snapshot = React.useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
-  // useSyncExternalStore subscribes, and checks the snapshot it rendered, in a passive effect, which runs after the
-  // paint unless the commit was synchronous.
-  // A hidden Activity unregisters the component, and the registry then ends its preview.
-  // The Activity can show the component again without a new render, so the last render can still show that preview.
-  // This layout effect re-renders it synchronously, so the first paint shows the real snapshot.
-  const [, rerender] = React.useReducer((count: number) => count + 1, 0);
-  useIsomorphicLayoutEffect(() => {
-    if (!Object.is(getSnapshot(), snapshot)) rerender();
-  });
+  useSnapshotCheck(getSnapshot, snapshot);
 
   if (snapshot.status === 'error') throw snapshot.error;
 

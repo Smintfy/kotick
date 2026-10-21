@@ -5,7 +5,7 @@ import type { AnyActorRef } from 'xstate';
 import { connect as connectActor } from './xstate/connect';
 import * as hooks from './xstate/hooks';
 
-export { shallowEqual, useSelector } from '@xstate/react';
+export { shallowEqual } from '@xstate/react';
 
 export { defineFixtures, type FixtureStates, type LeafIdFrom } from './xstate/define-fixtures';
 
@@ -29,6 +29,9 @@ export const useActor: typeof hooks.useActor =
 // SAFETY: As for useActorRef.
 export const useMachine: typeof hooks.useMachine =
   process.env.NODE_ENV !== 'production' ? hooks.useMachine : (xstateReact.useMachine as typeof hooks.useMachine);
+
+export const useSelector: typeof xstateReact.useSelector =
+  process.env.NODE_ENV !== 'production' ? hooks.useSelector : xstateReact.useSelector;
 
 // SAFETY: As for useActorRef.
 export const createActorContext: typeof hooks.createActorContext =

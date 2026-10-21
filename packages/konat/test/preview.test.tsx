@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { createRoot } from 'react-dom/client';
 import { Konat, type FixturesInput } from 'konat';
-import { connect, defineFixtures, useMachine, useSelector } from 'konat/xstate';
+import { connect, createActorContext, defineFixtures, useActorRef, useMachine, useSelector } from 'konat/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import {
   assign,
@@ -951,11 +951,40 @@ describe('a machine that Fast Refresh replaces', () => {
   });
 });
 
+/** Reads the actor of useActorRef with useSelector. */
+function Selected({ machine }: { machine: CheckoutMachine }) {
+  const snapshot = useSelector(useActorRef(machine), (current) => current);
+
+  return <output aria-label="checkout">{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>;
+}
+
+/** Reads the actor of a createActorContext Provider with the context's useSelector. */
+function FromContext({ actors }: { actors: ReturnType<typeof createActorContext<CheckoutMachine>> }) {
+  const snapshot = actors.useSelector((current) => current);
+
+  return <output aria-label="checkout">{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>;
+}
+
 describeWithActivity('an Activity that hides the component', () => {
-  test('a preview that ends while the component is hidden is not in the first paint that shows it again', async () => {
+  test.each([
+    { reader: 'useMachine', element: (machine: CheckoutMachine) => <Checkout machine={machine} /> },
+    { reader: 'useActorRef and useSelector', element: (machine: CheckoutMachine) => <Selected machine={machine} /> },
+    {
+      reader: 'the useSelector of createActorContext',
+      element: (machine: CheckoutMachine) => {
+        const actors = createActorContext(machine);
+
+        return (
+          <actors.Provider>
+            <FromContext actors={actors} />
+          </actors.Provider>
+        );
+      },
+    },
+  ])('a preview that ends while the component is hidden is not in the first paint that shows it again, with $reader', async ({ element }) => {
     const machine = createCheckoutMachine();
     // The same element on each render, as children from a parent are, so React shows it again without a new render.
-    const checkout = <Checkout machine={machine} />;
+    const checkout = element(machine);
     const container = document.body.appendChild(document.createElement('div'));
     const root = createRoot(container);
     onTestFinished(() => {
