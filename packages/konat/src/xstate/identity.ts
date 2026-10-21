@@ -2,6 +2,7 @@
 
 import type { AnyStateMachine, MachineContext } from 'xstate';
 import { isId } from '../core/ids';
+import { warnOnce } from '../core/warn-once';
 import { childNodes, type AnyStateNode } from './tree';
 
 export interface Identity {
@@ -15,7 +16,6 @@ const DEFAULT_MACHINE_ID = '(machine)';
 
 const COUNTER_KEY = '__KONAT_LAST_INSTANCE__';
 const fallbackIds = new WeakMap<AnyStateMachine, string>();
-const warned = new Set<string>();
 
 /** `debug.id`, then `machine.id`, then a generated id for machines still on XState's default. */
 export function resolveMachineId(machine: AnyStateMachine, debugId?: string): string {
@@ -51,11 +51,9 @@ function fallbackMachineId(machine: AnyStateMachine): string {
   return id;
 }
 
-/** Warns once per generated id, so a machine recreated by HMR doesn't warn again. */
 export function warnFallbackId(id: string): void {
-  if (warned.has(id)) return;
-  warned.add(id);
-  console.warn(
+  warnOnce(
+    `fallback-id:${id}`,
     `[konat] A machine has no id, so it's listed as "${id}". ` +
       `Give it one with createMachine({ id }) or with the debug option: { debug: { id } }.`,
   );

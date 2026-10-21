@@ -16,6 +16,7 @@ import { createFixtureStore } from './fixtures';
 import { isId, isLeafId } from './ids';
 import { createRecordingStore } from './recording';
 import { VERSION } from './version';
+import { warnOnce } from './warn-once';
 
 export const REGISTRY_KEY = '__KONAT_REGISTRY__';
 
@@ -663,7 +664,6 @@ function createNoopRegistry(): Registry {
 }
 
 let serverRegistry: Registry | undefined;
-let warnedVersion = false;
 
 /** The page's registry, created on first use. Returns a no-op registry on the server. */
 export function getPageRegistry(): Registry {
@@ -680,10 +680,10 @@ export function getPageRegistry(): Registry {
   const existing = scope[REGISTRY_KEY];
 
   if (existing) {
-    if (existing.version !== VERSION && !warnedVersion) {
-      warnedVersion = true;
+    if (existing.version !== VERSION) {
       const other = String(existing.version);
-      console.warn(
+      warnOnce(
+        'version',
         `[konat] Two versions of konat are on this page (${VERSION} and ${other}). ` +
           `Both use the registry that ${other} created first; load a single copy to avoid mismatches.`,
       );
