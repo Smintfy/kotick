@@ -69,16 +69,15 @@ test('a connect()ed job that finishes while a preview shows gets the held-back d
   /** Previews a connected job in the state it is in, finishes the real job meanwhile, and lets go of it. */
   const finishDuringPreview = async (): Promise<WeakRef<object>> => {
     const machine = createJobMachine();
-    const actor = createActor(machine).start();
-    connect(actor).subscribe((snapshot) => heard.push(`${snapshot.status} ${String(snapshot.value)}`));
+    const real = createActor(machine).start();
+    connect(real).subscribe((snapshot) => heard.push(`${snapshot.status} ${String(snapshot.value)}`));
     await flush();
     await preview(machine.id, ['running']);
-    // The proxy blocks events during a preview, so the event goes to the real actor.
     await act(async () => {
-      actor.send({ type: 'FINISH' });
+      real.send({ type: 'FINISH' });
     });
 
-    return new WeakRef(actor);
+    return new WeakRef(real);
   };
 
   const job = await finishDuringPreview();

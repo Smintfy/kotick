@@ -151,12 +151,11 @@ function observeUntilDone(job: AnyActorRef): string[] {
   return calls;
 }
 
-/** A job that the app runs, with how the app finishes the real actor, and how the preview of the job then ends. */
-type Run = { job: AnyActorRef; finish: () => void; end: () => Promise<void> };
+/** A job that the app runs, with how the app finishes it, and how the preview of the job then ends. */
+type Run = { job: AnyActorRef; finishReal: () => void; end: () => Promise<void> };
 
 /**
  * The actors that an app subscribes to: the actor that connect() returns, and the actor that a hook returns.
- * A preview blocks the events sent to them, so the app finishes the real actor.
  * connect() unlists the finished actor, and the overlay drops it and its preview at its next flush.
  * A hook keeps the finished actor listed until the developer releases the preview.
  */
@@ -169,7 +168,7 @@ const OWNERS: [owner: string, end: string, run: (machine: AnyStateMachine) => Pr
       const job = connect(actor);
       await mount(null);
 
-      return { job, finish: () => actor.send({ type: 'FINISH' }), end: flush };
+      return { job, finishReal: () => actor.send({ type: 'FINISH' }), end: flush };
     },
   ],
   [
@@ -190,7 +189,7 @@ const OWNERS: [owner: string, end: string, run: (machine: AnyStateMachine) => Pr
 
       return {
         job,
-        finish: () => job!.system.get('job')?.send({ type: 'FINISH' }),
+        finishReal: () => job!.system.get('job')?.send({ type: 'FINISH' }),
         end: () => release(machine.id),
       };
     },
@@ -354,14 +353,14 @@ describe('an actor that finishes during a preview', () => {
     'an observer of %s gets the done snapshot, then complete, and waitFor resolves with it, once %s',
     async (_, _end, run) => {
       const machine = createJobMachine();
-      const { job, finish, end } = await run(machine);
+      const { job, finishReal, end } = await run(machine);
       const calls = observe(job);
       // It unsubscribes in next on the done snapshot, so it gets no complete, as with XState.
       const untilDone = observeUntilDone(job);
       const finished = waitForFinished(job);
       await preview(machine.id, ['waiting']);
 
-      finish();
+      finishReal();
       const previewing = { calls: [...calls], untilDone: [...untilDone], waitFor: finished() };
       await end();
       expect({ previewing, ended: { calls, untilDone, waitFor: finished() } }).toEqual({

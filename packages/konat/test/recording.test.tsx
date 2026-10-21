@@ -153,13 +153,12 @@ function region(name: string | undefined) {
   return name === undefined ? screen : within(screen.getByRole('region', { name }));
 }
 
-/** Clicks and does not wait for React, so no timer can run between clicks in a row. */
-function click(name: string, where?: string) {
+function clickInSameTask(name: string, where?: string) {
   fireEvent.click(region(where).getByRole('button', { name }));
 }
 
 async function press(name: string, where?: string) {
-  click(name, where);
+  clickInSameTask(name, where);
   await flush();
 }
 
@@ -457,7 +456,7 @@ describe('with more than 50 configurations', () => {
     sessionStorage.setItem(recordedKey(machine.id), JSON.stringify({ v: 1, entries }));
     await mount(<Controls machine={machine} events={{ Next: { type: 'NEXT' } }} />);
 
-    for (let index = 0; index < nexts; index++) click('Next');
+    for (let index = 0; index < nexts; index++) clickInSameTask('Next');
     await flush();
     await show(machine.id);
     const marked = marks();
@@ -696,11 +695,11 @@ describe('at the storage limits', () => {
       { overlay: false },
     );
 
-    // The clicks and the pagehide run in one task. Thus the write 500 ms after the first visit can't come between them,
-    // and the one warning counts all 6 recordings of the second machine.
-    for (let index = 0; index < 5; index++) click('Next', 'first');
+    // No write can come between these clicks and the pagehide.
+    // So the one warning counts all 6 recordings of the second machine.
+    for (let index = 0; index < 5; index++) clickInSameTask('Next', 'first');
 
-    for (let index = 0; index < 5; index++) click('Next', 'second');
+    for (let index = 0; index < 5; index++) clickInSameTask('Next', 'second');
     hidePage();
     const shared = { first: storedLeaves(first.id), second: storedLeaves(second.id) };
 
@@ -820,9 +819,9 @@ describe('at the storage limits', () => {
     sessionStorage.setItem('app', appData);
     await mount(<Controls machine={machine} events={{ Next: { type: 'NEXT' }, Grow: { type: 'GROW' } }} />);
 
-    // The clicks and the pagehide run in one task. Thus the write 500 ms after the first visit can't come between them,
-    // and the one warning counts all 8 recordings.
-    for (let index = 0; index < 7; index++) click('Next');
+    // No write can come between these clicks and the pagehide.
+    // So the one warning counts all 8 recordings.
+    for (let index = 0; index < 7; index++) clickInSameTask('Next');
     hidePage();
     const full = storedLeaves(machine.id);
 
