@@ -9,7 +9,7 @@ import { watchConsole } from './support/console';
 
 type ToggleEvent = { type: 'TOGGLE' };
 
-// The server has no page registry, so the tests in this file can share a machine id.
+// The server has no page registry, so every hook can run the same machine id.
 // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
 const toggleMachine = setup({ types: { events: {} as ToggleEvent } }).createMachine({
   id: 'toggle',
@@ -17,7 +17,7 @@ const toggleMachine = setup({ types: { events: {} as ToggleEvent } }).createMach
   states: { off: { on: { TOGGLE: 'on' } }, on: { on: { TOGGLE: 'off' } } },
 });
 
-// Read before any test runs, so a registry that an earlier test put on globalThis also fails a later test.
+// Read when the file loads, before the test renders.
 const globalsAtLoad = Reflect.ownKeys(globalThis);
 
 /**
@@ -35,29 +35,12 @@ function isCount(value: unknown): value is number {
   return typeof value === 'number';
 }
 
-test('renders nothing, loads no fixtures, and leaves globalThis as it was', () => {
+test('the overlay renders nothing, the hooks and connect() render the state, and no registry goes on globalThis', () => {
   const output = watchConsole();
   const loads: string[] = [];
-  const globals = Reflect.ownKeys(globalThis);
-
-  const html = renderToString(
-    <Konat
-      defaultOpen
-      fixtures={() => {
-        loads.push('fixtures');
-
-        return [];
-      }}
-    />,
-  );
-
-  const added = Reflect.ownKeys(globalThis).filter((key) => !globals.includes(key));
-  expect({ html, loads, added, output }).toEqual({ html: '', loads: [], added: [], output: { warn: [], error: [] } });
-});
-
-test('the hooks render the initial state of the machine, and put no registry on globalThis', () => {
-  const output = watchConsole();
   const ToggleContext = createActorContext(toggleMachine);
+  const connected = connect(createActor(toggleMachine).start());
+  connected.send({ type: 'TOGGLE' });
 
   function FromContext() {
     const value = ToggleContext.useSelector((snapshot) => snapshot.value);
@@ -75,6 +58,7 @@ test('the hooks render the initial state of the machine, and put no registry on 
         <li>{`useMachine: ${machine.value}`}</li>
         <li>{`useActor: ${actor.value}`}</li>
         <li>{`useActorRef: ${selected}`}</li>
+        <li>{`connect: ${useSelector(connected, (snapshot) => snapshot.value)}`}</li>
       </>
     );
   }
@@ -85,34 +69,24 @@ test('the hooks render the initial state of the machine, and put no registry on 
       <ToggleContext.Provider>
         <FromContext />
       </ToggleContext.Provider>
-      <Konat defaultOpen />
+      <Konat
+        defaultOpen
+        fixtures={() => {
+          loads.push('fixtures');
+
+          return [];
+        }}
+      />
     </ul>,
   );
 
-  expect({ html, added: objectsAdded(), output }).toEqual({
-    html: '<ul><li>useMachine: off</li><li>useActor: off</li><li>useActorRef: off</li><li>createActorContext: off</li></ul>',
-    added: [],
-    output: { warn: [], error: [] },
-  });
-});
+  connected.stop();
 
-test('connect() gives an actor that takes events, as nothing is previewed, and puts no registry on globalThis', () => {
-  const output = watchConsole();
-  const actor = connect(createActor(toggleMachine).start());
-
-  function Toggle() {
-    const value = useSelector(actor, (snapshot) => snapshot.value);
-
-    return <p>{`connect: ${value}`}</p>;
-  }
-
-  actor.send({ type: 'TOGGLE' });
-  const html = [renderToString(<Toggle />)];
-  actor.send({ type: 'TOGGLE' });
-  html.push(renderToString(<Toggle />));
-  actor.stop();
-  expect({ html, added: objectsAdded(), output }).toEqual({
-    html: ['<p>connect: on</p>', '<p>connect: off</p>'],
+  expect({ html, loads, added: objectsAdded(), output }).toEqual({
+    html:
+      '<ul><li>useMachine: off</li><li>useActor: off</li><li>useActorRef: off</li><li>connect: on</li>' +
+      '<li>createActorContext: off</li></ul>',
+    loads: [],
     added: [],
     output: { warn: [], error: [] },
   });

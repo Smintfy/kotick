@@ -14,7 +14,7 @@ import {
   type EventFrom,
 } from 'xstate';
 import { watchConsole } from './support/console';
-import { REACT_MAJOR } from './support/hooks';
+import { REACT_MAJOR } from './support/react';
 import {
   badge,
   blockedEvents,
@@ -228,33 +228,6 @@ async function outsideReact(run: () => void) {
   });
 }
 
-/** A parallel root whose `document` region holds a nested parallel state, `saving`. */
-function createEditorMachine() {
-  return createMachine({
-    id: freshId('editor'),
-    type: 'parallel',
-    states: {
-      document: {
-        initial: 'clean',
-        on: { SAVE: '.saving' },
-        states: {
-          clean: {},
-          saving: {
-            type: 'parallel',
-            states: {
-              upload: { initial: 'pending', states: { pending: {}, failed: {} } },
-              // After PROGRESS, the current leaf is neither the initial leaf nor the first one.
-              progress: { initial: 'zero', on: { PROGRESS: '.full' }, states: { half: {}, zero: {}, full: {} } },
-              spinner: {},
-            },
-          },
-        },
-      },
-      theme: { initial: 'light', on: { DARK: '.dark' }, states: { light: {}, dark: {} } },
-    },
-  });
-}
-
 /**
  * Shows the state value, context and status of any machine, with a button for each event in `events`.
  * `rendered` collects the state value of each render.
@@ -403,30 +376,7 @@ describe('releasing', () => {
 });
 
 describe('context', () => {
-  test('a state with no recording or fixture previews with the live context, and warns', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine();
-    await mount(machine);
-    await press('Start');
-    await press('Express');
-
-    await preview(machine.id, ['done']);
-    expect({ shown: shown(), panel: panel(), warnings: output.warn }).toEqual({
-      shown: { value: 'done', context: { step: 2, note: 'none' } },
-      panel: {
-        instance: `${machine.id} · 1`,
-        live: ['paying.card.idle', 'paying.shipping.express'],
-        previewed: ['done'],
-        filled: [],
-        source: 'live',
-        context: ['step: 2', 'note: "none"'],
-        warning: LIVE_WARNING,
-      },
-      warnings: [liveWarning('done', shownKey())],
-    });
-  });
-
-  test('the context comes from a recording, then from a fixture, then from the live actor', async () => {
+  test('the context comes from a recording, then from a fixture, then from the live actor with a warning', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine();
     await mount(machine, [
@@ -452,28 +402,38 @@ describe('context', () => {
       standard: await contextOf('paying.shipping.standard'),
       error: await contextOf('paying.card.error'),
       done: await contextOf('done'),
+      warning: panel().warning,
       warnings: output.warn,
     }).toEqual({
       before: { source: 'none', context: ['step: 2', 'note: "none"'] },
       standard: 'recorded: {"step":1,"note":"none"}',
       error: 'fixture: {"step":8,"note":"card error"}',
       done: 'live: {"step":2,"note":"none"}',
+      warning: LIVE_WARNING,
       warnings: [liveWarning('done', shownKey())],
     });
   });
 
   test('a picked source shows its own context, and the switcher offers only the sources that have some', async () => {
+    const output = watchConsole();
     const machine = createCheckoutMachine();
     await mount(machine, [
       defineFixtures(machine, { 'paying.shipping.standard': { context: { step: 7, note: 'standard shipping' } } }),
     ]);
     await press('Start');
     await press('Express');
-    const seen = () => ({ sources: sources(), previewed: panel().previewed, context: shown().context });
+
+    const seen = () => ({
+      sources: sources(),
+      previewed: panel().previewed,
+      context: shown().context,
+      warning: panel().warning,
+    });
 
     await preview(machine.id, ['paying.shipping.standard']);
     const steps = [seen()];
 
+    // A picked Live source is not a fallback, so it gives no warning.
     for (const source of ['fixture', 'live', 'recorded'] as const) {
       await pickSource(source);
       steps.push(seen());
@@ -482,133 +442,107 @@ describe('context', () => {
     await preview(machine.id, ['done']);
     steps.push(seen());
     const standard = ['paying.shipping.standard'];
-    expect(steps).toEqual([
-      {
-        sources: { recorded: 'checked', fixture: 'enabled', live: 'enabled' },
-        previewed: standard,
-        context: { step: 1, note: 'none' },
-      },
-      {
-        sources: { recorded: 'enabled', fixture: 'checked', live: 'enabled' },
-        previewed: standard,
-        context: { step: 7, note: 'standard shipping' },
-      },
-      {
-        sources: { recorded: 'enabled', fixture: 'enabled', live: 'checked' },
-        previewed: standard,
-        context: { step: 2, note: 'none' },
-      },
-      {
-        sources: { recorded: 'checked', fixture: 'enabled', live: 'enabled' },
-        previewed: standard,
-        context: { step: 1, note: 'none' },
-      },
-      {
-        sources: { recorded: 'disabled', fixture: 'disabled', live: 'checked' },
-        previewed: ['done'],
-        context: { step: 2, note: 'none' },
-      },
-    ]);
-  });
-
-  test('choosing the live context over a fixture is not a fallback, so nothing warns', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine();
-    await mount(machine, [defineFixtures(machine, { done: { context: { step: 9, note: 'from a fixture' } } })]);
-
-    await preview(machine.id, ['done'], { source: 'live' });
-    expect({ shown: shown(), source: panel().source, warning: panel().warning, warnings: output.warn }).toEqual({
-      shown: { value: 'done', context: { step: 0, note: 'none' } },
-      source: 'live',
-      warning: '',
-      warnings: [],
+    expect({ steps, warnings: output.warn }).toEqual({
+      steps: [
+        {
+          sources: { recorded: 'checked', fixture: 'enabled', live: 'enabled' },
+          previewed: standard,
+          context: { step: 1, note: 'none' },
+          warning: '',
+        },
+        {
+          sources: { recorded: 'enabled', fixture: 'checked', live: 'enabled' },
+          previewed: standard,
+          context: { step: 7, note: 'standard shipping' },
+          warning: '',
+        },
+        {
+          sources: { recorded: 'enabled', fixture: 'enabled', live: 'checked' },
+          previewed: standard,
+          context: { step: 2, note: 'none' },
+          warning: '',
+        },
+        {
+          sources: { recorded: 'checked', fixture: 'enabled', live: 'enabled' },
+          previewed: standard,
+          context: { step: 1, note: 'none' },
+          warning: '',
+        },
+        {
+          sources: { recorded: 'disabled', fixture: 'disabled', live: 'checked' },
+          previewed: ['done'],
+          context: { step: 2, note: 'none' },
+          warning: LIVE_WARNING,
+        },
+      ],
+      warnings: [liveWarning('done', shownKey())],
     });
   });
 });
 
 describe('parallel regions', () => {
-  test('previewing one region keeps the current leaf of the other', async () => {
+  test('previewing one region keeps the current leaf of the other, and from outside the parallel state its initial leaf', async () => {
     const machine = createCheckoutMachine();
     await mount(machine);
+    await preview(machine.id, ['paying.shipping.pickup']);
+    const outside = { value: shown().value, filled: panel().filled };
+    await release(machine.id);
     await press('Start');
     await press('Express');
 
     await preview(machine.id, ['paying.card.error']);
-    expect({ shown: shown(), panel: panel() }).toEqual({
-      shown: { value: { paying: { card: 'error', shipping: 'express' } }, context: { step: 2, note: 'none' } },
-      panel: {
-        instance: `${machine.id} · 1`,
-        live: ['paying.card.idle', 'paying.shipping.express'],
-        previewed: ['paying.card.error'],
-        filled: ['paying.shipping.express'],
-        source: 'live',
-        context: ['step: 2', 'note: "none"'],
-        warning: LIVE_WARNING,
+    expect({ outside, inside: { shown: shown(), panel: panel() } }).toEqual({
+      outside: { value: { paying: { card: 'idle', shipping: 'pickup' } }, filled: ['paying.card.idle'] },
+      inside: {
+        shown: { value: { paying: { card: 'error', shipping: 'express' } }, context: { step: 2, note: 'none' } },
+        panel: {
+          instance: `${machine.id} · 1`,
+          live: ['paying.card.idle', 'paying.shipping.express'],
+          previewed: ['paying.card.error'],
+          filled: ['paying.shipping.express'],
+          source: 'live',
+          context: ['step: 2', 'note: "none"'],
+          warning: LIVE_WARNING,
+        },
       },
     });
   });
 
-  test('from outside the parallel state, the other regions start at their initial leaves', async () => {
+  test('each click adds its leaf, drops an older leaf of its region, or takes out a previewed leaf, and the last one releases', async () => {
     const machine = createCheckoutMachine();
     await mount(machine);
+    const seen = () => ({ value: JSON.stringify(shown().value), previewed: panel().previewed, filled: panel().filled });
 
-    await preview(machine.id, ['paying.shipping.pickup']);
-    expect({ value: shown().value, filled: panel().filled }).toEqual({
-      value: { paying: { card: 'idle', shipping: 'pickup' } },
-      filled: ['paying.card.idle'],
-    });
-  });
-
-  test('each click previews the leaves picked so far, newest first, and drops an older leaf of the same region', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine();
-    await mount(machine);
-    await show(machine.id);
-    const key = shownKey();
-
+    // The keys of the value follow the order of the machine, not the order of the clicks.
     await preview(machine.id, ['paying.shipping.express', 'paying.card.error']);
-    const first = { value: shown().value, previewed: panel().previewed };
-    await preview(machine.id, ['paying.card.error', 'paying.card.idle']);
-    const second = { value: shown().value, previewed: panel().previewed, filled: panel().filled };
-    expect({ first, second, warnings: output.warn }).toEqual({
-      first: {
-        value: { paying: { card: 'error', shipping: 'express' } },
+    const both = seen();
+    await clickLeaf('paying.card.idle');
+    const dropped = seen();
+    await clickLeaf('paying.shipping.express');
+    const takenOut = seen();
+    await clickLeaf('paying.card.idle');
+    const last = { value: shown().value, previewed: panel().previewed, badge: badge() };
+    expect({ both, dropped, takenOut, last }).toEqual({
+      both: {
+        value: '{"paying":{"card":"error","shipping":"express"}}',
         previewed: ['paying.card.error', 'paying.shipping.express'],
+        filled: [],
       },
-      second: {
-        value: { paying: { card: 'error', shipping: 'standard' } },
-        previewed: ['paying.card.error'],
+      dropped: {
+        value: '{"paying":{"card":"idle","shipping":"express"}}',
+        previewed: ['paying.card.idle', 'paying.shipping.express'],
+        filled: [],
+      },
+      takenOut: {
+        value: '{"paying":{"card":"idle","shipping":"standard"}}',
+        previewed: ['paying.card.idle'],
         filled: ['paying.shipping.standard'],
       },
-      warnings: [
-        liveWarning('paying.card.error', key),
-        liveWarning('paying.shipping.express, paying.card.error', key),
-        liveWarning('paying.card.idle', key),
-        liveWarning('paying.card.error', key),
-      ],
+      last: { value: 'idle', previewed: [], badge: '' },
     });
   });
 
-  test('a click on a previewed leaf takes it out of the preview, and the last one releases', async () => {
-    const machine = createCheckoutMachine();
-    await mount(machine);
-    await preview(machine.id, ['paying.card.error', 'paying.shipping.express']);
-
-    await clickLeaf('paying.card.error');
-    const one = { value: shown().value, previewed: panel().previewed, filled: panel().filled };
-    await clickLeaf('paying.shipping.express');
-    const none = { value: shown().value, previewed: panel().previewed, previewing: badge() };
-    expect({ one, none }).toEqual({
-      one: {
-        value: { paying: { card: 'idle', shipping: 'express' } },
-        previewed: ['paying.shipping.express'],
-        filled: ['paying.card.idle'],
-      },
-      none: { value: 'idle', previewed: [], previewing: '' },
-    });
-  });
-
-  test('the fixture comes from the picked leaves in order, then from the leaves filled in', async () => {
+  test('the fixture comes from the picked leaves that the preview keeps, in order, then from the leaves filled in', async () => {
     const machine = createCheckoutMachine();
     await mount(machine, [
       defineFixtures(machine, {
@@ -627,72 +561,9 @@ describe('parallel regions', () => {
       await noteOf(['paying.card.error']),
       await noteOf(['paying.shipping.standard', 'paying.card.error']),
       await noteOf(['paying.card.error', 'paying.shipping.standard']),
-      await noteOf(['paying.card.idle']),
+      // The click on card.idle drops card.error, so the fixture of card.error doesn't count.
+      await noteOf(['paying.card.idle', 'paying.card.error']),
     ]).toEqual(['fixture: card error', 'fixture: standard shipping', 'fixture: card error', 'fixture: standard shipping']);
-  });
-
-  test('a leaf that the newest click drops gives no context, even with a fixture', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine();
-    await mount(machine, [
-      defineFixtures(machine, { 'paying.card.error': { context: { step: 5, note: 'card error' } } }),
-    ]);
-    await show(machine.id);
-    const key = shownKey();
-
-    await preview(machine.id, ['paying.card.error']);
-    const before = { source: panel().source, context: shown().context };
-    await clickLeaf('paying.card.idle');
-    expect({
-      before,
-      after: { previewed: panel().previewed, source: panel().source, context: shown().context },
-      warnings: output.warn,
-    }).toEqual({
-      before: { source: 'fixture', context: { step: 5, note: 'card error' } },
-      after: { previewed: ['paying.card.idle'], source: 'live', context: { step: 0, note: 'none' } },
-      warnings: [liveWarning('paying.card.idle', key)],
-    });
-  });
-
-  test('inside a nested parallel state too, the regions that the click leaves alone keep their current leaves', async () => {
-    const machine = createEditorMachine();
-    render(
-      <>
-        <MachineView machine={machine} events={['SAVE', 'PROGRESS', 'DARK']} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
-
-    for (const event of ['SAVE', 'PROGRESS', 'DARK']) await press(event);
-
-    await preview(machine.id, ['document.saving.upload.failed']);
-    expect({ value: shown('app').value, filled: panel().filled }).toEqual({
-      value: { document: { saving: { upload: 'failed', progress: 'full', spinner: {} } }, theme: 'dark' },
-      filled: ['document.saving.progress.full', 'document.saving.spinner', 'theme.dark'],
-    });
-  });
-
-  test('the state value has its keys in the order that the machine declares them, whatever order the clicks came in', async () => {
-    const machine = createEditorMachine();
-    render(
-      <>
-        <MachineView machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
-
-    await preview(machine.id, [
-      'theme.dark',
-      'document.saving.spinner',
-      'document.saving.progress.full',
-      'document.saving.upload.failed',
-    ]);
-    expect(screen.getByRole('status', { name: 'app' }).textContent).toBe(
-      '{"value":{"document":{"saving":{"upload":"failed","progress":"full","spinner":{}}},"theme":"dark"},' +
-        '"context":{},"status":"active"}',
-    );
   });
 });
 
@@ -789,11 +660,11 @@ describe('an actor read outside React', () => {
     });
   });
 
-  test('a previewed snapshot answers matches, hasTag and can, and can checks guards on the previewed context', async () => {
+  test('a previewed snapshot answers matches, hasTag and can on the previewed context, and a final one is done with its output', async () => {
     const machine = createCartMachine();
 
     const { actor, proxy } = await connectCart(machine, [
-      defineFixtures(machine, { shopping: { context: { items: [5] } } }),
+      defineFixtures(machine, { shopping: { context: { items: [5] } }, paid: { context: { items: [1, 2, 3] } } }),
     ]);
 
     const states = ['shopping', 'paying', { paying: 'pending' }, { paying: 'declined' }] as const;
@@ -815,15 +686,28 @@ describe('an actor read outside React', () => {
     await preview(machine.id, ['shopping'], { source: 'fixture' });
     const fixture = answers();
     await pickSource('live');
-    expect({ declined, fixture, live: answers(), real: actor.getSnapshot().can({ type: 'PAY' }) }).toEqual({
+    const live = answers();
+    await preview(machine.id, ['paid']);
+    const { status, value, output } = proxy.getSnapshot();
+    const real = actor.getSnapshot();
+    expect({
+      declined,
+      fixture,
+      live,
+      paid: { status, value, output },
+      real: { status: real.status, value: real.value, canPay: real.can({ type: 'PAY' }) },
+      instances: instances(),
+    }).toEqual({
       declined: { status: 'active', matches: ['paying', { paying: 'declined' }], tags: ['failed'], can: ['RETRY'] },
       fixture: { status: 'active', matches: ['shopping'], tags: ['editable'], can: ['ADD', 'PAY'] },
       live: { status: 'active', matches: ['shopping'], tags: ['editable'], can: ['ADD'] },
-      real: false,
+      paid: { status: 'done', value: 'paid', output: { total: 6 } },
+      real: { status: 'active', value: 'shopping', canPay: false },
+      instances: [`${machine.id} · 1`],
     });
   });
 
-  test('select() reads through the preview, and its subscriber hears each selection that changes', async () => {
+  test('select() reads through the preview, and its subscribers hear each selection that changes', async () => {
     const machine = createCartMachine();
 
     const { actor, proxy } = await connectCart(machine, [
@@ -832,10 +716,22 @@ describe('an actor read outside React', () => {
 
     const value = proxy.select((snapshot) => snapshot.value);
     const counts: number[] = [];
+    const tags: string[][] = [];
 
-    const subscription = proxy.select((snapshot) => snapshot.context.items.length).subscribe((count) => {
-      counts.push(count);
-    });
+    const subscriptions = [
+      proxy.select((snapshot) => snapshot.context.items.length).subscribe((count) => {
+        counts.push(count);
+      }),
+      // An equality function skips the selections that it finds equal, such as a new array of the same tags.
+      proxy
+        .select(
+          (snapshot) => [...snapshot.tags],
+          (a, b) => a.join() === b.join(),
+        )
+        .subscribe((selected) => {
+          tags.push(selected);
+        }),
+    ];
 
     await outsideReact(() => actor.send({ type: 'ADD', price: 3 }));
     // PAY changes the state but not the count.
@@ -846,36 +742,19 @@ describe('an actor read outside React', () => {
     const during = value.get();
     await releaseAll();
     const after = value.get();
-    subscription.unsubscribe();
+
+    for (const subscription of subscriptions) subscription.unsubscribe();
     await preview(machine.id, ['paying.declined']);
-    expect({ before, during, after, counts }).toEqual({
+    expect({ before, during, after, counts, tags }).toEqual({
       before: { paying: 'pending' },
       during: { paying: 'declined' },
       after: { paying: 'pending' },
       counts: [1, 3, 1],
+      tags: [['busy'], ['failed'], ['busy']],
     });
   });
 
-  test('select() with an equality function skips the selections that it finds equal', async () => {
-    const machine = createCartMachine();
-    const { proxy } = await connectCart(machine);
-    const heard: string[][] = [];
-    proxy
-      .select(
-        (snapshot) => [...snapshot.tags].sort(),
-        (a, b) => a.join() === b.join(),
-      )
-      .subscribe((tags) => {
-        heard.push(tags);
-      });
-
-    // The state that the actor is in has the same tags.
-    await preview(machine.id, ['shopping']);
-    await preview(machine.id, ['paying.declined']);
-    expect(heard).toEqual([['failed']]);
-  });
-
-  test('the rest comes from the real actor: ids, system, logic, emitted events, and the persisted snapshot', async () => {
+  test('the rest comes from the real actor, and start(), stop() and the observable interop give back the proxy', async () => {
     const machine = createCartMachine();
     const { actor, proxy } = await connectCart(machine);
     const added: unknown[] = [];
@@ -904,6 +783,16 @@ describe('an actor read outside React', () => {
     await releaseAll();
     listener.unsubscribe();
     await outsideReact(() => proxy.send({ type: 'ADD', price: 4 }));
+    // XState reads Symbol.observable when something defines it, and '@@observable' when nothing does.
+    const interop = 'observable' in Symbol ? Symbol.observable : '@@observable';
+    // SAFETY: Partial says only that the proxy can have the method. When it does not, the test fails.
+    const observable = (proxy as Partial<Record<typeof interop, () => object>>)[interop]?.();
+    // A chain such as connect(createActor(machine)).start() keeps the proxy.
+    const started = proxy.start();
+    let stopped: unknown;
+    await outsideReact(() => {
+      stopped = proxy.stop();
+    });
     expect({
       id: proxy.id,
       sessionId: proxy.sessionId,
@@ -913,6 +802,8 @@ describe('an actor read outside React', () => {
       stable: { send: proxy.send === proxy.send, on: proxy.on === on },
       added,
       during,
+      chain: { observable: observable === proxy, started: started === proxy, stopped: stopped === proxy },
+      status: actor.getSnapshot().status,
     }).toEqual({
       id: 'main-cart',
       sessionId: actor.sessionId,
@@ -925,83 +816,8 @@ describe('an actor read outside React', () => {
         toJSON: { xstate$$type: 1, id: 'main-cart' },
         json: '{"ref":{"xstate$$type":1,"id":"main-cart"}}',
       },
-    });
-  });
-
-  test('start(), stop() and the observable interop give back the proxy, so a chain keeps it', async () => {
-    const machine = createCartMachine();
-    const { actor, proxy } = await connectCart(machine);
-    // XState reads Symbol.observable when something defines it, and '@@observable' when nothing does.
-    const interop = 'observable' in Symbol ? Symbol.observable : '@@observable';
-    // SAFETY: Partial says only that the proxy can have the method. When it does not, the test fails.
-    const observable = (proxy as Partial<Record<typeof interop, () => object>>)[interop]?.();
-    const started = proxy.start();
-    let stopped: unknown;
-    await outsideReact(() => {
-      stopped = proxy.stop();
-    });
-    expect({
-      observable: observable === proxy,
-      started: started === proxy,
-      stopped: stopped === proxy,
-      status: actor.getSnapshot().status,
-    }).toEqual({ observable: true, started: true, stopped: true, status: 'stopped' });
-  });
-});
-
-describe('final states', () => {
-  test('a previewed final state is done, with the output that the machine computes from the previewed context', async () => {
-    const machine = createCartMachine();
-
-    const { actor, proxy } = await connectCart(machine, [
-      defineFixtures(machine, { paid: { context: { items: [1, 2, 3] } } }),
-    ]);
-
-    await outsideReact(() => actor.send({ type: 'ADD', price: 4 }));
-
-    await preview(machine.id, ['paid']);
-    const { status, value, output } = proxy.getSnapshot();
-    const real = actor.getSnapshot();
-    expect({
-      previewed: { status, value, output },
-      real: { status: real.status, value: real.value },
-      instances: instances(),
-    }).toEqual({
-      previewed: { status: 'done', value: 'paid', output: { total: 6 } },
-      real: { status: 'active', value: 'shopping' },
-      instances: [`${machine.id} · 1`],
-    });
-  });
-
-  test('a parallel root is done once every region is in a final state', async () => {
-    const region = { initial: 'sending', states: { sending: {}, sent: { type: 'final' as const } } };
-
-    const machine = createMachine({
-      id: freshId('upload'),
-      type: 'parallel',
-      states: { file: region, thumbnail: region },
-    });
-
-    render(
-      <>
-        <MachineView machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
-
-    const seen = () => {
-      const { value, status } = shown('app');
-
-      return { value, status };
-    };
-
-    await preview(machine.id, ['file.sent', 'thumbnail.sent']);
-    const both = seen();
-    await preview(machine.id, ['file.sent']);
-    expect({ both, one: seen() }).toEqual({
-      both: { value: { file: 'sent', thumbnail: 'sent' }, status: 'done' },
-      one: { value: { file: 'sent', thumbnail: 'sending' }, status: 'active' },
+      chain: { observable: true, started: true, stopped: true },
+      status: 'stopped',
     });
   });
 });

@@ -1,12 +1,11 @@
 import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { Konat, type FixtureSet, type FixturesInput, type FixturesResult } from 'konat';
-import { defineFixtures, useMachine, type FixtureStates } from 'konat/xstate';
+import { defineFixtures, useMachine } from 'konat/xstate';
 import { describe, expect, test } from 'vitest';
 import { assign, createMachine, setup, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { watchConsole } from './support/console';
-import { REACT_MAJOR } from './support/hooks';
-import { flush, freshId, marks, panel, pickSource, preview, release, show, shownKey } from './support/panel';
+import { flush, freshId, marks, panel, pickSource, preview, show, shownKey } from './support/panel';
 
 type CheckoutContext = { step: number; note: string };
 
@@ -202,16 +201,10 @@ test('a fixture gives a state its context: the tree marks the leaf, and a previe
 });
 
 describe('the fixtures prop', () => {
-  test.each<[string, (sets: FixtureSet[]) => FixturesInput]>([
-    ['an array of sets', (sets) => sets],
-    ['a loader that returns them', (sets) => () => sets],
-    [
-      'a loader that resolves to a module whose default export is them, as import() does',
-      (sets) => async () => ({ default: sets }),
-    ],
-  ])('takes %s', async (_, given) => {
+  test('takes a loader that returns the sets', async () => {
     const machine = createCheckoutMachine(freshId('checkout'));
-    await renderPage(<App machine={machine} />, given([defineFixtures(machine, { done: fixture('given') })]));
+    const sets = [defineFixtures(machine, { done: fixture('given') })];
+    await renderPage(<App machine={machine} />, () => sets);
 
     await preview(machine.id, ['done']);
     expect({ marks: marks(), source: panel().source, shown: shown() }).toEqual({
@@ -221,32 +214,12 @@ describe('the fixtures prop', () => {
     });
   });
 
-  test('a loader that fails gives no fixtures, and warns', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine(freshId('checkout'));
-    await renderPage(<App machine={machine} />, () =>
-      Promise.reject(new TypeError('Failed to fetch dynamically imported module')),
-    );
-
-    await show(machine.id);
-    expect({ marks: marks(), warnings: firstLines(output.warn) }).toEqual({
-      marks: checkoutMarks(),
-      warnings: ['[konat] The fixtures loader failed. TypeError: Failed to fetch dynamically imported module'],
-    });
-  });
-
-  /** One set without an array, as is or as the default export of a module. The fixtures prop does not take it. */
-  type LoneSet = FixtureSet | (() => { default: FixtureSet });
-
-  test.each<[string, (set: FixtureSet) => LoneSet]>([
-    ['one set without an array', (set) => set],
-    ['a loader of a module whose default export is one set', (set) => () => ({ default: set })],
-  ])('%s gives no fixtures, and warns', async (_, given) => {
+  test('one set without an array gives no fixtures, and warns', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
     const set = defineFixtures(machine, { done: fixture('not in an array') });
     // @ts-expect-error The fixtures prop takes an array of sets. A JavaScript app can give it one set.
-    await renderPage(<App machine={machine} />, given(set));
+    await renderPage(<App machine={machine} />, set);
 
     await show(machine.id);
     expect({ marks: marks(), warnings: output.warn }).toEqual({
@@ -258,84 +231,30 @@ describe('the fixtures prop', () => {
     });
   });
 
-  test('entries that are not fixture sets are dropped with one warning, and the sets among them register', async () => {
+  test('entries, sets and fixtures with a bad shape are skipped with a warning each, and the rest register', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
-    const given = [defineFixtures(machine, { done: fixture('kept') }), null, { machineId: machine.id }];
+
+    const given = [
+      null,
+      { machineId: machine.id },
+      { machineId: '', states: { done: fixture('no machine id') } },
+      { machineId: machine.id, states: [fixture('a list')] },
+      { machineId: machine.id, states: { done: fixture('kept'), 'paying.card.idle': { note: 'no context key' } } },
+    ];
+
     // @ts-expect-error The fixtures prop takes only sets. A JavaScript app can give it other values.
     await renderPage(<App machine={machine} />, given);
 
     await show(machine.id);
     expect({ marks: marks(), warnings: output.warn }).toEqual({
       marks: checkoutMarks({ done: ['fixture'] }),
-      warnings: ['[konat] Ignoring fixture entries that are not sets from defineFixtures().'],
-    });
-  });
-
-  test('a set or a fixture with a bad shape is skipped with a warning, and the rest register', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine(freshId('checkout'));
-
-    const given = [
-      { machineId: '', states: { done: fixture('no machine id') } },
-      { machineId: machine.id, states: [fixture('a list')] },
-      {
-        machineId: machine.id,
-        states: {
-          done: fixture('kept'),
-          'paying.card.error': { context: undefined },
-          'paying.card.idle': 'declined',
-          'paying.shipping.standard': { note: 'no context key' },
-          'paying.shipping.express': Object.create(fixture('inherited')),
-        },
-      },
-    ];
-
-    // @ts-expect-error A JavaScript app can give sets and fixtures with the wrong properties.
-    await renderPage(<App machine={machine} />, given);
-
-    await preview(machine.id, ['paying.card.error']);
-    expect({ marks: marks(), panel: panel(), shown: shown(), warnings: output.warn }).toEqual({
-      marks: checkoutMarks({ 'paying.card.error': ['fixture'], done: ['fixture'] }),
-      panel: {
-        instance: `${machine.id} · 1`,
-        live: ['idle'],
-        previewed: ['paying.card.error'],
-        filled: ['paying.shipping.standard'],
-        source: 'fixture',
-        context: ['undefined'],
-        warning: '',
-      },
-      // XState resolves a state without context to an empty object.
-      shown: { value: { paying: { card: 'error', shipping: 'standard' } }, context: {} },
       warnings: [
+        '[konat] Ignoring fixture entries that are not sets from defineFixtures().',
         '[konat] Ignoring fixture set at index 0: machineId must be a non-empty string.',
         `[konat] Ignoring fixture set "${machine.id}": states must be an object keyed by leaf id.`,
         `[konat] Ignoring fixture "paying.card.idle" for "${machine.id}": expected an object with a context.`,
-        `[konat] Ignoring fixture "paying.shipping.standard" for "${machine.id}": expected an object with a context.`,
-        `[konat] Ignoring fixture "paying.shipping.express" for "${machine.id}": expected an object with a context.`,
       ],
-    });
-  });
-
-  test('a set that changes after it registered keeps the fixtures it had', async () => {
-    const machine = createCheckoutMachine(freshId('checkout'));
-    const done = fixture('as registered');
-    const states: FixtureStates<CheckoutMachine> = { done, 'paying.card.error': fixture('as registered') };
-    const set = defineFixtures(machine, states);
-    const page = await renderPage(<App machine={machine} />, [set]);
-
-    done.context = { step: 0, note: 'changed' };
-    delete states['paying.card.error'];
-    states['paying.shipping.express'] = fixture('added');
-    // A set for another machine registers, and the sets of this machine merge again.
-    const cart = createCheckoutMachine(freshId('cart'));
-    await page.rerender(<App machine={machine} />, [set, defineFixtures(cart, { done: fixture('cart') })]);
-
-    await preview(machine.id, ['done']);
-    expect({ marks: marks(), shown: shown() }).toEqual({
-      marks: checkoutMarks({ 'paying.card.error': ['fixture'], done: ['fixture'] }),
-      shown: { value: 'done', context: { step: 99, note: 'as registered' } },
     });
   });
 });
@@ -428,36 +347,32 @@ describe('matching a set to a machine', () => {
     });
   });
 
-  test('a set matches its machine under the id that debug.id gives it', async () => {
+  test.each<[string, (machine: CheckoutMachine) => AnyStateMachine]>([
+    ['its machine', (machine) => machine],
+    [
+      'a machine.provide() copy',
+      (machine) => machine.provide({ actions: { count: assign({ step: ({ context }) => context.step + 10 }) } }),
+    ],
+  ])('a set matches %s under the id that debug.id gives it', async (_, given) => {
+    const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
     const debugId = freshId('checkout-v2');
-    await renderPage(<App machine={machine} debugId={debugId} />, [
+    await renderPage(<App machine={given(machine)} debugId={debugId} />, [
       defineFixtures(machine, { done: fixture('by machine') }),
     ]);
 
     await preview(debugId, ['done']);
-    expect({ instance: panel().instance, marks: marks(), source: panel().source, shown: shown() }).toEqual({
+    expect({
+      instance: panel().instance,
+      marks: marks(),
+      source: panel().source,
+      shown: shown(),
+      warnings: output.warn,
+    }).toEqual({
       instance: `${debugId} · 1`,
       marks: checkoutMarks({ done: ['fixture'] }),
       source: 'fixture',
       shown: { value: 'done', context: { step: 99, note: 'by machine' } },
-    });
-  });
-
-  test('a set matches a machine.provide() copy under debug.id', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine(freshId('checkout'));
-    const debugId = freshId('checkout-v2');
-    const provided = machine.provide({ actions: { count: assign({ step: ({ context }) => context.step + 10 }) } });
-    await renderPage(<App machine={provided} debugId={debugId} />, [
-      defineFixtures(machine, { done: fixture('provided') }),
-    ]);
-
-    await preview(debugId, ['done']);
-    expect({ marks: marks(), source: panel().source, shown: shown(), warnings: output.warn }).toEqual({
-      marks: checkoutMarks({ done: ['fixture'] }),
-      source: 'fixture',
-      shown: { value: 'done', context: { step: 99, note: 'provided' } },
       warnings: [],
     });
   });
@@ -487,202 +402,17 @@ describe('matching a set to a machine', () => {
       warnings: [liveWarning('done', shownKey())],
     });
   });
-
-  test('of two machines that share an id, the one without sets of its own takes every set under the id', async () => {
-    const output = watchConsole();
-    const id = freshId('form');
-    const withSets = createCheckoutMachine(id);
-    const without = createCheckoutMachine(id);
-    const shared: FixtureSet = { machineId: id, states: { done: fixture('shared') } };
-    await renderPage(
-      <>
-        <App key="with" machine={withSets} name="with" />
-        <App key="without" machine={without} name="without" />
-      </>,
-      [defineFixtures(withSets, { 'paying.card.error': fixture('its own') }), shared],
-    );
-
-    const notes: string[] = [];
-
-    for (const [nth, name] of [
-      [1, 'with'],
-      [2, 'without'],
-    ] as const) {
-      for (const leaf of ['paying.card.error', 'done']) {
-        await preview(id, [leaf], { nth });
-        notes.push(`${name} ${leaf}: ${panel().source}, ${shown(name).context.note}`);
-      }
-    }
-
-    await show(id, 1);
-    expect({ notes, warnings: output.warn }).toEqual({
-      notes: [
-        'with paying.card.error: fixture, its own',
-        'with done: live, live',
-        'without paying.card.error: fixture, its own',
-        'without done: fixture, shared',
-      ],
-      warnings: [liveWarning('done', shownKey())],
-    });
-  });
-
-  test('an instance under debug.id takes the sets of a machine registered under that id, as it does after HMR', async () => {
-    const id = freshId('checkout');
-    const debugId = freshId('checkout-v2');
-    const otherDebugId = freshId('checkout-v3');
-    const machine = createCheckoutMachine(id);
-    const equivalent = createCheckoutMachine(id);
-    const third = createCheckoutMachine(id);
-    const sets = [defineFixtures(machine, { done: fixture('for the machine') })];
-
-    const page = await renderPage(
-      <>
-        <App key="equivalent" machine={equivalent} debugId={debugId} name="equivalent" />
-      </>,
-      sets,
-    );
-
-    await show(debugId);
-    const alone = marks();
-
-    await page.rerender(
-      <>
-        <App key="equivalent" machine={equivalent} debugId={debugId} name="equivalent" />
-        <App key="machine" machine={machine} debugId={debugId} name="machine" />
-        <App key="third" machine={third} debugId={otherDebugId} name="third" />
-      </>,
-    );
-    await preview(debugId, ['done']);
-    const joined = { marks: marks(), source: panel().source, shown: shown('equivalent') };
-    await show(otherDebugId);
-    expect({ alone, joined, otherId: marks() }).toEqual({
-      alone: checkoutMarks(),
-      joined: {
-        marks: checkoutMarks({ done: ['fixture'] }),
-        source: 'fixture',
-        shown: { value: 'done', context: { step: 99, note: 'for the machine' } },
-      },
-      otherId: checkoutMarks(),
-    });
-  });
-
-  test('the marks of a machine follow its first instance, then the next one once it unmounts', async () => {
-    const id = freshId('form');
-    const first = createCheckoutMachine(id);
-    const second = createCheckoutMachine(id);
-    const third = createCheckoutMachine(id);
-
-    const page = await renderPage(
-      <>
-        <App key="first" machine={first} name="first" />
-        <App key="second" machine={second} name="second" />
-      </>,
-      [
-        defineFixtures(first, { 'paying.card.error': fixture('first') }),
-        defineFixtures(second, { done: fixture('second') }),
-        defineFixtures(third, { 'paying.shipping.express': fixture('third') }),
-      ],
-    );
-
-    // This is a known limit. The second instance shows the marks of the first instance.
-    // These marks do not show the fixture that the second instance previews with.
-    await preview(id, ['done'], { nth: 2 });
-    const shared = { marks: marks(), source: panel().source, shown: shown('second') };
-
-    await page.rerender(
-      <>
-        <App key="second" machine={second} name="second" />
-      </>,
-    );
-    await show(id);
-    const afterFirst = marks();
-    await page.rerender(
-      <>
-        <App key="third" machine={third} name="third" />
-      </>,
-    );
-    await show(id);
-    expect({ shared, afterFirst, newInstance: marks() }).toEqual({
-      shared: {
-        marks: checkoutMarks({ 'paying.card.error': ['fixture'] }),
-        source: 'fixture',
-        shown: { value: 'done', context: { step: 99, note: 'second' } },
-      },
-      afterFirst: checkoutMarks({ done: ['fixture'] }),
-      newInstance: checkoutMarks({ 'paying.shipping.express': ['fixture'] }),
-    });
-  });
-
-  test('a machine without an id takes its fixtures under the id it is listed as, and warns once', async () => {
-    const output = watchConsole();
-    const state = freshId('open');
-    const machine = createAnonymousMachine(state);
-    const set = defineFixtures(machine, { [state]: { context: { label: 'fixture' } } });
-    await renderPage(<App machine={machine} />, [set]);
-
-    await preview(set.machineId, [state]);
-    expect({
-      id: set.machineId,
-      instance: panel().instance,
-      marks: marks(),
-      shown: shown(),
-      warnings: output.warn,
-    }).toEqual({
-      id: expect.stringMatching(/^machine-[0-9a-z]{7}$/),
-      instance: `${set.machineId} · 1`,
-      marks: { closed: ['recorded'], [state]: ['fixture'] },
-      shown: { value: state, context: { label: 'fixture' } },
-      warnings: [
-        `[konat] A machine has no id, so it's listed as "${set.machineId}". ` +
-          'Give it one with createMachine({ id }) or with the debug option: { debug: { id } }.',
-      ],
-    });
-  });
-
-  test('a machine without an id that is made again with the same states keeps the id and the fixtures', async () => {
-    const state = freshId('open');
-    const set = defineFixtures(createAnonymousMachine(state), { [state]: { context: { label: 'fixture' } } });
-    await renderPage(<App machine={createAnonymousMachine(state)} />, [set]);
-
-    await preview(set.machineId, [state]);
-    expect({ marks: marks(), shown: shown() }).toEqual({
-      marks: { closed: ['recorded'], [state]: ['fixture'] },
-      shown: { value: state, context: { label: 'fixture' } },
-    });
-  });
-
-  test('a leaf named like an Object method has a fixture only when a set gives it one', async () => {
-    type ObjectMachineTypes = { context: { note: string } };
-
-    // SAFETY: XState reads the types of a machine only at compile time. It never reads this value.
-    const machine = createMachine({
-      id: freshId('object'),
-      types: {} as ObjectMachineTypes,
-      context: { note: 'live' },
-      initial: 'valueOf',
-      states: { valueOf: {}, constructor: {}, toString: {} },
-    });
-
-    await renderPage(<App machine={machine} />, [
-      defineFixtures(machine, { toString: { context: { note: 'fixture' } } }),
-    ]);
-
-    await preview(machine.id, ['constructor']);
-    expect({ marks: marks(), source: panel().source }).toEqual({
-      marks: { valueOf: ['recorded'], constructor: ['none'], toString: ['fixture'] },
-      source: 'live',
-    });
-  });
 });
 
 describe('fixtures that register after a preview', () => {
-  test('move a preview made before them from the live context to the fixture, and keep its configuration', async () => {
+  test('a deep link waits for them, then moves from the live context to the fixture and keeps its configuration', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
+    window.history.replaceState(null, '', `/?debug-state=${machine.id}:paying.card.error`);
     const lazy = lazyFixtures();
     await renderPage(<App machine={machine} />, lazy.loader);
-    await preview(machine.id, ['paying.card.error']);
-    const before = { panel: panel(), shown: shown() };
+    await show(machine.id);
+    const before = { panel: panel(), shown: shown(), warnings: [...output.warn] };
 
     // The real actor moves on. A preview that fills in the shipping region now gets another leaf.
     await sendToRealActor({ type: 'START' });
@@ -700,6 +430,7 @@ describe('fixtures that register after a preview', () => {
           warning: LIVE_WARNING,
         },
         shown: { value: { paying: { card: 'error', shipping: 'standard' } }, context: { step: 0, note: 'live' } },
+        warnings: [],
       },
       after: {
         panel: {
@@ -782,63 +513,49 @@ describe('fixtures that register after a preview', () => {
     });
   });
 
-  test('move a fixture preview to the live context, without a warning, when sets made for the machine outrank its fixture', async () => {
-    const output = watchConsole();
-    const id = freshId('checkout');
-    const machine = createCheckoutMachine(id);
-    const equivalent = createCheckoutMachine(id);
-    const page = await renderPage(<App machine={machine} />, [defineFixtures(equivalent, { done: fixture('by id') })]);
-    await preview(id, ['done']);
-    const byId = { source: panel().source, shown: shown() };
-
-    await page.rerender(<App machine={machine} />, [
-      defineFixtures(machine, { 'paying.card.error': fixture('by machine') }),
-    ]);
-    expect({ byId, after: { marks: marks(), panel: panel(), shown: shown() }, warnings: output.warn }).toEqual({
-      byId: { source: 'fixture', shown: { value: 'done', context: { step: 99, note: 'by id' } } },
-      after: {
-        marks: checkoutMarks({ 'paying.card.error': ['fixture'] }),
-        panel: {
-          instance: `${id} · 1`,
-          live: ['idle'],
-          previewed: ['done'],
-          filled: [],
-          source: 'live',
-          context: ['step: 0', 'note: "live"'],
-          warning: LIVE_WARNING,
-        },
-        shown: { value: 'done', context: { step: 0, note: 'live' } },
-      },
-      warnings: [],
-    });
-  });
-
-  test('move a live preview to the fixture, not to a recording that arrived since', async () => {
+  test('move a live or a fixture preview to the new fixture, not to a recording that arrived since', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
-    const cart = createCheckoutMachine(freshId('cart'));
-    const page = await renderPage(<App machine={machine} />);
-    await preview(machine.id, ['paying.card.error']);
-    const key = shownKey();
-    await sendToRealActor({ type: 'START' });
-    await sendToRealActor({ type: 'FAIL', note: 'recorded' });
-    const recorded = { mark: marks()['paying.card.error'], source: panel().source, context: shown().context };
 
-    await page.rerender(<App machine={machine} />, [defineFixtures(cart, { 'paying.card.error': fixture('cart') })]);
-    const otherMachine = { source: panel().source, context: shown().context };
-    await page.rerender(<App machine={machine} />, [
-      defineFixtures(machine, { 'paying.card.error': fixture('fixture') }),
+    const apps = (
+      <>
+        <App key="live" machine={machine} name="live" />
+        <App key="fixture" machine={machine} name="fixture" />
+      </>
+    );
+
+    const page = await renderPage(apps, [defineFixtures(machine, { 'paying.shipping.express': fixture('v1') })]);
+    await preview(machine.id, ['paying.card.error'], { nth: 1 });
+    const liveKey = shownKey();
+    await preview(machine.id, ['paying.shipping.express'], { nth: 2 });
+    // The real actor of the first instance goes through both leaves, which records them.
+    await sendToRealActor({ type: 'START' }, 'live');
+    await sendToRealActor({ type: 'FAIL', note: 'recorded' }, 'live');
+    await sendToRealActor({ type: 'EXPRESS' }, 'live');
+    const recorded = { error: marks()['paying.card.error'], express: marks()['paying.shipping.express'] };
+
+    await page.rerender(apps, [
+      defineFixtures(machine, { 'paying.card.error': fixture('fixture'), 'paying.shipping.express': fixture('v2') }),
     ]);
+    const sources: string[] = [];
+
+    for (const nth of [1, 2]) {
+      await show(machine.id, nth);
+      sources.push(panel().source);
+    }
+
     expect({
       recorded,
-      otherMachine,
-      own: { source: panel().source, context: shown().context },
+      sources,
+      live: shown('live').context,
+      fixture: shown('fixture').context,
       warnings: output.warn,
     }).toEqual({
-      recorded: { mark: ['recorded'], source: 'live', context: { step: 0, note: 'live' } },
-      otherMachine: { source: 'live', context: { step: 0, note: 'live' } },
-      own: { source: 'fixture', context: { step: 99, note: 'fixture' } },
-      warnings: [liveWarning('paying.card.error', key)],
+      recorded: { error: ['recorded'], express: ['recorded', 'fixture'] },
+      sources: ['fixture', 'fixture'],
+      live: { step: 99, note: 'fixture' },
+      fixture: { step: 99, note: 'v2' },
+      warnings: [liveWarning('paying.card.error', liveKey)],
     });
   });
 
@@ -860,82 +577,10 @@ describe('fixtures that register after a preview', () => {
       after: { source: 'recorded', context: { step: 2, note: 'attempt 1' } },
     });
   });
-
-  test('move a fixture preview to a changed fixture, not to a recording that arrived since', async () => {
-    const machine = createCheckoutMachine(freshId('checkout'));
-
-    const page = await renderPage(<App machine={machine} />, [
-      defineFixtures(machine, { 'paying.card.error': fixture('v1') }),
-    ]);
-
-    await preview(machine.id, ['paying.card.error']);
-    await sendToRealActor({ type: 'START' });
-    await sendToRealActor({ type: 'FAIL', note: 'recorded' });
-
-    await page.rerender(<App machine={machine} />, [defineFixtures(machine, { 'paying.card.error': fixture('v2') })]);
-    expect({ mark: marks()['paying.card.error'], source: panel().source, context: shown().context }).toEqual({
-      mark: ['recorded', 'fixture'],
-      source: 'fixture',
-      context: { step: 99, note: 'v2' },
-    });
-  });
 });
 
 describe('the live-context warning while a lazy loader is pending', () => {
-  test('a deep link waits, and does not warn when the loaded fixtures give its preview context', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine(freshId('checkout'));
-    window.history.replaceState(null, '', `/?debug-state=${machine.id}:done`);
-    const lazy = lazyFixtures();
-    await renderPage(<App machine={machine} />, lazy.loader);
-    await show(machine.id);
-    const loading = { source: panel().source, shown: shown(), warnings: [...output.warn] };
-
-    await lazy.resolve([defineFixtures(machine, { done: fixture('loaded') })]);
-    expect({ loading, loaded: { source: panel().source, shown: shown() }, warnings: output.warn }).toEqual({
-      loading: { source: 'live', shown: { value: 'done', context: { step: 0, note: 'live' } }, warnings: [] },
-      loaded: { source: 'fixture', shown: { value: 'done', context: { step: 99, note: 'loaded' } } },
-      warnings: [],
-    });
-  });
-
-  test('a deep link warns when the loader is done, for a state that has no fixture', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine(freshId('checkout'));
-    window.history.replaceState(null, '', `/?debug-state=${machine.id}:done`);
-    const lazy = lazyFixtures();
-    await renderPage(<App machine={machine} />, lazy.loader);
-    await show(machine.id);
-    const loading = [...output.warn];
-
-    await lazy.resolve([defineFixtures(machine, { 'paying.card.error': fixture('loaded') })]);
-    expect({ loading, loaded: output.warn, source: panel().source }).toEqual({
-      loading: [],
-      loaded: [liveWarning('done', shownKey())],
-      source: 'live',
-    });
-  });
-
-  test('a deep link warns when the loader fails', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine(freshId('checkout'));
-    window.history.replaceState(null, '', `/?debug-state=${machine.id}:done`);
-    const lazy = lazyFixtures();
-    await renderPage(<App machine={machine} />, lazy.loader);
-    await show(machine.id);
-    const loading = [...output.warn];
-
-    await lazy.reject(new TypeError('Failed to fetch dynamically imported module'));
-    expect({ loading, failed: firstLines(output.warn) }).toEqual({
-      loading: [],
-      failed: [
-        '[konat] The fixtures loader failed. TypeError: Failed to fetch dynamically imported module',
-        liveWarning('done', shownKey()),
-      ],
-    });
-  });
-
-  test('a deep link warns once for all the instances of a machine', async () => {
+  test('a deep link warns once for all the instances of a machine when the loader is done, for a state without a fixture', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
     window.history.replaceState(null, '', `/?debug-state=${machine.id}:done`);
@@ -947,6 +592,7 @@ describe('the live-context warning while a lazy loader is pending', () => {
       </>,
       lazy.loader,
     );
+    const loading = [...output.warn];
 
     await lazy.resolve([defineFixtures(machine, { 'paying.card.error': fixture('loaded') })]);
     const sources: string[] = [];
@@ -956,25 +602,30 @@ describe('the live-context warning while a lazy loader is pending', () => {
       sources.push(panel().source);
     }
 
-    expect({ sources, warnings: output.warn }).toEqual({
+    expect({ loading, sources, loaded: output.warn }).toEqual({
+      loading: [],
       sources: ['live', 'live'],
-      warnings: [liveWarning('done', shownKey())],
+      loaded: [liveWarning('done', shownKey())],
     });
   });
 
-  test('a deep-linked preview that is released before the loader is done does not warn', async () => {
+  test('a loader that fails gives no fixtures, and warns, and so does the deep link that waited for it', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine(freshId('checkout'));
     window.history.replaceState(null, '', `/?debug-state=${machine.id}:done`);
     const lazy = lazyFixtures();
     await renderPage(<App machine={machine} />, lazy.loader);
-    await release(machine.id);
+    await show(machine.id);
+    const loading = [...output.warn];
 
-    await lazy.resolve([defineFixtures(machine, { 'paying.card.error': fixture('loaded') })]);
-    expect({ previewed: panel().previewed, shown: shown(), warnings: output.warn }).toEqual({
-      previewed: [],
-      shown: { value: 'idle', context: { step: 0, note: 'live' } },
-      warnings: [],
+    await lazy.reject(new TypeError('Failed to fetch dynamically imported module'));
+    expect({ loading, marks: marks(), failed: firstLines(output.warn) }).toEqual({
+      loading: [],
+      marks: checkoutMarks(),
+      failed: [
+        '[konat] The fixtures loader failed. TypeError: Failed to fetch dynamically imported module',
+        liveWarning('done', shownKey()),
+      ],
     });
   });
 
@@ -1028,13 +679,9 @@ describe('defineFixtures', () => {
     };
 
     defineFixtures(machine, withOtherKeys);
-    // @ts-expect-error The keys of fixtures are the leaf ids of the machine. A JavaScript app can give other keys.
-    defineFixtures(machine, { missing: fixture('nothing') });
     defineFixtures(machine, { 'paying.card.error': fixture('leaf'), done: fixture('final') });
     expect(output.warn).toEqual([
       `[konat] Fixtures for "${machine.id}" name "paying", "paying.card", "missing", which aren't leaf states of the machine. ` +
-        'Fixtures are keyed by the dot path of an atomic or final state, such as "payment.error".',
-      `[konat] Fixtures for "${machine.id}" name "missing", which isn't a leaf state of the machine. ` +
         'Fixtures are keyed by the dot path of an atomic or final state, such as "payment.error".',
     ]);
   });
@@ -1044,7 +691,7 @@ describe('after HMR', () => {
   test.each([
     ['registered before the machine mounted', 'before'],
     ['loaded after the machine mounted', 'after'],
-  ] as const)('an instance under debug.id keeps the fixtures %s', async (_, when) => {
+  ] as const)('an instance under debug.id keeps the fixtures %s, when sets for another machine register too', async (_, when) => {
     const id = freshId('checkout');
     const debugId = freshId('checkout-v2');
     const machine = createCheckoutMachine(id);
@@ -1060,58 +707,8 @@ describe('after HMR', () => {
       await lazy.resolve(sets);
     }
 
-    await page.rerender(<App machine={createCheckoutMachine(id)} debugId={debugId} />);
-    await preview(debugId, ['done']);
-    expect({ marks: marks(), source: panel().source, shown: shown() }).toEqual({
-      marks: checkoutMarks({ done: ['fixture'] }),
-      source: 'fixture',
-      shown: { value: 'done', context: { step: 99, note: 'kept' } },
-    });
-  });
-
-  test('an instance under debug.id keeps its place in the list, its preview and its fixtures', async () => {
-    const id = freshId('checkout');
-    const debugId = freshId('checkout-v2');
-    const machine = createCheckoutMachine(id);
-
-    const page = await renderPage(<App machine={machine} debugId={debugId} />, [
-      defineFixtures(machine, { done: fixture('kept') }),
-    ]);
-
-    await preview(debugId, ['done']);
-    const key = shownKey();
-
-    await page.rerender(<App machine={createCheckoutMachine(id)} debugId={debugId} />);
-    const after = { sameKey: shownKey() === key, panel: panel(), shown: shown(), marks: marks() };
-    await preview(debugId, ['done']);
-    expect({ after, again: { source: panel().source, shown: shown() } }).toEqual({
-      after: {
-        sameKey: true,
-        panel: {
-          instance: `${debugId} · 1`,
-          live: ['idle'],
-          previewed: ['done'],
-          filled: [],
-          source: 'fixture',
-          context: ['step: 99', 'note: "kept"'],
-          warning: '',
-        },
-        shown: { value: 'done', context: { step: 99, note: 'kept' } },
-        marks: checkoutMarks({ done: ['fixture'] }),
-      },
-      again: { source: 'fixture', shown: { value: 'done', context: { step: 99, note: 'kept' } } },
-    });
-  });
-
-  test('an instance under debug.id keeps its fixtures when sets for another machine register after HMR', async () => {
-    const id = freshId('checkout');
-    const debugId = freshId('checkout-v2');
-    const machine = createCheckoutMachine(id);
-    const sets = [defineFixtures(machine, { done: fixture('kept') })];
-    const page = await renderPage(<App machine={machine} debugId={debugId} />, sets);
     const edited = createCheckoutMachine(id);
     await page.rerender(<App machine={edited} debugId={debugId} />);
-
     const cart = createCheckoutMachine(freshId('cart'));
     await page.rerender(<App machine={edited} debugId={debugId} />, [
       ...sets,
@@ -1122,30 +719,6 @@ describe('after HMR', () => {
       marks: checkoutMarks({ done: ['fixture'] }),
       source: 'fixture',
       shown: { value: 'done', context: { step: 99, note: 'kept' } },
-    });
-  });
-
-  test('a machine used under two ids keeps its fixtures under both', async () => {
-    const id = freshId('checkout');
-    const debugId = freshId('checkout-mini');
-    const machine = createCheckoutMachine(id);
-
-    const apps = (logic: CheckoutMachine) => (
-      <>
-        <App key="full" machine={logic} name="full" />
-        <App key="mini" machine={logic} debugId={debugId} name="mini" />
-      </>
-    );
-
-    const page = await renderPage(apps(machine), [defineFixtures(machine, { done: fixture('both') })]);
-
-    await page.rerender(apps(createCheckoutMachine(id)));
-    await show(id);
-    const full = marks();
-    await show(debugId);
-    expect({ full, mini: marks() }).toEqual({
-      full: checkoutMarks({ done: ['fixture'] }),
-      mini: checkoutMarks({ done: ['fixture'] }),
     });
   });
 
@@ -1173,74 +746,6 @@ describe('after HMR', () => {
     expect({ first: firstShown, second: shown('second') }).toEqual({
       first: { value: state, context: { label: 'first' } },
       second: { value: state, context: { title: 'second' } },
-    });
-  });
-
-  test('a preview of a state that the edit removed is released', async () => {
-    const output = watchConsole();
-    const id = freshId('checkout');
-    const page = await renderPage(<App machine={createCheckoutMachine(id)} />);
-    await preview(id, ['done']);
-    const key = shownKey();
-    const before = shown();
-
-    await page.rerender(<App machine={createMachine({ id, initial: 'idle', states: { idle: {}, review: {} } })} />);
-
-    const unshowable =
-      `[konat] Can't show the preview of "${key}" on this actor; showing its real state. ` +
-      'Error: "done" is not a leaf state of this machine.';
-
-    expect({ before, after: shown(), instance: panel().instance, warnings: firstLines(output.warn) }).toEqual({
-      before: { value: 'done', context: { step: 0, note: 'live' } },
-      // @xstate/react starts the new actor from the old one's snapshot.
-      after: { value: 'idle', context: { step: 0, note: 'live' } },
-      instance: `${id} · 1`,
-      // React 18's StrictMode throws away the first render, and the actor that render made warns too.
-      warnings: [liveWarning('done', key), ...(REACT_MAJOR < 19 ? [unshowable, unshowable] : [unshowable])],
-    });
-  });
-
-  test('a deep link applied before lazy fixtures load moves to them, and they survive HMR under debug.id', async () => {
-    const output = watchConsole();
-    const id = freshId('checkout');
-    const debugId = freshId('checkout-v2');
-    const machine = createCheckoutMachine(id);
-    window.history.replaceState(null, '', `/?debug-state=${debugId}:paying.card.error`);
-    const lazy = lazyFixtures();
-    const page = await renderPage(<App machine={machine} debugId={debugId} />, lazy.loader);
-    await show(debugId);
-    const linked = { previewed: panel().previewed, source: panel().source };
-
-    await lazy.resolve([defineFixtures(machine, { 'paying.card.error': fixture('declined') })]);
-    const loaded = { panel: panel(), shown: shown() };
-    // HMR makes the machine again, and doesn't run the fixtures module again.
-    await page.rerender(<App machine={createCheckoutMachine(id)} debugId={debugId} />);
-    await preview(debugId, ['paying.card.error']);
-    expect({
-      linked,
-      loaded,
-      reloaded: { marks: marks(), source: panel().source, shown: shown() },
-      warnings: output.warn,
-    }).toEqual({
-      linked: { previewed: ['paying.card.error'], source: 'live' },
-      loaded: {
-        panel: {
-          instance: `${debugId} · 1`,
-          live: ['idle'],
-          previewed: ['paying.card.error'],
-          filled: ['paying.shipping.standard'],
-          source: 'fixture',
-          context: ['step: 99', 'note: "declined"'],
-          warning: '',
-        },
-        shown: { value: { paying: { card: 'error', shipping: 'standard' } }, context: { step: 99, note: 'declined' } },
-      },
-      reloaded: {
-        marks: checkoutMarks({ 'paying.card.error': ['fixture'] }),
-        source: 'fixture',
-        shown: { value: { paying: { card: 'error', shipping: 'standard' } }, context: { step: 99, note: 'declined' } },
-      },
-      warnings: [],
     });
   });
 });

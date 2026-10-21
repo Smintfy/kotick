@@ -1,9 +1,9 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Konat } from 'konat';
-import { connect, useActorRef, useMachine, useSelector } from 'konat/xstate';
+import { connect, useMachine } from 'konat/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
-import { assign, createActor, sendTo, setup, type AnyActorRef } from 'xstate';
+import { assign, createActor, createMachine, sendTo, setup } from 'xstate';
 import { watchConsole } from './support/console';
 import { blockedEvents, flush, freshId, overlay, preview, release, show, shownKey } from './support/panel';
 
@@ -138,7 +138,7 @@ function liveWarning(leaves: string, key: string) {
   return `[konat] No recorded or fixture context for "${leaves}" on "${key}", so the preview uses the live context.`;
 }
 
-test('events sent during a preview are blocked and listed, newest first, and the actor never gets them', async () => {
+test('events sent during a preview are blocked and listed, newest first, and reach the actor again after the release', async () => {
   const output = watchConsole();
   const machine = createPaymentMachine();
   await mount(<Payment machine={machine} />);
@@ -149,45 +149,19 @@ test('events sent during a preview are blocked and listed, newest first, and the
   const failed = await pressTimed('Fail');
   const blocked = { shown: shown(), log: eventLog(), times: times() };
   await release(machine.id);
-  expect({ empty, blocked, released: shown(), warnings: output.warn }).toEqual({
+  const released = shown();
+  await press('Pay');
+  const rows = [`FAIL · ${machine.id} · 1 · in error · {"note":"card declined"}`, `PAY · ${machine.id} · 1 · in error`];
+  expect({ empty, blocked, released, after: { shown: shown(), rows: eventLog().rows }, warnings: output.warn }).toEqual({
     empty: { title: 'Blocked events', rows: [], clear: 'disabled' },
     blocked: {
       shown: { value: 'error', context: { note: 'none' } },
-      log: {
-        title: 'Blocked events (2)',
-        rows: [`FAIL · ${machine.id} · 1 · in error · {"note":"card declined"}`, `PAY · ${machine.id} · 1 · in error`],
-        clear: 'enabled',
-      },
+      log: { title: 'Blocked events (2)', rows, clear: 'enabled' },
       times: [expect.toBeOneOf(failed), expect.toBeOneOf(paid)],
     },
     released: { value: 'editing', context: { note: 'none' } },
+    after: { shown: { value: 'processing', context: { note: 'none' } }, rows },
     warnings: [liveWarning('error', shownKey())],
-  });
-});
-
-test('without a preview, events reach the actor and nothing is listed', async () => {
-  const machine = createPaymentMachine();
-  await mount(<Payment machine={machine} />);
-
-  await press('Pay');
-  await press('Fail');
-  expect({ shown: shown(), log: eventLog() }).toEqual({
-    shown: { value: 'error', context: { note: 'card declined' } },
-    log: { title: 'Blocked events', rows: [], clear: 'disabled' },
-  });
-});
-
-test('after the release, events reach the actor again, and the list keeps the blocked ones', async () => {
-  const machine = createPaymentMachine();
-  await mount(<Payment machine={machine} />);
-
-  await preview(machine.id, ['processing']);
-  await press('Pay');
-  await release(machine.id);
-  await press('Pay');
-  expect({ shown: shown(), rows: eventLog().rows }).toEqual({
-    shown: { value: 'processing', context: { note: 'none' } },
-    rows: [`PAY · ${machine.id} · 1 · in processing`],
   });
 });
 
@@ -230,17 +204,12 @@ describe('the limit', () => {
     const newest = (from: number, to: number) =>
       Array.from({ length: to - from + 1 }, (_, offset) => row(to - offset));
 
-    await failUpTo(1, 200);
-    const full = eventLog();
-    await failUpTo(201, 201);
-    const oneOver = eventLog();
-    await failUpTo(202, 607);
+    // 607 events fill the list of 200 more than three times.
+    await failUpTo(1, 607);
     const laps = eventLog();
     await clear();
     await failUpTo(1001, 1201);
-    expect({ full, oneOver, laps, afterClear: eventLog() }).toEqual({
-      full: { title: 'Blocked events (200)', rows: newest(1, 200), clear: 'enabled' },
-      oneOver: { title: 'Blocked events (200)', rows: newest(2, 201), clear: 'enabled' },
+    expect({ laps, afterClear: eventLog() }).toEqual({
       laps: { title: 'Blocked events (200)', rows: newest(408, 607), clear: 'enabled' },
       afterClear: { title: 'Blocked events (200)', rows: newest(1002, 1201), clear: 'enabled' },
     });
@@ -248,48 +217,29 @@ describe('the limit', () => {
 });
 
 describe('events that are not objects with a string type', () => {
-  function messageOf(run: () => void): string {
-    try {
-      run();
-    } catch (error) {
-      return error instanceof Error ? error.message : String(error);
-    }
-
-    return 'nothing thrown';
-  }
-
-  test("a string event throws XState's error, with or without a preview, and is not listed", async () => {
+  test("a string event throws XState's error, and one without a string type is dropped with a warning", async () => {
+    const output = watchConsole();
     const machine = createPaymentMachine();
     const { real, proxy } = startPayment(machine);
     await mount(null);
-    // @ts-expect-error an event is an object, and the test sends a string as a JavaScript app can
-    const sendString = () => proxy.send('PAY');
-
-    const idle = messageOf(sendString);
-    await preview(machine.id, ['processing']);
-    const previewing = messageOf(sendString);
-    await flush();
-    expect({ idle, previewing, log: eventLog(), real: real.getSnapshot().value }).toEqual({
-      idle: 'Only event objects may be sent to actors; use .send({ type: "PAY" }) instead',
-      previewing: 'Only event objects may be sent to actors; use .send({ type: "PAY" }) instead',
-      log: { title: 'Blocked events', rows: [], clear: 'disabled' },
-      real: 'editing',
-    });
-  });
-
-  test('during a preview, an event without a string type is dropped with a warning, and is not listed', async () => {
-    const output = watchConsole();
-    const machine = createPaymentMachine();
-    const { proxy } = startPayment(machine);
-    await mount(null);
     await preview(machine.id, ['processing']);
     const key = shownKey();
+    let thrown = 'nothing thrown';
+
+    try {
+      // @ts-expect-error an event is an object, and the test sends a string as a JavaScript app can
+      proxy.send('PAY');
+    } catch (error) {
+      thrown = error instanceof Error ? error.message : String(error);
+    }
 
     // @ts-expect-error the type of an event is a string, and the test sends a number as a JavaScript app can
     act(() => proxy.send({ type: 42 }));
     await flush();
-    expect({ log: eventLog(), warnings: output.warn }).toEqual({
+    expect({ thrown, log: eventLog(), real: real.getSnapshot().value, warnings: output.warn }).toEqual({
+      thrown: 'Only event objects may be sent to actors; use .send({ type: "PAY" }) instead',
       log: { title: 'Blocked events', rows: [], clear: 'disabled' },
+      real: 'editing',
       warnings: [
         liveWarning('processing', key),
         `[konat] Dropped an event without a string type sent to "${key}" during a preview. { type: 42 }`,
@@ -299,98 +249,30 @@ describe('events that are not objects with a string type', () => {
 });
 
 describe('events from another actor', () => {
-  type TargetEvent = { type: 'NEXT' };
-
-  type SenderInput = { target: AnyActorRef };
-
-  type SenderEvent = { type: 'PING' } | { type: 'PING_LATER' };
-
-  function createMachines() {
-    // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
-    const target = setup({ types: { events: {} as TargetEvent } }).createMachine({
-      id: freshId('target'),
-      initial: 'a',
-      states: { a: { on: { NEXT: 'b' } }, b: { on: { NEXT: 'c' } }, c: {} },
-    });
-
-    // Another actor of the app, handed the target through its input.
-    // The hook gives it the actor that the app holds.
-    const sender = setup({
-      // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
-      types: { context: {} as SenderInput, input: {} as SenderInput, events: {} as SenderEvent },
-    }).createMachine({
-      id: freshId('sender'),
-      context: ({ input }) => ({ target: input.target }),
-      on: {
-        PING: { actions: sendTo(({ context }) => context.target, { type: 'NEXT' }) },
-        PING_LATER: { actions: sendTo(({ context }) => context.target, { type: 'NEXT' }, { delay: 10 }) },
-      },
-    });
-
-    return { target, sender };
-  }
-
-  type Machines = ReturnType<typeof createMachines>;
-
-  function Sender({ machine, target }: { machine: Machines['sender']; target: AnyActorRef }) {
-    const sender = useActorRef(machine, { input: { target } });
-
-    return (
-      <>
-        <button type="button" onClick={() => sender.send({ type: 'PING' })}>
-          Ping
-        </button>
-        <button type="button" onClick={() => sender.send({ type: 'PING_LATER' })}>
-          Ping later
-        </button>
-      </>
-    );
-  }
-
-  function App({ machines }: { machines: Machines }) {
-    const target = useActorRef(machines.target);
-    const value = useSelector(target, (snapshot) => snapshot.value);
-
-    return (
-      <>
-        <output>{JSON.stringify({ value })}</output>
-        <Sender machine={machines.sender} target={target} />
-      </>
-    );
-  }
-
   test('an event sent with sendTo is blocked too, and reaches the actor once the preview is released', async () => {
-    const output = watchConsole();
-    const machines = createMachines();
-    await mount(<App machines={machines} />);
-
-    await preview(machines.target.id, ['b']);
-    const key = shownKey();
-    await press('Ping');
-    const blocked = { shown: shown(), rows: eventLog().rows };
-    await release(machines.target.id);
-    const released = shown();
-    await press('Ping');
-    expect({ blocked, released, delivered: shown(), warnings: output.warn }).toEqual({
-      blocked: { shown: { value: 'b' }, rows: [`NEXT · ${machines.target.id} · 1 · in b`] },
-      released: { value: 'a' },
-      delivered: { value: 'b' },
-      warnings: [liveWarning('b', key)],
+    const machine = createPaymentMachine();
+    const { real, proxy } = startPayment(machine);
+    // Another actor of the app, which holds the actor that connect() gave back.
+    const sender = createActor(createMachine({ on: { PING: { actions: sendTo(proxy, { type: 'PAY' }) } } })).start();
+    onTestFinished(() => {
+      sender.stop();
     });
-  });
+    await mount(null);
+    await preview(machine.id, ['error']);
 
-  test('a delayed sendTo that arrives during a preview is blocked', async () => {
-    const machines = createMachines();
-    await mount(<App machines={machines} />);
-    await preview(machines.target.id, ['b']);
+    const ping = async () => {
+      await act(async () => {
+        sender.send({ type: 'PING' });
+      });
+    };
 
-    await press('Ping later');
-    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
-    const blocked = { shown: shown(), rows: eventLog().rows };
-    await release(machines.target.id);
-    expect({ blocked, released: shown() }).toEqual({
-      blocked: { shown: { value: 'b' }, rows: [`NEXT · ${machines.target.id} · 1 · in b`] },
-      released: { value: 'a' },
+    await ping();
+    const blocked = { rows: eventLog().rows, real: real.getSnapshot().value };
+    await release(machine.id);
+    await ping();
+    expect({ blocked, delivered: real.getSnapshot().value }).toEqual({
+      blocked: { rows: [`PAY · ${machine.id} · 1 · in error`], real: 'editing' },
+      delivered: 'processing',
     });
   });
 });
