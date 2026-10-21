@@ -36,7 +36,10 @@ export const signupMachine = setup({
         src: 'subscribe',
         input: ({ context }) => ({ email: context.email }),
         onDone: 'subscribed',
-        onError: { target: 'failed', actions: assign({ error: ({ event }) => (event.error as Error).message }) },
+        onError: {
+          target: 'failed',
+          actions: assign({ error: ({ event }) => (event.error instanceof Error ? event.error.message : 'The request failed.') }),
+        },
       },
     },
     failed: {
