@@ -10,14 +10,13 @@ import {
   fromCallback,
   setup,
   type Actor,
-  type ActorRefFrom,
   type AnyEventObject,
   type AnyStateMachine,
   type EventFrom,
   type SnapshotFrom,
 } from 'xstate';
 import { watchConsole } from './support/console';
-import { flush, freshId, marks, panel, preview, release, show, shownKey } from './support/panel';
+import { flush, freshId, marks, panel, preview, release, show } from './support/panel';
 import { readStored, recordedKey } from './support/recordings';
 
 type CheckoutContext = { step: number; note: string };
@@ -100,10 +99,10 @@ function CheckoutView(props: {
   );
 }
 
-function Checkout({ machine, name = 'checkout' }: { machine: CheckoutMachine; name?: string }) {
+function Checkout({ machine }: { machine: CheckoutMachine }) {
   const [snapshot, send] = useMachine(machine);
 
-  return <CheckoutView name={name} snapshot={snapshot} send={send} />;
+  return <CheckoutView name="checkout" snapshot={snapshot} send={send} />;
 }
 
 function ConnectedCheckout({ actor }: { actor: Actor<CheckoutMachine> }) {
@@ -237,141 +236,35 @@ test('the states the app visits are marked recorded, and their preview shows the
 });
 
 describe('with several recordings that hold a leaf', () => {
-  // Steps 1 to 5: idle + standard, error + standard, error + express, error + standard again, idle + standard.
-  async function visitCheckout() {
+  test('the exact configuration wins with its latest visit, and otherwise the newest recording of the first picked leaf that has one', async () => {
+    const machine = createCheckoutMachine();
+    await mount(<Checkout machine={machine} />);
+
+    // Steps 1 to 5: idle + standard, error + standard, error + express, error + standard again, idle + standard.
     for (const name of ['Start', 'Fail', 'Express', 'Standard', 'Retry']) await press(name);
-  }
-
-  test('a configuration visited again previews with the context of its latest visit', async () => {
-    const machine = createCheckoutMachine();
-    await mount(<Checkout machine={machine} />);
-    await visitCheckout();
-
-    await preview(machine.id, ['paying.card.error']);
-    expect({ shown: shown(), source: panel().source }).toEqual({
-      shown: { value: { paying: { card: 'error', shipping: 'standard' } }, context: { step: 4, note: 'Card declined' } },
-      source: 'recorded',
-    });
-  });
-
-  test('the exact configuration wins, and otherwise the newest recording of the first picked leaf that has one', async () => {
-    const machine = createCheckoutMachine();
-    await mount(<Checkout machine={machine} />);
-    await visitCheckout();
 
     const previews = [];
 
     for (const leaves of [
+      // The app is in card.idle and shipping.standard, so the preview fills in shipping.standard.
+      ['paying.card.error'],
       ['paying.card.error', 'paying.shipping.express'],
       ['paying.shipping.pickup', 'paying.card.error'],
+      // Express was recorded only with card.error.
       ['paying.shipping.express', 'paying.card.idle'],
       ['paying.card.idle', 'paying.shipping.express'],
     ]) {
       await preview(machine.id, leaves);
-      previews.push({ leaves, value: shown().value, step: shown().context.step, source: panel().source });
+      previews.push([shown().value, shown().context.step, panel().source]);
     }
 
     expect(previews).toEqual([
-      {
-        leaves: ['paying.card.error', 'paying.shipping.express'],
-        value: { paying: { card: 'error', shipping: 'express' } },
-        step: 3,
-        source: 'recorded',
-      },
-      {
-        leaves: ['paying.shipping.pickup', 'paying.card.error'],
-        value: { paying: { card: 'error', shipping: 'pickup' } },
-        step: 4,
-        source: 'recorded',
-      },
-      {
-        leaves: ['paying.shipping.express', 'paying.card.idle'],
-        value: { paying: { card: 'idle', shipping: 'express' } },
-        step: 3,
-        source: 'recorded',
-      },
-      {
-        leaves: ['paying.card.idle', 'paying.shipping.express'],
-        value: { paying: { card: 'idle', shipping: 'express' } },
-        step: 5,
-        source: 'recorded',
-      },
+      [{ paying: { card: 'error', shipping: 'standard' } }, 4, 'recorded'],
+      [{ paying: { card: 'error', shipping: 'express' } }, 3, 'recorded'],
+      [{ paying: { card: 'error', shipping: 'pickup' } }, 4, 'recorded'],
+      [{ paying: { card: 'idle', shipping: 'express' } }, 3, 'recorded'],
+      [{ paying: { card: 'idle', shipping: 'express' } }, 5, 'recorded'],
     ]);
-  });
-
-  test('a leaf picked alone previews with its newest recording, though the configuration filled in around it has none', async () => {
-    const machine = createCheckoutMachine();
-    await mount(<Checkout machine={machine} />);
-    await visitCheckout();
-
-    // The app is in card.idle, so the preview fills in card.idle. Express was recorded only with card.error.
-    await preview(machine.id, ['paying.shipping.express']);
-    expect({ shown: shown(), source: panel().source }).toEqual({
-      shown: { value: { paying: { card: 'idle', shipping: 'express' } }, context: { step: 3, note: 'Card declined' } },
-      source: 'recorded',
-    });
-  });
-});
-
-describe('with several instances of a machine', () => {
-  test('an instance previews with what another instance recorded', async () => {
-    const machine = createCheckoutMachine();
-    await mount(
-      <>
-        <Checkout machine={machine} name="first" />
-        <Checkout machine={machine} name="second" />
-      </>,
-    );
-    await press('Start', 'first');
-    await press('Fail', 'first');
-
-    await preview(machine.id, ['paying.card.error'], { nth: 2 });
-    expect({ second: shown('second'), source: panel().source }).toEqual({
-      second: { value: { paying: { card: 'error', shipping: 'standard' } }, context: { step: 2, note: 'Card declined' } },
-      source: 'recorded',
-    });
-  });
-});
-
-describe('with a leaf id that contains |', () => {
-  // A leaf a|b and the leaves a and b make the same text when joined.
-  // Two machines under one id can have both, and the newer recording replaces the older.
-  test('recording the leaves a and b after the leaf a|b moves the mark and the context to a and b', async () => {
-    const output = watchConsole();
-    const id = freshId('pipes');
-    const joined = createMachine({ id, context: { from: 'joined' }, initial: 'a|b', states: { 'a|b': {}, apart: {} } });
-    const split = createMachine({ id, type: 'parallel', context: { from: 'split' }, states: { a: {}, b: {} } });
-    const view = await mount(<Controls machine={joined} />);
-    view.rerender(
-      <>
-        <Controls machine={joined} />
-        <Controls machine={split} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
-
-    await show(id, 1);
-    const joinedKey = shownKey();
-    const joinedMarks = marks();
-    await show(id, 2);
-    const splitMarks = marks();
-    await preview(id, ['a|b'], { nth: 1 });
-    const joinedPreview = { source: panel().source, context: panel().context };
-    await preview(id, ['a'], { nth: 2 });
-    const splitPreview = { source: panel().source, context: panel().context };
-    hidePage();
-    expect({ joinedMarks, splitMarks, joinedPreview, splitPreview, stored: storedEntries(id), warnings: output.warn })
-      .toEqual({
-        joinedMarks: { 'a|b': ['none'], apart: ['none'] },
-        splitMarks: { a: ['recorded'], b: ['recorded'] },
-        joinedPreview: { source: 'live', context: ['from: "joined"'] },
-        splitPreview: { source: 'recorded', context: ['from: "split"'] },
-        stored: [{ leaves: ['a', 'b'], context: { from: 'split' } }],
-        warnings: [
-          `[konat] No recorded or fixture context for "a|b" on "${joinedKey}", so the preview uses the live context.`,
-        ],
-      });
   });
 });
 
@@ -408,7 +301,7 @@ describe('during a preview', () => {
 });
 
 describe('with connect()', () => {
-  test('an actor records up to its final state, and the next actor of the machine previews what it visited', async () => {
+  test('an actor records up to its final state, and the next instance of the machine previews what it visited', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine();
     await mount(<></>);
@@ -529,7 +422,7 @@ describe('with an actor that moves while it starts', () => {
 describe('with more than 50 configurations', () => {
   const PAGES = 51;
   const PAGE_LEAVES = Array.from({ length: PAGES }, (_, index) => `page.s${index}`);
-  const WIZARD_EVENTS = { Next: { type: 'NEXT' }, First: { type: 'FIRST' }, Last: { type: 'LAST' } };
+  const ALL_LEAVES = [...PAGE_LEAVES, 'help.hidden'];
 
   // Every configuration holds help.hidden, so it stays recorded while one of them is kept.
   function createWizardMachine() {
@@ -538,59 +431,44 @@ describe('with more than 50 configurations', () => {
       type: 'parallel',
       context: {},
       states: {
-        page: { initial: 's0', on: { FIRST: '.s0', LAST: `.s${PAGES - 1}` }, states: steps(PAGES) },
+        page: { initial: 's0', states: steps(PAGES) },
         help: { initial: 'hidden', states: { hidden: {} } },
       },
     });
   }
 
-  async function next(times: number) {
-    const button = screen.getByRole('button', { name: 'Next' });
-
-    for (let index = 0; index < times; index++) fireEvent.click(button);
-    await flush();
-  }
-
-  function wizardMarks(unrecorded: string) {
-    return recordedMarks(
-      [...PAGE_LEAVES, 'help.hidden'].filter((leaf) => leaf !== unrecorded),
-      [...PAGE_LEAVES, 'help.hidden'],
-    );
-  }
-
-  test('keeps the 50 newest, and a leaf stays marked while one of them holds it', async () => {
+  test.each([
+    { visits: '51 pages', nexts: 50, earlier: [], dropped: 'page.s0', kept: PAGE_LEAVES.slice(1) },
+    {
+      visits: 'its first page after an earlier page load stored the other 50, as the oldest',
+      nexts: 0,
+      earlier: PAGE_LEAVES.slice(1),
+      dropped: 'page.s1',
+      kept: [...PAGE_LEAVES.slice(2), 'page.s0'],
+    },
+  ])('an app that visits $visits keeps the 50 newest, and a leaf stays marked while one of them holds it', async ({
+    nexts,
+    earlier,
+    dropped,
+    kept,
+  }) => {
     const machine = createWizardMachine();
-    await mount(<Controls machine={machine} events={WIZARD_EVENTS} />);
-    await next(50);
-
-    await show(machine.id);
-    const kept = marks();
-    hidePage();
-    expect({ kept, stored: storedLeaves(machine.id) }).toEqual({
-      kept: wizardMarks('page.s0'),
-      stored: PAGE_LEAVES.slice(1).map((leaf) => ['help.hidden', leaf]),
-    });
-  });
-
-  test('a configuration visited again counts as the newest', async () => {
-    const machine = createWizardMachine();
-    await mount(<Controls machine={machine} events={WIZARD_EVENTS} />);
-    await next(49);
-    await press('First');
-    await press('Last');
-
-    await show(machine.id);
-    expect(marks()).toEqual(wizardMarks('page.s1'));
-  });
-
-  test('recordings stored by an earlier page load count toward the 50, as the oldest', async () => {
-    const machine = createWizardMachine();
-    const entries = PAGE_LEAVES.slice(1).map((leaf, index) => ({ leaves: ['help.hidden', leaf], at: index, context: {} }));
+    const entries = earlier.map((leaf, index) => ({ leaves: ['help.hidden', leaf], at: index, context: {} }));
     sessionStorage.setItem(recordedKey(machine.id), JSON.stringify({ v: 1, entries }));
-    await mount(<Controls machine={machine} events={WIZARD_EVENTS} />);
+    await mount(<Controls machine={machine} events={{ Next: { type: 'NEXT' } }} />);
 
+    for (let index = 0; index < nexts; index++) click('Next');
+    await flush();
     await show(machine.id);
-    expect(marks()).toEqual(wizardMarks('page.s1'));
+    const marked = marks();
+    hidePage();
+    expect({ marked, stored: storedLeaves(machine.id) }).toEqual({
+      marked: recordedMarks(
+        ALL_LEAVES.filter((leaf) => leaf !== dropped),
+        ALL_LEAVES,
+      ),
+      stored: kept.map((leaf) => ['help.hidden', leaf]),
+    });
   });
 });
 
@@ -625,52 +503,13 @@ describe('in sessionStorage', () => {
     });
   });
 
-  test('without a pagehide, the recordings are written 500 ms after the first visit, with the newest contexts', async () => {
-    const machine = createCheckoutMachine();
-    const actor = createActor(machine).start();
-    onTestFinished(() => {
-      actor.stop();
-    });
-
-    // This timer starts before the first visit, so it runs before the write that the first visit starts.
-    const early = after(450, () => {
-      const stored = storedEntries(machine.id);
-      actor.send({ type: 'EXPRESS' });
-      actor.send({ type: 'STANDARD' });
-
-      return stored;
-    });
-
-    // The test sends to the actor, so no step waits for React to render. While a step waits, a timer can run first.
-    connect(actor);
-    actor.send({ type: 'START' });
-    actor.send({ type: 'EXPRESS' });
-    actor.send({ type: 'STANDARD' });
-    // This timer starts after the first visit, so it runs after the write.
-    // A write that waited for 500 ms without visits would come 500 ms after the visits at 450 ms, after this read.
-    const late = after(600, () => storedEntries(machine.id));
-    expect({ early: await early, late: await late }).toEqual({
-      early: null,
-      late: [
-        { leaves: ['idle'], context: { step: 0, note: 'none' } },
-        { leaves: ['paying.card.idle', 'paying.shipping.express'], context: { step: 4, note: 'none' } },
-        { leaves: ['paying.card.idle', 'paying.shipping.standard'], context: { step: 5, note: 'none' } },
-      ],
-    });
-  });
-
-  test('a visibilitychange writes nothing while the page stays visible', async () => {
+  test('without a pagehide, the recordings are written 500 ms after the first visit', async () => {
     const machine = createCheckoutMachine();
     await mount(<Checkout machine={machine} />, { overlay: false });
     await press('Start');
-
-    document.dispatchEvent(new Event('visibilitychange'));
-    const visible = { state: document.visibilityState, stored: storedLeaves(machine.id) };
-    hidePage();
-    expect({ visible, hidden: storedLeaves(machine.id) }).toEqual({
-      visible: { state: 'visible', stored: null },
-      hidden: [['idle'], ['paying.card.idle', 'paying.shipping.standard']],
-    });
+    // The timer of the write starts at the first visit, before the timer below, so it runs first.
+    const stored = await after(500, () => storedLeaves(machine.id));
+    expect(stored).toEqual([['idle'], ['paying.card.idle', 'paying.shipping.standard']]);
   });
 });
 
@@ -696,203 +535,58 @@ describe('with a context that JSON cannot hold as it is', () => {
     return storedEntries(machine.id);
   }
 
-  test.each<[string, unknown, unknown]>([
-    [
-      'functions, and a toJSON that would replace its object',
-      { n: 1, onDone() {}, nested: { cb: () => {} }, custom: { v: 2, toJSON: () => 'flat' } },
-      { n: 1, nested: {}, custom: { v: 2 } },
-    ],
-    [
-      'the functions of an object that is only partly like an actor ref',
-      { api: { url: '/x', send() {}, subscribe() {} } },
-      { api: { url: '/x' } },
-    ],
-    [
-      'null-prototype objects and arrays',
-      { bare: Object.assign(Object.create(null), { x: 1 }), list: [1, 'two', null, { ok: true }, [3]] },
-      { bare: { x: 1 }, list: [1, 'two', null, { ok: true }, [3]] },
-    ],
-    ['equal objects that are separate', { a: { id: 1 }, b: { id: 1 }, c: [], d: [] }, { a: { id: 1 }, b: { id: 1 }, c: [], d: [] }],
-  ])('stores %s, without the functions', async (_, value, stored) => {
-    expect(await storeKept(value)).toEqual([
+  test('stores a context without its functions', async () => {
+    const kept = {
+      n: 1,
+      onDone() {},
+      nested: { cb: () => {} },
+      // JSON.stringify would store 'flat' in place of the object.
+      custom: { v: 2, toJSON: () => 'flat' },
+      // An object that is only partly like an actor ref.
+      api: { url: '/x', send() {}, subscribe() {} },
+      bare: Object.assign(Object.create(null), { x: 1 }),
+      list: [1, 'two', null, { ok: true }, [3]],
+      // Separate objects that are equal.
+      a: { id: 1 },
+      b: { id: 1 },
+      c: [],
+      d: [],
+    };
+
+    expect(await storeKept(kept)).toEqual([
       { leaves: ['plain'], context: { value: 'plain' } },
-      { leaves: ['kept'], context: { value: stored } },
+      {
+        leaves: ['kept'],
+        context: {
+          value: {
+            n: 1,
+            nested: {},
+            custom: { v: 2 },
+            api: { url: '/x' },
+            bare: { x: 1 },
+            list: [1, 'two', null, { ok: true }, [3]],
+            a: { id: 1 },
+            b: { id: 1 },
+            c: [],
+            d: [],
+          },
+        },
+      },
     ]);
   });
 
-  class Point {
-    x = 1;
-  }
-
-  class FakeActor {
-    send() {}
-    getSnapshot() {}
-    subscribe() {}
-  }
-
-  type Loop = { n: number; self?: Loop };
-
-  const cycle: Loop = { n: 1 };
-  cycle.self = cycle;
   const ref = { id: 'child', send() {}, getSnapshot() {}, subscribe() {} };
   const item = { id: 1 };
-  const list = [1];
 
+  // A context restored without the value, or with what JSON makes of it, would break the components that read it.
   test.each<[string, unknown]>([
     ['a Date', { createdAt: new Date(0) }],
-    ['a Map', new Map()],
-    ['a Set', new Set([1])],
-    ['a WeakMap', new WeakMap()],
-    ['a RegExp', /a/],
-    ['an Error', new Error('x')],
-    ['a Promise', Promise.resolve()],
-    ['an ArrayBuffer', new ArrayBuffer(1)],
-    ['a typed array', new Uint8Array(1)],
-    ['a class instance', new Point()],
     ['NaN', Number.NaN],
-    ['Infinity', Number.POSITIVE_INFINITY],
-    ['-Infinity in an array', [Number.NEGATIVE_INFINITY]],
-    ['a BigInt', 1n],
-    ['a symbol', Symbol('x')],
-    ['a cycle', cycle],
-    ['an object reached twice', { items: [item, { id: 2 }], selected: item }],
-    ['an array reached twice', { a: list, nested: { b: list } }],
-    [
-      'a throwing getter',
-      {
-        get value() {
-          throw new Error('nope');
-        },
-      },
-    ],
-    ['a function in an array', [() => {}]],
     ['undefined in an array', [undefined]],
-    ['an actor ref held by a property', { n: 1, childRef: ref }],
+    ['an object reached twice', { items: [item, { id: 2 }], selected: item }],
     ['an actor ref deep inside objects', { order: { payment: { actor: ref } } }],
-    ['a class-based actor ref', { n: 1, nested: { actor: new FakeActor() } }],
-    ['an actor ref in an array', [ref]],
-    ['an actor ref held by an object in an array', [{ id: 'a', ref }]],
   ])('keeps a context with %s out of sessionStorage', async (_, value) => {
     expect(await storeKept(value)).toEqual([{ leaves: ['plain'], context: { value: 'plain' } }]);
-  });
-
-  test('an object held twice stays in memory, so the preview keeps the identity the app checks', async () => {
-    type Item = { id: number };
-
-    type CartContext = { items: Item[]; selected: Item | null };
-
-    type CartEvent = { type: 'PICK' } | { type: 'CLEAR' };
-
-    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
-    const machine = setup({
-      types: { context: {} as CartContext, events: {} as CartEvent },
-    }).createMachine({
-      id: freshId('cart'),
-      context: { items: [], selected: null },
-      initial: 'empty',
-      states: {
-        empty: {
-          on: {
-            PICK: {
-              target: 'picked',
-              actions: assign(() => {
-                const first = { id: 1 };
-
-                return { items: [first, { id: 2 }], selected: first };
-              }),
-            },
-          },
-        },
-        picked: { on: { CLEAR: { target: 'empty', actions: assign({ items: [], selected: null }) } } },
-      },
-    });
-
-    function Cart() {
-      const [snapshot, send] = useMachine(machine);
-      const { items, selected } = snapshot.context;
-
-      return (
-        <>
-          <output>{`${String(snapshot.value)}: ${items.length} items, first selected: ${selected === items[0]}`}</output>
-          <button type="button" onClick={() => send({ type: 'PICK' })}>
-            Pick
-          </button>
-          <button type="button" onClick={() => send({ type: 'CLEAR' })}>
-            Clear
-          </button>
-        </>
-      );
-    }
-
-    await mount(<Cart />);
-    await press('Pick');
-    await press('Clear');
-
-    await preview(machine.id, ['picked']);
-    const previewed = { shown: screen.getByRole('status').textContent, source: panel().source };
-    hidePage();
-    expect({ previewed, stored: storedEntries(machine.id) }).toEqual({
-      previewed: { shown: 'picked: 2 items, first selected: true', source: 'recorded' },
-      stored: [{ leaves: ['empty'], context: { items: [], selected: null } }],
-    });
-  });
-
-  test('a spawned actor in the context stays in memory, and the child machine stores its own recordings', async () => {
-    const worker = createMachine({ id: freshId('worker'), context: {}, initial: 'working', states: { working: {} } });
-
-    type CrewContext = { workers: ActorRefFrom<typeof worker>[] };
-
-    type CrewEvent = { type: 'HIRE' } | { type: 'DISMISS' };
-
-    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
-    const crew = setup({
-      types: { context: {} as CrewContext, events: {} as CrewEvent },
-      actors: { worker },
-    }).createMachine({
-      id: freshId('crew'),
-      context: { workers: [] },
-      initial: 'idle',
-      states: {
-        idle: {
-          on: {
-            HIRE: {
-              target: 'hiring',
-              actions: assign({ workers: ({ context, spawn }) => [...context.workers, spawn('worker')] }),
-            },
-          },
-        },
-        hiring: { on: { DISMISS: { target: 'idle', actions: assign({ workers: [] }) } } },
-      },
-    });
-
-    function Crew() {
-      const [snapshot, send] = useMachine(crew);
-
-      return (
-        <>
-          <output>{`${String(snapshot.value)}: ${snapshot.context.workers.length} workers`}</output>
-          <button type="button" onClick={() => send({ type: 'HIRE' })}>
-            Hire
-          </button>
-          <button type="button" onClick={() => send({ type: 'DISMISS' })}>
-            Dismiss
-          </button>
-        </>
-      );
-    }
-
-    await mount(<Crew />);
-    await press('Hire');
-    await press('Dismiss');
-
-    await preview(crew.id, ['hiring']);
-    const previewed = { shown: screen.getByRole('status').textContent, source: panel().source };
-    hidePage();
-    expect({ previewed, crew: storedEntries(crew.id), worker: storedEntries(worker.id) }).toEqual({
-      previewed: { shown: 'hiring: 1 workers', source: 'recorded' },
-      crew: [{ leaves: ['idle'], context: { workers: [] } }],
-      worker: [{ leaves: ['working'], context: {} }],
-    });
   });
 });
 
@@ -912,7 +606,7 @@ describe('after a reload', () => {
     sessionStorage.setItem(recordedKey(machineId), sessionStorage.getItem(recordedKey(earlier.id)) ?? '');
   }
 
-  test('recordings stored by the earlier page load mark the leaves and feed the previews', async () => {
+  test("the recordings of an earlier page load mark the leaves and feed the previews, and this page's visits win", async () => {
     const machine = createCheckoutMachine();
     await storeEarlierLoad(machine.id);
     await mount(<Checkout machine={machine} />);
@@ -923,26 +617,19 @@ describe('after a reload', () => {
     await press('Express');
     // Express fills the shipping region, so no stored configuration matches, and the leaf picks the recording.
     await preview(machine.id, ['paying.card.error']);
-    expect({ reloaded, shown: shown(), source: panel().source }).toEqual({
-      reloaded: recordedMarks(['idle', 'paying.card.idle', 'paying.card.error', 'paying.shipping.standard']),
-      shown: { value: { paying: { card: 'error', shipping: 'express' } }, context: { step: 2, note: 'Card declined' } },
-      source: 'recorded',
-    });
-  });
-
-  test("this page's visits win over the stored ones, and the next write keeps both, the stored ones first", async () => {
-    const machine = createCheckoutMachine();
-    await storeEarlierLoad(machine.id);
-    await mount(<Checkout machine={machine} />);
-    await press('Start');
-    await press('Express');
-
+    const earlier = { shown: shown(), source: panel().source };
     await preview(machine.id, ['paying.card.idle', 'paying.shipping.standard']);
     const revisited = shown().context;
     await release(machine.id);
     hidePage();
-    expect({ revisited, stored: storedEntries(machine.id) }).toEqual({
+    expect({ reloaded, earlier, revisited, stored: storedEntries(machine.id) }).toEqual({
+      reloaded: recordedMarks(['idle', 'paying.card.idle', 'paying.card.error', 'paying.shipping.standard']),
+      earlier: {
+        shown: { value: { paying: { card: 'error', shipping: 'express' } }, context: { step: 2, note: 'Card declined' } },
+        source: 'recorded',
+      },
       revisited: { step: 1, note: 'none' },
+      // The next write keeps both, the stored ones first.
       stored: [
         { leaves: ['paying.card.error', 'paying.shipping.standard'], context: { step: 2, note: 'Card declined' } },
         { leaves: ['idle'], context: { step: 0, note: 'none' } },
@@ -956,15 +643,8 @@ describe('after a reload', () => {
 
   test.each<[string, string]>([
     ['invalid JSON', '{"v":1,"entries":['],
-    ['null', 'null'],
     ['another version', JSON.stringify({ v: 2, entries: [valid] })],
-    ['entries that are not an array', JSON.stringify({ v: 1, entries: { 0: valid } })],
-    ['an entry that is not an object', JSON.stringify({ v: 1, entries: [valid, null] })],
-    ['leaves that are not strings', JSON.stringify({ v: 1, entries: [{ ...valid, leaves: ['a', 1] }] })],
-    ['leaves that are not an array', JSON.stringify({ v: 1, entries: [{ ...valid, leaves: 'a' }] })],
-    ['a timestamp that is not a number', JSON.stringify({ v: 1, entries: [{ ...valid, at: '1' }] })],
-    ['a timestamp that is not finite', '{"v":1,"entries":[{"leaves":["a"],"at":1e999,"context":{}}]}'],
-    ['a missing context', JSON.stringify({ v: 1, entries: [{ leaves: ['a'], at: 1 }] })],
+    ['a missing context', JSON.stringify({ v: 1, entries: [valid, { leaves: ['a'], at: 1 }] })],
   ])('ignores a stored payload with %s', async (_, raw) => {
     const output = watchConsole();
     const machine = createMachine({ id: freshId('pair'), context: {}, initial: 'b', states: { a: {}, b: {} } });

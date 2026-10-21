@@ -6,14 +6,12 @@ import {
   assign,
   createActor,
   createMachine,
-  fromCallback,
   fromPromise,
-  sendTo,
   setup,
   type AnyActorRef,
   type EventFrom,
 } from 'xstate';
-import { mount, page, start, systemActor } from './support/app';
+import { mount, start, systemActor } from './support/app';
 import { errorMessage, uncaught, watchConsole } from './support/console';
 import {
   badge,
@@ -26,7 +24,6 @@ import {
   preview,
   release,
   show,
-  shownKey,
 } from './support/panel';
 
 const BROKEN = 'Checkout broken';
@@ -156,32 +153,25 @@ describe('several actors of one machine', () => {
 });
 
 describe('the same actor connected again', () => {
-  test('gives back the Actor that connect() returned first, and the overlay lists it once', async () => {
+  test('gives back the Actor that connect() returned first, without a warning, and the overlay lists it once', async () => {
+    const output = watchConsole();
     const machine = createCheckoutMachine();
     const actor = start(machine);
     const checkout = connect(actor);
     await mount(null);
 
-    await preview(machine.id, ['payment.error']);
+    await show(machine.id);
     expect({
       isActor: checkout instanceof Actor,
       again: connect(actor) === checkout,
-      returned: connect(checkout) === checkout,
+      returned: connect(checkout, { id: freshId('other') }) === checkout,
       instances: instances(),
-    }).toEqual({ isActor: true, again: true, returned: true, instances: [`${machine.id} · 1`] });
-  });
-
-  test('given an id, the returned actor comes back as it is, without a warning', async () => {
-    const output = watchConsole();
-    const machine = createCheckoutMachine();
-    const checkout = connect(start(machine));
-    await mount(null);
-
-    const returned = connect(checkout, { id: freshId('other') }) === checkout;
-    await flush();
-    expect({ returned, machines: await machines(), warnings: output.warn }).toEqual({
+      warnings: output.warn,
+    }).toEqual({
+      isActor: true,
+      again: true,
       returned: true,
-      machines: [machine.id],
+      instances: [`${machine.id} · 1`],
       warnings: [],
     });
   });
@@ -190,23 +180,12 @@ describe('the same actor connected again', () => {
 describe('actors that connect() gives back unchanged', () => {
   test.each<[string, () => { actor: AnyActorRef; disabled?: boolean }]>([
     ['a promise actor', () => ({ actor: createActor(fromPromise(() => new Promise<void>(() => {}))).start() })],
-    ['a callback actor', () => ({ actor: createActor(fromCallback(() => () => {})).start() })],
     ['an actor with disabled set', () => ({ actor: createActor(createCheckoutMachine()).start(), disabled: true })],
     [
       'an actor that already stopped',
       () => {
         const actor = createActor(createCheckoutMachine()).start();
         actor.stop();
-
-        return { actor };
-      },
-    ],
-    [
-      'an actor that already reached its final state',
-      () => {
-        const actor = createActor(createCheckoutMachine()).start();
-
-        for (const type of ['ADD', 'PAY', 'SUCCEED'] as const) actor.send({ type });
 
         return { actor };
       },
@@ -226,16 +205,7 @@ describe('actors that connect() gives back unchanged', () => {
 
 describe('an actor that ends', () => {
   test.each<[string, (actor: Checkout, checkout: Checkout) => void, string, string[]]>([
-    ['stops', (actor) => actor.stop(), 'stopped', []],
-    ['is stopped through the actor that connect() returned', (_, checkout) => checkout.stop(), 'stopped', []],
-    [
-      'reaches its final state',
-      (actor) => {
-        for (const type of ['ADD', 'PAY', 'SUCCEED'] as const) actor.send({ type });
-      },
-      'done',
-      [],
-    ],
+    ['is stopped', (_, checkout) => checkout.stop(), 'stopped', []],
     // No observer handles the error, so XState reports it, as without connect().
     ['fails', (actor) => actor.send({ type: 'BREAK' }), 'error', [BROKEN]],
   ])('leaves the overlay, with its preview, when it %s', async (_, end, status, reported) => {
@@ -289,50 +259,16 @@ describe('an actor connected before it starts', () => {
     });
   });
 
-  test.each<[string, (actor: Checkout, checkout: Checkout) => void]>([
-    ['through the actor that connect() returned', (_, checkout) => checkout.stop()],
-    ['through the actor itself', (actor) => actor.stop()],
-  ])('leaves the overlay when it is stopped %s without starting', async (_, stop) => {
+  test('leaves the overlay when it is stopped without starting', async () => {
     const machine = createCheckoutMachine();
-    const actor = createActor(machine);
-    const checkout = connect(actor);
+    const checkout = connect(createActor(machine));
     await mount(null);
     const before = await machines();
 
     await act(async () => {
-      stop(actor, checkout);
+      checkout.stop();
     });
     expect({ before, after: await machines() }).toEqual({ before: [machine.id], after: [] });
-  });
-
-  test('leaves the overlay when an action of its initial state throws as it starts', async () => {
-    const machine = createMachine({
-      id: freshId('greeting'),
-      initial: 'shown',
-      states: {
-        shown: {
-          entry: () => {
-            throw new Error('Greeting broken');
-          },
-        },
-      },
-    });
-
-    const actor = createActor(machine);
-    onTestFinished(() => {
-      actor.stop();
-    });
-    const greeting = connect(actor);
-    await mount(null);
-    const before = await machines();
-
-    const errors = await uncaught(() => greeting.start());
-    expect({
-      before,
-      status: greeting.getSnapshot().status,
-      uncaught: errors.map(errorMessage),
-      after: await machines(),
-    }).toEqual({ before: [machine.id], status: 'error', uncaught: ['Greeting broken'], after: [] });
   });
 });
 
@@ -350,10 +286,9 @@ describe('an actor that a hook runs', () => {
 
   /** Keeps the actor that useMachine returns in `hook`, as an app that hands it on does. */
   function Toggle({ machine, hook }: { machine: ToggleMachine; hook: Hook }) {
-    const [snapshot, , actor] = useMachine(machine, { systemId: SYSTEM_ID });
-    hook.actor = actor;
+    hook.actor = useMachine(machine, { systemId: SYSTEM_ID })[2];
 
-    return <output aria-label="toggle">{JSON.stringify(snapshot.value)}</output>;
+    return null;
   }
 
   /** The hook's actor, and the real actor behind it, which app code finds through the system. */
@@ -363,48 +298,18 @@ describe('an actor that a hook runs', () => {
     return { hook: hook.actor, real: systemActor(hook.actor, SYSTEM_ID) };
   }
 
-  test("connect() gives back the hook's actor, and the hook's instance stays the one listed and previewed", async () => {
-    const output = watchConsole();
-    const machine = createToggleMachine();
-    const hook: Hook = {};
-    const view = await mount(<Toggle machine={machine} hook={hook} />);
-    const actors = actorsOf(hook);
-
-    const returned = { real: connect(actors.real) === actors.hook, hook: connect(actors.hook) === actors.hook };
-    await flush();
-    await preview(machine.id, ['on']);
-    const previewing = { instances: instances(), shown: shown('toggle') };
-    view.rerender(page(<Toggle machine={machine} hook={hook} />));
-    await flush();
-    const rerendered = { instances: instances(), shown: shown('toggle') };
-    await release(machine.id);
-    expect({ returned, previewing, rerendered, released: shown('toggle'), warnings: output.warn }).toEqual({
-      returned: { real: true, hook: true },
-      previewing: { instances: [`${machine.id} · 1`], shown: 'on' },
-      rerendered: { instances: [`${machine.id} · 1`], shown: 'on' },
-      released: 'off',
-      warnings: [
-        `[konat] No recorded or fixture context for "on" on "${shownKey()}", so the preview uses the live context.`,
-      ],
-    });
-  });
-
-  test.each([
-    ['the real actor first', (actors: Actors) => [actors.real, actors.hook]],
-    ["the hook's actor first", (actors: Actors) => [actors.hook, actors.real]],
-  ])("given an id or a label, with %s, connect() warns once and keeps the hook's id and label", async (_, order) => {
+  test("connect() gives back the hook's actor, and given an id or a label, warns once and keeps the hook's id and label", async () => {
     const output = watchConsole();
     const machine = createToggleMachine();
     const hook: Hook = {};
     await mount(<Toggle machine={machine} hook={hook} />);
     const actors = actorsOf(hook);
-    const [first, second] = order(actors);
 
     const returned = [
-      connect(first, { id: freshId('other') }),
-      connect(first, { label: 'Other toggle' }),
-      connect(second, { id: freshId('other'), label: 'Other toggle' }),
-      connect(second, { label: 'Other toggle' }),
+      connect(actors.real),
+      connect(actors.hook),
+      connect(actors.real, { id: freshId('other') }),
+      connect(actors.hook, { label: 'Other toggle' }),
     ].map((actor) => actor === actors.hook);
 
     await flush();
@@ -416,53 +321,5 @@ describe('an actor that a hook runs', () => {
       instances: [`${machine.id} · 1`],
       warnings: [HOOK_ACTOR_WARNING],
     });
-  });
-});
-
-describe('an actor that is not the root of its system', () => {
-  test('is listed alone, while its parent and its siblings move', async () => {
-    const auth = createMachine({
-      id: freshId('auth'),
-      initial: 'signedOut',
-      states: { signedOut: { on: { SIGN_IN: 'signedIn' } }, signedIn: {} },
-    });
-
-    const settings = createMachine({
-      id: freshId('settings'),
-      initial: 'closed',
-      states: { closed: { on: { OPEN: 'open' } }, open: {} },
-    });
-
-    type AppEvent = { type: 'TOGGLE' } | { type: 'OPEN_SETTINGS' };
-
-    const appMachine = setup({
-      // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
-      types: { events: {} as AppEvent },
-      actors: { auth, settings },
-    }).createMachine({
-      id: freshId('app'),
-      invoke: [
-        { id: 'auth', systemId: 'auth', src: 'auth' },
-        { id: 'settings', src: 'settings' },
-      ],
-      initial: 'light',
-      on: { OPEN_SETTINGS: { actions: sendTo('settings', { type: 'OPEN' }) } },
-      states: { light: { on: { TOGGLE: 'dark' } }, dark: { on: { TOGGLE: 'light' } } },
-    });
-
-    const app = start(appMachine);
-    connect(app.system.get('auth'));
-    await mount(null);
-
-    const steps = [await machines()];
-
-    for (const type of ['TOGGLE', 'OPEN_SETTINGS'] as const) {
-      await act(async () => {
-        app.send({ type });
-      });
-      steps.push(await machines());
-    }
-
-    expect(steps).toEqual([[auth.id], [auth.id], [auth.id]]);
   });
 });

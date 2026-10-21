@@ -24,9 +24,7 @@ test file.
    from `test/support/app.tsx`, and click their buttons with `press()`. Drive the overlay with `test/support/panel.ts`:
    `show()`, `preview()`, `pickSource()` and `release()`. Read the result from the DOM: what the components render,
    `panel()` and `isOpen()`. Find an overlay element by its role, its `aria-*` or `data-*` attributes, or its
-   `data-part`, never by a class. The classes are Tailwind utilities, and they change with the styles. When a hook
-   must behave like the `@xstate/react` hook of the same name, run the test against both with
-   `describe.each(IMPLEMENTATIONS)` from `test/support/hooks.ts`.
+   `data-part`, never by a class. The classes are Tailwind utilities, and they change with the styles.
 4. **Assert exact values.** Collect what one step shows into one object, and compare it with `toEqual` against a
    literal. Never use `toBeDefined`, `toBeTruthy`, `toBeFalsy` or `expect.anything()`. Prefer a whole value to
    `toMatchObject`, `toContain` or `stringContaining`.
@@ -39,6 +37,10 @@ test file.
    `id: freshId('name')`. `test/setup.ts` clears the storage and the URL before each test. Never read or reset the
    registry. The fallback-id and shortcut warnings print once per page for each value, so a test that expects one
    uses a value of its own.
+8. **Keep the suite minimal.** Add a test only for a behavior that a developer would notice when it breaks, and that
+   no other test guards already. Test the layers that branch, such as parsing, state resolution and lifecycle races,
+   and leave thin wiring to the tests of what it wires. Put the inputs of one behavior in one `test.each` table. Don't
+   test what XState, React or `@xstate/react` do without konat, and don't test what TypeScript or oxlint rejects.
 
 ## Where tests go
 
@@ -102,7 +104,7 @@ These techniques replace a mock. Each one was tried in this package.
   mount. Read the DOM in a microtask that a layout effect queues, at the end of the task that commits the mount, where
   the browser paints. StrictMode can hide a late update, so also mount without it.
 - **`<Activity>`.** React 18 has no `React.Activity`, so put its tests in `describeWithActivity` from
-  `test/support/hooks.ts`, and read `React.Activity` as a property, so the file loads on React 18. A hidden Activity runs
+  `test/support/react.ts`, and read `React.Activity` as a property, so the file loads on React 18. A hidden Activity runs
   the cleanup of its components' effects, so their instances unregister until it shows them again.
 - **The real actor moves on during a preview.** A preview blocks the events that the app sends through the hook's
   actor. Send to the real actor instead: give `useMachine` a `systemId` and call `actor.system.get(systemId).send()`,

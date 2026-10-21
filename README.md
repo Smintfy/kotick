@@ -16,9 +16,6 @@ For installation and usage, see the [package README](packages/konat/README.md).
 | `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` and the site build |
 | `specs` | The [MVP spec and roadmap](specs/state-debugger-mvp-spec.md) |
 
-The end-to-end tests are in a separate repository, [state-viewer-e2e](../state-viewer-e2e), and run against the
-examples.
-
 ## Development
 
 The repository uses pnpm workspaces. The examples use the TypeScript source of the package, so changes show without a

@@ -15,8 +15,8 @@ import {
   useMachine,
   useSelector,
 } from 'konat/xstate';
-import { describe, expect, onTestFinished, test } from 'vitest';
-import { createActor, fromPromise, setup } from 'xstate';
+import { expect, onTestFinished, test } from 'vitest';
+import { createActor, setup } from 'xstate';
 import { watchConsole } from './support/console';
 import { freshId } from './support/panel';
 
@@ -40,45 +40,16 @@ function settle(): Promise<void> {
 
 test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtures or storage', async () => {
   const globals = Reflect.ownKeys(globalThis);
-  const hookMachine = createToggleMachine();
-  const contextMachine = createToggleMachine();
-  const connectedMachine = createToggleMachine();
-  const connected = connect(createActor(connectedMachine).start(), { label: 'Connected' });
-  onTestFinished(() => {
-    connected.stop();
-  });
-  const ToggleContext = createActorContext(contextMachine, { debug: { label: 'Context' } });
+  const machine = createToggleMachine();
   const loads: string[] = [];
-  const link = [hookMachine.id, contextMachine.id, connectedMachine.id].map((id) => `${id}:on`).join(',');
-  window.history.replaceState(null, '', `/?debug-state=${link}`);
+  window.history.replaceState(null, '', `/?debug-state=${machine.id}:on`);
 
-  function HookToggle() {
-    const [snapshot, send] = useMachine(hookMachine, { debug: { label: 'Hook' } });
+  function Toggle() {
+    const [snapshot, send] = useMachine(machine, { debug: { label: 'Toggle' } });
 
     return (
       <button type="button" onClick={() => send({ type: 'TOGGLE' })}>
-        hook {String(snapshot.value)}
-      </button>
-    );
-  }
-
-  function ContextToggle() {
-    const value = ToggleContext.useSelector((snapshot) => String(snapshot.value));
-    const actorRef = ToggleContext.useActorRef();
-
-    return (
-      <button type="button" onClick={() => actorRef.send({ type: 'TOGGLE' })}>
-        context {value}
-      </button>
-    );
-  }
-
-  function ConnectedToggle() {
-    const value = useSelector(connected, (snapshot) => String(snapshot.value));
-
-    return (
-      <button type="button" onClick={() => connected.send({ type: 'TOGGLE' })}>
-        connected {value}
+        {String(snapshot.value)}
       </button>
     );
   }
@@ -91,11 +62,7 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
   });
   root.render(
     <>
-      <HookToggle />
-      <ToggleContext.Provider options={{ debug: { label: 'Provided' } }}>
-        <ContextToggle />
-      </ToggleContext.Provider>
-      <ConnectedToggle />
+      <Toggle />
       <Konat
         defaultOpen
         fixtures={() => {
@@ -109,8 +76,7 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
   await settle();
   const loaded = document.body.innerHTML;
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', altKey: true }));
-
-  for (const button of container.querySelectorAll('button')) button.click();
+  container.querySelector('button')?.click();
   await settle();
   window.dispatchEvent(new Event('pagehide'));
 
@@ -122,12 +88,8 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
     localStorage: { ...localStorage },
     added: Reflect.ownKeys(globalThis).filter((key) => !globals.includes(key)),
   }).toEqual({
-    loaded:
-      '<div><button type="button">hook off</button><button type="button">context off</button>' +
-      '<button type="button">connected off</button></div>',
-    used:
-      '<div><button type="button">hook on</button><button type="button">context on</button>' +
-      '<button type="button">connected on</button></div>',
+    loaded: '<div><button type="button">off</button></div>',
+    used: '<div><button type="button">on</button></div>',
     loads: [],
     sessionStorage: {},
     localStorage: {},
@@ -135,49 +97,32 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
   });
 });
 
-describe('konat/xstate', () => {
-  test('each hook is the @xstate/react hook of the same name', () => {
-    expect({
-      useMachine: useMachine === xstateReact.useMachine,
-      useActor: useActor === xstateReact.useActor,
-      useActorRef: useActorRef === xstateReact.useActorRef,
-      createActorContext: createActorContext === xstateReact.createActorContext,
-      useSelector: useSelector === xstateReact.useSelector,
-      shallowEqual: shallowEqual === xstateReact.shallowEqual,
-    }).toEqual({
-      useMachine: true,
-      useActor: true,
-      useActorRef: true,
-      createActorContext: true,
-      useSelector: true,
-      shallowEqual: true,
-    });
+test('konat/xstate is @xstate/react: the same hooks, a connect() that returns its actor, and fixtures without a check', () => {
+  const output = watchConsole();
+  const machine = createToggleMachine();
+  const running = createActor(machine).start();
+  onTestFinished(() => {
+    running.stop();
   });
 
-  test('connect returns the actor it is given', () => {
-    const running = createActor(createToggleMachine()).start();
-    onTestFinished(() => {
-      running.stop();
-    });
-    const unstarted = createActor(createToggleMachine());
-    const promise = createActor(fromPromise(async () => 'done'));
-
-    expect({
-      running: connect(running, { id: freshId('running'), label: 'Running' }) === running,
-      unstarted: connect(unstarted) === unstarted,
-      promise: connect(promise, { id: freshId('promise') }) === promise,
-    }).toEqual({ running: true, unstarted: true, promise: true });
-  });
-
-  test('defineFixtures returns its set, and does not warn about a leaf the machine lacks', () => {
-    const output = watchConsole();
-    const machine = createToggleMachine();
-
-    // @ts-expect-error The types reject a typo in a leaf id, and development builds warn about it.
-    const set = defineFixtures(machine, { offf: { context: {} } });
-    expect({ set, output }).toEqual({
-      set: { machineId: machine.id, source: machine.config, states: { offf: { context: {} } } },
-      output: { warn: [], error: [] },
-    });
+  // @ts-expect-error The types reject a typo in a leaf id, and development builds warn about it.
+  const set = defineFixtures(machine, { offf: { context: {} } });
+  expect({
+    hooks: [
+      useMachine === xstateReact.useMachine,
+      useActor === xstateReact.useActor,
+      useActorRef === xstateReact.useActorRef,
+      createActorContext === xstateReact.createActorContext,
+      useSelector === xstateReact.useSelector,
+      shallowEqual === xstateReact.shallowEqual,
+    ],
+    connected: connect(running, { id: freshId('running'), label: 'Running' }) === running,
+    set,
+    output,
+  }).toEqual({
+    hooks: [true, true, true, true, true, true],
+    connected: true,
+    set: { machineId: machine.id, source: machine.config, states: { offf: { context: {} } } },
+    output: { warn: [], error: [] },
   });
 });

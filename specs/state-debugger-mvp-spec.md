@@ -493,7 +493,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ## 12. Acceptance criteria for 0.1.0
 
-Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pnpm test:matrix`.
+Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by hand in the examples.
 
 - [x] In the vite-react example, swapping the import path and mounting `<Konat />` are the only changes needed for every machine to appear. The module-level session actor also goes through `connect()` (R2).
 - [x] Every non-history state of every example machine is listed, including never-visited ones.
@@ -515,7 +515,6 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 | Adapter | Vitest + React Testing Library | Proxy with `useMachine`, `useSelector` and `createActorContext`; blocked sends; release; StrictMode double mount; multiple instances; render and mount counts |
 | Types | `expectTypeOf` | `defineFixtures` keys and context types |
 | Version matrix | `pnpm test:matrix` (`scripts/test-matrix.mjs`) | The Vitest suite on React 18 and 19, each with the minimum and the latest `xstate` and `@xstate/react` (D24) |
-| End to end | Playwright, in a separate repository (state-viewer-e2e), against the examples' dev servers | Previewing every state, deep links, keyboard, navigation between pages, the hostile-css example, server rendering and hydration in the Next.js example |
 | Bundle | `pnpm check:bundles` (`tests/bundles/check.mjs`), against the packed tarball | Debug code removed with each supported bundler; startup JavaScript against the same app on `@xstate/react`, with a 512 B gzip budget |
 | Overhead | `pnpm --filter konat bench` (`bench/overhead.bench.tsx`) | Development cost with the panel closed and without `<Konat />`, against `@xstate/react` |
 
@@ -578,7 +577,6 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 
 - [x] Confirm production removal with Vite, Next.js (webpack and Turbopack), React Router and esbuild (`pnpm check:bundles`, §10.7)
 - [x] Next.js App Router example (`'use client'`, SSR safety): `examples/next-app`, on port 3100
-- [x] End-to-end tests with Playwright in a separate repository, run against the examples (state-viewer-e2e)
 - [x] Test matrix: React 18 and 19; pin the minimum XState 5.x (`pnpm test:matrix`; `xstate` 5.28, `@xstate/react` 6.1)
 - [x] Measure overhead with the panel closed. In jsdom with StrictMode, against `@xstate/react`: about 8 µs more per transition that re-renders a `useMachine` component (27 → 34 µs), 22 µs more per mount (50 rows: 1.0 → 2.1 ms), and under 1 µs more per event to a `connect()`ed actor. Mounting `<Konat />` with its panel closed adds nothing measurable; the cost is the adapter's.
 - [x] README: quickstart, concepts, API, limitations, FAQ
@@ -663,12 +661,12 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 | D16 | Overrides keep the requested leaves | Copy link, source switching and the previewed-leaf mark need what was asked for, not the filled-in configuration |
 | D17 | A total budget for persisted recordings | The debugger must never make the app's own sessionStorage writes fail |
 | D18 | Unregistering keeps the preview until the next flush | Fast Refresh re-runs effects on every save, and a preview should survive editing the component it previews |
-| D19 | Examples stay minimal; end-to-end tests live in a separate repository | The examples read as usage documentation, without test ids, extra pages or Playwright setup |
+| D19 | Examples stay minimal, and there is no end-to-end suite for now | The examples read as usage documentation, without test ids, extra pages or Playwright setup. The Vitest suite tests the behavior in jsdom, and `pnpm check:bundles` tests the production builds |
 | D20 | Production removal is checked against the packed tarball, with each bundler | The examples use the workspace source; only the tarball shows what users get (`dist`, `publishConfig.exports`, `sideEffects`) |
 | D21 | The `NODE_ENV` condition is written out at each use | esbuild, webpack and Turbopack don't inline a `const`, so a shared `DEV` constant keeps both branches in production |
 | D22 | Each entry is built on its own, without shared chunks | Turbopack keeps a shared chunk once a module imports it, even if only removed code used it; the `globalThis` registry makes the duplicated core safe |
-| D23 | Minimum versions: `xstate` 5.28, `@xstate/react` 6.1 | @xstate/react 6.1 forwards actor errors to error boundaries, which the adapter matches, and needs `xstate` ^5.28. The suite passes on both minimums and on the latest versions; below 5.29, only the @xstate/react controls that call the real `Actor.select` are skipped |
-| D24 | On React 18, tests built on `<Activity>` or `use()` are skipped, and identity checks record committed renders only | React 18 has neither API, and its StrictMode throws away the first render together with the actor it created, which the @xstate/react controls show too |
+| D23 | Minimum versions: `xstate` 5.28, `@xstate/react` 6.1 | @xstate/react 6.1 forwards actor errors to error boundaries, which the adapter matches, and needs `xstate` ^5.28. The suite passes on both minimums and on the latest versions |
+| D24 | On React 18, tests built on `<Activity>` or `use()` are skipped, and identity checks record committed renders only | React 18 has neither API, and its StrictMode throws away the first render together with the actor it created |
 | D25 | A preview on the default order holds its live-context warning while fixtures load | A deep link applies before a lazy loader is done, and the fixtures that load then give most such previews context (D13), so an early warning would usually be false |
 
 ## 17. References

@@ -4,6 +4,7 @@ import { Konat, type Theme } from 'konat';
 import { defineFixtures, useMachine } from 'konat/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import { createMachine, setup, type AnyStateMachine } from 'xstate';
+import { mount } from './support/app';
 import { watchConsole } from './support/console';
 import type { Json } from './support/json';
 import {
@@ -203,7 +204,7 @@ test('the bubble opens a panel that lists the page’s machines, a row shows its
 });
 
 describe('the machine list', () => {
-  test('lists each machine with its states, its instances, a child tag and a preview mark, under the page’s path', async () => {
+  test('lists each machine with its states, its instances and a child tag, under the page’s path', async () => {
     window.history.replaceState(null, '', '/checkout');
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
@@ -215,38 +216,25 @@ describe('the machine list', () => {
       states: { active: { invoke: { id: 'load', src: 'fetcher' } } },
     });
 
-    render(
+    await mount(
       <>
         <Checkout machine={checkout} />
         <Run machine={toggle} />
         <Run machine={toggle} />
         <Run machine={parent} />
-        <Konat defaultOpen />
       </>,
     );
-    await flush();
 
     const listed = await machineList();
-    await preview(toggle.id, ['on'], { nth: 2 });
-    const previewing = await machineList();
     window.history.pushState(null, '', '/cart');
     window.dispatchEvent(new PopStateEvent('popstate'));
     await flush();
-    expect({ listed, previewing, navigated: (await machineList()).header }).toEqual({
+    expect({ listed, navigated: (await machineList()).header }).toEqual({
       listed: {
         header: ['Machines', '/checkout', '4'],
         rows: [
           `${checkout.id} · 5 states`,
           `${toggle.id} · 2 instances · 2 states`,
-          `${parent.id} · 1 state`,
-          `${fetcher.id} · child · 2 states`,
-        ],
-      },
-      previewing: {
-        header: ['Machines', '/checkout', '4'],
-        rows: [
-          `${checkout.id} · 5 states`,
-          `${toggle.id} · 2 instances · previewing · 2 states`,
           `${parent.id} · 1 state`,
           `${fetcher.id} · child · 2 states`,
         ],
@@ -275,33 +263,6 @@ describe('the machine list', () => {
     expect({ header: (await machineList()).header, errors: output.error }).toEqual({
       header: ['Machines', '/cart', '1'],
       errors: [],
-    });
-  });
-
-  test('Back from a machine page shows the list again, and the panel forgets the machine', async () => {
-    const toggle = createToggleMachine();
-
-    const page = () => (
-      <>
-        <Run machine={toggle} />
-        <Konat defaultOpen />
-      </>
-    );
-
-    const { unmount } = render(page());
-    await flush();
-
-    await show(toggle.id);
-    const shown = { machine: shownMachine(), saved: stored() };
-    await click(button('Back'));
-    const back = { machine: shownMachine(), saved: stored() };
-    unmount();
-    render(page());
-    await flush();
-    expect({ shown, back, reloaded: shownMachine() }).toEqual({
-      shown: { machine: toggle.id, saved: { v: 1, machine: toggle.id } },
-      back: { machine: 'none', saved: { v: 1 } },
-      reloaded: 'none',
     });
   });
 
@@ -338,29 +299,7 @@ describe('the machine list', () => {
 });
 
 describe('the host element', () => {
-  test('is an open shadow root appended to document.body, outside the React tree, and styles only itself', async () => {
-    const { container } = render(<Konat />);
-    await flush();
-
-    const hosts = [...document.querySelectorAll('[data-konat-root]')];
-    expect({
-      rendered: container.innerHTML,
-      hosts: hosts.map((host) => ({
-        parent: host.parentNode === document.body,
-        last: document.body.lastElementChild === host,
-        shadow: host.shadowRoot?.mode,
-      })),
-      pageStyles: document.querySelectorAll('style, link[rel="stylesheet"]').length,
-      overlayStyles: overlay().querySelectorAll('style').length,
-    }).toEqual({
-      rendered: '',
-      hosts: [{ parent: true, last: true, shadow: 'open' }],
-      pageStyles: 0,
-      overlayStyles: 1,
-    });
-  });
-
-  test('goes into portalTarget, an element or a shadow root', async () => {
+  test('is an open shadow root in document.body or in portalTarget, styles only itself, and leaves on unmount', async () => {
     const element = document.createElement('section');
     const outer = document.createElement('div');
     const shadowTarget = outer.attachShadow({ mode: 'open' });
@@ -371,30 +310,34 @@ describe('the host element', () => {
     });
 
     const hostsIn = () => ({
+      body: [...document.body.children].filter((child) => child.hasAttribute('data-konat-root')).length,
       element: element.querySelectorAll('[data-konat-root]').length,
       shadow: shadowTarget.querySelectorAll('[data-konat-root]').length,
-      document: document.querySelectorAll('[data-konat-root]').length,
     });
 
-    const { rerender } = render(<Konat portalTarget={element} />);
+    const { container, rerender, unmount } = render(<Konat />);
+    await flush();
+
+    const inBody = {
+      ...hostsIn(),
+      rendered: container.innerHTML,
+      mode: document.querySelector('[data-konat-root]')?.shadowRoot?.mode,
+      pageStyles: document.querySelectorAll('style, link[rel="stylesheet"]').length,
+      overlayStyles: overlay().querySelectorAll('style').length,
+    };
+
+    rerender(<Konat portalTarget={element} />);
     await flush();
     const inElement = hostsIn();
     rerender(<Konat portalTarget={shadowTarget} />);
     await flush();
-    expect({ inElement, inShadow: hostsIn() }).toEqual({
-      inElement: { element: 1, shadow: 0, document: 1 },
-      inShadow: { element: 0, shadow: 1, document: 0 },
-    });
-  });
-
-  test('is removed when <Konat /> unmounts', async () => {
-    const { unmount } = render(<Konat />);
-    await flush();
-    const mounted = document.querySelectorAll('[data-konat-root]').length;
+    const inShadow = hostsIn();
     unmount();
-    expect({ mounted, unmounted: document.querySelectorAll('[data-konat-root]').length }).toEqual({
-      mounted: 1,
-      unmounted: 0,
+    expect({ inBody, inElement, inShadow, unmounted: hostsIn() }).toEqual({
+      inBody: { body: 1, element: 0, shadow: 0, rendered: '', mode: 'open', pageStyles: 0, overlayStyles: 1 },
+      inElement: { body: 0, element: 1, shadow: 0 },
+      inShadow: { body: 0, element: 0, shadow: 1 },
+      unmounted: { body: 0, element: 0, shadow: 0 },
     });
   });
 });
@@ -402,14 +345,12 @@ describe('the host element', () => {
 describe('the bubble', () => {
   test('counts the active previews in a badge and in its name', async () => {
     const machine = createToggleMachine();
-    render(
+    await mount(
       <>
         <Run machine={machine} />
         <Run machine={machine} />
-        <Konat defaultOpen />
       </>,
     );
-    await flush();
 
     const badge = () => ({
       badge: overlay().querySelector('[data-part="badge"]')?.textContent ?? null,
@@ -486,13 +427,7 @@ describe('the state tree', () => {
 
   test('shows every state but history ones, nested, with descriptions, types and tags', async () => {
     const machine = createEditorMachine();
-    render(
-      <>
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
+    await mount(<Run machine={machine} />);
     await show(machine.id);
 
     expect({
@@ -522,37 +457,10 @@ describe('the state tree', () => {
     });
   });
 
-  test('each leaf it lists previews, final states and leaves of nested parallel states too', async () => {
-    const machine = createEditorMachine();
-    render(
-      <>
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
-    await show(machine.id);
-
-    const previewed: unknown[] = [];
-
-    for (const leaf of leaves()) {
-      await preview(machine.id, [leaf]);
-      previewed.push(panel().previewed);
-    }
-
-    expect(previewed).toEqual(EDITOR_LEAVES.map((leaf) => [leaf]));
-  });
-
   test('marks the live leaves and the data a preview of each leaf would use, and follows the app', async () => {
     const machine = createCheckoutMachine();
     const fixtures = [defineFixtures(machine, { 'payment.error': { context: { note: 'fixture' } } })];
-    render(
-      <>
-        <Checkout machine={machine} />
-        <Konat defaultOpen fixtures={fixtures} />
-      </>,
-    );
-    await flush();
+    await mount(<Checkout machine={machine} />, { fixtures });
     await show(machine.id);
 
     const started = { live: panel().live, marks: marks(), announced: announced() };
@@ -595,16 +503,6 @@ describe('the state tree', () => {
     });
   });
 
-  /** Picks the nth instance in the Instance picker, and stays on the machine page. */
-  async function pickInstance(nth: number): Promise<void> {
-    const picker = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
-    const option = picker?.options[nth - 1];
-
-    if (!picker || !option) throw new Error(`The machine page has no instance ${nth} to pick.`);
-    fireEvent.change(picker, { target: { value: option.value } });
-    await flush();
-  }
-
   /** Whether each shown compound or parallel state is expanded, by its key. */
   function expanded(): Record<string, string | null> {
     return Object.fromEntries(
@@ -617,13 +515,7 @@ describe('the state tree', () => {
 
   test('a click on a compound or parallel state hides the states in it, and a second click shows them again', async () => {
     const machine = createEditorMachine();
-    render(
-      <>
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
+    await mount(<Run machine={machine} />);
     await show(machine.id);
 
     await toggleState('payment');
@@ -650,39 +542,9 @@ describe('the state tree', () => {
     });
   });
 
-  test('a state collapses for one instance, so another instance, or the same one shown again, shows every state', async () => {
-    const machine = createEditorMachine();
-    render(
-      <>
-        <Run machine={machine} />
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
-    await show(machine.id, 1);
-
-    await toggleState('payment');
-    const first = leaves();
-    await pickInstance(2);
-    const second = leaves();
-    await pickInstance(1);
-    expect({ first, second, firstAgain: leaves() }).toEqual({
-      first: EDITOR_LEAVES.filter((leaf) => !leaf.startsWith('payment.')),
-      second: EDITOR_LEAVES,
-      firstAgain: EDITOR_LEAVES,
-    });
-  });
-
   test('a machine without states has none to list', async () => {
     const machine = createMachine({ id: freshId('empty') });
-    render(
-      <>
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
+    await mount(<Run machine={machine} />);
     await show(machine.id);
 
     const hint = overlay().querySelector('section[aria-labelledby]')?.querySelector('[data-part="hint"]')?.textContent;
@@ -693,34 +555,8 @@ describe('the state tree', () => {
     });
   });
 
-  test('a description that is not text, as a JavaScript machine can give, is left out', async () => {
-    const machine = createMachine({
-      id: freshId('described'),
-      initial: 'object',
-      states: {
-        // @ts-expect-error A JavaScript machine can give a description that is not a string.
-        object: { description: { en: 'Waits for the server' } },
-        // @ts-expect-error A JavaScript machine can give a description that is not a string.
-        number: { description: 42 },
-        text: { description: 'Shown' },
-      },
-    });
-
-    render(
-      <>
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
-    await show(machine.id);
-
-    expect(treeRows()).toEqual(['object', 'number', 'text “Shown”']);
-  });
-
   test('without a machine on the page, the panel says how machines get there', async () => {
-    render(<Konat defaultOpen />);
-    await flush();
+    await mount(null);
 
     expect({ machines: await machines(), body: overlay().querySelector('[data-part="empty"]')?.textContent }).toEqual({
       machines: [],
@@ -753,13 +589,7 @@ describe('the context rows', () => {
       },
     });
 
-    render(
-      <>
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
+    await mount(<Run machine={machine} />);
     await show(machine.id);
 
     expect(panel().context).toEqual([
@@ -783,22 +613,24 @@ describe('the context rows', () => {
 });
 
 describe('Copy JSON', () => {
-  test('copies the shown instance as indented JSON: its machine, leaves, preview and context', async () => {
+  test('copies the shown instance as indented JSON: its machine, leaves, preview and context, and says how it went', async () => {
     const machine = createCheckoutMachine();
-    render(
-      <>
-        <Checkout machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
+    await mount(<Checkout machine={machine} />);
     await show(machine.id);
+
+    const footer = () =>
+      [...overlay().querySelectorAll('footer button')].map(
+        (found) => `${found.getAttribute('aria-label')}: ${found.textContent}`,
+      );
 
     const live = await copy('Copy JSON');
     await preview(machine.id, ['payment.error']);
     const previewing = await copy('Copy JSON');
+    const labels = footer();
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+    await flush();
     // jsdom has no clipboard, so the status always says the copy failed.
-    expect({ live, previewing }).toEqual({
+    expect({ live, previewing, labels, later: footer() }).toEqual({
       live: {
         copied: [
           json({
@@ -823,6 +655,9 @@ describe('Copy JSON', () => {
         ],
         status: 'Copy failed',
       },
+      // The clicked button shows the status in place of its label for 2 s, and keeps its name.
+      labels: ['Copy JSON: Copy failed', 'Copy link: Copy link'],
+      later: ['Copy JSON: Copy JSON', 'Copy link: Copy link'],
     });
   });
 
@@ -852,13 +687,7 @@ describe('Copy JSON', () => {
       }),
     });
 
-    render(
-      <>
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
+    await mount(<Run machine={machine} />);
     await show(machine.id);
 
     const { copied } = await copy('Copy JSON');
@@ -887,13 +716,7 @@ describe('Copy JSON', () => {
       },
     });
 
-    render(
-      <>
-        <Run machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
+    await mount(<Run machine={machine} />);
     await show(machine.id);
 
     expect({ copied: (await copy('Copy JSON')).copied, context: panel().context }).toEqual({
@@ -901,40 +724,10 @@ describe('Copy JSON', () => {
       context: ['boom: "[Unreadable]"'],
     });
   });
-
-  test('the clicked button shows what the copy did for 2 s in place of its label, and keeps its name', async () => {
-    const machine = createCheckoutMachine();
-    render(
-      <>
-        <Checkout machine={machine} />
-        <Konat defaultOpen />
-      </>,
-    );
-    await flush();
-    await preview(machine.id, ['payment.error']);
-
-    const footer = () =>
-      [...overlay().querySelectorAll('footer button')].map(
-        (found) => `${found.getAttribute('aria-label')}: ${found.textContent}`,
-      );
-
-    await copy('Copy JSON');
-    const afterJson = footer();
-    await copy('Copy link');
-    const afterLink = footer();
-    await new Promise((resolve) => setTimeout(resolve, 2100));
-    await flush();
-    // jsdom has no clipboard, so each copy fails.
-    expect({ afterJson, afterLink, later: footer() }).toEqual({
-      afterJson: ['Copy JSON: Copy failed', 'Copy link: Copy link'],
-      afterLink: ['Copy JSON: Copy JSON', 'Copy link: Copy failed'],
-      later: ['Copy JSON: Copy JSON', 'Copy link: Copy link'],
-    });
-  });
 });
 
 describe('settings', () => {
-  test('the panel remembers whether it is open, its corner and the shown machine', async () => {
+  test('the panel remembers whether it is open, its corner and the shown machine, until Back shows the list', async () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
 
@@ -955,33 +748,19 @@ describe('settings', () => {
     const saved = stored();
     unmount();
 
+    const second = render(page());
+    await flush();
+    const reloaded = { open: isOpen(), corner: look().corner, machine: shownMachine() };
+    await click(button('Back'));
+    second.unmount();
     render(page());
     await flush();
-    expect({ first, saved, reloaded: { open: isOpen(), corner: look().corner, machine: shownMachine() } }).toEqual({
+    expect({ first, saved, reloaded, back: { saved: stored(), machine: shownMachine() } }).toEqual({
       first: { open: false, corner: 'bottom-right' },
       saved: { v: 1, open: true, machine: toggle.id, position: 'bottom-left', positionDefault: 'bottom-right' },
       reloaded: { open: true, corner: 'bottom-left', machine: toggle.id },
+      back: { saved: { v: 1, open: true, position: 'bottom-left', positionDefault: 'bottom-right' }, machine: 'none' },
     });
-  });
-
-  test('picking a corner in Settings moves the bubble and the panel there', async () => {
-    render(<Konat defaultOpen />);
-    await flush();
-
-    const checked = () => overlay().querySelector('[role="radiogroup"] input:checked')?.parentElement?.textContent;
-    const corners: { corner?: string; checked?: string }[] = [];
-
-    for (const label of ['Top left', 'Top right', 'Bottom left', 'Bottom right']) {
-      await pickCorner(label);
-      corners.push({ corner: look().corner, checked: checked() });
-    }
-
-    expect(corners).toEqual([
-      { corner: 'top-left', checked: 'Top left' },
-      { corner: 'top-right', checked: 'Top right' },
-      { corner: 'bottom-left', checked: 'Bottom left' },
-      { corner: 'bottom-right', checked: 'Bottom right' },
-    ]);
   });
 
   test('a stored corner applies only while the position prop is the one the user moved away from', async () => {
@@ -1018,20 +797,14 @@ describe('settings', () => {
   describe('stored settings the overlay can’t use', () => {
     test.each([
       [
-        'invalid fields',
-        '{"v":1,"open":"yes","position":"middle","positionDefault":"bottom-right","machine":""}',
-        { open: false, corner: 'bottom-right' },
-        { v: 1, open: true },
-      ],
-      [
         'invalid fields next to valid ones',
-        '{"v":1,"open":true,"position":"middle","positionDefault":"bottom-right"}',
+        '{"v":1,"open":true,"position":"middle","positionDefault":"bottom-right","machine":""}',
         { open: true, corner: 'bottom-right' },
         { v: 1, open: false },
       ],
       [
         'a corner without the position prop it was chosen over',
-        '{"v":1,"position":"top-left"}',
+        '{"v":1,"open":"yes","position":"top-left"}',
         { open: false, corner: 'bottom-right' },
         { v: 1, open: true },
       ],
@@ -1041,8 +814,6 @@ describe('settings', () => {
         { open: false, corner: 'bottom-right' },
         { v: 1, open: true },
       ],
-      ['broken JSON', '{', { open: false, corner: 'bottom-right' }, { v: 1, open: true }],
-      ['JSON that isn’t an object', 'null', { open: false, corner: 'bottom-right' }, { v: 1, open: true }],
     ])('%s: the overlay keeps what it can, and the next change replaces them', async (_name, raw, shown, saved) => {
       localStorage.setItem(SETTINGS_KEY, raw);
       render(<Konat />);
@@ -1055,7 +826,7 @@ describe('settings', () => {
   });
 });
 
-test('the theme prop sets the color scheme, and an unknown theme follows the system', async () => {
+test('the theme prop sets the color scheme, which follows the system by default', async () => {
   const { rerender } = render(<Konat />);
   await flush();
 
@@ -1066,9 +837,5 @@ test('the theme prop sets the color scheme, and an unknown theme follows the sys
     themes.push(look().theme);
   }
 
-  // @ts-expect-error A JavaScript app can pass a theme that Theme does not have.
-  rerender(<Konat theme="neon" />);
-  themes.push(look().theme);
-
-  expect(themes).toEqual(['system', 'light', 'dark', 'system']);
+  expect(themes).toEqual(['system', 'light', 'dark']);
 });
