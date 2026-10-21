@@ -1,5 +1,3 @@
-// What a preview of some leaves shows: the complete set of leaves, and a real snapshot of the machine in them.
-
 import type {
   AnyActorRef,
   AnyMachineSnapshot,
@@ -12,15 +10,14 @@ import type {
 import type { Override } from '../types';
 import { getTree, leavesOfValue, nodeId, type AnyStateNode, type MachineTree } from './tree';
 
-/** A state value made of maps alone: an atomic node is written as `{}`. */
 interface NestedStateValue {
   [key: string]: NestedStateValue;
 }
 
 /**
- * A nested state value naming the given leaf nodes. Atomic nodes are written as `{}`, which XState's state-value
- * resolution accepts at every level, so the value doesn't need to know which parent is compound or parallel. Keys
- * follow document order, as in snapshots XState makes itself, whatever order the leaves were asked for in.
+ * An atomic node is `{}`, which XState's state-value resolution accepts at every level.
+ * So the value does not need to know which parent is compound or parallel.
+ * Keys are in document order, as in the snapshots that XState makes.
  */
 function toStateValue(nodes: readonly AnyStateNode[]): StateValue {
   const value: NestedStateValue = {};
@@ -48,10 +45,7 @@ function leafNodes(tree: MachineTree, leaves: readonly string[]): AnyStateNode[]
   });
 }
 
-/**
- * True when two leaves can be active together: their closest common ancestor is a parallel node. A set of leaves
- * is a valid configuration when every pair is.
- */
+/** Two leaves can be active together when their closest common ancestor is a parallel node. */
 function orthogonal(a: AnyStateNode, b: AnyStateNode): boolean {
   if (a === b) return false;
   let depth = 0;
@@ -93,9 +87,10 @@ export function completeTarget(machine: AnyStateMachine, requested: readonly str
 }
 
 /**
- * A real snapshot of the machine in the given configuration, through `resolveState`. Context is always passed:
- * without it XState uses `{}`, not the initial context. Throws when a leaf isn't part of the machine, or when
- * two leaves can't be active together, which an override kept across an HMR edit can ask for.
+ * Without a context, `resolveState` uses `{}`, not the initial context.
+ * An override kept across an HMR edit can name a leaf that the machine does not have.
+ * It can also name two leaves that cannot be active together.
+ * This function throws an error for both.
  */
 export function resolveSnapshot(
   machine: AnyStateMachine,
@@ -133,12 +128,11 @@ export function resolveSnapshot(
   return snapshot;
 }
 
-/** A state node's output: a mapper, which XState calls with the context, the event and the actor, or a plain value. */
 type StateOutput = AnyStateNode['output'];
 
 type OutputMapper = Mapper<MachineContext, EventObject, unknown, EventObject>;
 
-/** Event that output mappers of a previewed final state get, since no real event led there. */
+/** Output mappers of a previewed final state get this event, because no real event led there. */
 const PREVIEW_EVENT = { type: 'konat.preview' };
 
 /**

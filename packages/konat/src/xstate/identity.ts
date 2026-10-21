@@ -1,5 +1,3 @@
-// What names an actor in the registry: its machine id, its instance id, and an optional label.
-
 import type { AnyStateMachine, MachineContext } from 'xstate';
 import { isId } from '../core/ids';
 import { warnOnce } from '../core/warn-once';
@@ -17,7 +15,6 @@ const DEFAULT_MACHINE_ID = '(machine)';
 const COUNTER_KEY = '__KONAT_LAST_INSTANCE__';
 const fallbackIds = new WeakMap<AnyStateMachine, string>();
 
-/** `debug.id`, then `machine.id`, then a generated id for machines still on XState's default. */
 export function resolveMachineId(machine: AnyStateMachine, debugId?: string): string {
   if (isId(debugId)) return debugId;
 
@@ -60,7 +57,6 @@ export function warnFallbackId(id: string): void {
 }
 
 /**
- * A page-unique instance id.
  * The counter lives on globalThis, so every React root and every copy of the package draw from one sequence.
  * React's useId isn't enough, because separately hydrated roots each start from the same tree-position ids.
  * So two islands that render one machine would share a key.
@@ -74,7 +70,7 @@ export function nextInstanceId(): string {
   return String(next);
 }
 
-/** Children sorted by key, as context keys are: moving a state up or down doesn't change the machine. */
+/** Children are sorted by key, as context keys are, so moving a state up or down doesn't change the machine. */
 function signature(node: AnyStateNode): string {
   const children = childNodes(node).sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
@@ -83,12 +79,11 @@ function signature(node: AnyStateNode): string {
   return `${node.type}{${children.map((child) => `${JSON.stringify(child.key)}:${signature(child)}`).join(',')}}`;
 }
 
-/** A context written as an object. A context factory makes one when the actor starts. */
 function isContextObject(context: unknown): context is MachineContext {
   return typeof context === 'object' && context !== null && !Array.isArray(context);
 }
 
-/** Sorted keys of a context given as an object; a context factory contributes nothing. */
+/** A context factory contributes nothing. It makes the context only when the actor starts. */
 function contextKeys(machine: AnyStateMachine): string {
   const { context } = machine.config;
 

@@ -6,7 +6,7 @@ import type { KonatProps } from './types';
 
 export type { FixtureSet, FixturesInput, FixturesResult, Position, KonatProps, Theme } from './types';
 
-// As in xstate.ts: declared here rather than through @types/node, for apps that typecheck this source without it.
+// Declared here, not through @types/node, so apps that typecheck this source without Node types still compile.
 declare const process: { env: { NODE_ENV?: string } };
 
 function ProductionKonat(_props: KonatProps): null {

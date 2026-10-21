@@ -1,5 +1,3 @@
-// What the adapter reads from an XState actor and its snapshots.
-
 import {
   isMachineSnapshot,
   type ActorRef,
@@ -11,8 +9,8 @@ import {
 import { isMachine } from './tree';
 
 /**
- * A running actor of a machine. Its snapshot is typed by what every XState snapshot has: an actor that fails on
- * start has a snapshot with only a status and an error, and no value, context or children.
+ * The snapshot type has only what every XState snapshot has.
+ * An actor that fails on start has a snapshot with only a status and an error, and no value, context or children.
  */
 export type MachineActor = ActorRef<Snapshot<unknown>, AnyEventObject, AnyEventObject> & {
   logic: AnyStateMachine;
@@ -22,7 +20,7 @@ export type MachineActor = ActorRef<Snapshot<unknown>, AnyEventObject, AnyEventO
   _error(cause: unknown): void;
 };
 
-/** The child actors a machine snapshot lists, by their ids. */
+/** By actor id. */
 export type ChildActors = Readonly<Record<string, AnyActorRef>>;
 
 export const EMPTY_CHILDREN: ChildActors = /* @__PURE__ */ Object.freeze({});

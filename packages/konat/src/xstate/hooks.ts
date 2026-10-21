@@ -1,5 +1,3 @@
-// The @xstate/react hooks, built on the actor proxy. Same names and signatures, plus `debug`.
-
 import { useActorRef as useXStateActorRef, useSelector as useXStateSelector } from '@xstate/react';
 import * as React from 'react';
 import {
@@ -25,16 +23,14 @@ import { createView, createViewMemory, type View, type ViewLifetime, type ViewMe
 
 type ObserverOrListener<T> = Observer<T> | ((value: T) => void);
 
-// Layout effects run before @xstate/react's passive ones; on the server neither runs.
+// Layout effects run before the passive effects of @xstate/react. On the server, neither runs.
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
 
-/** The connection made for `key`, which `disconnect` ends. */
 interface Connection<T> {
   key: T;
   disconnect: () => void;
 }
 
-/** Holds a hook's connection between commits, as a ref does. */
 interface ConnectionSlot<T> {
   current?: Connection<T>;
 }
@@ -61,20 +57,17 @@ function isStoppedByXState(actor: AnyActorRef | undefined): boolean {
 }
 
 /**
- * What useProxiedActorRef keeps while the component is mounted, in one hook rather than one for each value.
+ * One hook keeps all of this, not one hook for each value.
  * Every row of a list runs these hooks, and each hook has a cost.
  */
 interface HookState {
   instanceId: string;
   /**
-   * The committed actor, binding and view, written in the commit phase: a render React throws away (a suspended
-   * transition) can make a new actor, which never starts, and must not move the observers of the committed one.
+   * The hook writes these in the commit phase, not during a render.
+   * React can throw away a render (a suspended transition), which can make a new actor that never starts.
+   * That actor must not move the observers of the committed one.
    */
   committed: { actor?: AnyActorRef; binding?: Binding; view?: View };
-  /**
-   * Shared by the views of every observer the component passes, an inline one being new on each render, and kept per
-   * actor, which stays the same while debug is turned off and on.
-   */
   memory: ViewMemory;
   listening: ConnectionSlot<Listening>;
   registration: ConnectionSlot<Registration>;
@@ -92,7 +85,6 @@ function createHookState(): HookState {
   };
 }
 
-/** Connects `key` in place of the connection the slot holds, unless that one is for the same key. */
 function ensureConnection<T extends object>(
   slot: ConnectionSlot<T>,
   key: T | undefined,
@@ -128,7 +120,6 @@ function useConnection<T extends object>(
   }, [key]);
 }
 
-/** Follows the binding's previews in the view, until the returned cleanup. */
 function listen(committed: HookState['committed'], { binding, view }: Listening): () => void {
   const stop = binding.onPreviewChange(view.showCurrent);
 
@@ -149,12 +140,9 @@ function listen(committed: HookState['committed'], { binding, view }: Listening)
 const connectRegistration = (registration: Registration): (() => void) => registration.connect();
 
 /**
- * Creates and starts the actor through @xstate/react, then hands out its proxy. Machines are registered while the
- * component is mounted; other actor logic, and actors with `debug.disabled`, come back as they are.
- *
- * `observer` sees what the proxy shows. It goes to @xstate/react, which subscribes it before starting the
- * actor, so an error on start reaches it and isn't also reported as unhandled. It's subscribed again when
- * `observerKey` changes.
+ * `observer` sees what the proxy shows.
+ * The hook gives it to @xstate/react, which subscribes it before it starts the actor.
+ * So an error on start gets to `observer`, and XState does not also report the error as unhandled.
  */
 function useProxiedActorRef(
   logic: AnyActorLogic,
@@ -168,7 +156,7 @@ function useProxiedActorRef(
 
   const observed = React.useMemo(() => {
     if (!observer) return undefined;
-    // Each view has its own, so a render React throws away, with a new observer, doesn't move the committed one.
+    // Each view has its own subscription, so a render that React throws away can't move the committed one.
     const subscription: ObserverSubscription = {};
 
     const view = createView(toObserver(observer), () => committed.binding, lifetime, undefined, hook.memory, {
@@ -196,8 +184,8 @@ function useProxiedActorRef(
   }, [observed]);
   // An actor ref rather than @xstate/react's Actor, whose private _error keeps it from narrowing to a MachineActor.
   const actor: AnyActorRef = useXStateActorRef(logic, actorOptions, view?.observer);
-  // After @xstate/react's cleanup, which stops the actor and drops its observers without telling them: the
-  // subscriptions made through the proxy end with them. A connect()ed child stops following previews once it stops.
+  // This cleanup runs after the cleanup of @xstate/react, which stops the actor and drops its observers.
+  // @xstate/react does not tell the observers, so the subscriptions made through the proxy also end here.
   React.useEffect(() => () => findBinding(actor)?.dropObservers(), [actor]);
   let binding: Binding | undefined;
   let registration: Registration | undefined;
@@ -240,7 +228,6 @@ function useProxiedActorRef(
   return binding ? binding.proxy : actor;
 }
 
-/** Wakes useSyncExternalStore; the snapshot itself is read through the proxy. */
 function createStore() {
   const listeners = new Set<() => void>();
 
@@ -261,9 +248,8 @@ function createStore() {
 }
 
 /**
- * Re-renders from a layout effect when `read()` gives another snapshot than the render read.
- * useSyncExternalStore subscribes, and checks the snapshot it rendered, in a passive effect, which runs after the paint
- * unless the commit was synchronous.
+ * In a passive effect, useSyncExternalStore subscribes and checks the snapshot that it rendered.
+ * A passive effect runs after the paint, unless the commit was synchronous.
  * A hidden Activity unregisters the hooks in it, and the registry then ends their previews.
  * The Activity can show a component again without a new render, so the last render can still show that preview.
  * This layout effect re-renders it synchronously, so the first paint shows the real snapshot.
@@ -275,7 +261,6 @@ function useSnapshotCheck<T>(read: () => T, rendered: T): void {
   });
 }
 
-/** @xstate/react's useSelector, with the check of useActor before the paint. */
 export function useSelector<TActor extends Pick<AnyActorRef, 'subscribe' | 'getSnapshot'> | undefined, T>(
   actor: TActor,
   selector: (snapshot: TActor extends { getSnapshot(): infer TSnapshot } ? TSnapshot : undefined) => T,
@@ -304,7 +289,7 @@ export function useActorRef<TLogic extends AnyActorLogic>(
   return useProxiedActorRef(machine, options, observerOrListener as ObserverOrListener<unknown>) as Actor<TLogic>;
 }
 
-/** @xstate/react's check for an actor passed in place of its logic: an actor has `send`, and logic doesn't. */
+/** The check of @xstate/react for an actor passed in place of its logic. An actor has `send`, and logic doesn't. */
 function isActorRef(logic: AnyActorLogic): logic is AnyActorLogic & Pick<AnyActorRef, 'send'> {
   return !!logic && 'send' in logic && typeof logic.send === 'function';
 }

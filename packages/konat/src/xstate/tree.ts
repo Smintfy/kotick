@@ -1,5 +1,3 @@
-// The state tree of an XState machine, and the leaves that a state value names.
-
 import { isMachineSnapshot, type AnyStateMachine, type Snapshot, type StateValue } from 'xstate';
 import type { StateNodeInfo } from '../types';
 
@@ -8,13 +6,13 @@ export type AnyStateNode = AnyStateMachine['root'];
 export interface MachineTree {
   /** Frozen, as are the infos and their lists. The registry's types write these lists as mutable. */
   nodes: StateNodeInfo[];
-  /** Leaf id to its state node, for every atomic and final node. */
+  /** By leaf id, for every atomic and final node. */
   leaves: ReadonlyMap<string, AnyStateNode>;
 }
 
 const trees = new WeakMap<AnyStateMachine, MachineTree>();
 
-/** True for XState machines, checked by shape so a second copy of xstate still counts. */
+/** Checked by shape, so a machine from a second copy of xstate still counts. */
 export function isMachine(logic: unknown): logic is AnyStateMachine {
   return (
     typeof logic === 'object' &&
@@ -29,7 +27,6 @@ export function isMachine(logic: unknown): logic is AnyStateMachine {
   );
 }
 
-/** The machine's tree, built once per machine object. */
 export function getTree(machine: AnyStateMachine): MachineTree {
   let tree = trees.get(machine);
 
@@ -42,10 +39,7 @@ export function getTree(machine: AnyStateMachine): MachineTree {
   return tree;
 }
 
-/**
- * Whether a state's description is text that the overlay can show.
- * A JavaScript machine can give any value, and React throws when it renders an object.
- */
+/** A JavaScript machine can give any value, and React throws when it renders an object. */
 function isDescriptionText(description: AnyStateNode['description']): description is string {
   return typeof description === 'string' && description !== '';
 }
@@ -95,7 +89,7 @@ export function nodeId(node: AnyStateNode): string {
   return node.path.join('.');
 }
 
-/** Leaf ids of a state value, in the value's order: one per active atomic or final node. */
+/** Leaf ids of a state value, in the value's order. */
 export function leavesOfValue(machine: AnyStateMachine, value: StateValue | undefined): string[] {
   const leaves: string[] = [];
 
@@ -135,7 +129,7 @@ function collectLeaves(node: AnyStateNode, value: StateValue, into: string[]): v
   }
 }
 
-/** Leaf ids of a snapshot's configuration; empty for snapshots without a value, such as an error on start. */
+/** Empty for a snapshot without a value, such as the snapshot of an actor that failed on start. */
 export function leavesOfSnapshot(machine: AnyStateMachine, snapshot: Snapshot<unknown>): string[] {
   return isMachineSnapshot(snapshot) ? leavesOfValue(machine, snapshot.value) : [];
 }
