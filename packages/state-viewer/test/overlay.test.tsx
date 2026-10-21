@@ -46,6 +46,7 @@ function createToggleMachine() {
 
 function Checkout({ machine }: { machine: AnyStateMachine }) {
   const [, send] = useMachine(machine);
+
   return (
     <>
       <button type="button" onClick={() => send({ type: 'EXPRESS' })}>
@@ -60,6 +61,7 @@ function Checkout({ machine }: { machine: AnyStateMachine }) {
 
 function Run({ machine }: { machine: AnyStateMachine }) {
   useMachine(machine);
+
   return null;
 }
 
@@ -70,7 +72,9 @@ async function click(element: Element): Promise<void> {
 
 function bubble(): HTMLButtonElement {
   const found = overlay().querySelector<HTMLButtonElement>('button[aria-expanded]');
+
   if (!found) throw new Error('The overlay has no bubble.');
+
   return found;
 }
 
@@ -78,13 +82,16 @@ function button(label: string): HTMLButtonElement {
   const found = [...overlay().querySelectorAll<HTMLButtonElement>('button')].find(
     (candidate) => candidate.getAttribute('aria-label') === label || candidate.textContent === label,
   );
+
   if (!found) throw new Error(`The overlay has no ${label} button.`);
+
   return found;
 }
 
 /** The corner and the color scheme of the overlay. */
 function look(): { corner?: string; theme?: string } {
   const { position, theme } = overlay().querySelector<HTMLElement>('[data-position]')?.dataset ?? {};
+
   return { corner: position, theme };
 }
 
@@ -97,8 +104,11 @@ function treeRows(): string[] {
     const description = row?.querySelector('[data-part="description"]')?.textContent;
     const badges = [...(row?.querySelectorAll('[data-part="type"], [data-part="tag"]') ?? [])].map((badge) => badge.textContent);
     const parts = [`${indent}${key}`];
+
     if (description !== undefined) parts.push(`“${description}”`);
+
     if (badges.length > 0) parts.push(`[${badges.join(', ')}]`);
+
     return parts.join(' ');
   });
 }
@@ -122,6 +132,7 @@ function announced(): Record<string, string> {
 async function machineList() {
   const rows = await machines();
   const states = [...overlay().querySelectorAll('button[data-machine] [data-part="row-end"]')].map((end) => end.textContent);
+
   return {
     header: [...overlay().querySelectorAll('header h2, header [data-part="chip"]')].map((part) => part.textContent),
     rows: rows.map((row, index) => `${row} · ${states[index]}`),
@@ -130,6 +141,7 @@ async function machineList() {
 
 function stored(): unknown {
   const raw = localStorage.getItem(SETTINGS_KEY);
+
   return raw === null ? null : JSON.parse(raw);
 }
 
@@ -150,8 +162,10 @@ test('the bubble opens a panel that lists the page’s machines, a row shows its
   // The bubble names the panel it opens, for assistive technology.
   const controlled = () => {
     const id = bubble().getAttribute('aria-controls');
+
     return id === null ? null : overlay().getElementById(id)?.getAttribute('aria-label');
   };
+
   const closed = { open: isOpen(), controls: controlled() };
   await click(bubble());
   const opened = { open: isOpen(), controls: controlled(), machines: await machines() };
@@ -172,11 +186,13 @@ describe('the machine list', () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
     const fetcher = createMachine({ id: freshId('fetcher'), initial: 'loading', states: { loading: {}, failed: {} } });
+
     const parent = setup({ actors: { fetcher } }).createMachine({
       id: freshId('parent'),
       initial: 'active',
       states: { active: { invoke: { id: 'load', src: 'fetcher' } } },
     });
+
     render(
       <>
         <Checkout machine={checkout} />
@@ -219,12 +235,14 @@ describe('the machine list', () => {
 
   test('Back from a machine page shows the list again, and the panel forgets the machine', async () => {
     const toggle = createToggleMachine();
+
     const page = () => (
       <>
         <Run machine={toggle} />
         <StateViewer defaultOpen />
       </>
     );
+
     const { unmount } = render(page());
     await flush();
 
@@ -245,12 +263,14 @@ describe('the machine list', () => {
   test('the stored machine’s page opens when that machine registers, and the list shows while it is gone', async () => {
     const toggle = createToggleMachine();
     localStorage.setItem(SETTINGS_KEY, JSON.stringify({ v: 1, open: true, machine: toggle.id }));
+
     const page = (mounted: boolean) => (
       <>
         {mounted && <Run machine={toggle} />}
         <StateViewer />
       </>
     );
+
     const { rerender } = render(page(false));
     await flush();
 
@@ -304,6 +324,7 @@ describe('the host element', () => {
       element.remove();
       outer.remove();
     });
+
     const hostsIn = () => ({
       element: element.querySelectorAll('[data-state-viewer-root]').length,
       shadow: shadowTarget.querySelectorAll('[data-state-viewer-root]').length,
@@ -344,6 +365,7 @@ describe('the bubble', () => {
       </>,
     );
     await flush();
+
     const badge = () => ({
       badge: overlay().querySelector('[data-part="badge"]')?.textContent ?? null,
       name: bubble().getAttribute('aria-label'),
@@ -467,10 +489,12 @@ describe('the state tree', () => {
     await show(machine.id);
 
     const previewed: unknown[] = [];
+
     for (const leaf of leaves()) {
       await preview(machine.id, [leaf]);
       previewed.push(panel().previewed);
     }
+
     expect(previewed).toEqual(EDITOR_LEAVES.map((leaf) => [leaf]));
   });
 
@@ -530,6 +554,7 @@ describe('the state tree', () => {
   async function pickInstance(nth: number): Promise<void> {
     const picker = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
     const option = picker?.options[nth - 1];
+
     if (!picker || !option) throw new Error(`The machine page has no instance ${nth} to pick.`);
     fireEvent.change(picker, { target: { value: option.value } });
     await flush();
@@ -641,6 +666,7 @@ describe('the context rows', () => {
     class Point {
       x = 1;
     }
+
     const machine = createMachine({
       id: freshId('values'),
       context: {
@@ -656,6 +682,7 @@ describe('the context rows', () => {
         point: new Point(),
       },
     });
+
     render(
       <>
         <Run machine={machine} />
@@ -733,6 +760,7 @@ describe('Copy JSON', () => {
     const cycle: Record<string, unknown> = { name: 'loop' };
     cycle.self = cycle;
     const shared = { n: 1 };
+
     const machine = setup({ actors: { child: createMachine({}) } }).createMachine({
       id: freshId('odd'),
       context: ({ spawn }) => ({
@@ -751,6 +779,7 @@ describe('Copy JSON', () => {
         gone: undefined,
       }),
     });
+
     render(
       <>
         <Run machine={machine} />
@@ -785,6 +814,7 @@ describe('Copy JSON', () => {
         },
       },
     });
+
     render(
       <>
         <Run machine={machine} />
@@ -815,6 +845,7 @@ describe('Copy JSON', () => {
       [...overlay().querySelectorAll('footer button')].map(
         (found) => `${found.getAttribute('aria-label')}: ${found.textContent}`,
       );
+
     await copy('Copy JSON');
     const afterJson = footer();
     await copy('Copy link');
@@ -834,6 +865,7 @@ describe('settings', () => {
   test('the panel remembers whether it is open, its corner and the shown machine', async () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
+
     const page = () => (
       <>
         <Checkout machine={checkout} />
@@ -841,6 +873,7 @@ describe('settings', () => {
         <StateViewer />
       </>
     );
+
     const { unmount } = render(page());
     await flush();
     const first = { open: isOpen(), corner: look().corner };
@@ -865,10 +898,12 @@ describe('settings', () => {
 
     const checked = () => overlay().querySelector('[role="radiogroup"] input:checked')?.parentElement?.textContent;
     const corners: { corner?: string; checked?: string }[] = [];
+
     for (const label of ['Top left', 'Top right', 'Bottom left', 'Bottom right']) {
       await pickCorner(label);
       corners.push({ corner: look().corner, checked: checked() });
     }
+
     expect(corners).toEqual([
       { corner: 'top-left', checked: 'Top left' },
       { corner: 'top-right', checked: 'Top right' },
@@ -953,9 +988,11 @@ test('the theme prop sets the color scheme, and an unknown theme follows the sys
   await flush();
 
   const themes = [look().theme];
+
   for (const theme of ['light', 'dark', 'neon']) {
     rerender(<StateViewer theme={theme as Theme} />);
     themes.push(look().theme);
   }
+
   expect(themes).toEqual(['system', 'light', 'dark', 'system']);
 });

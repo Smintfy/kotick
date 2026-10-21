@@ -90,6 +90,7 @@ const PARENT_BUTTONS: Record<string, ParentEvent['type']> = {
 
 function Parent({ machine, label }: { machine: ParentMachine; label?: string }) {
   const [snapshot, send] = useMachine(machine, label === undefined ? undefined : { debug: { label } });
+
   return (
     <section aria-label={label ?? machine.id}>
       <output>{JSON.stringify(snapshot.value)}</output>
@@ -113,7 +114,9 @@ async function mount(app: ReactElement) {
       <StateViewer defaultOpen />
     </>,
   );
+
   await flush();
+
   return {
     remove: () =>
       view.rerender(
@@ -127,6 +130,7 @@ async function mount(app: ReactElement) {
 
 function Hooked({ machine, onActor }: { machine: AnyStateMachine; onActor: (actor: AnyActorRef) => void }) {
   onActor(useActorRef(machine));
+
   return null;
 }
 
@@ -140,6 +144,7 @@ interface Run {
 const RUNS = {
   useActorRef: async (machine: AnyStateMachine): Promise<Run> => {
     let actor: AnyActorRef | undefined;
+
     const { remove } = await mount(
       <Hooked
         machine={machine}
@@ -148,7 +153,9 @@ const RUNS = {
         }}
       />,
     );
+
     if (!actor) throw new Error('The component did not render.');
+
     return { actor, stop: remove };
   },
   'connect()': async (machine: AnyStateMachine): Promise<Run> => {
@@ -158,6 +165,7 @@ const RUNS = {
       actor.stop();
     });
     await flush();
+
     return { actor, stop: () => actor.stop() };
   },
   'connect() before start()': async (machine: AnyStateMachine): Promise<Run> => {
@@ -167,6 +175,7 @@ const RUNS = {
       actor.stop();
     });
     await flush();
+
     return { actor, stop: () => actor.stop() };
   },
 };
@@ -190,7 +199,9 @@ function shown(name: string) {
 /** The live child under `id` in an actor's snapshot. */
 function childOf(actor: AnyActorRef, id: string): AnyActorRef {
   const child = (actor.getSnapshot() as { children: Record<string, AnyActorRef | undefined> }).children[id];
+
   if (!child) throw new Error(`No child "${id}".`);
+
   return child;
 }
 
@@ -199,7 +210,9 @@ function family() {
   const states = [...overlay().querySelectorAll('section[aria-labelledby]')].find(
     (section) => section.querySelector('h3')?.textContent === 'States',
   );
+
   if (!states) throw new Error('The panel shows no States section.');
+
   return {
     hint: states.querySelector('p[data-part="hint"]')?.textContent ?? '',
     children: [...states.querySelectorAll('[data-part="children"] button')].map((button) => button.textContent),
@@ -215,8 +228,10 @@ function hidePage() {
 /** The recordings that a pagehide stored for the machine, without their times, oldest first. */
 function storedEntries(machineId: string) {
   const raw = sessionStorage.getItem(`state-viewer:recorded:${machineId}`);
+
   if (raw === null) return null;
   const { entries } = JSON.parse(raw) as { entries: { leaves: string[]; context: unknown }[] };
+
   return entries.map(({ leaves, context }) => ({ leaves, context }));
 }
 
@@ -228,8 +243,10 @@ test('an invoked child is listed under its parent while the invoking state is ac
   const worker = createWorkerMachine();
   const parent = createParentMachine(worker);
   await mount(<Parent machine={parent} />);
+
   const seen = () => {
     const { instance, live } = panel();
+
     return { instance, live, children: family().children };
   };
 
@@ -275,6 +292,7 @@ test('an invoked child is listed under its parent while the invoking state is ac
 describe('children that an action spawns', () => {
   test('spawnChild and spawn in assign each list a child, named by its id', async () => {
     const worker = createWorkerMachine();
+
     const crew = setup({
       types: {
         context: {} as { workers: ActorRefFrom<WorkerMachine>[] },
@@ -298,6 +316,7 @@ describe('children that an action spawns', () => {
         },
       },
     });
+
     const { actor } = await RUNS.useActorRef(crew);
 
     await send(actor, { type: 'SPAWN' });
@@ -327,6 +346,7 @@ function createWizardMachines() {
       finished: { type: 'final' },
     },
   });
+
   const step = setup({ actors: { task } }).createMachine({
     id: freshId('step'),
     initial: 'working',
@@ -335,6 +355,7 @@ function createWizardMachines() {
       complete: { type: 'final' },
     },
   });
+
   const wizard = setup({ actors: { step } }).createMachine({
     id: freshId('wizard'),
     initial: 'stepping',
@@ -343,6 +364,7 @@ function createWizardMachines() {
       finished: {},
     },
   });
+
   return { task, step, wizard };
 }
 
@@ -372,9 +394,11 @@ describe("a child that the parent's initial state invokes", () => {
       const worker = createWorkerMachine();
       const parent = createParentMachine(worker, 'busy');
       const { actor, stop } = await RUNS[run](parent);
+
       const atChild = async () => {
         const listed = await machines();
         await show(worker.id);
+
         return { machines: listed, instances: instances(), live: panel().live, hint: family().hint };
       };
 
@@ -389,12 +413,14 @@ describe("a child that the parent's initial state invokes", () => {
         stop();
       });
       await flush();
+
       const child = {
         machines: [parent.id, `${worker.id} · child`],
         instances: ['job · 1'],
         live: ['working'],
         hint: `Child of ${parent.id} · 1. ${READ_ONLY}`,
       };
+
       expect({ running, paused, closed, reopened, stopped: await machines() }).toEqual({
         running: child,
         paused: ['paused'],
@@ -410,6 +436,7 @@ describe('several instances of a parent', () => {
   test('each lists its own child, which leaves with it', async () => {
     const worker = createWorkerMachine();
     const parent = createParentMachine(worker);
+
     const app = (labels: string[]) => (
       <>
         {labels.map((label) => (
@@ -418,12 +445,15 @@ describe('several instances of a parent', () => {
         <StateViewer defaultOpen />
       </>
     );
+
     const view = render(app(['First', 'Second']));
     await flush();
     await press('Open', 'First');
     await press('Open', 'Second');
+
     const atChild = async (nth: number) => {
       await show(worker.id, nth);
+
       return { instances: instances(), hint: family().hint };
     };
 
@@ -491,6 +521,7 @@ describe('a child that finishes', () => {
 function createSupervisorMachines() {
   // XState takes the children of a failed actor out of its tree and its system, so they put themselves here.
   const tickers: AnyActorRef[] = [];
+
   const ticker = setup({ types: { events: {} as { type: 'TICK' } } }).createMachine({
     id: freshId('ticker'),
     entry: ({ self }) => {
@@ -499,6 +530,7 @@ function createSupervisorMachines() {
     initial: 'tick',
     states: { tick: { on: { TICK: 'tock' } }, tock: { on: { TICK: 'tick' } } },
   });
+
   const flaky = setup({
     types: { events: {} as { type: 'POKE' } },
     actors: { ticker },
@@ -512,6 +544,7 @@ function createSupervisorMachines() {
     initial: 'running',
     states: { running: { invoke: { id: 'inner', src: 'ticker' }, on: { POKE: { actions: 'explode' } } } },
   });
+
   const broken = setup({
     actors: { ticker },
     actions: {
@@ -524,6 +557,7 @@ function createSupervisorMachines() {
     initial: 'running',
     states: { running: { entry: 'explode', invoke: { id: 'inner', src: 'ticker' } } },
   });
+
   const supervisor = setup({
     types: { events: {} as { type: 'POKE' } | { type: 'RETRY' } | { type: 'START_BROKEN' } },
     actors: { flaky, broken },
@@ -539,6 +573,7 @@ function createSupervisorMachines() {
       trying: { invoke: { id: 'broken-job', src: 'broken', onError: 'failed' } },
     },
   });
+
   return { ticker, flaky, supervisor, tickers };
 }
 
@@ -567,6 +602,7 @@ describe('a child that fails', () => {
     await send(actor, { type: 'START_BROKEN' });
     const failed = { value: actor.getSnapshot().value, machines: await machines() };
     const orphans = tickers.slice(before);
+
     for (const orphan of orphans) await send(orphan, { type: 'TICK' });
     const ticked = { values: orphans.map((orphan) => orphan.getSnapshot().value), machines: await machines() };
     expect({ failed, ticked }).toEqual({
@@ -580,10 +616,13 @@ describe('a child that fails', () => {
     const { actor } = await RUNS.useActorRef(supervisor);
 
     for (const type of ['POKE', 'RETRY', 'POKE', 'RETRY']) await send(actor, { type });
+
     const instancesOf = async (machineId: string) => {
       await show(machineId);
+
       return instances();
     };
+
     expect({
       machines: await machines(),
       flaky: await instancesOf(flaky.id),
@@ -603,6 +642,7 @@ function createTimerParents() {
     initial: 'running',
     states: { running: { on: { LAP: 'lapped' } }, lapped: {} },
   });
+
   const invoker = setup({ actors: { timer } }).createMachine({
     id: freshId('invoker'),
     initial: 'active',
@@ -611,6 +651,7 @@ function createTimerParents() {
       paused: { tags: ['idle'], on: { RESUME: 'active' } },
     },
   });
+
   const spawner = setup({ actors: { timer } }).createMachine({
     id: freshId('spawner'),
     entry: spawnChild('timer', { id: 'timer' }),
@@ -620,11 +661,13 @@ function createTimerParents() {
       busy: { tags: ['working'], on: { REST: 'idle' } },
     },
   });
+
   return { invoker, spawner };
 }
 
 function Timer({ actor }: { actor: AnyActorRef }) {
   const value = useSelector(actor, (snapshot) => snapshot.value);
+
   return (
     <section aria-label="timer">
       <output>{JSON.stringify(value)}</output>
@@ -635,6 +678,7 @@ function Timer({ actor }: { actor: AnyActorRef }) {
 /** Shows what a component reads from the parent's snapshot, and renders the timer child that the snapshot holds. */
 function Watcher({ actor }: { actor: AnyActorRef }) {
   const snapshot = useSelector(actor, (current) => current);
+
   const read = {
     value: snapshot.value,
     status: snapshot.status,
@@ -643,7 +687,9 @@ function Watcher({ actor }: { actor: AnyActorRef }) {
     can: ['PAUSE', 'RESUME', 'WORK', 'REST'].filter((type) => snapshot.can({ type })),
     children: Object.keys(snapshot.children),
   };
+
   const timer: AnyActorRef | undefined = snapshot.children.timer;
+
   return (
     <>
       <section aria-label="parent">
@@ -661,6 +707,7 @@ async function mountWatcher(machine: AnyStateMachine) {
     actor.stop();
   });
   await mount(<Watcher actor={connect(actor)} />);
+
   return actor;
 }
 

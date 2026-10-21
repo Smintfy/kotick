@@ -37,31 +37,41 @@ function defaultStorage(): Storage | null {
 /** The stored settings, leaving out whatever is missing or invalid. */
 export function readSettings(): Settings {
   const storage = defaultStorage();
+
   if (!storage) return {};
   let payload: unknown;
+
   try {
     const raw = storage.getItem(SETTINGS_KEY);
+
     if (raw === null) return {};
     payload = JSON.parse(raw);
   } catch {
     return {};
   }
+
   if (typeof payload !== 'object' || payload === null || (payload as { v?: unknown }).v !== 1) return {};
   const { open, position, positionDefault, machine } = payload as Record<string, unknown>;
   const settings: Settings = {};
+
   if (typeof open === 'boolean') settings.open = open;
+
   if (isPosition(position) && isPosition(positionDefault)) {
     settings.position = position;
     settings.positionDefault = positionDefault;
   }
+
   if (typeof machine === 'string' && machine !== '') settings.machine = machine;
+
   return settings;
 }
 
 /** Best effort: settings that can't be stored last until the page reloads. */
 export function writeSettings(settings: Settings): void {
   const storage = defaultStorage();
+
   if (!storage) return;
+
   try {
     storage.setItem(SETTINGS_KEY, JSON.stringify({ v: 1, ...settings }));
   } catch {

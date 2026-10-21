@@ -29,6 +29,7 @@ export function useRenderStats(name: string) {
       mounted.current = true;
       stats.mounts += 1;
     }
+
     // StrictMode calls this effect again with the same closure.
     // Thus, the render object is the same, and the hook does not count it again.
     if (lastRender.current !== thisRender) {
@@ -37,6 +38,7 @@ export function useRenderStats(name: string) {
     }
 
     const element = ref.current;
+
     if (element) element.textContent = `mounts ${stats.mounts} · renders ${stats.renders}`;
   });
 

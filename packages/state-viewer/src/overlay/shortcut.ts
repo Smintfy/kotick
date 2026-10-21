@@ -42,20 +42,27 @@ const KEY_NAMES: Readonly<Record<string, string>> = {
 /** Parses a shortcut such as 'alt+s'; `undefined` when it names no key or an unknown modifier. */
 export function parseShortcut(value: string): Shortcut | undefined {
   if (typeof value !== 'string') return undefined;
+
   const parts = value
     .toLowerCase()
     .split('+')
     .map((part) => part.trim());
+
   const name = parts.pop();
+
   if (!name) return undefined;
   const shortcut: Shortcut = { key: KEY_NAMES[name] ?? name, alt: false, ctrl: false, shift: false, meta: false };
+
   for (const part of parts) {
     const modifier = part === 'mod' ? (isApple() ? 'meta' : 'ctrl') : MODIFIERS[part];
+
     if (!modifier) return undefined;
     shortcut[modifier] = true;
   }
+
   if (/^[a-z]$/.test(shortcut.key)) shortcut.code = `Key${shortcut.key.toUpperCase()}`;
   else if (/^[0-9]$/.test(shortcut.key)) shortcut.code = `Digit${shortcut.key}`;
+
   return shortcut;
 }
 
@@ -68,6 +75,7 @@ export function matchesShortcut(shortcut: Shortcut, event: KeyboardEvent): boole
   ) {
     return false;
   }
+
   // Either the character or the physical key, so Alt+S works on macOS and on layouts that move letters.
   return (typeof event.key === 'string' && event.key.toLowerCase() === shortcut.key) || event.code === shortcut.code;
 }
@@ -91,8 +99,11 @@ const TEXT_INPUT_TYPES = new Set([
 export function isTyping(target: EventTarget | null | undefined): boolean {
   if (!isElement(target)) return false;
   const tag = target.localName;
+
   if (tag === 'textarea') return true;
+
   if (tag === 'input') return TEXT_INPUT_TYPES.has((target as HTMLInputElement).type);
+
   // isContentEditable also covers inherited editability; the selector is for DOMs that don't implement it (jsdom).
   return (target as HTMLElement).isContentEditable === true || target.closest(EDITABLE) !== null;
 }

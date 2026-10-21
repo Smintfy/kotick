@@ -28,6 +28,7 @@ export function InstallTabs({ name }: { name: string }) {
         aria-label="Package manager"
         onKeyDown={(event) => {
           if (event.key === 'ArrowRight') select(selected + 1);
+
           if (event.key === 'ArrowLeft') select(selected - 1);
         }}
       >

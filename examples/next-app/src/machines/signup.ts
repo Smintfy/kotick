@@ -3,6 +3,7 @@ import { assign, fromPromise, setup } from 'xstate';
 /** The request fails for addresses at example.com. Thus, the failed state is easy to get to by hand. */
 const subscribe = fromPromise<void, { email: string }>(async ({ input }) => {
   await new Promise((resolve) => setTimeout(resolve, 800));
+
   if (input.email.endsWith('@example.com')) throw new Error('This address is already on the list.');
 });
 

@@ -33,6 +33,7 @@ function createUploadMachine(id = freshId('upload')) {
 }
 
 type UploadMachine = ReturnType<typeof createUploadMachine>;
+
 type UploadSnapshot = SnapshotFrom<UploadMachine>;
 
 /** What a consumer shows of a snapshot, as `status:value`. */
@@ -57,6 +58,7 @@ const Reader = React.memo(function Reader({ upload, name }: { upload: AnyActorRe
 /** The upload as useMachine or useActor shows it, and as a useSelector consumer of its actor shows it. */
 function Upload({ machine, useHook = useMachine }: { machine: UploadMachine; useHook?: typeof useMachine }) {
   const [snapshot, , actorRef] = useHook(machine);
+
   return (
     <>
       <output aria-label="upload">{label(snapshot)}</output>
@@ -87,6 +89,7 @@ function Cancellable({
   useHook?: Hooks['useActorRef'];
 }) {
   const actorRef = useHook(machine);
+
   return (
     <>
       {readers.map((name) => (
@@ -115,6 +118,7 @@ const OBSERVERS: [name: string, stable: boolean][] = [
 
 function useObserver(observer: Observer<UploadSnapshot>, stable: boolean): Observer<UploadSnapshot> {
   const [first] = React.useState(observer);
+
   return stable ? first : observer;
 }
 
@@ -200,8 +204,10 @@ describe.each(IMPLEMENTATIONS)('a consumer that subscribes after the stop, like 
   /** Previews `failed`, cancels, and edits the machine, as Fast Refresh does, which gives useMachine a new actor. */
   async function fastRefreshAfterStop(): Promise<{ id: string; consumer: string }> {
     const id = freshId('upload');
+
     function FastRefreshed({ machine }: { machine: UploadMachine }) {
       const [snapshot, , actorRef] = hooks.useMachine(machine);
+
       return (
         <>
           <output aria-label="upload">{label(snapshot)}</output>
@@ -211,12 +217,15 @@ describe.each(IMPLEMENTATIONS)('a consumer that subscribes after the stop, like 
         </>
       );
     }
+
     const view = render(page(<FastRefreshed machine={createUploadMachine(id)} />));
     await flush();
+
     if (previews) await preview(id, ['failed']);
     await cancel();
     view.rerender(page(<FastRefreshed machine={createUploadMachine(id)} />));
     await flush();
+
     return { id, consumer: 'upload' };
   }
 
@@ -225,10 +234,12 @@ describe.each(IMPLEMENTATIONS)('a consumer that subscribes after the stop, like 
     const machine = createUploadMachine();
     const view = render(page(<Cancellable machine={machine} readers={[]} useHook={hooks.useActorRef} />));
     await flush();
+
     if (previews) await preview(machine.id, ['failed']);
     await cancel();
     view.rerender(page(<Cancellable machine={machine} readers={['cancelled']} useHook={hooks.useActorRef} />));
     await flush();
+
     return { id: machine.id, consumer: 'cancelled' };
   }
 
@@ -251,14 +262,17 @@ describe.each(IMPLEMENTATIONS)('a consumer that subscribes after the stop, like 
         await clickLeaf('uploading');
         await release(id);
       }
+
       expect(shown(consumer)).toEqual('stopped:uploading');
     });
   });
 
   test('a useSelector consumer mounted after the stop with no preview showing hears no later preview', async () => {
     const machine = createUploadMachine();
+
     const app = (readers: string[]) =>
       page(<Cancellable machine={machine} readers={readers} useHook={hooks.useActorRef} />);
+
     const view = render(app(['before']));
     await flush();
     await cancel();
@@ -267,6 +281,7 @@ describe.each(IMPLEMENTATIONS)('a consumer that subscribes after the stop, like 
 
     if (previews) await preview(machine.id, ['failed']);
     const previewing = beforeAndAfter();
+
     if (previews) await release(machine.id);
     // A consumer subscribed before the stop isn't told about it, as with @xstate/react, and follows no preview either.
     expect({ previewing, released: beforeAndAfter() }).toEqual({
@@ -324,25 +339,31 @@ describe.each(IMPLEMENTATIONS)('the observer given to useActorRef, when the app 
      */
     async function cancelDuringPreview(calls: string[]) {
       const machine = createUploadMachine();
+
       function Hinted({ hint }: { hint: string }) {
         const actorRef = hooks.useActorRef(machine, undefined, useObserver(logTo(calls, () => hint), stable));
+
         return (
           <button type="button" onClick={() => actorRef.stop()}>
             Cancel
           </button>
         );
       }
+
       const view = render(page(<Hinted hint="Uploading" />));
       await flush();
+
       if (previews) await preview(machine.id, ['failed']);
 
       calls.length = 0;
       calls.push('[app stops]');
       await cancel();
+
       const rerender = async (hint: string) => {
         view.rerender(page(<Hinted hint={hint} />));
         await flush();
       };
+
       return { machine, rerender };
     }
 
@@ -350,6 +371,7 @@ describe.each(IMPLEMENTATIONS)('the observer given to useActorRef, when the app 
     async function afterwards(calls: string[], machine: UploadMachine, rerender: (hint: string) => Promise<void>) {
       calls.push('[afterwards]');
       await rerender('Closed');
+
       if (previews) {
         await preview(machine.id, ['uploaded']);
         await release(machine.id);
@@ -360,6 +382,7 @@ describe.each(IMPLEMENTATIONS)('the observer given to useActorRef, when the app 
       const calls: string[] = [];
       const { machine, rerender } = await cancelDuringPreview(calls);
       calls.push('[release]');
+
       if (previews) await release(machine.id);
       await afterwards(calls, machine, rerender);
 
@@ -376,6 +399,7 @@ describe.each(IMPLEMENTATIONS)('the observer given to useActorRef, when the app 
       calls.push('[parent re-renders]');
       await rerender('Cancelled');
       calls.push('[release]');
+
       if (previews) await release(machine.id);
       await afterwards(calls, machine, rerender);
 
@@ -396,11 +420,13 @@ describe.each(IMPLEMENTATIONS)('the observer given to useActorRef, when the app 
     test('hears complete once when, after the app stops the actor, a useSelector re-renders the component on another preview before the release', async () => {
       const machine = createUploadMachine();
       const calls: string[] = [];
+
       function Followed() {
         // What this render shows, set below. The observer reads it when it is called.
         let value = '';
         const actorRef = hooks.useActorRef(machine, undefined, useObserver(logTo(calls, () => value), stable));
         value = hooks.useSelector(actorRef, (snapshot) => String(snapshot.value));
+
         return (
           <>
             <output aria-label="upload">{value}</output>
@@ -410,8 +436,10 @@ describe.each(IMPLEMENTATIONS)('the observer given to useActorRef, when the app 
           </>
         );
       }
+
       render(page(<Followed />));
       await flush();
+
       if (previews) await preview(machine.id, ['failed']);
 
       calls.length = 0;
@@ -419,11 +447,14 @@ describe.each(IMPLEMENTATIONS)('the observer given to useActorRef, when the app 
       await cancel();
       // The developer clicks another state: useSelector renders the component again, which passes a new observer.
       calls.push('[preview of uploaded]');
+
       if (previews) await clickLeaf('uploaded');
       const moved = shown('upload');
       calls.push('[release]');
+
       if (previews) await release(machine.id);
       calls.push('[afterwards]');
+
       if (previews) {
         await preview(machine.id, ['failed']);
         await release(machine.id);
@@ -473,9 +504,12 @@ describeWithActivity('an Activity hides the component after the app stops the ac
             </React.Activity>
           );
         }
+
         const view = render(page(<App mode="visible" />));
         await flush();
+
         if (previews) await preview(machine.id, ['failed']);
+
         // Release all is on the machine list. Going there flushes the overlay, so it comes before the hide.
         if (releaseWhileHidden && previews) await machines();
 
@@ -484,6 +518,7 @@ describeWithActivity('an Activity hides the component after the app stops the ac
         await cancel();
         log.push('[hide]');
         view.rerender(page(<App mode="hidden" />));
+
         // The click comes before the registry's next flush, which drops the preview of an instance that unregistered.
         if (releaseWhileHidden && previews) await releaseAll();
         await flush();
@@ -492,6 +527,7 @@ describeWithActivity('an Activity hides the component after the app stops the ac
         log.push('[reveal]');
         view.rerender(page(<App mode="visible" />));
         await flush();
+
         return hidden;
       }
 
@@ -499,20 +535,25 @@ describeWithActivity('an Activity hides the component after the app stops the ac
         test('hears complete once by the reveal, and nothing of a later preview of the stopped actor', async () => {
           const machine = createUploadMachine();
           const calls: string[] = [];
+
           function Upload() {
             const actorRef = hooks.useActorRef(machine, undefined, useObserver(logTo(calls, () => 'upload'), stable));
+
             return (
               <button type="button" onClick={() => actorRef.stop()}>
                 Cancel
               </button>
             );
           }
+
           const hidden = await cancelThenHideAndReveal(machine, Upload, calls);
 
           // Later the developer looks at the upload machine again, and releases it.
           calls.push('[later preview]');
+
           if (previews) await preview(machine.id, ['paused']);
           calls.push('[later release]');
+
           if (previews) await release(machine.id);
           expect({ hidden, calls }).toEqual({
             hidden: '',
@@ -525,8 +566,10 @@ describeWithActivity('an Activity hides the component after the app stops the ac
 
       test('useMachine shows the stopped snapshot from the reveal on, and nothing of a later preview', async () => {
         const machine = createUploadMachine();
+
         function Upload() {
           const [snapshot, , actorRef] = hooks.useMachine(machine);
+
           return (
             <>
               <output aria-label="upload">{label(snapshot)}</output>
@@ -536,11 +579,14 @@ describeWithActivity('an Activity hides the component after the app stops the ac
             </>
           );
         }
+
         const hidden = await cancelThenHideAndReveal(machine, Upload);
 
         const revealed = shown('upload');
+
         if (previews) await preview(machine.id, ['paused']);
         const later = shown('upload');
+
         if (previews) await release(machine.id);
         expect({ hidden, revealed, later, released: shown('upload') }).toEqual({
           hidden: '',

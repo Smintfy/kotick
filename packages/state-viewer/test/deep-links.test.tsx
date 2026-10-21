@@ -66,6 +66,7 @@ function createParentMachine(fetcher: AnyStateMachine) {
 
 function Instance({ machine, id, events = [] }: { machine: AnyStateMachine; id?: string; events?: string[] }) {
   const [snapshot, send] = useMachine(machine, id === undefined ? undefined : { debug: { id } });
+
   return (
     <div>
       <output>{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>
@@ -92,12 +93,15 @@ type StateConfig = { initial?: string; states?: Record<string, StateConfig> };
  */
 function statesOf(leaves: readonly string[]): Record<string, StateConfig> {
   const children = new Map<string, string[]>();
+
   for (const leaf of leaves) {
     const [key = '', ...path] = leaf.split('.');
     const rest = children.get(key) ?? [];
+
     if (path.length > 0) rest.push(path.join('.'));
     children.set(key, rest);
   }
+
   return Object.fromEntries(
     [...children].map(([key, rest]) => [
       key,
@@ -133,7 +137,9 @@ function linked(name: string, leaves: string[]): Linked {
           type: 'parallel',
           states: statesOf(leaves),
         });
+
   const states = Object.fromEntries(leaves.map((leaf) => [leaf, { context: { fixture: leaf } }]));
+
   return { id: freshId(name), leaves, machine, fixtures: defineFixtures(machine, states) };
 }
 
@@ -147,13 +153,16 @@ function appOf(machines: Linked[]): React.ReactNode {
  */
 async function visit(url: string, app: React.ReactNode, props: StateViewerProps = {}) {
   window.history.replaceState(null, '', url);
+
   const view = render(
     <>
       {app}
       <StateViewer defaultOpen {...props} />
     </>,
   );
+
   await flush();
+
   return async (next: React.ReactNode) => {
     view.rerender(
       <>
@@ -179,16 +188,19 @@ function shown(): unknown[] {
 /** The previewed leaves of each machine's first instance, by machine id, as the panel shows them. */
 async function previewed(machineIds: string[]): Promise<Record<string, unknown[]>> {
   const result: Record<string, unknown[]> = {};
+
   for (const id of machineIds) {
     await show(id);
     result[id] = panel().previewed;
   }
+
   return result;
 }
 
 /** Previews each machine's leaves in the panel, and copies a link to them. */
 async function copyLinkTo(machines: Linked[]): Promise<string[]> {
   for (const { id, leaves } of machines) await preview(id, leaves);
+
   return (await copy('Copy link')).copied;
 }
 
@@ -198,6 +210,7 @@ async function copyLinkTo(machines: Linked[]): Promise<string[]> {
  */
 async function keyOf(machineId: string, nth = 1): Promise<string> {
   await show(machineId, nth);
+
   return shownKey();
 }
 
@@ -212,6 +225,7 @@ function linkWarning(message: string, param = 'debug-state'): string {
 /** The warning under Copy link about machines whose instances a link can't reproduce. */
 function linkFooterWarning(): string {
   const root = document.querySelector('[data-state-viewer-root]')?.shadowRoot;
+
   return root?.querySelector('footer [data-part="warning"]')?.textContent ?? '';
 }
 
@@ -256,21 +270,26 @@ async function firstPaint(
   const scope = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
   const previous = scope.IS_REACT_ACT_ENVIRONMENT;
   scope.IS_REACT_ACT_ENVIRONMENT = false;
+
   try {
     return await new Promise<string | null>((resolve) => {
       function EndOfCommit() {
         React.useLayoutEffect(() => {
           queueMicrotask(() => resolve(container.querySelector('output')?.textContent ?? null));
         }, []);
+
         return null;
       }
+
       const Wrapper = strict ? React.StrictMode : React.Fragment;
+
       const page = (
         <Wrapper>
           {app}
           <EndOfCommit />
         </Wrapper>
       );
+
       if (mount === 'a transition') React.startTransition(() => root.render(page));
       else if (mount === 'flushSync') flushSync(() => root.render(page));
       else root.render(page);
@@ -289,6 +308,7 @@ const HOOKS: [string, (props: { machine: ToggleMachine }) => React.ReactElement]
     'useMachine',
     function WithUseMachine({ machine }) {
       const [snapshot] = useMachine(machine);
+
       return <output>{String(snapshot.value)}</output>;
     },
   ],
@@ -296,6 +316,7 @@ const HOOKS: [string, (props: { machine: ToggleMachine }) => React.ReactElement]
     'useActor',
     function WithUseActor({ machine }) {
       const [snapshot] = useActor(machine);
+
       return <output>{String(snapshot.value)}</output>;
     },
   ],
@@ -304,6 +325,7 @@ const HOOKS: [string, (props: { machine: ToggleMachine }) => React.ReactElement]
     function WithObserver({ machine }) {
       const [value, setValue] = React.useState('unknown');
       useActorRef(machine, undefined, (snapshot) => setValue(String(snapshot.value)));
+
       return <output>{value}</output>;
     },
   ],
@@ -327,6 +349,7 @@ describe('the first paint', () => {
       </>,
       { strict },
     );
+
     expect(JSON.parse(painted ?? 'null')).toEqual({
       value: { payment: 'error', shipping: 'express' },
       context: { note: 'live' },
@@ -512,9 +535,11 @@ describe('malformed links', () => {
     );
 
     const live: string[] = [];
+
     for (const [index, id] of [checkout.id, cart.id].entries()) {
       if (leaves[index].length > 0) live.push(liveWarning(leaves[index].join(', '), await keyOf(id)));
     }
+
     expect({
       previewed: await previewed([checkout.id, cart.id]),
       warnings: output.warn,
@@ -615,12 +640,14 @@ describe('instances', () => {
     const output = watchConsole();
     const machine = createCheckoutMachine();
     window.history.replaceState(null, '', `/?debug-state=${machine.id}:payment.error`);
+
     const view = render(
       <>
         <Instance machine={machine} />
         {null}
       </>,
     );
+
     await flush();
     view.rerender(
       <>
@@ -692,12 +719,14 @@ describe('when the link ends', () => {
   test('a preview the developer picks ends the link of that machine only', async () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
+
     const update = await visit(
       `/?debug-state=${checkout.id}:payment.error,${toggle.id}:on`,
       <>
         <Instance key="1" machine={checkout} />
       </>,
     );
+
     await preview(checkout.id, ['shipping.express']);
 
     await update(
@@ -716,12 +745,14 @@ describe('when the link ends', () => {
 
   test('Release ends the link, so instances that mount later show their own state', async () => {
     const machine = createCheckoutMachine();
+
     const update = await visit(
       `/?debug-state=${machine.id}:payment.error`,
       <>
         <Instance key="1" machine={machine} />
       </>,
     );
+
     await release(machine.id);
 
     await update(
@@ -736,12 +767,14 @@ describe('when the link ends', () => {
   test('Release all ends every link', async () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
+
     const update = await visit(
       `/?debug-state=${checkout.id}:payment.error,${toggle.id}:on`,
       <>
         <Instance key="1" machine={checkout} />
       </>,
     );
+
     await releaseAll();
 
     await update(
@@ -757,12 +790,14 @@ describe('when the link ends', () => {
   test('the overlay doesn’t apply the link again when it remounts after the developer released it', async () => {
     const machine = createToggleMachine();
     window.history.replaceState(null, '', `/?debug-state=${machine.id}:on`);
+
     const view = render(
       <>
         <Instance machine={machine} />
         <StateViewer key="a" defaultOpen />
       </>,
     );
+
     await flush();
     const linked = shown();
     await release(machine.id);
@@ -779,12 +814,14 @@ describe('when the link ends', () => {
 
   test('an instance that unmounts leaves the link, so the next one to mount shows it', async () => {
     const machine = createCheckoutMachine();
+
     const update = await visit(
       `/?debug-state=${machine.id}:payment.error`,
       <>
         <Instance key="1" machine={machine} />
       </>,
     );
+
     await update(<></>);
 
     await update(
@@ -799,12 +836,14 @@ describe('when the link ends', () => {
     const output = watchConsole();
     const machine = createCheckoutMachine();
     window.history.replaceState(null, '', `/?debug-state=${machine.id}:payment.error`);
+
     const view = render(
       <>
         <Instance key="1" machine={machine} />
         <StateViewer key="a" defaultOpen />
       </>,
     );
+
     await flush();
 
     window.history.replaceState(null, '', `/?debug-state=${machine.id}:shipping.express`);
@@ -830,11 +869,13 @@ describe('when the link ends', () => {
   describeWithActivity('in an <Activity>', () => {
     test('an instance that the Activity hides and reveals again shows the link again', async () => {
       const machine = createCheckoutMachine();
+
       const app = (mode: 'visible' | 'hidden') => (
         <React.Activity mode={mode}>
           <Instance machine={machine} />
         </React.Activity>
       );
+
       const update = await visit(`/?debug-state=${machine.id}:payment.error`, app('visible'));
       const visible = shown();
 
@@ -1076,6 +1117,7 @@ describe('Copy link', () => {
 function rebuildQuery(url: string): string {
   const parsed = new URL(url);
   parsed.searchParams.set('page', '2');
+
   return parsed.href;
 }
 
@@ -1150,12 +1192,14 @@ describe('round trips', () => {
 
   test('after a reload, a copied link previews the same leaves, and other regions follow the instance', async () => {
     const machine = createCheckoutMachine();
+
     const fixtures = [
       defineFixtures(machine, {
         'payment.editing': { context: { note: 'editing' } },
         'shipping.express': { context: { note: 'express' } },
       }),
     ];
+
     await visit('/', <Instance machine={machine} events={['FAIL']} />, { fixtures });
     await preview(machine.id, ['shipping.express']);
     const previewing = shown();
@@ -1165,12 +1209,14 @@ describe('round trips', () => {
     // So the link previews an instance in payment.error.
     cleanup();
     window.history.replaceState(null, '', copied[0] ?? '');
+
     const view = render(
       <>
         <Instance machine={machine} events={['FAIL']} />
         {null}
       </>,
     );
+
     fireEvent.click(screen.getByRole('button', { name: 'FAIL' }));
     view.rerender(
       <>
@@ -1231,12 +1277,14 @@ describe('links that an app or a router escaped again', () => {
   test('a router that rebuilt the query', async () => {
     const checkout = createCheckoutMachine();
     const cart = createCartMachine();
+
     const app = (
       <>
         <Instance machine={checkout} />
         <Instance machine={cart} />
       </>
     );
+
     await visit('/', app);
     window.history.replaceState(null, '', '/?a=1');
     await preview(checkout.id, ['payment.error', 'shipping.express']);

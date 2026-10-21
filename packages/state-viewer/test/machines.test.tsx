@@ -42,11 +42,13 @@ function createToggleMachine(name: string) {
 
 function createFamily() {
   const fetcher = createMachine({ id: freshId('fetcher'), initial: 'loading', states: { loading: {}, failed: {} } });
+
   const parent = setup({ actors: { fetcher } }).createMachine({
     id: freshId('parent'),
     initial: 'active',
     states: { active: { invoke: { id: 'load', src: 'fetcher' } } },
   });
+
   return { parent, fetcher };
 }
 
@@ -56,9 +58,11 @@ type Edit = 'as written' | 'without paying.card.error' | 'with paying made compo
 function createCheckoutMachine(id: string, edit: Edit = 'as written') {
   const cardStates: Record<string, object> =
     edit === 'without paying.card.error' ? { idle: {} } : { idle: {}, error: {} };
+
   const card = { initial: 'idle', states: cardStates };
   const shipping = { initial: 'standard', states: { standard: {}, express: {} } };
   const gift = { initial: 'none', states: { none: {}, wrapped: {} } };
+
   return createMachine({
     id,
     context: { note: 'live' },
@@ -144,6 +148,7 @@ function createListMachine(key: string, loaded: string) {
 
 function List({ machine, name }: { machine: ReturnType<typeof createListMachine>; name: string }) {
   const [snapshot, send] = useMachine(machine);
+
   return (
     <>
       <output aria-label={name}>{JSON.stringify(snapshot.context)}</output>
@@ -159,6 +164,7 @@ function Instance({ machine, label, debug }: { machine: AnyStateMachine; label?:
     machine,
     label === undefined && debug === undefined ? undefined : { debug: { label, ...debug } },
   );
+
   return <output aria-label={label ?? machine.id}>{JSON.stringify(snapshot.value)}</output>;
 }
 
@@ -176,7 +182,9 @@ function family() {
   const states = [...overlay().querySelectorAll('section[aria-labelledby]')].find(
     (section) => section.querySelector('h3')?.textContent === 'States',
   );
+
   if (!states) throw new Error('The panel shows no States section.');
+
   return {
     hints: [...states.querySelectorAll('p[data-part="hint"]')].map((hint) => hint.textContent),
     children: [...states.querySelectorAll('[data-part="children"] button')].map((button) => button.textContent),
@@ -188,6 +196,7 @@ function family() {
 
 async function clickButton(text: string) {
   const found = [...overlay().querySelectorAll('button')].find((button) => button.textContent === text);
+
   if (!found) throw new Error(`The panel has no ${text} button.`);
   fireEvent.click(found);
   await flush();
@@ -196,10 +205,12 @@ async function clickButton(text: string) {
 /** Names each key by the order in which it first shows, so a test compares keys without their values. */
 function keyNames() {
   const names = new Map<string, string>();
+
   return (keys: string[]) =>
     keys.map((key) => {
       const name = names.get(key) ?? `key ${names.size + 1}`;
       names.set(key, name);
+
       return name;
     });
 }
@@ -271,6 +282,7 @@ test('lists each machine once, in registration order, and its instances as "mach
 
 test('rows come and go as their components mount and unmount, and keep the order they registered in', async () => {
   const machine = createToggleMachine('row');
+
   const rows = (labels: string[]) => (
     <>
       {labels.map((label) => (
@@ -279,6 +291,7 @@ test('rows come and go as their components mount and unmount, and keep the order
       <StateViewer defaultOpen />
     </>
   );
+
   const view = render(rows(['B', 'C']));
   await flush();
   await show(machine.id);
@@ -312,15 +325,21 @@ test('each hook, and the Provider of createActorContext, lists its machine', asy
     'use-actor-ref',
     'context',
   ].map((name) => createToggleMachine(name));
+
   const Context = createActorContext(viaContext);
+
   function ViaUseActor() {
     useActor(viaUseActor);
+
     return null;
   }
+
   function ViaUseActorRef() {
     useActorRef(viaUseActorRef);
+
     return null;
   }
+
   render(
     <>
       <Instance machine={viaUseMachine} />
@@ -338,13 +357,16 @@ test('each hook, and the Provider of createActorContext, lists its machine', asy
 test('a preview renders the component of the previewed instance again, and no other', async () => {
   const machine = createToggleMachine('row');
   const commits: string[] = [];
+
   function Row({ label }: { label: string }) {
     const [snapshot] = useMachine(machine, { debug: { label } });
     React.useLayoutEffect(() => {
       commits.push(label);
     });
+
     return <output aria-label={label}>{JSON.stringify(snapshot.value)}</output>;
   }
+
   render(
     <>
       <Row label="A" />
@@ -367,6 +389,7 @@ test('a preview renders the component of the previewed instance again, and no ot
 describe('instance keys', () => {
   test('each hook gets a key of its own, which a re-render keeps and a remount replaces', async () => {
     const machine = createToggleMachine('toggle');
+
     const rows = (entries: [key: string, label: string][]) => (
       <>
         {entries.map(([key, label]) => (
@@ -375,12 +398,14 @@ describe('instance keys', () => {
         <StateViewer defaultOpen />
       </>
     );
+
     const view = render(
       rows([
         ['first', 'One'],
         ['second', 'Two'],
       ]),
     );
+
     await flush();
     await show(machine.id);
     const name = keyNames();
@@ -413,11 +438,13 @@ describe('instance keys', () => {
   test('islands that hydrate as roots of their own get keys of their own, so each previews and unmounts alone', async () => {
     const machine = createToggleMachine('island');
     const recoverable: unknown[] = [];
+
     // React's useId gives the same ids in each hydrated root, so a key made from it would be the same in each.
     function hydrateIsland(label: string) {
       const container = document.createElement('div');
       container.innerHTML = `<output aria-label="${label}">"off"</output>`;
       document.body.append(container);
+
       return render(<Instance machine={machine} label={label} />, {
         container,
         hydrate: true,
@@ -426,6 +453,7 @@ describe('instance keys', () => {
         },
       });
     }
+
     render(<StateViewer defaultOpen />);
     hydrateIsland('A');
     const b = hydrateIsland('B');
@@ -511,6 +539,7 @@ describe('child machines', () => {
       await show(fetcher.id, nth);
       await clickLeaf('failed');
     }
+
     // XState creates the invoked child with the parent's first snapshot, so it registers with the parent, first.
     expect({ instances: instances(), shown: shown(fetcher.id), machines: await machines() }).toEqual({
       instances: ['load · 1', `${fetcher.id} · 2 ●`],
@@ -570,12 +599,14 @@ describe('editing a machine, as Fast Refresh does', () => {
     ],
   ] as const)('an edit that %s ends the preview', async (_, edit, leaves) => {
     const id = freshId('checkout');
+
     const app = (machine: AnyStateMachine) => (
       <>
         <Instance machine={machine} />
         <StateViewer defaultOpen />
       </>
     );
+
     const view = render(app(createCheckoutMachine(id)));
     await flush();
     await preview(id, [...leaves]);
@@ -594,12 +625,14 @@ describe('editing a machine, as Fast Refresh does', () => {
 
   test('an edit that adds a region keeps the preview, which shows the initial leaf of the new region', async () => {
     const id = freshId('checkout');
+
     const app = (machine: AnyStateMachine) => (
       <>
         <Instance machine={machine} />
         <StateViewer defaultOpen />
       </>
     );
+
     const view = render(app(createCheckoutMachine(id)));
     await flush();
     await preview(id, ['paying.card.error']);
@@ -615,6 +648,7 @@ describe('editing a machine, as Fast Refresh does', () => {
 
   test('a picked source stays picked through the edit, when the fixtures file registers its fixtures again', async () => {
     const id = freshId('checkout');
+
     // The fixtures file imports the machine, so HMR evaluates it again with the edited machine.
     const app = (machine: AnyStateMachine) => (
       <>
@@ -625,6 +659,7 @@ describe('editing a machine, as Fast Refresh does', () => {
         />
       </>
     );
+
     const view = render(app(createCheckoutMachine(id)));
     await flush();
     await preview(id, ['paying.card.error'], { source: 'live' });
@@ -710,12 +745,14 @@ describe('machine ids', () => {
     const state = freshId('open');
     const idOf = (config: MachineConfig) => defineFixtures(createMachine(config), {}).machineId;
     const original = idOf(createFetchConfig(state));
+
     const edited = Object.fromEntries(
       Object.entries(FETCH_EDITS).map(([edit, apply]) => [
         edit,
         idOf(apply(createFetchConfig(state))) === original ? 'same id' : 'new id',
       ]),
     );
+
     expect(edited).toEqual({
       'new context values': 'same id',
       'a new transition': 'same id',
@@ -736,21 +773,25 @@ describe('machine ids', () => {
     const state = freshId('open');
     const original = createMachine(createFetchConfig(state));
     const id = defineFixtures(original, {}).machineId;
+
     const fixtures = [
       defineFixtures(original, { 'failure.offline': { context: { items: [], error: 'Network down' } } }),
     ];
+
     const app = (machine: AnyStateMachine) => (
       <>
         <Instance machine={machine} label="fetch" />
         <StateViewer defaultOpen fixtures={fixtures} />
       </>
     );
+
     const view = render(app(original));
     await flush();
     await preview(id, ['failure.offline']);
 
     const edit = (config: FetchConfig) =>
       FETCH_EDITS['the nested states in another order'](FETCH_EDITS['the top-level states in another order'](config));
+
     view.rerender(app(createMachine(edit(createFetchConfig(state)))));
     await flush();
     expect({
@@ -813,19 +854,24 @@ describe('debug options', () => {
       initial: 'hello',
       states: { hello: {} },
     });
+
     const debugId = freshId('greeter');
     const actors: AnyActorRef[] = [];
+
     function Greeting() {
       const [snapshot, , actorRef] = useMachine(machine, {
         input: { name: 'Ada' },
         id: 'greeter',
         debug: { id: debugId, label: 'Greeter' },
       });
+
       React.useLayoutEffect(() => {
         actors.push(actorRef);
       }, [actorRef]);
+
       return <output aria-label="greeting">{JSON.stringify(snapshot.context)}</output>;
     }
+
     render(
       <>
         <Greeting />
@@ -852,12 +898,14 @@ describe('debug options', () => {
   test('a debug.label that changes relabels the instance in place, with its key, its preview, its actor ref and its component', async () => {
     const machine = createToggleMachine('lamp');
     const actorRefs = new Set<unknown>();
+
     function Lamp({ label }: { label: string }) {
       const [snapshot, , actorRef] = useMachine(machine, { debug: { label } });
       // Committed renders only: React 18's StrictMode throws away the first render, and the actor that it made.
       React.useLayoutEffect(() => {
         actorRefs.add(actorRef);
       });
+
       return (
         <>
           <output aria-label="lamp">{JSON.stringify(snapshot.value)}</output>
@@ -865,6 +913,7 @@ describe('debug options', () => {
         </>
       );
     }
+
     const app = (label: string) => (
       <>
         <Lamp label={label} />
@@ -872,6 +921,7 @@ describe('debug options', () => {
         <StateViewer defaultOpen />
       </>
     );
+
     const view = render(app('Before'));
     await flush();
     fireEvent.change(screen.getByLabelText('note'), { target: { value: 'typed before the new label' } });
@@ -880,6 +930,7 @@ describe('debug options', () => {
 
     view.rerender(app('After'));
     await flush();
+
     const relabeled = {
       instances: instances(),
       key: shownKey(),
@@ -888,6 +939,7 @@ describe('debug options', () => {
       note: screen.getByLabelText<HTMLInputElement>('note').value,
       actorRefs: actorRefs.size,
     };
+
     await release(machine.id);
     expect({ relabeled, released: shown('lamp') }).toEqual({
       relabeled: {
@@ -909,6 +961,7 @@ describe('debug options', () => {
       'useMachine',
       function ViaUseMachine({ machine }) {
         const [snapshot, send] = useMachine(machine, { debug: { disabled: true } });
+
         return (
           <>
             <output aria-label="toggle">{JSON.stringify(snapshot.value)}</output>
@@ -924,6 +977,7 @@ describe('debug options', () => {
       function ViaUseActorRef({ machine }) {
         const actorRef = useActorRef(machine, { debug: { disabled: true } });
         const value = useSelector(actorRef, (snapshot) => snapshot.value);
+
         return (
           <>
             <output aria-label="toggle">{JSON.stringify(value)}</output>
@@ -967,13 +1021,16 @@ describe("StrictMode's second run of effects", () => {
     onTestFinished(() => {
       lateActor?.stop();
     });
+
     // Connects once, between the two runs. A checkout that registered at the end of the second run would come after it.
     function ConnectLate() {
       React.useEffect(() => {
         lateActor ??= connect(createActor(late).start());
       }, []);
+
       return null;
     }
+
     window.history.replaceState(null, '', `/?debug-state=${id}:paying.card.error`);
     render(
       <>
@@ -1014,17 +1071,22 @@ describe.each([
       initial: 'off',
       states: { off: { on: { TOGGLE: 'on' } }, on: { on: { TOGGLE: 'off' } }, dimmed: {} },
     });
+
     const observed: unknown[] = [];
     let observedActor: AnyActorRef | undefined;
+
     function ObservedLamp() {
       const actorRef = useActorRef(machine, { debug: { label: 'Observed' } }, (snapshot) => {
         observed.push(snapshot.value);
       });
+
       React.useLayoutEffect(() => {
         observedActor = actorRef;
       }, [actorRef]);
+
       return null;
     }
+
     function Page({ dialog: Dialog }: { dialog?: React.ComponentType }) {
       return (
         <>
@@ -1038,26 +1100,32 @@ describe.each([
         </>
       );
     }
+
     const view = render(<Page />, { reactStrictMode });
     await flush();
+
     return {
       machine,
       observed,
       observedActor: () => {
         if (!observedActor) throw new Error('The observed lamp did not mount.');
+
         return observedActor;
       },
       /** Opens a dialog whose code loads until the returned function loads it. Suspense hides the content meanwhile. */
       async hide() {
         let load = () => {};
+
         const code = new Promise<{ default: React.ComponentType }>((resolve) => {
           load = () => resolve({ default: () => <p>Dialog</p> });
         });
+
         const Dialog = React.lazy(() => code);
         await act(async () => {
           view.rerender(<Page dialog={Dialog} />);
         });
         await flush();
+
         return async () => {
           await act(async () => {
             load();
@@ -1078,11 +1146,13 @@ describe.each([
     await act(async () => {
       page.observedActor().send({ type: 'TOGGLE' });
     });
+
     const hidden = {
       fallback: screen.queryByText('Loading the dialog')?.textContent,
       instances: instances(),
       marks: marks(),
     };
+
     await reveal();
     expect({
       before,
@@ -1115,12 +1185,14 @@ describe.each([
     'a preview that %s while they are hidden shows once they show, in the component and the useActorRef observer',
     async (_change, before, whileHidden) => {
       const page = await mountPage();
+
       const previewBoth = async (leaf: string | undefined) => {
         for (const nth of [1, 2]) {
           if (leaf === undefined) await release(page.machine.id, nth);
           else await preview(page.machine.id, [leaf], { nth });
         }
       };
+
       if (before !== undefined) await previewBoth(before);
 
       const reveal = await page.hide();
@@ -1142,10 +1214,13 @@ describe('a second copy of the package', () => {
     // Two bundles of an app can each include the package. The modules evaluate again, and nothing is replaced.
     vi.resetModules();
     const second = await import('state-viewer/xstate');
+
     function SecondCopy() {
       const [snapshot] = second.useMachine(machine, { debug: { label: 'Second copy' } });
+
       return <output aria-label="Second copy">{JSON.stringify(snapshot.value)}</output>;
     }
+
     render(
       <>
         <Instance machine={machine} label="First copy" />

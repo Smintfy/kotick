@@ -29,8 +29,10 @@ type UploadEvent =
 // If `failAt` has a value, an error occurs at that progress.
 const transfer = fromCallback<EventObject, { failAt?: number }>(({ sendBack, input }) => {
   let progress = 0;
+
   const timer = setInterval(() => {
     progress += 20;
+
     if (input.failAt !== undefined && progress >= input.failAt) {
       sendBack({ type: 'FAIL', error: 'Connection lost' });
     } else if (progress >= 100) {
@@ -39,6 +41,7 @@ const transfer = fromCallback<EventObject, { failAt?: number }>(({ sendBack, inp
       sendBack({ type: 'PROGRESS', progress });
     }
   }, 150);
+
   return () => clearInterval(timer);
 });
 

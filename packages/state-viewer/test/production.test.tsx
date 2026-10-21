@@ -51,6 +51,7 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
 
   function HookToggle() {
     const [snapshot, send] = useMachine(hookMachine, { debug: { label: 'Hook' } });
+
     return (
       <button type="button" onClick={() => send({ type: 'TOGGLE' })}>
         hook {String(snapshot.value)}
@@ -61,6 +62,7 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
   function ContextToggle() {
     const value = ToggleContext.useSelector((snapshot) => String(snapshot.value));
     const actorRef = ToggleContext.useActorRef();
+
     return (
       <button type="button" onClick={() => actorRef.send({ type: 'TOGGLE' })}>
         context {value}
@@ -70,6 +72,7 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
 
   function ConnectedToggle() {
     const value = useSelector(connected, (snapshot) => String(snapshot.value));
+
     return (
       <button type="button" onClick={() => connected.send({ type: 'TOGGLE' })}>
         connected {value}
@@ -94,6 +97,7 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
         defaultOpen
         fixtures={() => {
           loads.push('fixtures');
+
           return [];
         }}
       />
@@ -102,6 +106,7 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, deep link, fixtu
   await settle();
   const loaded = document.body.innerHTML;
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 's', code: 'KeyS', altKey: true }));
+
   for (const button of container.querySelectorAll('button')) button.click();
   await settle();
   window.dispatchEvent(new Event('pagehide'));

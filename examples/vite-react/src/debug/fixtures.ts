@@ -17,6 +17,7 @@ const items = [
   { ...products[0], qty: 2 },
   { ...products[1], qty: 1 },
 ];
+
 const checkout = { items, total: 6600, cardNumber: '4242 4242 4242 4242' };
 
 export default [

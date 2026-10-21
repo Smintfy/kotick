@@ -21,6 +21,7 @@ export function page(app: ReactNode, props?: StateViewerProps) {
 export async function mount(app: ReactNode, props?: StateViewerProps) {
   const view = render(page(app, props));
   await flush();
+
   return view;
 }
 
@@ -30,6 +31,7 @@ export function start<TMachine extends AnyStateMachine>(machine: TMachine): Acto
   onTestFinished(() => {
     actor.stop();
   });
+
   return actor;
 }
 

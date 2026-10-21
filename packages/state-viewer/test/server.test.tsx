@@ -38,10 +38,12 @@ test('renders nothing, loads no fixtures, and leaves globalThis as it was', () =
       defaultOpen
       fixtures={() => {
         loads.push('fixtures');
+
         return [];
       }}
     />,
   );
+
   const added = Reflect.ownKeys(globalThis).filter((key) => !globals.includes(key));
   expect({ html, loads, added, output }).toEqual({ html: '', loads: [], added: [], output: { warn: [], error: [] } });
 });
@@ -52,6 +54,7 @@ test('the hooks render the initial state of the machine, and put no registry on 
 
   function FromContext() {
     const value = ToggleContext.useSelector((snapshot) => snapshot.value);
+
     return <li>{`createActorContext: ${value}`}</li>;
   }
 
@@ -59,6 +62,7 @@ test('the hooks render the initial state of the machine, and put no registry on 
     const [machine] = useMachine(toggleMachine);
     const [actor] = useActor(toggleMachine);
     const selected = useSelector(useActorRef(toggleMachine), (snapshot) => snapshot.value);
+
     return (
       <>
         <li>{`useMachine: ${machine.value}`}</li>
@@ -77,6 +81,7 @@ test('the hooks render the initial state of the machine, and put no registry on 
       <StateViewer defaultOpen />
     </ul>,
   );
+
   expect({ html, added: objectsAdded(), output }).toEqual({
     html: '<ul><li>useMachine: off</li><li>useActor: off</li><li>useActorRef: off</li><li>createActorContext: off</li></ul>',
     added: [],
@@ -90,6 +95,7 @@ test('connect() gives an actor that takes events, as nothing is previewed, and p
 
   function Toggle() {
     const value = useSelector(actor, (snapshot) => snapshot.value);
+
     return <p>{`connect: ${value}`}</p>;
   }
 

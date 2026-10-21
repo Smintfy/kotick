@@ -57,10 +57,12 @@ export function findBinding<TActor extends AnyActorRef>(actor: TActor): Binding<
 
 export function getBinding<TActor extends AnyActorRef>(actor: TActor): Binding<TActor> {
   let binding = bindings.get(actor);
+
   if (!binding) {
     binding = createBinding(actor as unknown as MachineActor);
     bindings.set(actor, binding);
   }
+
   return binding as unknown as Binding<TActor>;
 }
 
@@ -88,6 +90,7 @@ function createBinding(actor: MachineActor): Binding {
 
   function emitPreviewChange(): void {
     emitting++;
+
     try {
       for (const listener of [...previewListeners]) {
         if (previewListeners.has(listener)) callLoggingErrors(listener, `A subscriber of "${key}" threw.`);
@@ -95,6 +98,7 @@ function createBinding(actor: MachineActor): Binding {
     } finally {
       emitting--;
     }
+
     // After the delivery, so every subscriber hears the release that ends the last preview.
     unwatchIfIdle();
   }
@@ -119,8 +123,10 @@ function createBinding(actor: MachineActor): Binding {
     // A wrapper per call, so subscribing the same function twice gives two independent subscriptions.
     const entry = (): void => listener();
     previewListeners.add(entry);
+
     if (!stopWatching) watch();
     let active = true;
+
     return () => {
       if (!active) return;
       active = false;
@@ -145,6 +151,7 @@ function createBinding(actor: MachineActor): Binding {
   function forcedSnapshot(override: Override, live: unknown): AnyMachineSnapshot | undefined {
     if (forced?.override !== override) {
       let base: AnyMachineSnapshot | undefined;
+
       try {
         base = resolveSnapshot(machine, override.leaves, override.context, actor);
       } catch (error) {
@@ -152,15 +159,19 @@ function createBinding(actor: MachineActor): Binding {
         // machine doesn't have, or no longer has side by side. The real snapshot shows until the registry releases it.
         console.warn(`[state-viewer] Can't show the preview of "${key}" on this actor; showing its real state.`, error);
       }
+
       forced = { override, base, children: EMPTY_CHILDREN, snapshot: base };
     }
+
     if (!forced.base) return undefined;
     // Children don't survive resolveState, so the live ones are carried over for components reading them.
     const children = liveChildren(live);
+
     if (!sameChildren(forced.children, children)) {
       forced.children = children;
       forced.snapshot = Object.keys(children).length === 0 ? forced.base : { ...forced.base, children };
     }
+
     return forced.snapshot;
   }
 
@@ -169,6 +180,7 @@ function createBinding(actor: MachineActor): Binding {
 
   function showingLive(fn: () => void): void {
     showingLiveDepth++;
+
     try {
       fn();
     } finally {
@@ -179,6 +191,7 @@ function createBinding(actor: MachineActor): Binding {
   function getSnapshot(): unknown {
     const live = actor.getSnapshot();
     const override = showingLiveDepth > 0 ? undefined : currentOverride();
+
     return (override && forcedSnapshot(override, live)) ?? live;
   }
 
@@ -199,14 +212,18 @@ function createBinding(actor: MachineActor): Binding {
   ) {
     const target = toObserver(nextOrObserver, error, complete);
     let stopPreview = noop;
+
     const view = createView(target, () => source, 'notified', () => {
       views!.delete(view);
       stopPreview();
     });
+
     (views ??= new Set()).add(view);
     const subscription = actor.subscribe(view.observer);
+
     // An observer without next, such as toPromise's, has nothing to show, and listening would only keep it alive.
     if (target.next && !view.isClosed()) stopPreview = onPreviewChange(view.showCurrent);
+
     return {
       unsubscribe() {
         subscription.unsubscribe();
@@ -219,12 +236,17 @@ function createBinding(actor: MachineActor): Binding {
   /** Logs an event sent during a preview as blocked, and drops it. Returns false when there's no preview. */
   function blockIfPreviewing(event: unknown): boolean {
     const override = currentOverride();
+
     if (!override) return false;
+
     if (!isEventObject(event)) {
       console.warn(`[state-viewer] Dropped an event without a string type sent to "${key}" during a preview.`, event);
+
       return true;
     }
+
     registry.logEvent({ instanceKey: override.instanceKey, event, leaves: override.leaves, blocked: true, at: Date.now() });
+
     return true;
   }
 
@@ -234,8 +256,10 @@ function createBinding(actor: MachineActor): Binding {
       subscribe(observerOrFn: Observer<T> | ((value: T) => void)) {
         const observer = toObserver(observerOrFn);
         let previous = selector(getSnapshot());
+
         return subscribe((snapshot) => {
           const next = selector(snapshot);
+
           if (!equalityFn(previous, next)) {
             previous = next;
             observer.next?.(next);
@@ -247,6 +271,7 @@ function createBinding(actor: MachineActor): Binding {
   }
 
   let proxy: AnyActorRef;
+
   const members: Record<PropertyKey, unknown> = {
     getSnapshot,
     subscribe,
@@ -262,30 +287,37 @@ function createBinding(actor: MachineActor): Binding {
     // These return the actor itself, which has to stay the proxy: `connect(createActor(m)).start()`.
     start: () => {
       actor.start();
+
       return proxy;
     },
     stop: () => {
       actor.stop();
+
       return proxy;
     },
     [observableKey()]: () => proxy,
   };
+
   // Bound once per method, so `proxy.on === proxy.on` and React dependency arrays stay stable.
   let bound: Map<PropertyKey, { source: (...args: unknown[]) => unknown; bound: unknown }> | undefined;
 
   proxy = new Proxy(actor, {
     get(target, property) {
       if (Object.hasOwn(members, property)) return members[property];
+
       if (property === 'ref') return proxy;
       const value: unknown = Reflect.get(target, property, target);
+
       // Unbound: a bound constructor isn't the class, and test snapshots print it as "bound Actor".
       if (typeof value !== 'function' || property === 'constructor') return value;
       bound ??= new Map();
       let entry = bound.get(property);
+
       if (entry?.source !== value) {
         entry = { source: value as (...args: unknown[]) => unknown, bound: value.bind(target) };
         bound.set(property, entry);
       }
+
       return entry.bound;
     },
   });
@@ -296,25 +328,31 @@ function createBinding(actor: MachineActor): Binding {
   function onEnd(listener: () => void): void {
     if (!endListeners) {
       const listeners = (endListeners = new Set());
+
       const ended = (message: string): void => {
         for (const end of [...listeners]) callLoggingErrors(end, message);
       };
+
       const { stop, _error } = actor;
       actor.stop = () => {
         stop.call(actor);
         ended(`Stopping "${key}" threw.`);
+
         return actor;
       };
+
       actor._error = (error) => {
         _error.call(actor, error);
         ended(`Unregistering "${key}", which failed, threw.`);
       };
     }
+
     endListeners.add(listener);
   }
 
   function createRegistration(identity: Identity, registrationKey: string): Registration {
     const { handle, notify, record } = createHandle(actor, machine, identity, undefined, true, registry);
+
     return {
       key: registrationKey,
       handle,
@@ -322,12 +360,14 @@ function createBinding(actor: MachineActor): Binding {
         if (isFallbackId(machine, identity.machineId)) warnFallbackId(identity.machineId);
         connections++;
         setKey(registrationKey);
+
         // Before registering, so a preview applied on registration (a deep link) reaches the subscribers.
         if (!stopWatching) watch();
         const unregister = registry.register(handle);
         record(actor.getSnapshot());
         let connected = true;
         let stopInspecting = noop;
+
         const disconnect = (): void => {
           if (!connected) return;
           connected = false;
@@ -337,14 +377,18 @@ function createBinding(actor: MachineActor): Binding {
           connections--;
           unwatchIfIdle();
         };
+
         // Inspection rather than actor.subscribe(): an observer without an error callback makes XState report errors
         // the app handles as unhandled, and one with an error callback hides errors the app doesn't handle.
         stopInspecting = inspect(actor, registrationKey, registry, (snapshot) => {
           record(snapshot);
           notify();
+
           if (untilStopped && statusOf(snapshot) !== 'active') disconnect();
         });
+
         if (untilStopped) onEnd(disconnect);
+
         return disconnect;
       },
     };
@@ -356,6 +400,7 @@ function createBinding(actor: MachineActor): Binding {
     registration(identity) {
       // Field by field, so a render that keeps the identity makes no strings. No label is the same as an empty one.
       const previous = latest?.identity;
+
       if (
         previous?.machineId === identity.machineId &&
         previous.instanceId === identity.instanceId &&
@@ -363,10 +408,12 @@ function createBinding(actor: MachineActor): Binding {
       ) {
         return latest!.registration;
       }
+
       const registrationKey = toInstanceKey(identity.machineId, identity.instanceId);
       key ??= registrationKey;
       const registration = createRegistration(identity, registrationKey);
       latest = { identity, registration };
+
       return registration;
     },
     onPreviewChange,
@@ -379,7 +426,9 @@ function createBinding(actor: MachineActor): Binding {
 function sameChildren(a: object, b: object): boolean {
   if (a === b) return true;
   const keysA = Object.keys(a);
+
   if (keysA.length !== Object.keys(b).length) return false;
+
   return keysA.every(
     (key) => Object.hasOwn(b, key) && (a as Record<string, unknown>)[key] === (b as Record<string, unknown>)[key],
   );

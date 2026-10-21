@@ -11,10 +11,12 @@ let nextEntryKey = 0;
 
 function keyOf(entry: EventLogEntry): number {
   let key = entryKeys.get(entry);
+
   if (key === undefined) {
     key = nextEntryKey++;
     entryKeys.set(entry, key);
   }
+
   return key;
 }
 
@@ -27,6 +29,7 @@ interface EventLogProps {
 
 export function EventLog({ entries, labelOf, onClear }: EventLogProps) {
   const titleId = useId();
+
   return (
     <section className={SECTION} aria-labelledby={titleId}>
       <div className={SECTION_HEAD}>
@@ -44,6 +47,7 @@ export function EventLog({ entries, labelOf, onClear }: EventLogProps) {
           {[...entries].reverse().map((entry) => {
             const payload = summarizePayload(entry.event);
             const leaves = Array.isArray(entry.leaves) ? entry.leaves.join(', ') : '';
+
             return (
               <li
                 key={keyOf(entry)}

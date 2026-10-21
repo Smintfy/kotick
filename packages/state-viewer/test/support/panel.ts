@@ -17,13 +17,16 @@ let count = 0;
  */
 export function freshId(name: string): string {
   count += 1;
+
   return `${name}-${count}`;
 }
 
 /** The overlay's shadow root, for what the other helpers don't read, such as focus, tooltips and the corner. */
 export function overlay(): ShadowRoot {
   const root = document.querySelector('[data-state-viewer-root]')?.shadowRoot;
+
   if (!root) throw new Error('Render <StateViewer /> first.');
+
   return root;
 }
 
@@ -33,7 +36,9 @@ function all<T extends Element = HTMLElement>(selector: string): T[] {
 
 function one<T extends Element = HTMLElement>(selector: string): T {
   const found = overlay().querySelector<T>(selector);
+
   if (!found) throw new Error(`Nothing in the overlay matches ${selector}.`);
+
   return found;
 }
 
@@ -64,9 +69,11 @@ function backButton(): HTMLButtonElement | null {
 async function toList(): Promise<void> {
   for (let clicks = 0; clicks < 2; clicks += 1) {
     const back = backButton();
+
     if (!back) return;
     await click(back);
   }
+
   throw new Error('Back does not lead to the machine list.');
 }
 
@@ -80,15 +87,21 @@ export async function show(machineId: string, nth = 1): Promise<void> {
   if (shownMachine() !== machineId) {
     await toList();
     const row = all<HTMLButtonElement>('button[data-machine]').find((found) => found.dataset.machine === machineId);
+
     if (!row) throw new Error(`The machine list has no ${machineId}.`);
     await click(row);
   }
+
   const instances = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
+
   if (!instances) {
     if (nth !== 1) throw new Error(`${machineId} has one instance, so it has no instance ${nth}.`);
+
     return;
   }
+
   const option = instances.options[nth - 1];
+
   if (!option) throw new Error(`${machineId} has no instance ${nth}.`);
   await choose(instances, option.value);
 }
@@ -98,6 +111,7 @@ export async function toggleState(key: string): Promise<void> {
   const row = all('[role="treeitem"][aria-expanded] > [data-part="node"]').find(
     (found) => found.querySelector('[data-part="key"]')?.textContent === key,
   );
+
   if (!row) throw new Error(`The tree has no state ${key} with states in it.`);
   await click(row);
 }
@@ -116,10 +130,13 @@ export async function preview(
 ): Promise<void> {
   await show(machineId, nth);
   const release = button('Release');
+
   if (release) await click(release);
   // A click puts its leaf first, so the last leaf is clicked first.
   const clickOrder = [...leaves].reverse();
+
   for (const leaf of clickOrder) await click(one(`[data-leaf="${leaf}"]`));
+
   if (source) await pickSource(source);
 }
 
@@ -135,6 +152,7 @@ export async function pickSource(source: Source): Promise<void> {
 export async function release(machineId: string, nth = 1): Promise<void> {
   await show(machineId, nth);
   const found = button('Release');
+
   if (!found) throw new Error(`Instance ${nth} of ${machineId} has no preview to release.`);
   await click(found);
 }
@@ -145,9 +163,11 @@ export async function release(machineId: string, nth = 1): Promise<void> {
  */
 export async function releaseAll(): Promise<void> {
   if (backButton()) await toList();
+
   const found = all<HTMLButtonElement>('button').find(
     (candidate) => candidate.querySelector('[data-part="row-label"]')?.textContent === 'Release all',
   );
+
   if (!found) throw new Error('The machine list has no Release all button.');
   await click(found);
 }
@@ -168,6 +188,7 @@ export function blockedEvents(): string[] {
     const event = row.querySelector('[data-part="event"]')?.textContent;
     const where = row.querySelector('[data-part="log-meta"]')?.textContent;
     const payload = row.querySelector('[data-part="payload"]')?.textContent;
+
     return [event, where, payload].filter((part) => part !== undefined).join(' · ');
   });
 }
@@ -179,18 +200,22 @@ export function blockedEvents(): string[] {
  */
 export async function copy(label: 'Copy link' | 'Copy JSON'): Promise<{ copied: string[]; status: string }> {
   const found = overlay().querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+
   if (!found) throw new Error(`The panel has no ${label} button.`);
   const copied: string[] = [];
+
   const read = (records: MutationRecord[]) => {
     for (const record of records) {
       for (const node of record.addedNodes) if (node instanceof HTMLTextAreaElement) copied.push(node.value);
     }
   };
+
   const observer = new MutationObserver(read);
   observer.observe(overlay(), { childList: true, subtree: true });
   await click(found);
   read(observer.takeRecords());
   observer.disconnect();
+
   return { copied, status: one('[role="status"]').textContent ?? '' };
 }
 
@@ -202,12 +227,15 @@ export function shownMachine(): string {
 /** Goes to the settings page from the machine list, and picks a corner, such as `Bottom left`. */
 export async function pickCorner(label: string): Promise<void> {
   await toList();
+
   const settings = all<HTMLButtonElement>('button').find(
     (candidate) => candidate.querySelector('[data-part="row-label"]')?.textContent === 'Settings',
   );
+
   if (!settings) throw new Error('The machine list has no Settings button.');
   await click(settings);
   const corner = all<HTMLLabelElement>('[role="radiogroup"] label').find((found) => found.textContent === label);
+
   if (!corner) throw new Error(`The settings page has no corner ${label}.`);
   await click(corner.querySelector('input') ?? corner);
 }
@@ -225,6 +253,7 @@ export function shownKey(): string {
 /** The keys of the shown machine's instances, in registration order: the values of the Instance options. */
 export function instanceKeys(): string[] {
   const picker = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
+
   return picker ? [...picker.options].map((option) => option.value) : [shownKey()];
 }
 
@@ -235,14 +264,19 @@ export function instanceKeys(): string[] {
  */
 export async function machines(): Promise<string[]> {
   await toList();
+
   return all('button[data-machine]').map((row) => {
     const parts = [row.querySelector('[data-part="row-name"]')?.textContent ?? ''];
     const tag = row.querySelector('[data-part="tag"]')?.textContent;
+
     if (tag) parts.push(tag);
     const count = row.querySelector('[data-part="chip"]')?.textContent;
+
     if (count) parts.push(`${count} instances`);
     const previewing = row.querySelector('[data-part="dot"]')?.textContent?.replace(/^, /, '');
+
     if (previewing) parts.push(previewing);
+
     return parts.join(' · ');
   });
 }
@@ -254,8 +288,10 @@ export async function machines(): Promise<string[]> {
  */
 export function instances(): string[] {
   const picker = overlay().querySelector<HTMLSelectElement>('select[aria-label="Instance"]');
+
   if (picker) return [...picker.options].map((option) => option.textContent ?? '');
   const name = shownName();
+
   return name === undefined ? [] : [name];
 }
 
@@ -269,6 +305,7 @@ export function panel() {
   one('[data-instance]');
   const leaves = all('[data-leaf]');
   const pick = (test: (leaf: HTMLElement) => boolean) => leaves.filter(test).map((leaf) => leaf.dataset.leaf);
+
   return {
     instance: shownName(),
     live: pick((leaf) => leaf.hasAttribute('data-active')),

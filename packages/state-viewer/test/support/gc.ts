@@ -4,6 +4,7 @@ import v8 from 'node:v8';
 import vm from 'node:vm';
 
 v8.setFlagsFromString('--expose-gc');
+
 const collectGarbage = vm.runInNewContext('gc') as () => void;
 
 /**
@@ -16,5 +17,6 @@ export async function collected(refs: WeakRef<object>[]): Promise<boolean[]> {
     await new Promise((resolve) => setTimeout(resolve, 0));
     collectGarbage();
   }
+
   return refs.map((ref) => ref.deref() === undefined);
 }

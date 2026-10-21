@@ -56,6 +56,7 @@ export function MachinePage(props: MachinePageProps) {
   // Collapsed groups belong to one showing of an instance.
   // Another instance, or the same one shown again, starts with every group open.
   const [collapse, setCollapse] = React.useState({ key, groups: NONE_COLLAPSED });
+
   if (collapse.key !== key) setCollapse({ key, groups: NONE_COLLAPSED });
   const collapsed = collapse.groups;
   // The leaves that show: the arrows and the cursor skip the leaves of a collapsed group.
@@ -67,6 +68,7 @@ export function MachinePage(props: MachinePageProps) {
 
   // The leaf keyboard navigation is on: the one last moved to or clicked, else the previewed, live or first leaf.
   const [cursorState, setCursor] = React.useState<string>();
+
   const cursor =
     cursorState !== undefined && leaves.includes(cursorState)
       ? cursorState
@@ -80,12 +82,14 @@ export function MachinePage(props: MachinePageProps) {
   React.useEffect(() => {
     if (!copied) return;
     const timer = setTimeout(() => setCopied(undefined), 2000);
+
     return () => clearTimeout(timer);
   }, [copied]);
 
   function preview(leaf: string): void {
     if (!canPreview) return;
     const toggle = toggleLeaf(override?.requested, leaf);
+
     if (toggle.action === 'release') registry.release(key);
     else registry.preview(key, { leaves: toggle.leaves });
   }
@@ -97,6 +101,7 @@ export function MachinePage(props: MachinePageProps) {
 
   function toggleGroup(id: string): void {
     const next = new Set(collapsed);
+
     if (!next.delete(id)) next.add(id);
     setCollapse({ key, groups: next });
   }
@@ -107,6 +112,7 @@ export function MachinePage(props: MachinePageProps) {
     setCursor(leaf);
     // Focus follows at once, before React re-renders the roving tab stop.
     const items = pageRef.current?.querySelectorAll<HTMLElement>('[data-leaf]') ?? [];
+
     for (const item of items) {
       if (item.dataset.leaf === leaf) {
         item.focus();
@@ -118,28 +124,35 @@ export function MachinePage(props: MachinePageProps) {
   function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     const target = event.target as HTMLElement;
+
     if (isTyping(target)) return;
     // Form controls and buttons keep their own keys: arrows change a select or radio, Enter clicks a button.
     const control = target.closest('select, input, textarea');
     const move = moveOf(event.key);
+
     if (move) {
       if (control) return;
       event.preventDefault();
       moveCursor(move);
+
       return;
     }
+
     switch (event.key) {
       case 'Enter':
         if (control || target.closest('button, a, summary')) return;
+
         if (cursor === undefined) return;
         event.preventDefault();
         preview(cursor);
+
         return;
       case '[':
       case ']':
         if (control) return;
         event.preventDefault();
         props.onCycleMachine(event.key === ']' ? 1 : -1);
+
         return;
     }
   }
@@ -163,6 +176,7 @@ export function MachinePage(props: MachinePageProps) {
       preview: override ? { requested: override.requested, source: override.source } : null,
       context: override ? override.context : liveContext,
     });
+
     const status = (await copyText(json, pageRef.current ?? document.body)) ? 'JSON copied' : 'Copy failed';
     setCopied({ button: 'json', status });
   }
@@ -271,5 +285,6 @@ function childrenOf(groups: readonly MachineGroup[], parentKey: string): Instanc
 
 function list(items: readonly string[]): string {
   const quoted = items.map((item) => `“${item}”`);
+
   return quoted.length < 2 ? quoted.join('') : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`;
 }

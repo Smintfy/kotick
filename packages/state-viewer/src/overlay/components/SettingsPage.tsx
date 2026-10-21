@@ -30,6 +30,7 @@ export function SettingsPage({ position, shortcutLabel, onPosition }: SettingsPa
   const cornerId = useId();
   const shortcutsId = useId();
   const name = useId();
+
   const shortcuts = shortcutLabel
     ? [{ keys: [shortcutLabel], action: 'Open or close the panel' }, ...PAGE_SHORTCUTS]
     : PAGE_SHORTCUTS;

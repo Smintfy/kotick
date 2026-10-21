@@ -24,12 +24,15 @@ export interface MachineGroup {
 /** Groups handles by machine id, in the order each id first registered. */
 export function groupMachines(handles: readonly MachineHandle[]): MachineGroup[] {
   const groups = new Map<string, MachineGroup>();
+
   for (const handle of handles) {
     let group = groups.get(handle.machineId);
+
     if (!group) {
       group = { machineId: handle.machineId, instances: [], childrenOnly: true };
       groups.set(handle.machineId, group);
     }
+
     const ordinal = group.instances.length + 1;
     group.instances.push({
       key: toInstanceKey(handle.machineId, handle.instanceId),
@@ -37,8 +40,10 @@ export function groupMachines(handles: readonly MachineHandle[]): MachineGroup[]
       ordinal,
       label: `${handle.label ?? handle.machineId} · ${ordinal}`,
     });
+
     if (handle.parentKey === undefined) group.childrenOnly = false;
   }
+
   return [...groups.values()];
 }
 
@@ -50,10 +55,13 @@ export type PanelPage =
 
 export function findInstance(groups: readonly MachineGroup[], key: string | undefined): InstanceEntry | undefined {
   if (key === undefined) return undefined;
+
   for (const group of groups) {
     const entry = group.instances.find((instance) => instance.key === key);
+
     if (entry) return entry;
   }
+
   return undefined;
 }
 
@@ -68,8 +76,10 @@ export type LeafToggle = { action: 'preview'; leaves: string[] } | { action: 're
  */
 export function toggleLeaf(requested: readonly string[] | undefined, leaf: string): LeafToggle {
   if (!requested) return { action: 'preview', leaves: [leaf] };
+
   if (!requested.includes(leaf)) return { action: 'preview', leaves: [leaf, ...requested] };
   const kept = requested.filter((other) => other !== leaf);
+
   return kept.length === 0 ? { action: 'release' } : { action: 'preview', leaves: kept };
 }
 
@@ -94,32 +104,40 @@ export function planLink(
   selectedKey: string | undefined,
 ): LinkPlan {
   const byMachine = new Map<string, LinkedInstance[]>();
+
   for (const handle of handles) {
     // Child machines can't be previewed, and links skip them.
     if (!handle.capabilities?.preview) continue;
     const key = toInstanceKey(handle.machineId, handle.instanceId);
     let instances = byMachine.get(handle.machineId);
+
     if (!instances) {
       instances = [];
       byMachine.set(handle.machineId, instances);
     }
+
     instances.push({ key, override: overrides[key] });
   }
 
   const targets: DeepLinkTarget[] = [];
   const partial: string[] = [];
+
   for (const [machineId, instances] of byMachine) {
     const chosen = linkedPreview(instances, selectedKey);
+
     if (!chosen) continue;
     targets.push({ machineId, leaves: [...chosen.requested] });
+
     if (instances.some(({ override }) => !sameLeaves(override?.requested, chosen.requested))) partial.push(machineId);
   }
+
   return { targets, partial };
 }
 
 /** The preview of the selected instance, or else the preview of the first instance that registered. */
 function linkedPreview(instances: readonly LinkedInstance[], selectedKey: string | undefined): Override | undefined {
   const selected = instances.find(({ key }) => key === selectedKey)?.override;
+
   return selected ?? instances.find(({ override }) => override !== undefined)?.override;
 }
 
@@ -137,6 +155,7 @@ export function shownLeaves(
     if (node.type === 'atomic' || node.type === 'final') into.push(node.id);
     else if (!collapsed.has(node.id)) shownLeaves(node.children ?? [], collapsed, into);
   }
+
   return into;
 }
 

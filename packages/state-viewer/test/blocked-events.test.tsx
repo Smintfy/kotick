@@ -29,6 +29,7 @@ type PaymentMachine = ReturnType<typeof createPaymentMachine>;
 
 function Payment({ machine }: { machine: PaymentMachine }) {
   const [snapshot, send] = useMachine(machine);
+
   return (
     <>
       <output>{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>
@@ -44,13 +45,16 @@ function Payment({ machine }: { machine: PaymentMachine }) {
 
 function clearButton(): HTMLButtonElement {
   const found = [...overlay().querySelectorAll('button')].find((button) => button.textContent === 'Clear');
+
   if (!found) throw new Error('The panel has no Clear button.');
+
   return found;
 }
 
 /** The Blocked events section: its title, its rows newest first, and whether Clear can be clicked. */
 function eventLog() {
   const titles = [...overlay().querySelectorAll('section h3')].map((title) => title.textContent ?? '');
+
   return {
     title: titles.find((title) => title.startsWith('Blocked events')),
     rows: blockedEvents(),
@@ -81,6 +85,7 @@ async function mount(app: ReactNode): Promise<void> {
   );
   await flush();
   const first = overlay().querySelector<HTMLElement>('button[data-machine]')?.dataset.machine;
+
   if (first === undefined) throw new Error('The app registers no machine.');
   await show(first);
   await clear();
@@ -101,9 +106,11 @@ async function pressTimed(name: string): Promise<string[]> {
   const after = Date.now();
   await flush();
   const pad = (value: number, length = 2) => String(value).padStart(length, '0');
+
   return Array.from({ length: after - before + 1 }, (_, offset) => {
     const date = new Date(before + offset);
     const time = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+
     return `${time}.${pad(date.getMilliseconds(), 3)}`;
   });
 }
@@ -121,6 +128,7 @@ function startPayment(machine: PaymentMachine) {
   onTestFinished(() => {
     real.stop();
   });
+
   return { real, proxy: connect(real) };
 }
 
@@ -207,13 +215,16 @@ describe('the limit', () => {
     await mount(null);
     await preview(machine.id, ['error']);
     const { send } = proxy;
+
     const failUpTo = async (from: number, to: number) => {
       act(() => {
         for (let n = from; n <= to; n++) send({ type: 'FAIL', note: `#${n}` });
       });
       await flush();
     };
+
     const row = (n: number) => `FAIL · ${machine.id} · 1 · in error · {"note":"#${n}"}`;
+
     const newest = (from: number, to: number) =>
       Array.from({ length: to - from + 1 }, (_, offset) => row(to - offset));
 
@@ -241,6 +252,7 @@ describe('events that are not objects with a string type', () => {
     } catch (error) {
       return error instanceof Error ? error.message : String(error);
     }
+
     return 'nothing thrown';
   }
 
@@ -289,6 +301,7 @@ describe('events from another actor', () => {
       initial: 'a',
       states: { a: { on: { NEXT: 'b' } }, b: { on: { NEXT: 'c' } }, c: {} },
     });
+
     // Another actor of the app, handed the target through its input.
     // The hook gives it the actor that the app holds.
     const sender = setup({
@@ -305,6 +318,7 @@ describe('events from another actor', () => {
         PING_LATER: { actions: sendTo(({ context }) => context.target, { type: 'NEXT' }, { delay: 10 }) },
       },
     });
+
     return { target, sender };
   }
 
@@ -312,6 +326,7 @@ describe('events from another actor', () => {
 
   function Sender({ machine, target }: { machine: Machines['sender']; target: AnyActorRef }) {
     const sender = useActorRef(machine, { input: { target } });
+
     return (
       <>
         <button type="button" onClick={() => sender.send({ type: 'PING' })}>
@@ -327,6 +342,7 @@ describe('events from another actor', () => {
   function App({ machines }: { machines: Machines }) {
     const target = useActorRef(machines.target);
     const value = useSelector(target, (snapshot) => snapshot.value);
+
     return (
       <>
         <output>{JSON.stringify({ value })}</output>

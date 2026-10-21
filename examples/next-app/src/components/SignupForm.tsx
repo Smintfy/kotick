@@ -23,6 +23,7 @@ export function SignupForm() {
   }
 
   const busy = snapshot.hasTag('busy');
+
   return (
     <form
       className="card stack"

@@ -19,6 +19,7 @@ function createUploadMachine({ id, version }: { id: string; version: string }, s
     actors: {
       socket: fromCallback<{ type: 'FINISH' }>(({ sendBack }) => {
         sockets.set(version, sendBack);
+
         return () => {
           if (sockets.get(version) === sendBack) sockets.delete(version);
         };
@@ -37,6 +38,7 @@ function createUploadMachine({ id, version }: { id: string; version: string }, s
 }
 
 type UploadMachine = ReturnType<typeof createUploadMachine>;
+
 type UploadSnapshot = SnapshotFrom<UploadMachine>;
 
 /** A new observer on every render, as apps usually write it, or one the component keeps with useMemo. */
@@ -103,12 +105,14 @@ describeWithActivity('a render React throws away', () => {
       const calls: string[] = [];
       const sockets = new Map<string, Socket>();
       const id = freshId('upload');
+
       let committed: AppState = {
         machine: createUploadMachine({ id, version: 'old' }, sockets),
         disabled: false,
         filter: 'all',
         loading: false,
       };
+
       let setState: React.Dispatch<React.SetStateAction<AppState>> = () => {};
 
       function Upload({ machine, disabled, filter }: Omit<AppState, 'loading'>) {
@@ -116,15 +120,20 @@ describeWithActivity('a render React throws away', () => {
         // The component makes its stable observer again when the filter it reports under changes.
         const stable = React.useMemo(() => observe(calls), [filter]);
         hooks.useActorRef(machine, { debug: { disabled } } as never, kind === 'stable' ? stable : inline);
+
         return null;
       }
+
       function Files({ loading }: { loading: boolean }) {
         if (loading) use(never);
+
         return <p>files</p>;
       }
+
       function App() {
         const [state, set] = React.useState(committed);
         setState = set;
+
         return (
           <React.Suspense fallback={<p>loading</p>}>
             <Upload machine={state.machine} disabled={state.disabled} filter={state.filter} />
@@ -132,6 +141,7 @@ describeWithActivity('a render React throws away', () => {
           </React.Suspense>
         );
       }
+
       render(page(<App />));
       await flush();
       calls.length = 0;
@@ -143,6 +153,7 @@ describeWithActivity('a render React throws away', () => {
         });
         await flush();
       };
+
       const patch = (change: Change): Partial<AppState> => {
         switch (change) {
           case 'keeps the machine':
@@ -155,12 +166,14 @@ describeWithActivity('a render React throws away', () => {
             return { filter: 'mine' };
         }
       };
+
       return {
         calls,
         /** The socket of the committed upload reports it finished: the real actor takes it, also while a preview shows. */
         finish: () =>
           step('[finish]', () => {
             const send = sockets.get(String(committed.machine.version));
+
             if (!send) throw new Error(`No socket runs for the ${committed.machine.version} upload.`);
             send({ type: 'FINISH' });
           }),
@@ -187,6 +200,7 @@ describeWithActivity('a render React throws away', () => {
           const apply = (): void => setState((previous) => ({ ...previous, ...patch(change), loading: true }));
           await act(async () => (update === 'transition' ? React.startTransition(apply) : apply()));
           await flush();
+
           return screen.queryByText('loading') === null ? 'the committed view' : 'the fallback';
         },
         /** The user goes back to the committed view before the new one's data arrives: React abandons the transition. */
@@ -248,10 +262,12 @@ describeWithActivity('a render React throws away', () => {
 
             await upload.finish();
             await upload.suspend('transition', 'a new machine');
+
             if (previewWhilePending) {
               await upload.preview();
               await upload.release();
             }
+
             await upload.back();
             await upload.preview();
             await upload.release();

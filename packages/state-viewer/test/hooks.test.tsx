@@ -64,6 +64,7 @@ const LOADER = 'loader';
 
 function Toggle({ machine }: { machine: ToggleMachine }) {
   const [snapshot, send] = useMachine(machine);
+
   return (
     <>
       <output aria-label="toggle">{JSON.stringify({ value: snapshot.value, flips: snapshot.context.flips })}</output>
@@ -94,6 +95,7 @@ function useCommits<T>(commits: Commits<T>, value: T): void {
       mounted.current = true;
       commits.mounts += 1;
     }
+
     if (committed.current === render) return;
     committed.current = render;
     commits.renders.push(value);
@@ -110,6 +112,7 @@ function shown(name = 'toggle') {
  */
 async function clearBlockedEvents(): Promise<void> {
   const clear = [...overlay().querySelectorAll('button')].find((button) => button.textContent === 'Clear');
+
   if (!clear) throw new Error('The panel has no Clear button.');
   fireEvent.click(clear);
   await flush();
@@ -130,9 +133,11 @@ describe('useMachine and useActor', () => {
   ])('%s shows a preview in place as a real snapshot, and the real state on release, without a remount', async (_, useHook) => {
     const machine = createToggleMachine();
     const commits = commitsOf<string>();
+
     function Lamp() {
       const [snapshot] = useHook(machine);
       useCommits(commits, String(snapshot.value));
+
       const seen = {
         value: snapshot.value,
         lit: snapshot.hasTag('lit'),
@@ -140,8 +145,10 @@ describe('useMachine and useActor', () => {
         canToggle: snapshot.can({ type: 'TOGGLE' }),
         status: snapshot.status,
       };
+
       return <output aria-label="toggle">{JSON.stringify(seen)}</output>;
     }
+
     render(
       <>
         <Lamp />
@@ -163,9 +170,11 @@ describe('useMachine and useActor', () => {
   test('the actor moves on during a preview without a render, and the release shows where it got to', async () => {
     const machine = createLoaderMachine();
     const commits = commitsOf<string>();
+
     function Loader() {
       const [snapshot, , actorRef] = useMachine(machine, { systemId: LOADER });
       useCommits(commits, String(snapshot.value));
+
       return (
         <>
           <output aria-label="loader">{JSON.stringify(snapshot.value)}</output>
@@ -176,6 +185,7 @@ describe('useMachine and useActor', () => {
         </>
       );
     }
+
     render(
       <>
         <Loader />
@@ -198,11 +208,14 @@ describe('useMachine and useActor', () => {
   test('a deep link previews as the hook registers, without a remount', async () => {
     const machine = createToggleMachine();
     const commits = commitsOf<string>();
+
     function Lamp() {
       const [snapshot] = useMachine(machine);
       useCommits(commits, String(snapshot.value));
+
       return <output aria-label="toggle">{JSON.stringify(snapshot.value)}</output>;
     }
+
     window.history.replaceState(null, '', `/?debug-state=${machine.id}:on`);
     render(
       <>
@@ -236,7 +249,9 @@ describe('useMachine and useActor', () => {
         initial: 'idle',
         states: { idle: { on: { LOAD: { actions: assign({ loads: ({ context }) => context.loads + 1 }) } } }, failed: {} },
       });
+
       const commits = commitsOf<{ send: unknown; actorRef: unknown; loads: number }>();
+
       function Inbox({ debug }: { debug: { label?: string; id?: string } }) {
         // @xstate/react passes debug on to XState, which ignores it.
         const [snapshot, send, actorRef] = hooks.useMachine(machine, { debug } as never);
@@ -245,23 +260,28 @@ describe('useMachine and useActor', () => {
         React.useEffect(() => {
           send({ type: 'LOAD' });
         }, [send]);
+
         return <output aria-label="inbox">{JSON.stringify(snapshot.context)}</output>;
       }
+
       const app = (debug: { label?: string; id?: string }) => (
         <>
           <Inbox debug={debug} />
           <StateViewer defaultOpen />
         </>
       );
+
       const view = render(app({ label: 'Inbox' }));
       await flush();
 
       view.rerender(app({ label: 'Inbox (3 unread)' }));
       await flush();
+
       if (previews) {
         await preview(machine.id, ['failed']);
         await release(machine.id);
       }
+
       view.rerender(app({ label: 'Inbox (3 unread)', id: freshId('mail') }));
       await flush();
       const { mounts, renders } = commits;
@@ -285,8 +305,10 @@ describe('useMachine and useActor', () => {
       const counter = fromTransition((count: number, event: { type: 'INCREMENT' }) => {
         return event.type === 'INCREMENT' ? count + 1 : count;
       }, 0);
+
       function Counter() {
         const [snapshot, send] = hooks.useActor(counter);
+
         return (
           <>
             <output aria-label="count">{snapshot.context}</output>
@@ -296,6 +318,7 @@ describe('useMachine and useActor', () => {
           </>
         );
       }
+
       render(<Counter />);
 
       const before = shown('count');
@@ -307,18 +330,23 @@ describe('useMachine and useActor', () => {
     test('useActor throws when given an actor ref, a plain one or one from useActorRef, in place of actor logic', () => {
       const machine = createToggleMachine();
       const plain = createActor(machine);
+
       function Misused({ actorRef }: { actorRef: AnyActorRef }) {
         hooks.useActor(actorRef as unknown as AnyActorLogic);
+
         return null;
       }
+
       function FromHook() {
         const actorRef = hooks.useActorRef(machine);
+
         return (
           <Boundary>
             <Misused actorRef={actorRef} />
           </Boundary>
         );
       }
+
       render(
         <>
           <Boundary>
@@ -330,6 +358,7 @@ describe('useMachine and useActor', () => {
 
       const message =
         "useActor() expects actor logic (e.g. a machine), but received an ActorRef. Use the useSelector(actorRef, ...) hook instead to read the ActorRef's snapshot.";
+
       expect(alerts()).toEqual([message, message]);
     });
 
@@ -349,14 +378,17 @@ describe('useMachine and useActor', () => {
           },
         },
       });
+
       function Fragile() {
         const [, send] = hooks.useActor(machine);
+
         return (
           <button type="button" onClick={() => send({ type: 'BREAK' })}>
             Break
           </button>
         );
       }
+
       render(
         <Boundary>
           <Fragile />
@@ -367,6 +399,7 @@ describe('useMachine and useActor', () => {
       const errors = await uncaught(() => {
         fireEvent.click(screen.getByRole('button', { name: 'Break' }));
       });
+
       expect({ alerts: alerts(), uncaught: errors }).toEqual({ alerts: ['Broken on purpose'], uncaught: [] });
     });
 
@@ -377,8 +410,10 @@ describe('useMachine and useActor', () => {
           throw new Error('Broken on start');
         },
       });
+
       function Broken() {
         hooks.useActor(machine);
+
         return <p>rendered</p>;
       }
 
@@ -389,6 +424,7 @@ describe('useMachine and useActor', () => {
           </Boundary>,
         ),
       );
+
       expect({ alerts: alerts(), uncaught: errors }).toEqual({ alerts: ['Broken on start'], uncaught: [] });
     });
   });
@@ -399,11 +435,14 @@ describe('useActorRef', () => {
     const machine = createToggleMachine();
     const values = commitsOf<string>();
     const flips = commitsOf<number>();
+
     function Value({ actorRef }: { actorRef: AnyActorRef }) {
       const value = useSelector(actorRef, (snapshot: AnyMachineSnapshot) => snapshot.value);
       useCommits(values, String(value));
+
       return <output aria-label="toggle">{JSON.stringify(value)}</output>;
     }
+
     function Flips({ actorRef }: { actorRef: AnyActorRef }) {
       // A new object for each selection, which shallowEqual keeps from counting as a change.
       const selected = useSelector(
@@ -411,11 +450,15 @@ describe('useActorRef', () => {
         (snapshot: AnyMachineSnapshot) => ({ flips: snapshot.context.flips as number }),
         shallowEqual,
       );
+
       useCommits(flips, selected.flips);
+
       return null;
     }
+
     function Lamp() {
       const actorRef = useActorRef(machine);
+
       return (
         <>
           <Value actorRef={actorRef} />
@@ -423,6 +466,7 @@ describe('useActorRef', () => {
         </>
       );
     }
+
     render(
       <>
         <Lamp />
@@ -445,9 +489,11 @@ describe('useActorRef', () => {
 
   test('a send through it during a preview is blocked, and reaches the actor after the release', async () => {
     const machine = createToggleMachine();
+
     function Lamp() {
       const actorRef = useActorRef(machine);
       const value = useSelector(actorRef, (snapshot) => snapshot.value);
+
       return (
         <>
           <output aria-label="toggle">{JSON.stringify(value)}</output>
@@ -457,6 +503,7 @@ describe('useActorRef', () => {
         </>
       );
     }
+
     render(
       <>
         <Lamp />
@@ -485,21 +532,25 @@ describe('useActorRef', () => {
     const machine = createLoaderMachine();
     let current: AnyActorRef | undefined;
     const delivered: { value: unknown; current: boolean }[] = [];
+
     // The observer reads the actor too, as an app's observer may.
     const listener = (snapshot: AnyMachineSnapshot) => {
       delivered.push({ value: snapshot.value, current: snapshot === current?.getSnapshot() });
     };
+
     function Loader() {
       const actorRef = useActorRef(machine, { systemId: LOADER }, listener);
       React.useLayoutEffect(() => {
         current = actorRef;
       });
+
       return (
         <button type="button" onClick={() => actorRef.system.get(LOADER)?.send({ type: 'LOADED' })}>
           Finish loading
         </button>
       );
     }
+
     render(
       <>
         <Loader />
@@ -526,17 +577,21 @@ describe('useActorRef', () => {
       const machine = createToggleMachine();
       const listened: unknown[] = [];
       const observed: unknown[] = [];
+
       const listener = (snapshot: AnyMachineSnapshot) => {
         listened.push(snapshot.value);
       };
+
       const observer = {
         next: (snapshot: AnyMachineSnapshot) => {
           observed.push(snapshot.value);
         },
       };
+
       function Lamps() {
         const first = hooks.useActorRef(machine, undefined, listener);
         const second = hooks.useActorRef(machine, undefined, observer);
+
         return (
           <button
             type="button"
@@ -549,6 +604,7 @@ describe('useActorRef', () => {
           </button>
         );
       }
+
       render(<Lamps />);
       await flush();
 
@@ -563,16 +619,21 @@ describe('useActorRef', () => {
 
     test('runs fromPromise logic that useSelector reads', async () => {
       let resolve: (value: string) => void = () => {};
+
       const loaded = new Promise<string>((done) => {
         resolve = done;
       });
+
       const load = fromPromise(() => loaded);
+
       function Load() {
         const actorRef = hooks.useActorRef(load);
         const status = hooks.useSelector(actorRef, (snapshot) => snapshot.status);
         const output = hooks.useSelector(actorRef, (snapshot) => snapshot.output);
+
         return <output aria-label="load">{JSON.stringify({ status, output })}</output>;
       }
+
       render(<Load />);
 
       const before = shown('load');
@@ -593,25 +654,32 @@ describe('createActorContext', () => {
     const values = commitsOf<string>();
     const lit = commitsOf<boolean>();
     const others = commitsOf<null>();
+
     function Value() {
       const value = ToggleContext.useSelector((snapshot) => snapshot.value);
       useCommits(values, String(value));
+
       return <output aria-label="toggle">{JSON.stringify(value)}</output>;
     }
+
     function Lit() {
       const actorRef = ToggleContext.useActorRef();
       const isLit = useSelector(actorRef, (snapshot) => snapshot.hasTag('lit'));
       useCommits(lit, isLit);
+
       return (
         <button type="button" onClick={() => actorRef.send({ type: 'TOGGLE' })}>
           Toggle
         </button>
       );
     }
+
     function Other() {
       useCommits(others, null);
+
       return null;
     }
+
     render(
       <>
         <ToggleContext.Provider>
@@ -643,17 +711,21 @@ describe('createActorContext', () => {
   test('a consumer that mounts during a preview shows it from its first render', async () => {
     const machine = createToggleMachine();
     const ToggleContext = createActorContext(machine);
+
     function Late() {
       const value = ToggleContext.useSelector((snapshot) => snapshot.value);
       const [first] = React.useState(value);
+
       return <output aria-label="late">{JSON.stringify({ first, now: value })}</output>;
     }
+
     const app = (children: React.ReactNode) => (
       <>
         <ToggleContext.Provider>{children}</ToggleContext.Provider>
         <StateViewer defaultOpen />
       </>
     );
+
     const view = render(app(null));
     await flush();
 
@@ -672,14 +744,18 @@ describe('createActorContext', () => {
       initial: 'hello',
       states: { hello: {} },
     });
+
     const base = freshId('greeting-base');
     const provided = freshId('greeting-provided');
     const GreetingContext = createActorContext(machine, { input: { name: 'Ada' }, debug: { id: base, label: 'Base' } });
+
     function Name() {
       const { options } = GreetingContext.useActorRef();
       const name = GreetingContext.useSelector((snapshot) => snapshot.context.name);
+
       return <output aria-label="greeting">{JSON.stringify({ name, input: options.input, debug: 'debug' in options })}</output>;
     }
+
     render(
       <>
         <GreetingContext.Provider options={{ input: { name: 'Grace' }, debug: { id: provided } }}>
@@ -701,15 +777,18 @@ describe('createActorContext', () => {
 
   test('the Provider logic prop replaces the context logic', async () => {
     const ToggleContext = createActorContext(createToggleMachine());
+
     const other = createMachine({
       id: freshId('other-toggle'),
       initial: 'on',
       context: { flips: 0 },
       states: { off: {}, on: {} },
     }) as unknown as ToggleMachine;
+
     function Value() {
       return <output aria-label="toggle">{JSON.stringify(ToggleContext.useSelector((snapshot) => snapshot.value))}</output>;
     }
+
     render(
       <>
         <ToggleContext.Provider logic={other}>
@@ -728,9 +807,11 @@ describe('createActorContext', () => {
   describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, previews) => {
     test('throws for the deprecated machine prop', () => {
       const machine = createToggleMachine();
+
       const Provider = hooks.createActorContext(machine).Provider as unknown as React.ComponentType<{
         machine: unknown;
       }>;
+
       render(
         <Boundary>
           <Provider machine={machine} />
@@ -741,10 +822,13 @@ describe('createActorContext', () => {
 
     test('throws when its hooks are used outside the Provider', () => {
       const ToggleContext = hooks.createActorContext(createToggleMachine());
+
       function Orphan() {
         ToggleContext.useSelector((snapshot) => snapshot.value);
+
         return null;
       }
+
       render(
         <Boundary>
           <Orphan />
@@ -757,10 +841,13 @@ describe('createActorContext', () => {
       const machine = createToggleMachine();
       const ToggleContext = hooks.createActorContext(machine);
       const commits = commitsOf<unknown>();
+
       const Consumer = React.memo(function Consumer() {
         useCommits(commits, ToggleContext.useActorRef());
+
         return null;
       });
+
       const app = (label: string) => (
         <>
           <ToggleContext.Provider options={{ debug: { label } } as never}>
@@ -769,15 +856,18 @@ describe('createActorContext', () => {
           <StateViewer defaultOpen />
         </>
       );
+
       const view = render(app('Before'));
       await flush();
 
       view.rerender(app('After'));
       await flush();
+
       if (previews) {
         await preview(machine.id, ['on']);
         await release(machine.id);
       }
+
       expect({ mounts: commits.mounts, renders: commits.renders.length }).toEqual({ mounts: 1, renders: 1 });
     });
   });
@@ -788,12 +878,15 @@ describe('logic other than a machine', () => {
     const machine = createToggleMachine();
     const counter = fromTransition((count: number) => count + 1, 0);
     const load = fromPromise(async () => 'loaded');
+
     function App() {
       useActor(counter);
       useActorRef(load);
       useMachine(machine);
+
       return null;
     }
+
     render(
       <>
         <App />

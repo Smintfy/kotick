@@ -142,23 +142,30 @@ export function createView(
   const memory = shared ?? createViewMemory();
   // The source the target sees the actor through.
   const current = (): ViewSource | undefined => (attachment?.replaced() ? undefined : getSource());
+
   const remember = (): ViewMemory => {
     const source = current();
     const actor = memory.identify ? memory.identify() : source;
+
     if (actor !== undefined && memory.actor !== actor) {
       const { source: seen, last, heldEnding } = memory;
+
       if (seen && (heldEnding || (last !== UNSET && last !== seen.getLiveSnapshot()))) {
         memory.owed.push({ source: seen, last, ending: heldEnding });
       }
+
       memory.actor = actor;
       memory.source = undefined;
       memory.last = UNSET;
       memory.told = false;
       memory.heldEnding = undefined;
     }
+
     if (source) memory.source = source;
+
     return memory;
   };
+
   let closed = false;
   // Dropped by the hook while it held back how the actor ended: it closes once it has delivered that.
   let dropped = false;
@@ -166,6 +173,7 @@ export function createView(
   const deliver = (snapshot: unknown): void => {
     const current = remember();
     current.last = snapshot;
+
     // Shown the current actor, the target has left whatever it saw of an earlier one.
     if (current.owed.some((owed) => !owed.ending)) current.owed = current.owed.filter((owed) => owed.ending);
     isolate(() => target.next?.(snapshot));
@@ -180,6 +188,7 @@ export function createView(
   // True while a preview shows something other than the real snapshot.
   const hides = (source: ViewSource | undefined): boolean =>
     !!source && source.isPreviewing() && source.getSnapshot() !== source.getLiveSnapshot();
+
   const hidden = (): boolean => hides(current());
 
   // Once told how the actor ended, a hook's observer only hears what XState sends it.
@@ -191,9 +200,11 @@ export function createView(
     current.told = true;
     // The proxy shows the real snapshot meanwhile: toPromise reads the output from it.
     const tell = (): void => isolate(() => (failed ? target.error?.(cause) : target.complete?.()));
+
     if (source) source.showingLive(tell);
     else tell();
     const stopped = statusOf(source?.getLiveSnapshot()) === 'stopped';
+
     if (dropped || stopped || (lifetime === 'notified' && (failed || target.complete))) close();
   };
 
@@ -203,6 +214,7 @@ export function createView(
   const endOrHold = (failed: boolean, cause?: unknown): void => {
     const current = remember();
     const afterStop = !!attachment?.subscribedAfterStop() && current.heldEnding === undefined;
+
     if (target.next && !current.told && !afterStop && hidden()) current.heldEnding = { failed, cause };
     else end({ failed, cause });
   };
@@ -210,8 +222,10 @@ export function createView(
   // Whether show() hands a hook's observer a snapshot of an actor that hasn't ended for it.
   const shows = (source: ViewSource, isHidden: boolean, last: unknown, status: unknown): boolean => {
     if (!attachment) return true;
+
     // XState's start of an actor restored from an error snapshot sends it only the error.
     if (status === 'error' && !attachment.subscribed()) return false;
+
     // An observer shown nothing of the actor yet gets its real snapshot from XState: at start, which comes here through
     // next only while a preview the actor can't show is on, or at its next update. A release owes it nothing.
     return isHidden || last !== UNSET || (attachment.subscribed() && source.isPreviewing());
@@ -226,23 +240,31 @@ export function createView(
     // A consumer that only re-renders (useSelector, the hooks' store) needs waking to leave a preview of an actor
     // that stopped, which XState no longer tells it about.
     const wakes = status === 'stopped' && lifetime !== 'ended' && !target.complete;
+
     if (heldEnding === undefined) {
       // Ended without the target being told: subscribed after the actor stopped, or failed without an error callback.
       // The consumer may have rendered the preview it subscribed under, so it isn't let go before the preview ends.
       if (status === 'stopped' || (lifetime === 'ended' && status === 'error' && !target.error)) {
         if (wakes && isHidden) return;
+
         if (wakes && shown !== last) deliver(shown);
         memory.told = true;
+
         if (status === 'stopped') close();
       } else if (shown !== last && shows(source, isHidden, last, status)) deliver(shown);
+
       return;
     }
+
     if (isHidden) {
       if (shown !== last) deliver(shown);
+
       return;
     }
+
     // The preview that hid the ending is gone. XState sends a done snapshot through next.
     if (shown !== last && (status === 'done' || wakes)) deliver(shown);
+
     if (!closed && memory.heldEnding) end(memory.heldEnding, source);
   };
 
@@ -252,22 +274,27 @@ export function createView(
   const settleOwed = (force: boolean): void => {
     for (const owed of [...remember().owed]) {
       const index = memory.owed.indexOf(owed);
+
       // Settled already, from inside a callback this loop made.
       if (index < 0 || (!force && hides(getSource()))) continue;
       memory.owed.splice(index, 1);
       const { source, last, ending } = owed;
+
       // A target that follows the new actor is shown its real snapshot by it, debug.disabled or not.
       if (!ending && !attachment?.replaced()) continue;
       const live = source.getLiveSnapshot();
       const status = statusOf(live);
       const wakes = status === 'stopped' && lifetime !== 'ended' && !target.complete;
+
       // What a release shows: show() with the preview gone.
       const shows = ending
         ? status === 'done' || wakes
         : status === 'stopped'
           ? wakes
           : !(lifetime === 'ended' && status === 'error');
+
       if (live !== last && shows) isolate(() => target.next?.(live));
+
       if (!ending) continue;
       const { failed, cause } = ending;
       source.showingLive(() => isolate(() => (failed ? target.error?.(cause) : target.complete?.())));
@@ -277,6 +304,7 @@ export function createView(
   const showCurrent = (): void => {
     settleOwed(false);
     const source = current();
+
     if (source) show(source, hidden());
   };
 
@@ -286,6 +314,7 @@ export function createView(
     if (getSource()) return;
     // What's owed about replaced actors first, as on a release.
     settleOwed(true);
+
     if (remember().source === source) show(source, false);
   };
 
@@ -293,6 +322,7 @@ export function createView(
     if (getSource()) return;
     settleOwed(true);
     const { source, heldEnding } = remember();
+
     if (source && heldEnding) show(source, false);
   };
 
@@ -307,20 +337,28 @@ export function createView(
     // The memory moves to the new actor first, owing what the target last saw of this one.
     remember();
     const owed = source && memory.owed.find((entry) => entry.source === source);
+
     if (source && target.next && hides(getSource())) {
       const ending = 'ending' in sent ? sent.ending : undefined;
+
       if (!owed) memory.owed.push({ source, last: UNSET, ending });
       else if (ending) owed.ending = ending;
+
       return;
     }
+
     // XState tells the target the actor's real state itself: it's owed no restore of it.
     if (owed && !owed.ending) memory.owed.splice(memory.owed.indexOf(owed), 1);
+
     if ('snapshot' in sent) {
       isolate(() => target.next?.(sent.snapshot));
+
       return;
     }
+
     const { failed, cause } = sent.ending;
     const tell = (): void => isolate(() => (failed ? target.error?.(cause) : target.complete?.()));
+
     if (source) source.showingLive(tell);
     else tell();
   };
@@ -329,6 +367,7 @@ export function createView(
     next(snapshot) {
       if (closed) return;
       const replaced = attachment?.replaced();
+
       if (replaced) fromReplaced(replaced.source, { snapshot });
       // Without a preview, real updates pass through as XState sends them, repeats included.
       else if (current()?.isPreviewing() && !heardEnding()) showCurrent();
@@ -337,14 +376,17 @@ export function createView(
     complete() {
       if (closed) return;
       const replaced = attachment?.replaced();
+
       if (replaced) fromReplaced(replaced.source, { ending: { failed: false } });
       else endOrHold(false);
     },
   };
+
   if (target.error) {
     observer.error = (cause) => {
       if (closed) return;
       const replaced = attachment?.replaced();
+
       if (replaced) fromReplaced(replaced.source, { ending: { failed: true, cause } });
       else endOrHold(true, cause);
     };

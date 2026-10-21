@@ -18,6 +18,7 @@ import {
 } from 'xstate';
 
 type CheckoutContext = { items: string[]; total: number; error?: string; receiptId?: string };
+
 type CheckoutEvent = { type: 'PAY' } | { type: 'RETRY' } | { type: 'UPDATE_CARD'; cardNumber: string };
 
 // Compound root: nested compound states, a history state and final states at two depths.

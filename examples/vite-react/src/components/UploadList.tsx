@@ -95,5 +95,6 @@ function UploadRow({ file, onRemove }: { file: FileEntry; onRemove: () => void }
 // This component gets the actor of the row from a prop. Child components usually get an actor with this method.
 function UploadProgress({ actorRef, label }: { actorRef: ActorRefFrom<typeof uploadMachine>; label: string }) {
   const progress = useSelector(actorRef, (snapshot) => snapshot.context.progress);
+
   return <progress max={100} value={progress} aria-label={label} />;
 }

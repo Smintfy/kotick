@@ -37,6 +37,7 @@ export function ContextView({ context, override, available, onSource }: ContextV
           <div className="inline-flex rounded-[7px] bg-surface p-0.5" role="radiogroup" aria-label="Context source">
             {SOURCES.map(({ source, label, missing }) => {
               const enabled = available[source] || override.source === source;
+
               return (
                 <label key={source} className="relative inline-flex" title={enabled ? undefined : missing}>
                   <input
@@ -83,6 +84,7 @@ const ENTRY_LIMIT = 100;
 
 function JsonView({ value }: { value: unknown }) {
   const inspected = inspect(value);
+
   return (
     <div
       className="max-h-65 overflow-auto rounded-lg bg-surface px-2 py-1.5 font-mono text-base leading-normal whitespace-nowrap"
@@ -100,6 +102,7 @@ function JsonView({ value }: { value: unknown }) {
 function Entries(props: { value: unknown; entries: [string, unknown][]; depth: number; ancestors: unknown[] }) {
   const { entries, depth } = props;
   const ancestors = [...props.ancestors, props.value];
+
   return (
     <>
       {entries.slice(0, ENTRY_LIMIT).map(([name, item], index) => (
@@ -123,17 +126,20 @@ interface JsonEntryProps {
 function JsonEntry({ name, value, depth, ancestors }: JsonEntryProps) {
   // Collapsed branches render no children, so a large context costs only what's expanded.
   const [open, setOpen] = useState(depth < 2);
+
   const label = name !== undefined && (
     <>
       <span className="text-json-key">{name}</span>:{' '}
     </>
   );
+
   const circular = typeof value === 'object' && value !== null && ancestors.includes(value);
   const inspected = circular ? undefined : inspect(value);
 
   if (!inspected || inspected.kind === 'leaf' || inspected.size === 0) {
     const text = !inspected ? '[Circular]' : inspected.kind === 'leaf' ? inspected.text : inspected.summary;
     const type = !inspected ? 'special' : inspected.kind === 'leaf' ? inspected.type : 'summary';
+
     return (
       // A row without a chevron starts where the keys after a chevron start.
       <div className="pl-3.5" data-part="json-row">

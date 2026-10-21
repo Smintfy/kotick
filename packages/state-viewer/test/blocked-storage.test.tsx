@@ -27,6 +27,7 @@ const machine = setup({
 
 function Checkout() {
   const [snapshot, send] = useMachine(machine);
+
   return (
     <>
       <output>{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>
@@ -47,6 +48,7 @@ async function press(name: string) {
 
 async function clickOverlay(label: string) {
   const button = overlay().querySelector(`button[aria-label="${label}"]`);
+
   if (!button) throw new Error(`The overlay has no ${label} button.`);
   fireEvent.click(button);
   await flush();

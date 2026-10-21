@@ -25,7 +25,9 @@ const digitsOf = (cardNumber: string) => cardNumber.replace(/\D/g, '');
 // The charge completes for all 16-digit card numbers, but not for numbers that end in 0002.
 const charge = fromPromise<{ receiptId: string }, { cardNumber: string }>(async ({ input }) => {
   await new Promise((resolve) => setTimeout(resolve, 800));
+
   if (digitsOf(input.cardNumber).endsWith('0002')) throw new Error('Card declined');
+
   return { receiptId: `rcpt_${Math.random().toString(36).slice(2, 8)}` };
 });
 
