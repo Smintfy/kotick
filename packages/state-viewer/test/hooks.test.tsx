@@ -10,9 +10,10 @@ import {
   fromPromise,
   fromTransition,
   setup,
-  type AnyActorLogic,
+  type ActorRefFrom,
   type AnyActorRef,
   type AnyMachineSnapshot,
+  type AnyStateMachine,
 } from 'xstate';
 import { press } from './support/app';
 import { alerts, Boundary } from './support/boundary';
@@ -31,9 +32,14 @@ import {
   show,
 } from './support/panel';
 
+type Flips = { flips: number };
+
+type ToggleEvent = { type: 'TOGGLE' };
+
 function createToggleMachine() {
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   return setup({
-    types: { context: {} as { flips: number }, events: {} as { type: 'TOGGLE' } },
+    types: { context: {} as Flips, events: {} as ToggleEvent },
     actions: { flip: assign({ flips: ({ context }) => context.flips + 1 }) },
   }).createMachine({
     id: freshId('toggle'),
@@ -48,8 +54,11 @@ function createToggleMachine() {
 
 type ToggleMachine = ReturnType<typeof createToggleMachine>;
 
+type LoaderEvent = { type: 'LOADED' };
+
 function createLoaderMachine() {
-  return setup({ types: { events: {} as { type: 'LOADED' } } }).createMachine({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+  return setup({ types: { events: {} as LoaderEvent } }).createMachine({
     id: freshId('loader'),
     initial: 'loading',
     states: { loading: { on: { LOADED: 'loaded' } }, loaded: {}, failed: {} },
@@ -127,9 +136,9 @@ test('useMachine drives a component', async () => {
 });
 
 describe('useMachine and useActor', () => {
-  test.each([
+  test.each<[string, typeof useMachine]>([
     ['useMachine', useMachine],
-    ['useActor', useActor as typeof useMachine],
+    ['useActor', useActor],
   ])('%s shows a preview in place as a real snapshot, and the real state on release, without a remount', async (_, useHook) => {
     const machine = createToggleMachine();
     const commits = commitsOf<string>();
@@ -241,8 +250,13 @@ describe('useMachine and useActor', () => {
 
   describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, previews) => {
     test('send and the actor ref stay the same through new debug options, a preview and its release, so effects that depend on them run once', async () => {
+      type Loads = { loads: number };
+
+      type InboxEvent = { type: 'LOAD' };
+
+      // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
       const machine = setup({
-        types: { context: {} as { loads: number }, events: {} as { type: 'LOAD' } },
+        types: { context: {} as Loads, events: {} as InboxEvent },
       }).createMachine({
         id: freshId('inbox'),
         context: { loads: 0 },
@@ -253,7 +267,7 @@ describe('useMachine and useActor', () => {
       const commits = commitsOf<{ send: unknown; actorRef: unknown; loads: number }>();
 
       function Inbox({ debug }: { debug: { label?: string; id?: string } }) {
-        // @xstate/react passes debug on to XState, which ignores it.
+        // SAFETY: The types of @xstate/react have no debug option. Its hooks give debug to XState, which ignores it.
         const [snapshot, send, actorRef] = hooks.useMachine(machine, { debug } as never);
         useCommits(commits, { send, actorRef, loads: snapshot.context.loads });
         // An app loads on mount in an effect that depends on send, so a new send loads again.
@@ -332,7 +346,8 @@ describe('useMachine and useActor', () => {
       const plain = createActor(machine);
 
       function Misused({ actorRef }: { actorRef: AnyActorRef }) {
-        hooks.useActor(actorRef as unknown as AnyActorLogic);
+        // @ts-expect-error useActor takes actor logic, and this test gives it an actor ref.
+        hooks.useActor(actorRef);
 
         return null;
       }
@@ -443,13 +458,9 @@ describe('useActorRef', () => {
       return <output aria-label="toggle">{JSON.stringify(value)}</output>;
     }
 
-    function Flips({ actorRef }: { actorRef: AnyActorRef }) {
+    function Flips({ actorRef }: { actorRef: ActorRefFrom<ToggleMachine> }) {
       // A new object for each selection, which shallowEqual keeps from counting as a change.
-      const selected = useSelector(
-        actorRef,
-        (snapshot: AnyMachineSnapshot) => ({ flips: snapshot.context.flips as number }),
-        shallowEqual,
-      );
+      const selected = useSelector(actorRef, (snapshot) => ({ flips: snapshot.context.flips }), shallowEqual);
 
       useCommits(flips, selected.flips);
 
@@ -736,8 +747,11 @@ describe('createActorContext', () => {
   });
 
   test('Provider options replace the context options one by one, and debug as a whole, which never reaches XState', async () => {
+    type Greeting = { name: string };
+
+    // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
     const machine = setup({
-      types: { input: {} as { name: string }, context: {} as { name: string } },
+      types: { input: {} as Greeting, context: {} as Greeting },
     }).createMachine({
       id: freshId('greeting'),
       context: ({ input }) => ({ name: input.name }),
@@ -776,14 +790,15 @@ describe('createActorContext', () => {
   });
 
   test('the Provider logic prop replaces the context logic', async () => {
-    const ToggleContext = createActorContext(createToggleMachine());
+    // The logic prop takes a machine of another type, so the context takes any machine.
+    const ToggleContext = createActorContext<AnyStateMachine>(createToggleMachine());
 
     const other = createMachine({
       id: freshId('other-toggle'),
       initial: 'on',
       context: { flips: 0 },
       states: { off: {}, on: {} },
-    }) as unknown as ToggleMachine;
+    });
 
     function Value() {
       return <output aria-label="toggle">{JSON.stringify(ToggleContext.useSelector((snapshot) => snapshot.value))}</output>;
@@ -808,12 +823,11 @@ describe('createActorContext', () => {
     test('throws for the deprecated machine prop', () => {
       const machine = createToggleMachine();
 
-      const Provider = hooks.createActorContext(machine).Provider as unknown as React.ComponentType<{
-        machine: unknown;
-      }>;
+      const { Provider } = hooks.createActorContext(machine);
 
       render(
         <Boundary>
+          {/* @ts-expect-error The machine prop is deprecated, so its type is never. */}
           <Provider machine={machine} />
         </Boundary>,
       );
@@ -848,6 +862,7 @@ describe('createActorContext', () => {
         return null;
       });
 
+      // SAFETY: The types of @xstate/react have no debug option. Its Provider gives debug to XState, which ignores it.
       const app = (label: string) => (
         <>
           <ToggleContext.Provider options={{ debug: { label } } as never}>
