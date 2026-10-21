@@ -3,18 +3,22 @@
 import { screen } from '@testing-library/react';
 import * as React from 'react';
 
-/** Shows the message of the error that it caught, as an alert. */
-export class Boundary extends React.Component<{ children: React.ReactNode }, { error: unknown }> {
-  override state: { error: unknown } = { error: undefined };
+/** The message of the error that the boundary caught, or null before it catches one. */
+type Caught = { message: string | null };
 
-  static getDerivedStateFromError(error: unknown) {
-    return { error };
+/** Shows the message of the error that it caught, as an alert. */
+export class Boundary extends React.Component<{ children: React.ReactNode }, Caught> {
+  override state: Caught = { message: null };
+
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- React gives the thrown value, and code can throw any value.
+  static getDerivedStateFromError(error: unknown): Caught {
+    return { message: error instanceof Error ? error.message : String(error) };
   }
 
   override render() {
-    if (this.state.error === undefined) return this.props.children;
+    if (this.state.message === null) return this.props.children;
 
-    return <p role="alert">{this.state.error instanceof Error ? this.state.error.message : String(this.state.error)}</p>;
+    return <p role="alert">{this.state.message}</p>;
   }
 }
 

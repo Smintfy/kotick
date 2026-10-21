@@ -56,6 +56,20 @@ async function choose(select: HTMLSelectElement, value: string): Promise<void> {
   await flush();
 }
 
+/**
+ * The element in the overlay that has focus, or null when the focus is outside the overlay.
+ * It throws when that element is not a `kind`, such as HTMLInputElement, so a wrong element fails the test.
+ */
+export function focused<T extends Element>(kind: new () => T): T | null {
+  const element = overlay().activeElement;
+
+  if (element === null) return null;
+
+  if (!(element instanceof kind)) throw new Error(`The focus is on a ${element.tagName}, not on a ${kind.name}.`);
+
+  return element;
+}
+
 export function isOpen(): boolean {
   return one('button[aria-expanded]').getAttribute('aria-expanded') === 'true';
 }
