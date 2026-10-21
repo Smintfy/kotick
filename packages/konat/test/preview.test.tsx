@@ -840,6 +840,18 @@ describe('a machine that Fast Refresh replaces', () => {
     return screen.getByLabelText<HTMLInputElement>('note').value;
   }
 
+  /**
+   * Each machine page lists all the blocked events of the page.
+   * Earlier tests in the file leave theirs, so a test that reads the list clears it first.
+   */
+  async function clearBlockedEvents() {
+    const clear = [...overlay().querySelectorAll('button')].find((button) => button.textContent === 'Clear');
+
+    if (!clear) throw new Error('The panel has no Clear button.');
+    fireEvent.click(clear);
+    await flush();
+  }
+
   test('the preview shows through the swap, under the same instance key, and the app then drives the new actor', async () => {
     const id = freshId('checkout');
     const rendered: string[] = [];
@@ -888,6 +900,7 @@ describe('a machine that Fast Refresh replaces', () => {
       await flush();
       fireEvent.change(screen.getByLabelText('note'), { target: { value: 'typed before the edit' } });
       await preview(id, [...leaves]);
+      await clearBlockedEvents();
       const unshowable = `[konat] Can't show the preview of "${shownKey()}" on this actor; showing its real state. Error: ${error}`;
       const before = output.warn.length;
 
@@ -917,6 +930,7 @@ describe('a machine that Fast Refresh replaces', () => {
     const view = render(<App machine={createEditedMachine(id)} />);
     await flush();
     await preview(id, ['paying.card.error']);
+    await clearBlockedEvents();
     const before = { source: panel().source, context: shown('app').context };
 
     // The fixtures file imports the machine, so Fast Refresh evaluates it again with the edit.
