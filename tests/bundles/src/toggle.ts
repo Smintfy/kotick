@@ -1,7 +1,12 @@
 import { assign, setup } from 'xstate';
 
+type ToggleCount = { count: number };
+
+type ToggleEvent = { type: 'TOGGLE' };
+
 export const toggleMachine = setup({
-  types: { context: {} as { count: number }, events: {} as { type: 'TOGGLE' } },
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+  types: { context: {} as ToggleCount, events: {} as ToggleEvent },
 }).createMachine({
   id: 'toggle',
   initial: 'off',

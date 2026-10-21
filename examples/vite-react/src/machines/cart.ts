@@ -2,6 +2,8 @@ import { assign, setup } from 'xstate';
 import { createActorContext } from 'state-viewer/xstate';
 import type { LineItem, Product } from '@/lib/products.ts';
 
+type CartContents = { items: LineItem[] };
+
 type CartEvent = { type: 'ADD'; product: Product } | { type: 'REMOVE'; id: string } | { type: 'CLEAR' };
 
 function addItem(items: LineItem[], product: Product): LineItem[] {
@@ -11,8 +13,9 @@ function addItem(items: LineItem[], product: Product): LineItem[] {
 }
 
 export const cartMachine = setup({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: {
-    context: {} as { items: LineItem[] },
+    context: {} as CartContents,
     events: {} as CartEvent,
   },
 }).createMachine({
