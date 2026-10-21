@@ -1,7 +1,7 @@
 // What names an actor in the registry: its machine id, its instance id, and an optional label.
 
-import type { AnyStateMachine } from 'xstate';
-import type { AnyStateNode } from './tree';
+import type { AnyStateMachine, MachineContext } from 'xstate';
+import { childNodes, type AnyStateNode } from './tree';
 
 export interface Identity {
   machineId: string;
@@ -18,11 +18,11 @@ const warned = new Set<string>();
 
 /** `debug.id`, then `machine.id`, then a generated id for machines still on XState's default. */
 export function resolveMachineId(machine: AnyStateMachine, debugId?: string): string {
-  if (typeof debugId === 'string' && debugId !== '') return debugId;
+  if (debugId !== undefined && debugId !== '') return debugId;
 
-  if (typeof machine.id === 'string' && machine.id !== '' && machine.id !== DEFAULT_MACHINE_ID) return machine.id;
+  if (machine.id !== '' && machine.id !== DEFAULT_MACHINE_ID) return machine.id;
 
-  return machineIdFromShape(machine);
+  return fallbackMachineId(machine);
 }
 
 export function isFallbackId(machine: AnyStateMachine, machineId: string): boolean {
@@ -30,7 +30,7 @@ export function isFallbackId(machine: AnyStateMachine, machineId: string): boole
 }
 
 /**
- * An id derived from the shape of the machine: its state tree and the keys of its initial context.
+ * An id derived from the machine's state tree and the keys of its initial context.
  * HMR recreates the machine object, and fixtures follow the registry id once it changes.
  * So the id must come out the same for the recreated machine.
  * It changes when states are added, removed, renamed or change type, or when context keys come and go.
@@ -38,7 +38,7 @@ export function isFallbackId(machine: AnyStateMachine, machineId: string): boole
  * The context keys tell apart machines with the same states, such as two fetch machines.
  * Without them, those machines would share recordings and fixtures.
  */
-function machineIdFromShape(machine: AnyStateMachine): string {
+function fallbackMachineId(machine: AnyStateMachine): string {
   let id = fallbackIds.get(machine);
 
   if (id === undefined) {
@@ -66,6 +66,7 @@ export function warnFallbackId(id: string): void {
  * So two islands that render one machine would share a key.
  */
 export function nextInstanceId(): string {
+  // SAFETY: The counter is a property this package adds to globalThis, under a key that nothing else uses.
   const scope = globalThis as typeof globalThis & { [COUNTER_KEY]?: number };
   const next = (scope[COUNTER_KEY] ?? 0) + 1;
   scope[COUNTER_KEY] = next;
@@ -75,22 +76,23 @@ export function nextInstanceId(): string {
 
 /** Children sorted by key, as context keys are: moving a state up or down doesn't change the machine. */
 function signature(node: AnyStateNode): string {
-  const children = (Object.values(node.states ?? {}) as AnyStateNode[]).sort((a, b) =>
-    a.key < b.key ? -1 : a.key > b.key ? 1 : 0,
-  );
+  const children = childNodes(node).sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
 
   if (children.length === 0) return node.type;
 
   return `${node.type}{${children.map((child) => `${JSON.stringify(child.key)}:${signature(child)}`).join(',')}}`;
 }
 
+/** A context written as an object. A context factory makes one when the actor starts. */
+function isContextObject(context: unknown): context is MachineContext {
+  return typeof context === 'object' && context !== null && !Array.isArray(context);
+}
+
 /** Sorted keys of a context given as an object; a context factory contributes nothing. */
 function contextKeys(machine: AnyStateMachine): string {
-  const context: unknown = (machine.config as { context?: unknown } | undefined)?.context;
+  const { context } = machine.config;
 
-  if (typeof context !== 'object' || context === null || Array.isArray(context)) return '';
-
-  return JSON.stringify(Object.keys(context).sort());
+  return isContextObject(context) ? JSON.stringify(Object.keys(context).sort()) : '';
 }
 
 /** FNV-1a, 32 bits, as 7 base-36 digits. Only needs to tell apart the anonymous machines on one page. */
