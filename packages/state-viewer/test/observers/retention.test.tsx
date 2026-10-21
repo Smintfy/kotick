@@ -3,7 +3,16 @@ import * as React from 'react';
 import { StateViewer } from 'state-viewer';
 import { connect } from 'state-viewer/xstate';
 import { describe, expect, test } from 'vitest';
-import { createActor, createMachine, waitFor, type AnyActorRef, type Observer, type SnapshotFrom } from 'xstate';
+import {
+  createActor,
+  createMachine,
+  waitFor,
+  type Actor,
+  type AnyActorRef,
+  type Observer,
+  type SnapshotFrom,
+  type StateValue,
+} from 'xstate';
 import { collected } from '../support/gc';
 import { ACTOR_SELECT, describeWithActivity, IMPLEMENTATIONS, type Hooks } from '../support/hooks';
 import { flush, freshId, preview } from '../support/panel';
@@ -16,9 +25,23 @@ function createJobMachine() {
   });
 }
 
-type JobSnapshot = SnapshotFrom<ReturnType<typeof createJobMachine>>;
+type JobMachine = ReturnType<typeof createJobMachine>;
 
-type JobSubscriber = Observer<JobSnapshot> | ((snapshot: JobSnapshot) => void);
+type JobSnapshot = SnapshotFrom<JobMachine>;
+
+type JobListener = (snapshot: JobSnapshot) => void;
+
+type JobSubscriber = Observer<JobSnapshot> | JobListener;
+
+function isListener(subscriber: JobSubscriber): subscriber is JobListener {
+  return typeof subscriber === 'function';
+}
+
+/** Subscribes as the app wrote the subscriber: a listener function, or an observer. */
+function subscribeTo(job: Actor<JobMachine>, subscriber: JobSubscriber): void {
+  if (isListener(subscriber)) job.subscribe(subscriber);
+  else job.subscribe(subscriber);
+}
 
 const listener =
   (heard: string[]) =>
@@ -44,10 +67,10 @@ function finishJob(subscriber: JobSubscriber, subscribe: 'before' | 'after'): We
   const actor = createActor(createJobMachine()).start();
   const job = connect(actor);
 
-  if (subscribe === 'before') job.subscribe(subscriber as Observer<JobSnapshot>);
+  if (subscribe === 'before') subscribeTo(job, subscriber);
   job.send({ type: 'FINISH' });
 
-  if (subscribe === 'after') job.subscribe(subscriber as Observer<JobSnapshot>);
+  if (subscribe === 'after') subscribeTo(job, subscriber);
 
   return new WeakRef(actor);
 }
@@ -168,7 +191,7 @@ function take(hand: Hand): AnyActorRef {
   return actorRef;
 }
 
-function shown(): unknown {
+function shown(): StateValue | null {
   return JSON.parse(screen.getByRole('status', { name: 'form' }).textContent ?? 'null');
 }
 
@@ -229,7 +252,8 @@ describe('a hook actor unmounted while a subscription to its proxy is open', () 
 
   test('state-viewer/xstate: can be garbage-collected with a subscription, never unsubscribed, to a connect()ed child', async () => {
     const subscribe: Subscribe = (actorRef) => {
-      connect(actorRef.getSnapshot().children.field as AnyActorRef).subscribe(() => {});
+      const field: AnyActorRef = actorRef.getSnapshot().children.field;
+      connect(field).subscribe(() => {});
     };
 
     const system = await navigateAway(stateViewer, subscribe, 'while mounted');
@@ -290,9 +314,7 @@ describe('under StrictMode, an effect without cleanup that follows the hook acto
   });
 });
 
-const Activity = (
-  React as unknown as { Activity: React.ComponentType<{ mode: 'visible' | 'hidden'; children: React.ReactNode }> }
-).Activity;
+const { Activity } = React;
 
 describeWithActivity('an Activity hiding and revealing the component', () => {
   /** Subscribes to the form's actor outside React, then hides the form and reveals it. */

@@ -13,6 +13,7 @@ import {
   type AnyStateMachine,
   type Observer,
 } from 'xstate';
+import { errorMessage, systemActor } from '../support/anti-slop-b';
 import { page, press } from '../support/app';
 import { alerts, Boundary } from '../support/boundary';
 import { uncaught } from '../support/console';
@@ -24,8 +25,11 @@ const BROKEN = 'Upload broken';
 /** The system id of the upload's actor. The server sends to the real actor by it, so a preview doesn't block it. */
 const UPLOAD = 'upload';
 
+type UploadEvent = { type: 'UPLOADED' } | { type: 'BREAK' };
+
 function createUploadMachine() {
-  return setup({ types: { events: {} as { type: 'UPLOADED' } | { type: 'BREAK' } } }).createMachine({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+  return setup({ types: { events: {} as UploadEvent } }).createMachine({
     id: freshId('upload'),
     initial: 'uploading',
     states: {
@@ -67,14 +71,14 @@ function observerInto(heard: string[], { error = true } = {}): Observer<Recorded
     complete: () => heard.push('complete'),
   };
 
-  if (error) observer.error = (cause) => heard.push(`error ${(cause as Error).message}`);
+  if (error) observer.error = (cause) => heard.push(`error ${errorMessage(cause)}`);
 
   return observer;
 }
 
 /** What the server sends to the real actor of the upload, as a socket would, past the proxy. */
 function Server({ actorRef }: { actorRef: AnyActorRef }) {
-  const send = (type: 'UPLOADED' | 'BREAK') => (actorRef.system.get(UPLOAD) as AnyActorRef).send({ type });
+  const send = (type: 'UPLOADED' | 'BREAK') => systemActor(actorRef, UPLOAD).send({ type });
 
   return (
     <>
@@ -111,7 +115,7 @@ function releaseAllButton(): HTMLButtonElement {
 }
 
 function messages(errors: unknown[]): string[] {
-  return errors.map((error) => (error as Error).message);
+  return errors.map(errorMessage);
 }
 
 describe.each(IMPLEMENTATIONS)(
@@ -494,7 +498,7 @@ describe('@xstate/react restarts an actor that ended', () => {
 
     const observer: Observer<Recorded> = {
       next: (snapshot) => current.push(`next ${entry(snapshot)}`),
-      error: (cause) => current.push(`error ${(cause as Error).message}`),
+      error: (cause) => current.push(`error ${errorMessage(cause)}`),
       complete: () => current.push('complete'),
     };
 
@@ -642,9 +646,12 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
   const FORM = 'form';
   const REJECTED = 'Save rejected';
 
+  type FormEvent = { type: 'SUBMIT' } | { type: 'SAVED' } | { type: 'REJECTED' };
+
   function createFormMachine() {
     return setup({
-      types: { events: {} as { type: 'SUBMIT' } | { type: 'SAVED' } | { type: 'REJECTED' } },
+      // SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+      types: { events: {} as FormEvent },
     }).createMachine({
       id: freshId('form'),
       initial: 'editing',
@@ -753,7 +760,7 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
     if (answer) {
       log.push('answer');
       await act(async () => {
-        (saved!.system.get(FORM) as AnyActorRef).send({ type: answer });
+        systemActor(saved!, FORM).send({ type: answer });
       });
     }
 
@@ -925,7 +932,7 @@ describe("a subscription through the hook's actor, made before an Activity hides
         release: releasePreview,
         finish: async () => {
           await act(async () => {
-            (current!.system.get(JOB) as AnyActorRef).send({ type: 'FINISHED' });
+            systemActor(current!, JOB).send({ type: 'FINISHED' });
           });
         },
         /** Previews `waiting`, and the real actor finishes under it: the preview holds back the ending. */
@@ -933,7 +940,7 @@ describe("a subscription through the hook's actor, made before an Activity hides
           await previewWaiting();
           const previewed = take();
           await act(async () => {
-            (current!.system.get(JOB) as AnyActorRef).send({ type: 'FINISHED' });
+            systemActor(current!, JOB).send({ type: 'FINISHED' });
           });
 
           return { previewed, finished: take() };
@@ -1072,7 +1079,7 @@ describe('an observer callback that throws', () => {
         if (throwing === 'ending') throw new Error('complete failed');
       },
       error: (cause) => {
-        heard.push(`error ${(cause as Error).message}`);
+        heard.push(`error ${errorMessage(cause)}`);
 
         if (throwing === 'ending') throw new Error('error failed');
       },
@@ -1177,7 +1184,7 @@ describe('an observer callback that throws', () => {
 
         return {
           heard,
-          end: (type: 'FINISH' | 'FAIL') => (actorRef!.system.get(JOB) as AnyActorRef).send({ type }),
+          end: (type: 'FINISH' | 'FAIL') => systemActor(actorRef!, JOB).send({ type }),
           shown: () => String(actorRef!.getSnapshot().value),
           previewWaiting: async () => {
             if (previews) await preview(machine.id, ['waiting']);
@@ -1256,15 +1263,15 @@ describe('an actor that fails while a preview hides the failure', () => {
    * only what the app sends, doesn't block it. `retrying` and `done` are there to be previewed.
    */
   function createCrashingUpload() {
-    const socket: { push?: () => void } = {};
+    let push: (() => void) | undefined;
 
     const machine = setup({
       actors: {
         socket: fromCallback(({ sendBack }) => {
-          socket.push = () => sendBack({ type: 'BREAK' });
+          push = () => sendBack({ type: 'BREAK' });
 
           return () => {
-            socket.push = undefined;
+            push = undefined;
           };
         }),
       },
@@ -1287,7 +1294,7 @@ describe('an actor that fails while a preview hides the failure', () => {
       },
     });
 
-    return { machine, crash: () => socket.push?.() };
+    return { machine, crash: () => push?.() };
   }
 
   type CrashingMachine = ReturnType<typeof createCrashingUpload>['machine'];
@@ -1432,7 +1439,7 @@ describe('an actor that fails while a preview hides the failure', () => {
       const heard: string[] = [];
       upload.subscribe({
         next: (snapshot) => heard.push(`next ${String(snapshot.value)}`),
-        error: (error) => heard.push(`error ${(error as Error).message}`),
+        error: (error) => heard.push(`error ${errorMessage(error)}`),
       });
       render(page(null));
       await flush();

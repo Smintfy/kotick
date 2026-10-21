@@ -56,7 +56,10 @@ const Reader = React.memo(function Reader({ upload, name }: { upload: AnyActorRe
 });
 
 /** The upload as useMachine or useActor shows it, and as a useSelector consumer of its actor shows it. */
-function Upload({ machine, useHook = useMachine }: { machine: UploadMachine; useHook?: typeof useMachine }) {
+/** A hook that runs the upload machine: useMachine, or useActor given the machine. */
+type UseUpload = typeof useMachine<UploadMachine>;
+
+function Upload({ machine, useHook = useMachine }: { machine: UploadMachine; useHook?: UseUpload }) {
   const [snapshot, , actorRef] = useHook(machine);
 
   return (
@@ -182,7 +185,7 @@ describe('a hook actor the app stopped', () => {
 
   test.each([
     ['useMachine', useMachine],
-    ['useActor', useActor as typeof useMachine],
+    ['useActor', useActor],
   ])('after the app stops the actor of %s, neither it nor a useSelector consumer of its actor shows a preview', async (_, useHook) => {
     const machine = createUploadMachine();
     render(page(<Upload machine={machine} useHook={useHook} />));
