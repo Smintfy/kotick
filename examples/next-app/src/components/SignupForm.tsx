@@ -1,6 +1,6 @@
 'use client';
 
-import { useMachine } from 'state-viewer/xstate';
+import { useMachine } from 'konat/xstate';
 import { signupMachine } from '@/machines/signup';
 
 export function SignupForm() {

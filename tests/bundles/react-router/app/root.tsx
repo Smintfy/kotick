@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
-import { StateViewer } from 'state-viewer';
+import { Konat } from 'konat';
 
 export function Layout({ children }: { children: ReactNode }) {
   return (
@@ -12,7 +12,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
-        <StateViewer fixtures={() => import('../../src/fixtures')} />
+        <Konat fixtures={() => import('../../src/fixtures')} />
         <ScrollRestoration />
         <Scripts />
       </body>

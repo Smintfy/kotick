@@ -4,12 +4,12 @@ import type { NextConfig } from 'next';
 import { MARKERS } from '../scripts/debug-markers.mjs';
 
 const keepOverlayInProduction = {
-  condition: { path: /packages\/state-viewer\/src\// },
-  loaders: [path.join(import.meta.dirname, 'state-viewer-dev-loader.cjs')],
+  condition: { path: /packages\/konat\/src\// },
+  loaders: [path.join(import.meta.dirname, 'konat-dev-loader.cjs')],
 };
 
 const config: NextConfig = {
-  transpilePackages: ['state-viewer'],
+  transpilePackages: ['konat'],
   turbopack: {
     rules: {
       '*.md': { type: 'text' },
@@ -26,12 +26,12 @@ const config: NextConfig = {
 
       if (missing.length > 0) {
         throw new Error(
-          `The client chunks do not have these parts of state-viewer: ${missing.join(', ')}. ` +
+          `The client chunks do not have these parts of konat: ${missing.join(', ')}. ` +
             'The demo needs them. Check the *.ts and *.tsx rules in site/next.config.ts.',
         );
       }
 
-      console.log(`✓ The client chunks have all ${Object.keys(MARKERS).length} parts of the state-viewer debug code`);
+      console.log(`✓ The client chunks have all ${Object.keys(MARKERS).length} parts of the konat debug code`);
     },
   },
 };

@@ -1,4 +1,4 @@
-import { defineFixtures } from 'state-viewer/xstate';
+import { defineFixtures } from 'konat/xstate';
 import { assign, fromPromise, not, or, setup, stateIn } from 'xstate';
 
 type Cents = number;

@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router';
-import { StateViewer } from 'state-viewer';
+import { Konat } from 'konat';
 import { SessionStatus } from '@/components/SessionStatus.tsx';
 import { examples } from '@/examples.ts';
 
@@ -12,7 +12,7 @@ export function Layout() {
       <header className="app-header">
         <nav className="nav" aria-label="Examples">
           <NavLink to="/" end>
-            state-viewer
+            konat
           </NavLink>
           {Object.values(examples).map((example) => (
             <NavLink key={example.path} to={example.path}>
@@ -29,7 +29,7 @@ export function Layout() {
 
       {/* The overlay is in the layout.
           Thus, it stays mounted while the pages change and their machines register and unregister. */}
-      <StateViewer fixtures={fixtures} />
+      <Konat fixtures={fixtures} />
     </>
   );
 }

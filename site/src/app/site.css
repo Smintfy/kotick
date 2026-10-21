@@ -1,7 +1,7 @@
 @import "tailwindcss" source("../");
 
 /*
- * The tokens of the overlay, from packages/state-viewer/styles.css.
+ * The tokens of the overlay, from packages/konat/styles.css.
  * Thus, the site and the panel look like one product.
  */
 @theme {

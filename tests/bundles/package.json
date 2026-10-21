@@ -1,5 +1,5 @@
 {
-  "name": "state-viewer-bundle-check",
+  "name": "konat-bundle-check",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -10,7 +10,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router": "8.4.0",
-    "state-viewer": "file:./state-viewer.tgz",
+    "konat": "file:./konat.tgz",
     "xstate": "5.33.2"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 # State debugger: MVP spec and roadmap
 
-- **Name:** `state-viewer` / `<StateViewer />`
+- **Name:** `konat` / `<Konat />`
 - **Status:** Draft 0.1, October 11, 2026
 - **MVP scope:** XState v5 + React, development builds only
 
@@ -11,13 +11,13 @@ A drop-in React overlay that lists every state of every XState machine on the pa
 Integration is two changes. Mount the overlay:
 
 ```tsx
-import { StateViewer } from 'state-viewer';
+import { Konat } from 'konat';
 
 function App() {
   return (
     <>
       <YourApp />
-      <StateViewer />
+      <Konat />
     </>
   );
 }
@@ -27,7 +27,7 @@ And swap the import path:
 
 ```diff
 - import { useMachine, useSelector, createActorContext } from '@xstate/react';
-+ import { useMachine, useSelector, createActorContext } from 'state-viewer/xstate';
++ import { useMachine, useSelector, createActorContext } from 'konat/xstate';
 ```
 
 ## 2. Problem
@@ -52,7 +52,7 @@ The gap this fills: every state, in context, in the running app.
 - **G2** Preview any state in place. Components render the chosen state without remounting, however they read XState state (`useMachine`, `useActor`, `useSelector`, `createActorContext`).
 - **G3** Keep previews safe. Events sent during a preview are blocked and logged; the real actor is never modified.
 - **G4** Give previews realistic data from recorded snapshots, fixtures or live context, and show which one is in use.
-- **G5** Integrate with an import-path swap plus `<StateViewer />`.
+- **G5** Integrate with an import-path swap plus `<Konat />`.
 - **G6** Leave nothing behind in production builds.
 - **G7** Make previews shareable through a URL.
 
@@ -105,7 +105,7 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 
 ### 6.1 Discovery
 
-- **R1 (P0)** Actors created through `state-viewer/xstate` hooks register on mount and unregister on unmount.
+- **R1 (P0)** Actors created through `konat/xstate` hooks register on mount and unregister on unmount.
 - **R2 (P0)** Actors created outside React register through `connect(actor, { id })`.
 - **R3 (P0)** Each instance gets a stable instance id. Instances group under their machine id and display as `checkout · 1`, `checkout · 2` in registration order.
 - **R4 (P0)** The machine id comes from `debug.id`, then `machine.id`. A machine still on XState's default id `'(machine)'` gets a one-time console warning and a generated fallback id.
@@ -131,12 +131,12 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 
 - **R16 (P0)** Context resolution order: recorded, then fixture, then live. The panel shows which source was used and lets you switch it per preview. Previews that used the default order are resolved again when fixtures register, so a preview made before a lazy loader finishes picks up its fixture.
 - **R17 (P0)** The latest context per state configuration is recorded in memory and persisted best-effort to sessionStorage.
-- **R18 (P0)** Fixtures are written with `defineFixtures(machine, …)`, keyed by leaf id, and registered through `<StateViewer fixtures>`, which accepts a lazy loader. A fixture set matches instances of the same machine definition first (its config, which `machine.provide()` copies share), then of the same machine id, so `debug.id` and generated ids need no extra setup.
+- **R18 (P0)** Fixtures are written with `defineFixtures(machine, …)`, keyed by leaf id, and registered through `<Konat fixtures>`, which accepts a lazy loader. A fixture set matches instances of the same machine definition first (its config, which `machine.provide()` copies share), then of the same machine id, so `debug.id` and generated ids need no extra setup.
 - **R19 (P0)** States with neither a recording nor a fixture are marked in the tree. Previewing one falls back to live context with a warning. While a fixtures loader is pending, a preview on the default order waits to warn until the loader settles, and warns only if no fixture then gives it context (§10.3).
 
 ### 6.5 Overlay
 
-- **R20 (P0)** `<StateViewer />` renders into a shadow root (a host element appended to `document.body` by default; override with `portalTarget`). Styles don't leak in either direction.
+- **R20 (P0)** `<Konat />` renders into a shadow root (a host element appended to `document.body` by default; override with `portalTarget`). Styles don't leak in either direction.
 - **R21 (P0)** While any preview is active, the toolbar shows a badge with the count.
 - **R22 (P0)** Panel sections: machine list with instance picker, state tree, context viewer, event log.
 - **R23 (P0)** Keyboard support as described in §10.6. Shortcuts are ignored while typing.
@@ -150,7 +150,7 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 
 ### 6.7 Production
 
-- **R28 (P0)** In production builds, `<StateViewer />` renders nothing, `state-viewer/xstate` hooks are plain re-exports of `@xstate/react`, and the registry and overlay are removed from the bundle.
+- **R28 (P0)** In production builds, `<Konat />` renders nothing, `konat/xstate` hooks are plain re-exports of `@xstate/react`, and the registry and overlay are removed from the bundle.
 
 ## 7. Architecture
 
@@ -162,16 +162,16 @@ flowchart TD
     PX --> RA["Real XState actor"]
   end
   PX <--> REG["Registry (globalThis singleton)"]
-  REG <--> OV["StateViewer overlay (shadow root)"]
+  REG <--> OV["Konat overlay (shadow root)"]
 ```
 
 | Layer | Package entry | Responsibility | Imports XState? |
 |---|---|---|---|
-| Core | `state-viewer` | Protocol types, registry, overrides, recording, fixtures, event log, deep links | No |
-| Overlay | `state-viewer` | `<StateViewer />` toolbar and panel; reads the registry with `useSyncExternalStore` | No |
-| Adapter | `state-viewer/xstate` | Hooks, actor proxy, `connect`, `defineFixtures`, state-tree extraction | Yes |
+| Core | `konat` | Protocol types, registry, overrides, recording, fixtures, event log, deep links | No |
+| Overlay | `konat` | `<Konat />` toolbar and panel; reads the registry with `useSyncExternalStore` | No |
+| Adapter | `konat/xstate` | Hooks, actor proxy, `connect`, `defineFixtures`, state-tree extraction | Yes |
 
-Rule: only `state-viewer/xstate` may import `xstate` or `@xstate/react`. Holding that boundary is what makes later adapters additive rather than a rewrite.
+Rule: only `konat/xstate` may import `xstate` or `@xstate/react`. Holding that boundary is what makes later adapters additive rather than a rewrite.
 
 ### 7.1 Intercept at the actor, not the hook
 
@@ -180,7 +180,7 @@ XState apps rarely read state only from `useMachine`'s return value. They use `u
 - `useSelector` only calls `subscribe` and `getSnapshot` on the actor.
 - `createActorContext`'s Provider creates its actor with `useActorRef` and passes it down through React context.
 
-So every hook in `state-viewer/xstate` builds on one primitive, a proxy around the real actor:
+So every hook in `konat/xstate` builds on one primitive, a proxy around the real actor:
 
 | Member | Normally | While previewing |
 |---|---|---|
@@ -215,12 +215,12 @@ sequenceDiagram
 
 ## 8. Public API
 
-### 8.1 `state-viewer`
+### 8.1 `konat`
 
 ```tsx
-import { StateViewer } from 'state-viewer';
+import { Konat } from 'konat';
 
-<StateViewer
+<Konat
   position="bottom-right"                      // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   defaultOpen={false}
   theme="system"                               // 'system' | 'light' | 'dark'
@@ -231,7 +231,7 @@ import { StateViewer } from 'state-viewer';
 />
 ```
 
-### 8.2 `state-viewer/xstate`
+### 8.2 `konat/xstate`
 
 Same names and signatures as `@xstate/react`, plus an optional `debug` option that is stripped before the options reach XState.
 
@@ -245,7 +245,7 @@ import {
   createActorContext,  // Provider creates a proxied actor
   connect,             // proxy for actors created outside React
   defineFixtures,
-} from 'state-viewer/xstate';
+} from 'konat/xstate';
 
 type DebugOptions = {
   id?: string;        // machine id in the registry; defaults to machine.id
@@ -261,8 +261,8 @@ export const appActor = connect(createActor(appMachine).start(), { id: 'app' });
 ### 8.3 Fixtures
 
 ```ts
-// src/debug/fixtures.ts, loaded lazily by <StateViewer fixtures>
-import { defineFixtures } from 'state-viewer/xstate';
+// src/debug/fixtures.ts, loaded lazily by <Konat fixtures>
+import { defineFixtures } from 'konat/xstate';
 import { checkoutMachine } from '../checkout/machine';
 
 const base = { items: [{ id: 'sku_1', qty: 2 }], total: 4800 };
@@ -378,7 +378,7 @@ interface Registry {
 
 ### 10.1 Registry
 
-- Created lazily on first use and stored on `globalThis.__STATE_VIEWER_REGISTRY__`, so HMR, multiple React roots and duplicate copies of the package share one instance. The first instance wins; a version mismatch logs a warning.
+- Created lazily on first use and stored on `globalThis.__KONAT_REGISTRY__`, so HMR, multiple React roots and duplicate copies of the package share one instance. The first instance wins; a version mismatch logs a warning.
 - `getSnapshot()` returns an immutable snapshot. Change notifications are batched per microtask.
 - Per-instance `onOverride` listeners let a proxy react without re-rendering the panel.
 - The event log is a ring buffer of 200 entries, oldest first in the snapshot. `clearLog()` empties it.
@@ -403,14 +403,14 @@ interface Registry {
 ### 10.3 Recording and fixtures
 
 - On each real snapshot, keep `{ leaves, context }` per configuration key (sorted leaves joined with `|`) as an in-memory reference. XState's `assign` replaces context rather than mutating it, so references stay valid.
-- Persist to sessionStorage (`state-viewer:recorded:<machineId>`), debounced, with a replacer that drops functions. A context that can't be restored faithfully stays memory-only: one holding an actor ref, a value JSON changes (`Date`, `Map`, `Set`, class instances, non-finite numbers), a shared or circular reference, or anything that fails to serialize.
+- Persist to sessionStorage (`konat:recorded:<machineId>`), debounced, with a replacer that drops functions. A context that can't be restored faithfully stays memory-only: one holding an actor ref, a value JSON changes (`Date`, `Map`, `Set`, class instances, non-finite numbers), a shared or circular reference, or anything that fails to serialize.
 - Caps: 50 configurations per machine, 100 KB per entry, and 1,000,000 UTF-16 code units across every machine's key, so recordings never crowd out the app's own sessionStorage. Over a cap, the oldest recordings are left out of storage but stay in memory.
 - Lookup: the exact configuration first, then the most recent configuration containing the selected leaf.
 - Stay off the hot path: each transition only stores a reference; serialization happens later.
 - A leaf is marked recorded when at least one recorded configuration contains it, matching the lookup fallback.
 - Fixture sets match an instance by `source` (the same definition object), then by `machineId`. The id fallback covers HMR, which recreates the machine and its config. A set that matched by source keeps matching that registry id afterwards, so machines under `debug.id` or a generated id keep their fixtures across HMR. Sets for the same machine merge, and a later set wins per leaf id.
 - When fixtures register, every preview whose source came from the default order is checked again for the same configuration, and replaced only if its context or source changed. A live preview picks up a fixture that now matches, a fixture preview follows its fixture (or falls back to live if none matches any more), and a preview on a recording stays put. Recordings aren't consulted again, so a preview never changes with live traffic. Previews with an explicitly chosen source are left alone.
-- `<StateViewer fixtures>` calls `startFixtureLoad()` when a load starts, and the function it returns when the load settles: after its sets register, or when the loader fails. It starts the load in an insertion effect, like the deep link, so the registry expects the fixtures before the app's hooks register in layout effects and the link previews them. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't, and the instances of one linked machine warn once. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
+- `<Konat fixtures>` calls `startFixtureLoad()` when a load starts, and the function it returns when the load settles: after its sets register, or when the loader fails. It starts the load in an insertion effect, like the deep link, so the registry expects the fixtures before the app's hooks register in layout effects and the link previews them. While any load is pending, a preview on the default order that finds only live context holds its R19 warning (D25). When the last pending load ends, the preview warns if it still uses the live context; one released or previewed again in the meantime doesn't, and the instances of one linked machine warn once. A preview with an explicitly chosen source warns at once, since fixtures registering leave it alone. A loader that never settles keeps the warning back.
 - Fixture lookup checks the requested leaves in the order given (the clicked leaf, or a deep link's order), then the leaves `normalizeTarget` filled in. The first leaf with a fixture wins.
 
 ### 10.4 Deep links
@@ -434,7 +434,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ### 10.6 Overlay
 
-- **Host:** a `<div data-state-viewer-root>` appended to `document.body`, with an open shadow root, styles injected inside it, a system font stack and `z-index: 2147483647`. Only the toolbar and panel take pointer events.
+- **Host:** a `<div data-konat-root>` appended to `document.body`, with an open shadow root, styles injected inside it, a system font stack and `z-index: 2147483647`. Only the toolbar and panel take pointer events.
 - **Toolbar:** a 40px bubble, bottom-right by default, carrying the preview badge.
 - **Panel:** about 320px wide, at most 70vh tall, scrolling internally.
   - Header: machine selector, instance picker, release all, move to the next corner, close
@@ -460,7 +460,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 ### 10.7 Production and environments
 
-- Debug code sits behind `process.env.NODE_ENV !== 'production'` so bundlers remove it: `<StateViewer />` becomes a component that renders nothing, and the hooks become re-exports of `@xstate/react`. The package is marked `sideEffects: false`.
+- Debug code sits behind `process.env.NODE_ENV !== 'production'` so bundlers remove it: `<Konat />` becomes a component that renders nothing, and the hooks become re-exports of `@xstate/react`. The package is marked `sideEffects: false`.
 - The condition is written out at each use (D21). esbuild, webpack and Turbopack don't copy the value of a `const DEV = …` into its uses, so they'd keep both branches.
 - Module-level values in debug-only modules are free of side effects as minifiers see them: calls such as `Object.freeze` carry `/* @__PURE__ */`, and the overlay's style sheet comes from a function, since minifiers keep a top-level template literal with `${…}` parts.
 - tsdown builds each entry on its own, so the core is in both output files and no chunk is shared (D22). Turbopack keeps a chunk that a module imports, even when only code it removes used it. Two copies are safe because the registry lives on `globalThis` (§10.1).
@@ -471,7 +471,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 - Effects inside the machine (invokes, delayed transitions, entry actions) don't run during a preview, by design. Effects in components that react to state, such as a `useEffect` keyed on `snapshot.value`, still do.
 - Child actors can't be previewed, and carrying them over is experimental.
-- Actors not created through `state-viewer/xstate` or `connect()` are invisible.
+- Actors not created through `konat/xstate` or `connect()` are invisible.
 - History states can't be selected.
 - The real actor keeps running during a preview, so releasing can land the UI somewhere other than where it started.
 - Deep links don't carry context.
@@ -495,7 +495,7 @@ Checked in the XState source at tag `xstate@5.28.0`:
 
 Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pnpm test:matrix`.
 
-- [x] In the vite-react example, swapping the import path and mounting `<StateViewer />` are the only changes needed for every machine to appear. The module-level session actor also goes through `connect()` (R2).
+- [x] In the vite-react example, swapping the import path and mounting `<Konat />` are the only changes needed for every machine to appear. The module-level session actor also goes through `connect()` (R2).
 - [x] Every non-history state of every example machine is listed, including never-visited ones.
 - [x] Previewing any state renders without errors using recorded or fixture data.
 - [x] Components reading through `useSelector` and `createActorContext` show the preview.
@@ -517,14 +517,14 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 | Version matrix | `pnpm test:matrix` (`scripts/test-matrix.mjs`) | The Vitest suite on React 18 and 19, each with the minimum and the latest `xstate` and `@xstate/react` (D24) |
 | End to end | Playwright, in a separate repository (state-viewer-e2e), against the examples' dev servers | Previewing every state, deep links, keyboard, navigation between pages, the hostile-css example, server rendering and hydration in the Next.js example |
 | Bundle | `pnpm check:bundles` (`tests/bundles/check.mjs`), against the packed tarball | Debug code removed with each supported bundler; startup JavaScript against the same app on `@xstate/react`, with a 512 B gzip budget |
-| Overhead | `pnpm --filter state-viewer bench` (`bench/overhead.bench.tsx`) | Development cost with the panel closed and without `<StateViewer />`, against `@xstate/react` |
+| Overhead | `pnpm --filter konat bench` (`bench/overhead.bench.tsx`) | Development cost with the panel closed and without `<Konat />`, against `@xstate/react` |
 
 ## 14. Roadmap
 
 ### Milestone 0: Setup
 
-- [x] pnpm workspace with `packages/state-viewer` and `examples/*`
-- [x] TypeScript strict; tsdown build with `state-viewer` and `state-viewer/xstate` entries, each starting with `'use client'`
+- [x] pnpm workspace with `packages/konat` and `examples/*`
+- [x] TypeScript strict; tsdown build with `konat` and `konat/xstate` entries, each starting with `'use client'`
 - [x] Vitest and React Testing Library
 - [ ] ESLint, Prettier, CI (typecheck, test, build, size), Changesets
 - [x] Example app (Vite + React Router, `examples/vite-react`), with one page per example and a home page that lists them:
@@ -533,7 +533,7 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
   - [x] A `createActorContext` provider read with `useSelector`
   - [x] A module-level actor wired with `connect()`
   - [x] Mount and render counters
-- [x] Choose the name and check npm availability (`state-viewer`, unclaimed on npm as of October 13, 2026)
+- [x] Choose the name and check npm availability (`konat`, unclaimed on npm as of October 21, 2026)
 
 ### Milestone 1: Core
 
@@ -580,7 +580,7 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 - [x] Next.js App Router example (`'use client'`, SSR safety): `examples/next-app`, on port 3100
 - [x] End-to-end tests with Playwright in a separate repository, run against the examples (state-viewer-e2e)
 - [x] Test matrix: React 18 and 19; pin the minimum XState 5.x (`pnpm test:matrix`; `xstate` 5.28, `@xstate/react` 6.1)
-- [x] Measure overhead with the panel closed. In jsdom with StrictMode, against `@xstate/react`: about 8 µs more per transition that re-renders a `useMachine` component (27 → 34 µs), 22 µs more per mount (50 rows: 1.0 → 2.1 ms), and under 1 µs more per event to a `connect()`ed actor. Mounting `<StateViewer />` with its panel closed adds nothing measurable; the cost is the adapter's.
+- [x] Measure overhead with the panel closed. In jsdom with StrictMode, against `@xstate/react`: about 8 µs more per transition that re-renders a `useMachine` component (27 → 34 µs), 22 µs more per mount (50 rows: 1.0 → 2.1 ms), and under 1 µs more per event to a `connect()`ed actor. Mounting `<Konat />` with its panel closed adds nothing measurable; the cost is the adapter's.
 - [x] README: quickstart, concepts, API, limitations, FAQ
 - [ ] Publish 0.1.0
 
@@ -601,7 +601,7 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 
 ### v0.4: Automation and sharing
 
-- [ ] `window.__STATE_VIEWER__` API: list, preview, release
+- [ ] `window.__KONAT__` API: list, preview, release
 - [ ] Playwright helper that visits every state and takes a screenshot
 - [ ] "Copy repro" as agent-ready markdown: machine, state, context, link
 - [ ] Optional encoded context in deep links
@@ -615,7 +615,7 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
   4. Effects declared per state rather than in component `useEffect`s
 - [ ] `useMachineReducer`
 - [ ] Enforcement: inferred state names and exhaustive fixtures in the types; dev assertions for undeclared states; warnings in the panel
-- [ ] Public `state-viewer/core` entry and a custom-adapter guide
+- [ ] Public `konat/core` entry and a custom-adapter guide
 - [ ] Investigate a Zag.js adapter
 
 ### Later
@@ -630,7 +630,7 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 
 ## 15. Open questions
 
-1. ~~Name and npm package.~~ Resolved: `state-viewer` (see Milestone 0).
+1. ~~Name and npm package.~~ Resolved: `konat` (see Milestone 0).
 2. Default toggle shortcut: `Alt+S`, or a single key like Mesurer's.
 3. Data priority: recorded first (realistic, zero authoring) or fixtures first (deterministic)?
 4. Deep-link parameter name and format.
@@ -639,7 +639,7 @@ Checked by the end-to-end suite (state-viewer-e2e), `pnpm check:bundles` and `pn
 7. License.
 8. ~~Minimum XState 5.x for 0.1.0.~~ Resolved: `xstate` 5.28 and `@xstate/react` 6.1 (D23).
 9. Should the MVP log also show real, non-blocked events through inspection?
-10. Should `<StateViewer />` be allowed in production-mode builds for staging?
+10. Should `<Konat />` be allowed in production-mode builds for staging?
 
 ## 16. Decision log
 

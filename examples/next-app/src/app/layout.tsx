@@ -5,7 +5,7 @@ import { Nav } from '@/components/Nav';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'state-viewer · Next.js',
+  title: 'konat · Next.js',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <header className="app-header">
-          <strong>state-viewer</strong>
+          <strong>konat</strong>
           <Nav />
         </header>
         <main className="page">{children}</main>

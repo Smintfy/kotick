@@ -5,7 +5,7 @@ import { nav, pitch, renderLicense } from '@/site';
 import '@/app/site.css';
 
 export const metadata: Metadata = {
-  title: { default: 'state-viewer', template: '%s · state-viewer' },
+  title: { default: 'konat', template: '%s · konat' },
   description: pitch,
 };
 

@@ -202,15 +202,15 @@ importers:
       '@xstate/react':
         specifier: 'catalog:'
         version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.2)
+      konat:
+        specifier: workspace:*
+        version: link:../../packages/konat
       react:
         specifier: 'catalog:'
         version: 19.3.0
       react-dom:
         specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
-      state-viewer:
-        specifier: workspace:*
-        version: link:../../packages/state-viewer
       xstate:
         specifier: 'catalog:'
         version: 5.33.2
@@ -239,6 +239,9 @@ importers:
       '@xstate/react':
         specifier: 'catalog:'
         version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.2)
+      konat:
+        specifier: workspace:*
+        version: link:../../packages/konat
       next:
         specifier: ^16.4.0
         version: 16.4.0(@types/node@24.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -248,9 +251,6 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
-      state-viewer:
-        specifier: workspace:*
-        version: link:../../packages/state-viewer
       xstate:
         specifier: 'catalog:'
         version: 5.33.2
@@ -273,6 +273,9 @@ importers:
       '@xstate/react':
         specifier: 'catalog:'
         version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.2)
+      konat:
+        specifier: workspace:*
+        version: link:../../packages/konat
       react:
         specifier: 'catalog:'
         version: 19.3.0
@@ -282,9 +285,6 @@ importers:
       react-router:
         specifier: ^8.4.0
         version: 8.4.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      state-viewer:
-        specifier: workspace:*
-        version: link:../../packages/state-viewer
       xstate:
         specifier: 'catalog:'
         version: 5.33.2
@@ -308,7 +308,7 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@24.19.2)(jiti@2.7.0)
 
-  packages/state-viewer:
+  packages/konat:
     devDependencies:
       '@tailwindcss/node':
         specifier: ^4.3.3
@@ -373,6 +373,9 @@ importers:
       hast-util-to-jsx-runtime:
         specifier: ^2.3.6
         version: 2.3.6
+      konat:
+        specifier: workspace:*
+        version: link:../packages/konat
       mdast-util-from-markdown:
         specifier: ^2.1.0
         version: 2.1.0
@@ -400,9 +403,6 @@ importers:
       shiki:
         specifier: ^4.5.0
         version: 4.5.0
-      state-viewer:
-        specifier: workspace:*
-        version: link:../packages/state-viewer
       xstate:
         specifier: 'catalog:'
         version: 5.33.2

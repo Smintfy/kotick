@@ -1,5 +1,5 @@
 import { assign, setup } from 'xstate';
-import { createActorContext } from 'state-viewer/xstate';
+import { createActorContext } from 'konat/xstate';
 import type { LineItem, Product } from '@/lib/products.ts';
 
 type CartContents = { items: LineItem[] };

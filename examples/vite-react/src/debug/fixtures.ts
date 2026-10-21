@@ -1,5 +1,5 @@
 // Context for states that are slow or hard to get to in the example app.
-// <StateViewer fixtures> loads this file only when necessary, and only in development (Layout.tsx).
+// <Konat fixtures> loads this file only when necessary, and only in development (Layout.tsx).
 // Thus, production builds do not include it.
 //
 // We did not write fixtures for the upload machine.
@@ -7,7 +7,7 @@
 // Thus, a state of a row shows "no data" until the row goes to that state.
 // Previews of that state use the live context.
 
-import { defineFixtures } from 'state-viewer/xstate';
+import { defineFixtures } from 'konat/xstate';
 import { products } from '@/lib/products.ts';
 import { cartMachine } from '@/machines/cart.ts';
 import { checkoutMachine } from '@/machines/checkout.ts';
