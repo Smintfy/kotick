@@ -2,9 +2,8 @@ import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { describe, expect, test } from 'vitest';
 import { fromCallback, setup, type Observer, type SnapshotFrom } from 'xstate';
-import { withDebug } from '../support/anti-slop-b';
 import { page } from '../support/app';
-import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
+import { describeWithActivity, IMPLEMENTATIONS, withDebug } from '../support/hooks';
 import { flush, freshId, preview, release } from '../support/panel';
 
 type Socket = (event: { type: 'FINISH' }) => void;

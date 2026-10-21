@@ -3,9 +3,8 @@ import * as React from 'react';
 import { useActorRef } from 'state-viewer/xstate';
 import { describe, expect, test } from 'vitest';
 import { createMachine, fromCallback, setup, type AnyActorRef, type Observer, type SnapshotFrom } from 'xstate';
-import { withDebug } from '../support/anti-slop-b';
 import { page, press } from '../support/app';
-import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
+import { describeWithActivity, IMPLEMENTATIONS, withDebug } from '../support/hooks';
 import { badge, flush, freshId, machines, preview, release } from '../support/panel';
 
 function createToggleMachine() {

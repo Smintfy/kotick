@@ -13,9 +13,8 @@ import {
   type AnyActorRef,
   type EventFrom,
 } from 'xstate';
-import { errorMessage, systemActor } from './support/anti-slop-b';
-import { mount, page, start } from './support/app';
-import { uncaught, watchConsole } from './support/console';
+import { mount, page, start, systemActor } from './support/app';
+import { errorMessage, uncaught, watchConsole } from './support/console';
 import {
   badge,
   flush,

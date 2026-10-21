@@ -2,10 +2,9 @@ import { render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { describe, expect, test } from 'vitest';
 import { fromCallback, setup, type Actor, type Observer, type SnapshotFrom } from 'xstate';
-import { errorMessage, withDebug } from '../support/anti-slop-b';
 import { page } from '../support/app';
-import { uncaught } from '../support/console';
-import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
+import { errorMessage, uncaught } from '../support/console';
+import { describeWithActivity, IMPLEMENTATIONS, withDebug } from '../support/hooks';
 import { badge, clickLeaf, flush, freshId, machines, preview, release, show } from '../support/panel';
 
 type SocketEvent = { type: 'FINISH' | 'PAUSE' | 'BREAK' };

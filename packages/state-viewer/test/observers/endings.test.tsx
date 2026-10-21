@@ -13,10 +13,9 @@ import {
   type AnyStateMachine,
   type Observer,
 } from 'xstate';
-import { errorMessage, systemActor } from '../support/anti-slop-b';
-import { page, press } from '../support/app';
+import { page, press, systemActor } from '../support/app';
 import { alerts, Boundary } from '../support/boundary';
-import { uncaught } from '../support/console';
+import { errorMessage, uncaught } from '../support/console';
 import { ACTOR_SELECT, describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
 import { badge, clickLeaf, flush, freshId, machines, overlay, preview, release, releaseAll } from '../support/panel';
 

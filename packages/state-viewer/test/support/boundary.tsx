@@ -2,6 +2,7 @@
 
 import { screen } from '@testing-library/react';
 import * as React from 'react';
+import { errorMessage } from './console';
 
 /** The message of the error that the boundary caught, or null before it catches one. */
 type Caught = { message: string | null };
@@ -10,9 +11,8 @@ type Caught = { message: string | null };
 export class Boundary extends React.Component<{ children: React.ReactNode }, Caught> {
   override state: Caught = { message: null };
 
-  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- React gives what was thrown, which can be any value.
-  static getDerivedStateFromError(error: unknown): Caught {
-    return { message: error instanceof Error ? error.message : String(error) };
+  static getDerivedStateFromError(cause: unknown): Caught {
+    return { message: errorMessage(cause) };
   }
 
   override render() {

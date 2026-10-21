@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { StateViewer, type StateViewerProps } from 'state-viewer';
 import { onTestFinished } from 'vitest';
-import { createActor, type Actor, type AnyStateMachine } from 'xstate';
+import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { flush } from './panel';
 
 /** The app next to an open overlay, for render() and rerender(). */
@@ -33,6 +33,18 @@ export function start<TMachine extends AnyStateMachine>(machine: TMachine): Acto
   });
 
   return actor;
+}
+
+/**
+ * The actor that the system of `actor` holds under `systemId`.
+ * If the system has no such actor, the test fails here, not at a later call on `undefined`.
+ */
+export function systemActor(actor: AnyActorRef, systemId: string): AnyActorRef {
+  const found = actor.system.get(systemId);
+
+  if (found === undefined) throw new Error(`The system has no actor "${systemId}".`);
+
+  return found;
 }
 
 /** Clicks the app's button with this name, and waits for React to render. */

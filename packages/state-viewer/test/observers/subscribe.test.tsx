@@ -16,9 +16,8 @@ import {
   type EventFrom,
   type SnapshotFrom,
 } from 'xstate';
-import { errorMessage } from '../support/anti-slop-b';
 import { mount, start } from '../support/app';
-import { uncaught } from '../support/console';
+import { errorMessage, uncaught } from '../support/console';
 import { collected } from '../support/gc';
 import { IMPLEMENTATIONS } from '../support/hooks';
 import { badge, clickLeaf, flush, freshId, machines, panel, preview, release } from '../support/panel';
