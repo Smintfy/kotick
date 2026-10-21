@@ -16,7 +16,7 @@ import {
   type AnyMachineSnapshot,
   type AnyStateMachine,
 } from 'xstate';
-import { systemActor } from './support/anti-slop-b';
+import { systemActor } from './support/app';
 import {
   flush,
   freshId,
@@ -29,6 +29,7 @@ import {
   show,
   shownMachine,
 } from './support/panel';
+import { readStored } from './support/recordings';
 
 type WorkerContext = { progress: number };
 
@@ -232,19 +233,9 @@ function hidePage() {
   window.dispatchEvent(new Event('pagehide'));
 }
 
-/** What a pagehide stores for a machine. The test reads only the entries. */
-interface StoredRecording {
-  entries: { leaves: string[]; context: unknown }[];
-}
-
 /** The recordings that a pagehide stored for the machine, without their times, oldest first. */
 function storedEntries(machineId: string) {
-  const raw = sessionStorage.getItem(`state-viewer:recorded:${machineId}`);
-
-  if (raw === null) return null;
-  const { entries }: StoredRecording = JSON.parse(raw);
-
-  return entries.map(({ leaves, context }) => ({ leaves, context }));
+  return readStored(machineId)?.entries.map(({ leaves, context }) => ({ leaves, context })) ?? null;
 }
 
 // The page keeps one registry for the file, and with it one timer for the delayed write.

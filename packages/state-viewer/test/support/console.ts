@@ -29,6 +29,11 @@ export function watchConsole(): ConsoleOutput {
   return output;
 }
 
+/** The message of an error that an observer or the page received. A thrown value can be of any type. */
+export function errorMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
 /**
  * Runs `run`, waits one real tick, and returns the errors that reached the page uncaught meanwhile.
  * XState throws an error that no observer handles from a timer, so the tick lets that timer run.

@@ -11,10 +11,10 @@ import {
   type AnyActorRef,
   type Observer,
   type SnapshotFrom,
-  type StateValue,
 } from 'xstate';
 import { collected } from '../support/gc';
 import { ACTOR_SELECT, describeWithActivity, IMPLEMENTATIONS, type Hooks } from '../support/hooks';
+import type { Json } from '../support/json';
 import { flush, freshId, preview } from '../support/panel';
 
 function createJobMachine() {
@@ -191,7 +191,7 @@ function take(hand: Hand): AnyActorRef {
   return actorRef;
 }
 
-function shown(): StateValue | null {
+function shown(): Json {
   return JSON.parse(screen.getByRole('status', { name: 'form' }).textContent ?? 'null');
 }
 
