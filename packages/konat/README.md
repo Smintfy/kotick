@@ -228,7 +228,8 @@ page.
 | `useActor(logic, options?)` | Same as `@xstate/react`. Returns `[snapshot, send, actorRef]`. |
 | `useActorRef(logic, options?, observer?)` | Same as `@xstate/react`. Returns the actor. |
 | `createActorContext(logic, options?)` | Same as `@xstate/react`. Its `Provider` creates the actor. |
-| `useSelector`, `shallowEqual` | Re-exports of `@xstate/react`. They work with each actor from this package. |
+| `useSelector(actor, selector, compare?)` | Same as `@xstate/react`. It works with each actor from this package. |
+| `shallowEqual` | A re-export of `@xstate/react`. |
 | `connect(actor, debug?)` | Registers an actor that you created outside React. Returns the actor to use in the app. |
 | `defineFixtures(machine, states)` | Makes a fixture set for `<Konat fixtures>`. |
 
