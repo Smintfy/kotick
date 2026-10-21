@@ -16,8 +16,7 @@ const MAX_ENTRY_SIZE = 100_000;
  */
 const MAX_TOTAL_SIZE = 1_000_000;
 
-/** Delay before pending changes are written, in milliseconds. */
-const PERSIST_DELAY = 500;
+const PERSIST_INTERVAL_MS = 500;
 
 interface RecordedEntry {
   /** Sorted leaf ids. */
@@ -336,8 +335,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
 
     machine.dirty = true;
 
-    // Never postponed, so a machine that transitions constantly still gets written every PERSIST_DELAY.
-    if (storage && timer === undefined) timer = setTimeout(flush, PERSIST_DELAY);
+    if (storage && timer === undefined) timer = setTimeout(flush, PERSIST_INTERVAL_MS);
 
     if (changed) availabilityChanged(machineId, machine);
   };

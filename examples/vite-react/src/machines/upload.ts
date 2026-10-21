@@ -2,13 +2,9 @@ import { assign, fromCallback, setup, type EventObject } from 'xstate';
 
 export type UploadInput = {
   fileName: string;
-  /** The size in bytes. */
-  size: number;
-  /**
-   * If the first transfer gets to this progress in %, an error occurs.
-   * This simulates a connection that is not stable.
-   */
-  failAt?: number;
+  sizeBytes: number;
+  /** Simulates a connection that is not stable. */
+  firstAttemptFailsAtPercent?: number;
 };
 
 type UploadContext = UploadInput & {
@@ -26,14 +22,13 @@ type UploadEvent =
   | { type: 'FAIL'; error: string };
 
 // A transfer for the example app. The progress increases by 20% each 150 ms.
-// If `failAt` has a value, an error occurs at that progress.
-const transfer = fromCallback<EventObject, { failAt?: number }>(({ sendBack, input }) => {
+const transfer = fromCallback<EventObject, { failsAtPercent?: number }>(({ sendBack, input }) => {
   let progress = 0;
 
   const timer = setInterval(() => {
     progress += 20;
 
-    if (input.failAt !== undefined && progress >= input.failAt) {
+    if (input.failsAtPercent !== undefined && progress >= input.failsAtPercent) {
       sendBack({ type: 'FAIL', error: 'Connection lost' });
     } else if (progress >= 100) {
       sendBack({ type: 'COMPLETE' });
@@ -70,8 +65,9 @@ export const uploadMachine = setup({
       }),
       invoke: {
         src: 'transfer',
-        // An error occurs only in the first transfer. Thus, the transfer completes after "Retry".
-        input: ({ context }) => ({ failAt: context.attempts === 1 ? context.failAt : undefined }),
+        input: ({ context }) => ({
+          failsAtPercent: context.attempts === 1 ? context.firstAttemptFailsAtPercent : undefined,
+        }),
       },
       on: {
         PROGRESS: { actions: assign({ progress: ({ event }) => event.progress }) },

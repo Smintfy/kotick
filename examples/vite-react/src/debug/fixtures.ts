@@ -18,7 +18,7 @@ const items = [
   { ...products[1], qty: 1 },
 ];
 
-const checkout = { items, total: 6600, cardNumber: '4242 4242 4242 4242' };
+const checkout = { items, subtotalCents: 6600, cardNumber: '4242 4242 4242 4242' };
 
 export default [
   defineFixtures(checkoutMachine, {
