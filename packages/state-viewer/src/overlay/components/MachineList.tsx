@@ -31,7 +31,8 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
     if (!move) return;
     const rows = [...event.currentTarget.querySelectorAll<HTMLElement>('[data-row]')];
     event.preventDefault();
-    rows[moveIndex(rows.indexOf(event.target as HTMLElement), rows.length, move)]?.focus();
+    const index = rows.findIndex((row) => row === event.target);
+    rows[moveIndex(index, rows.length, move)]?.focus();
   }
 
   return (

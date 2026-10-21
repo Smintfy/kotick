@@ -116,9 +116,10 @@ function StateTree(props: StateTreeProps) {
 }
 
 function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; tree: StateTreeProps }) {
+  // SAFETY: React sets a custom property through style.setProperty, and CSSProperties has no key for one.
   const style = { '--sv-depth': depth } as CSSProperties;
   const tags = Array.isArray(node.tags) ? node.tags : [];
-  const description = typeof node.description === 'string' && node.description !== '' ? node.description : undefined;
+  const description = node.description === '' ? undefined : node.description;
 
   if (node.type !== 'atomic' && node.type !== 'final') {
     const open = !tree.collapsed.has(node.id);

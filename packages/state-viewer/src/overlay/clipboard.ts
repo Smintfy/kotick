@@ -18,7 +18,8 @@ export async function copyText(text: string, container: Node): Promise<boolean> 
   textarea.setAttribute('readonly', '');
   textarea.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none';
   // Selecting moves focus; it goes back to the button that copied.
-  const focused = (container.getRootNode() as Document | ShadowRoot).activeElement as HTMLElement | null;
+  const root = container.getRootNode();
+  const focused = root instanceof Document || root instanceof ShadowRoot ? root.activeElement : null;
   // Inside the overlay's shadow root, so the page's focus and selection listeners don't see it.
   container.appendChild(textarea);
 
@@ -30,6 +31,7 @@ export async function copyText(text: string, container: Node): Promise<boolean> 
     return false;
   } finally {
     textarea.remove();
-    focused?.focus?.();
+
+    if (focused instanceof HTMLElement || focused instanceof SVGElement) focused.focus();
   }
 }

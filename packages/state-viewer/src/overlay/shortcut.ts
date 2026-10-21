@@ -1,6 +1,8 @@
 // Keyboard shortcuts. The toggle is configurable, such as 'alt+s' or 'ctrl+shift+d', and every shortcut
 // is ignored while the user types. The arrows, Home and End move through the rows of a page.
 
+import type { StateViewerProps } from './props';
+
 interface Shortcut {
   /** `KeyboardEvent.key`, lowercased: 's', 'escape', 'f2'. */
   key: string;
@@ -14,35 +16,38 @@ interface Shortcut {
 
 type Modifier = 'alt' | 'ctrl' | 'shift' | 'meta';
 
-const MODIFIERS: Readonly<Record<string, Modifier>> = {
-  alt: 'alt',
-  option: 'alt',
-  opt: 'alt',
-  ctrl: 'ctrl',
-  control: 'ctrl',
-  shift: 'shift',
-  meta: 'meta',
-  cmd: 'meta',
-  command: 'meta',
-};
+const MODIFIERS = new Map<string, Modifier>([
+  ['alt', 'alt'],
+  ['option', 'alt'],
+  ['opt', 'alt'],
+  ['ctrl', 'ctrl'],
+  ['control', 'ctrl'],
+  ['shift', 'shift'],
+  ['meta', 'meta'],
+  ['cmd', 'meta'],
+  ['command', 'meta'],
+]);
 
-const KEY_NAMES: Readonly<Record<string, string>> = {
-  esc: 'escape',
-  space: ' ',
-  spacebar: ' ',
-  up: 'arrowup',
-  down: 'arrowdown',
-  left: 'arrowleft',
-  right: 'arrowright',
-  return: 'enter',
-  del: 'delete',
-  plus: '+',
-};
+const KEY_NAMES = new Map<string, string>([
+  ['esc', 'escape'],
+  ['space', ' '],
+  ['spacebar', ' '],
+  ['up', 'arrowup'],
+  ['down', 'arrowdown'],
+  ['left', 'arrowleft'],
+  ['right', 'arrowright'],
+  ['return', 'enter'],
+  ['del', 'delete'],
+  ['plus', '+'],
+]);
+
+/** Whether the shortcut prop is text to parse. A JS app can pass anything. */
+export function isShortcutText(value: StateViewerProps['shortcut']): value is string {
+  return typeof value === 'string';
+}
 
 /** Parses a shortcut such as 'alt+s'; `undefined` when it names no key or an unknown modifier. */
 export function parseShortcut(value: string): Shortcut | undefined {
-  if (typeof value !== 'string') return undefined;
-
   const parts = value
     .toLowerCase()
     .split('+')
@@ -51,10 +56,10 @@ export function parseShortcut(value: string): Shortcut | undefined {
   const name = parts.pop();
 
   if (!name) return undefined;
-  const shortcut: Shortcut = { key: KEY_NAMES[name] ?? name, alt: false, ctrl: false, shift: false, meta: false };
+  const shortcut: Shortcut = { key: KEY_NAMES.get(name) ?? name, alt: false, ctrl: false, shift: false, meta: false };
 
   for (const part of parts) {
-    const modifier = part === 'mod' ? (isApple() ? 'meta' : 'ctrl') : MODIFIERS[part];
+    const modifier = part === 'mod' ? (isApple() ? 'meta' : 'ctrl') : MODIFIERS.get(part);
 
     if (!modifier) return undefined;
     shortcut[modifier] = true;
@@ -77,7 +82,7 @@ export function matchesShortcut(shortcut: Shortcut, event: KeyboardEvent): boole
   }
 
   // Either the character or the physical key, so Alt+S works on macOS and on layouts that move letters.
-  return (typeof event.key === 'string' && event.key.toLowerCase() === shortcut.key) || event.code === shortcut.code;
+  return event.key.toLowerCase() === shortcut.key || event.code === shortcut.code;
 }
 
 const TEXT_INPUT_TYPES = new Set([
@@ -97,26 +102,21 @@ const TEXT_INPUT_TYPES = new Set([
 
 /** Whether keys pressed on `target` type text: text inputs, textareas and contenteditable elements. */
 export function isTyping(target: EventTarget | null | undefined): boolean {
-  if (!isElement(target)) return false;
-  const tag = target.localName;
+  if (!(target instanceof Element)) return false;
 
-  if (tag === 'textarea') return true;
+  if (target instanceof HTMLTextAreaElement) return true;
 
-  if (tag === 'input') return TEXT_INPUT_TYPES.has((target as HTMLInputElement).type);
+  if (target instanceof HTMLInputElement) return TEXT_INPUT_TYPES.has(target.type);
 
   // isContentEditable also covers inherited editability; the selector is for DOMs that don't implement it (jsdom).
-  return (target as HTMLElement).isContentEditable === true || target.closest(EDITABLE) !== null;
+  return (target instanceof HTMLElement && target.isContentEditable) || target.closest(EDITABLE) !== null;
 }
 
 const EDITABLE = '[contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]';
 
 /** The element a key event started on, inside shadow roots too (the event is retargeted to their hosts). */
 export function eventOrigin(event: Event): EventTarget | null {
-  return typeof event.composedPath === 'function' ? (event.composedPath()[0] ?? event.target) : event.target;
-}
-
-function isElement(target: EventTarget | null | undefined): target is Element {
-  return typeof target === 'object' && target !== null && (target as Node).nodeType === 1;
+  return event.composedPath()[0] ?? event.target;
 }
 
 function isApple(): boolean {
@@ -125,11 +125,16 @@ function isApple(): boolean {
 
 export type Move = 'next' | 'previous' | 'first' | 'last';
 
-const MOVES: Readonly<Record<string, Move>> = { ArrowDown: 'next', ArrowUp: 'previous', Home: 'first', End: 'last' };
+const MOVES = new Map<string, Move>([
+  ['ArrowDown', 'next'],
+  ['ArrowUp', 'previous'],
+  ['Home', 'first'],
+  ['End', 'last'],
+]);
 
 /** The move that `KeyboardEvent.key` makes through rows or leaves, if any. */
 export function moveOf(key: string): Move | undefined {
-  return Object.hasOwn(MOVES, key) ? MOVES[key] : undefined;
+  return MOVES.get(key);
 }
 
 /** The index a move goes to among `length` items. `index` is -1 when no item is current. A move stops at the ends. */

@@ -1,14 +1,20 @@
 // Deep links: ?debug-state=<machineId>:<leaf>[;<leaf>…][,<machineId>:…]
 
 import type { DeepLinkTarget } from '../core/types';
+import type { StateViewerProps } from './props';
 
 const DEFAULT_URL_PARAM = 'debug-state';
 const TARGET_SEPARATOR = ',';
 const MACHINE_ID_END = ':';
 const LEAF_SEPARATOR = ';';
 
-export function resolveUrlParam(urlParam: string | undefined): string {
-  return typeof urlParam === 'string' && urlParam !== '' ? urlParam : DEFAULT_URL_PARAM;
+export function resolveUrlParam(urlParam: StateViewerProps['urlParam']): string {
+  return isUrlParam(urlParam) ? urlParam : DEFAULT_URL_PARAM;
+}
+
+/** Whether the prop names a parameter. A JS app can pass anything. */
+function isUrlParam(value: StateViewerProps['urlParam']): value is string {
+  return typeof value === 'string' && value !== '';
 }
 
 interface ParsedDeepLink {
@@ -90,16 +96,16 @@ function parseDeepLink(raw: string): ParsedDeepLink {
 
 /** Serializes targets into a raw parameter value that is safe to put in a query string. */
 function serializeDeepLink(targets: DeepLinkTarget[]): string {
-  // encodeURIComponent keeps dots and parentheses readable but escapes the separators ':' ';' ','.
-  return targets
-    .filter((target) => target.leaves.length > 0)
-    .map(
-      (target) =>
-        encodeURIComponent(target.machineId) +
-        MACHINE_ID_END +
-        target.leaves.map(encodeURIComponent).join(LEAF_SEPARATOR),
-    )
-    .join(TARGET_SEPARATOR);
+  const segments: string[] = [];
+
+  for (const target of targets) {
+    if (target.leaves.length === 0) continue;
+    // encodeURIComponent keeps dots and parentheses readable but escapes the separators ':' ';' ','.
+    const leaves = target.leaves.map(encodeURIComponent).join(LEAF_SEPARATOR);
+    segments.push(encodeURIComponent(target.machineId) + MACHINE_ID_END + leaves);
+  }
+
+  return segments.join(TARGET_SEPARATOR);
 }
 
 /** Reads targets from a query string such as `location.search`, warning about skipped segments. */
