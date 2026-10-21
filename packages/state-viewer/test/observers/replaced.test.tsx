@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { describe, expect, test } from 'vitest';
 import { fromCallback, setup, type Actor, type Observer, type SnapshotFrom } from 'xstate';
+import { errorMessage, withDebug } from '../support/anti-slop-b';
 import { page } from '../support/app';
 import { uncaught } from '../support/console';
 import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
@@ -12,7 +13,14 @@ type SocketEvent = { type: 'FINISH' | 'PAUSE' | 'BREAK' };
 type Socket = (event: SocketEvent) => void;
 
 /** What Fast Refresh changed in the machine's states. */
-type Edit = 'without failed' | 'with retrying';
+type Edit = 'as written' | 'without failed' | 'with retrying';
+
+/** The states of each edit between `paused` and `uploaded`. */
+const EDITED_STATES = {
+  'as written': { failed: {} },
+  'without failed': {},
+  'with retrying': { failed: {}, retrying: {} },
+};
 
 /**
  * An upload whose invoked socket reports what the server says. The test reports through `sockets`, by the machine's
@@ -21,7 +29,7 @@ type Edit = 'without failed' | 'with retrying';
  * in what an observer hears.
  */
 function createUploadMachine(
-  { id, version, edit }: { id: string; version: string; edit?: Edit },
+  { id, version, edit = 'as written' }: { id: string; version: string; edit?: Edit },
   sockets: Map<string, Socket>,
 ) {
   return setup({
@@ -54,8 +62,7 @@ function createUploadMachine(
         },
       },
       paused: {},
-      ...(edit === 'without failed' ? {} : { failed: {} }),
-      ...(edit === 'with retrying' ? { retrying: {} } : {}),
+      ...EDITED_STATES[edit],
       uploaded: { type: 'final' },
       cancelled: { type: 'final' },
     },
@@ -78,11 +85,7 @@ const OBSERVERS: [name: string, kind: Kind][] = [
   ['a stable observer', 'stable'],
 ];
 
-const Activity = (
-  React as unknown as {
-    Activity: React.ComponentType<{ mode: Mode; children: React.ReactNode }>;
-  }
-).Activity;
+const { Activity } = React;
 
 /** What an observer hears of a snapshot: its status and value, and the version of the machine it is of. */
 const label = (snapshot: UploadSnapshot): string =>
@@ -92,7 +95,7 @@ const label = (snapshot: UploadSnapshot): string =>
 function observe(calls: string[]): Observer<UploadSnapshot> {
   return {
     next: (snapshot) => calls.push(label(snapshot)),
-    error: (error) => calls.push(`error:${(error as Error).message}`),
+    error: (error) => calls.push(`error:${errorMessage(error)}`),
     complete: () => calls.push('complete'),
   };
 }
@@ -136,7 +139,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
     function Upload({ machine, kind, disabled, inWindow }: Omit<Props, 'mode'>) {
       const inline = observe(calls);
       const [first] = React.useState(inline);
-      const actorRef = hooks.useActorRef(machine, { debug: { disabled } } as never, kind === 'stable' ? first : inline);
+      const actorRef = hooks.useActorRef(machine, withDebug({ disabled }), kind === 'stable' ? first : inline);
       const previous = React.useRef<Previous>({ machine, actor: actorRef });
       // After the hook's own layout effect, and before @xstate/react's passive effect stops the replaced actor.
       React.useLayoutEffect(() => {
@@ -181,10 +184,10 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
     };
 
     /** Pushes the marker, runs the step, and logs each error that reached the page uncaught meanwhile. */
-    const step = async (marker: string, run: () => unknown): Promise<void> => {
+    const step = async (marker: string, run: () => void | Promise<void>): Promise<void> => {
       calls.push(marker);
       const errors = await uncaught(run);
-      calls.push(...errors.map((error) => `uncaught:${(error as Error).message}`));
+      calls.push(...errors.map((error) => `uncaught:${errorMessage(error)}`));
     };
 
     return {
@@ -207,7 +210,10 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
       /** The socket reports an error the machine crashes on. */
       fail: () => step('[fail]', () => socket(props.machine)({ type: 'BREAK' })),
       /** The app stops the upload, through the hook's actor. */
-      stop: () => step('[stop]', () => committed!.stop()),
+      stop: () =>
+        step('[stop]', () => {
+          committed!.stop();
+        }),
       /**
        * A new machine replaces the actor: the same config again, as Fast Refresh gives it, or one with another id or
        * an edit. The same render can turn `disabled` on. `inWindow` is what the replaced upload does in the commit
@@ -216,13 +222,10 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
       replace: async ({ id: newId = props.machine.id, edit, disabled, inWindow }: Replacement = {}): Promise<void> => {
         const version = props.machine.version === 'old' ? 'new' : 'newer';
         const machine = createUploadMachine({ id: newId, version, edit }, sockets);
-        await step(disabled ? '[replace+disable]' : '[replace]', () =>
-          update({
-            machine,
-            inWindow,
-            ...(disabled === undefined ? {} : { disabled }),
-          }),
-        );
+        const patch: Partial<Props> = { machine, inWindow };
+
+        if (disabled !== undefined) patch.disabled = disabled;
+        await step(disabled ? '[replace+disable]' : '[replace]', () => update(patch));
         props.inWindow = undefined;
       },
       disable: () => step('[disable]', () => update({ disabled: true })),
@@ -417,7 +420,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
           const machine = React.useMemo(() => createUploadMachine({ id, version }, sockets), [version]);
           const [status, setStatus] = React.useState('?');
           const [observer] = React.useState(() => (snapshot: UploadSnapshot) => setStatus(String(snapshot.value)));
-          hooks.useActorRef(machine, { debug: { disabled } } as never, observer);
+          hooks.useActorRef(machine, withDebug({ disabled }), observer);
 
           return <output aria-label="upload">{status}</output>;
         }

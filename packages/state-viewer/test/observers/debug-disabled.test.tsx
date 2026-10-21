@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useActorRef } from 'state-viewer/xstate';
 import { describe, expect, test } from 'vitest';
 import { createMachine, fromCallback, setup, type AnyActorRef, type Observer, type SnapshotFrom } from 'xstate';
+import { withDebug } from '../support/anti-slop-b';
 import { page, press } from '../support/app';
 import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
 import { badge, flush, freshId, machines, preview, release } from '../support/panel';
@@ -17,15 +18,15 @@ function createToggleMachine() {
 
 /** An upload that its socket, an invoked callback actor, finishes when the test calls `finish()`. */
 function createUpload(id = freshId('upload')) {
-  const socket: { answer?: () => void } = {};
+  let answer: (() => void) | undefined;
 
   const machine = setup({
     actors: {
       socket: fromCallback(({ sendBack }) => {
-        socket.answer = () => sendBack({ type: 'UPLOADED' });
+        answer = () => sendBack({ type: 'UPLOADED' });
 
         return () => {
-          socket.answer = undefined;
+          answer = undefined;
         };
       }),
     },
@@ -40,7 +41,7 @@ function createUpload(id = freshId('upload')) {
   });
 
   const finish = async (): Promise<void> => {
-    act(() => socket.answer?.());
+    act(() => answer?.());
     await flush();
   };
 
@@ -130,7 +131,7 @@ describe('an observer that the component passes after the actor moved', () => {
 
       // The component listens only while its panel is open, as an onChange prop or an analytics hook may.
       function Toggle({ panelOpen, disabled }: { panelOpen: boolean; disabled: boolean }) {
-        const actorRef = hooks.useActorRef(machine, { debug: { disabled } } as never, panelOpen ? onChange : undefined);
+        const actorRef = hooks.useActorRef(machine, withDebug({ disabled }), panelOpen ? onChange : undefined);
 
         return (
           <button type="button" onClick={() => actorRef.send({ type: 'TOGGLE' })}>
@@ -177,7 +178,7 @@ describe('while a preview shows', () => {
       const heard: string[] = [];
 
       function Upload({ disabled }: { disabled: boolean }) {
-        hooks.useActorRef(upload.machine, { debug: { disabled } } as never, useRecorder(heard, kind));
+        hooks.useActorRef(upload.machine, withDebug({ disabled }), useRecorder(heard, kind));
 
         return null;
       }
@@ -365,7 +366,7 @@ describeWithActivity('while an Activity hides the component', () => {
 
           function Upload({ disabled }: { disabled: boolean }) {
             const observer = useRecorder(calls, { object: true, stable });
-            actorRef = hooks.useActorRef(upload.machine, { debug: { disabled } } as never, observer);
+            actorRef = hooks.useActorRef(upload.machine, withDebug({ disabled }), observer);
 
             return null;
           }
@@ -477,7 +478,7 @@ describe('turned off and on again', () => {
 
         function Upload({ disabled }: { disabled: boolean }) {
           const observer = useRecorder(heard, { object, stable: true });
-          hooks.useActorRef(upload.machine, { debug: { disabled } } as never, observer);
+          hooks.useActorRef(upload.machine, withDebug({ disabled }), observer);
 
           return null;
         }
@@ -553,7 +554,7 @@ describe('turned off and on again', () => {
 
         function Wizard({ machine, disabled }: Props) {
           // An inline listener, as components usually write one: @xstate/react subscribes it to the current actor.
-          actorRef = hooks.useActorRef(machine, { debug: { disabled } } as never, (snapshot: Snapshot) => {
+          actorRef = hooks.useActorRef(machine, withDebug({ disabled }), (snapshot: Snapshot) => {
             heard.push(label(snapshot));
           });
 

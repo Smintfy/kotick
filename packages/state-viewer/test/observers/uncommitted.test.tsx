@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';
 import { describe, expect, test } from 'vitest';
 import { fromCallback, setup, type Observer, type SnapshotFrom } from 'xstate';
+import { withDebug } from '../support/anti-slop-b';
 import { page } from '../support/app';
 import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
 import { flush, freshId, preview, release } from '../support/panel';
@@ -77,7 +78,7 @@ const AFTER_REPLACEMENT: [what: string, update: Update, change: Change][] = [
   ['a suspended transition that passes a new observer', 'transition', 'a new observer'],
 ];
 
-const use = (React as unknown as { use: <T>(promise: Promise<T>) => T }).use;
+const { use } = React;
 
 /** Data that never arrives. */
 const never = new Promise<never>(() => {});
@@ -119,7 +120,7 @@ describeWithActivity('a render React throws away', () => {
         const inline = observe(calls);
         // The component makes its stable observer again when the filter it reports under changes.
         const stable = React.useMemo(() => observe(calls), [filter]);
-        hooks.useActorRef(machine, { debug: { disabled } } as never, kind === 'stable' ? stable : inline);
+        hooks.useActorRef(machine, withDebug({ disabled }), kind === 'stable' ? stable : inline);
 
         return null;
       }
@@ -146,7 +147,7 @@ describeWithActivity('a render React throws away', () => {
       await flush();
       calls.length = 0;
 
-      const step = async (marker: string, run: () => unknown): Promise<void> => {
+      const step = async (marker: string, run: () => void | Promise<void>): Promise<void> => {
         calls.push(marker);
         await act(async () => {
           await run();
