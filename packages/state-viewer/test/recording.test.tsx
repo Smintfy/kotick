@@ -164,7 +164,15 @@ function shown(where = 'checkout') {
   return JSON.parse(region(where).getByRole('status').textContent ?? 'null');
 }
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Runs `step` in a timer after `ms` milliseconds, and resolves with its result.
+ * Timers run in the order of their deadlines, also when the page runs late, so the step keeps its place among them.
+ */
+function after<T>(ms: number, step: () => T): Promise<T> {
+  return new Promise((resolve) => {
+    setTimeout(() => resolve(step()), ms);
+  });
+}
 
 function hidePage() {
   window.dispatchEvent(new Event('pagehide'));
@@ -614,20 +622,29 @@ describe('in sessionStorage', () => {
 
   test('without a pagehide, the recordings are written 500 ms after the first visit, with the newest contexts', async () => {
     const machine = createCheckoutMachine();
-    await mount(<Checkout machine={machine} />, { overlay: false });
-    await press('Start');
-    await wait(100);
-    await press('Express');
-    await wait(100);
-    await press('Standard');
-    await wait(100);
-    const early = storedEntries(machine.id);
-    await press('Express');
-    await wait(100);
-    await press('Standard');
-    // The visits never stopped for 500 ms, so a write that waited for a pause would not have happened yet.
-    await wait(300);
-    expect({ early, late: storedEntries(machine.id) }).toEqual({
+    const actor = createActor(machine).start();
+    onTestFinished(() => {
+      actor.stop();
+    });
+
+    // This timer starts before the first visit, so it runs before the write that the first visit starts.
+    const early = after(450, () => {
+      const stored = storedEntries(machine.id);
+      actor.send({ type: 'EXPRESS' });
+      actor.send({ type: 'STANDARD' });
+
+      return stored;
+    });
+
+    // The test sends to the actor, so no step waits for React to render. While a step waits, a timer can run first.
+    connect(actor);
+    actor.send({ type: 'START' });
+    actor.send({ type: 'EXPRESS' });
+    actor.send({ type: 'STANDARD' });
+    // This timer starts after the first visit, so it runs after the write.
+    // A write that waited for 500 ms without visits would come 500 ms after the visits at 450 ms, after this read.
+    const late = after(600, () => storedEntries(machine.id));
+    expect({ early: await early, late: await late }).toEqual({
       early: null,
       late: [
         { leaves: ['idle'], context: { step: 0, note: 'none' } },
