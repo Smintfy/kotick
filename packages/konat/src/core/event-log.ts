@@ -11,7 +11,7 @@ export interface EventLog {
 const CAPACITY = 200;
 
 export function createEventLog(): EventLog {
-  // Grows to `CAPACITY` on the first lap, then overwrites in place, so an unused log doesn't allocate every slot.
+  // The buffer grows on the first lap, so an unused log doesn't allocate every slot.
   let buffer: EventLogEntry[] = [];
   // Index of the oldest entry once the buffer is full.
   let head = 0;

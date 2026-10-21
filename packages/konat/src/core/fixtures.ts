@@ -3,10 +3,8 @@ import { isId } from './ids';
 
 type FixtureTarget = Pick<MachineHandle, 'machineId' | 'source'>;
 
-/** One fixture of a set: the context of a leaf, as defineFixtures() declares it. */
 type Fixture = FixtureSet['states'][string];
 
-/** A set as the app gave it: a machine id and an object of states, whose fixtures are checked one by one. */
 interface FixtureSetInput {
   machineId: string;
   source?: unknown;
@@ -71,7 +69,6 @@ export function createFixtureStore(): FixtureStore {
     byId.delete(machineId);
   }
 
-  /** The sets whose source is the target's, merged, or undefined when no set has that source. */
   function matchSource(target: FixtureTarget): MergedFixtures | undefined {
     if (!hasSource(target)) return undefined;
     const { source } = target;
@@ -167,7 +164,7 @@ function merge(matched: StoredSet[]): MergedFixtures {
   return contexts.size > 0 ? { contexts, leaves: new Set(contexts.keys()) } : NO_FIXTURES;
 }
 
-/** Whether the app gave a set that can register. The app's typing can't be relied on, so a warning says what is wrong. */
+/** The app's typing can't be relied on, so a warning says what is wrong. */
 function isFixtureSetInput(value: unknown, index: number): value is FixtureSetInput {
   if (!isObject(value)) {
     console.warn(`[konat] Ignoring fixture set at index ${index}: expected an object from defineFixtures().`);
