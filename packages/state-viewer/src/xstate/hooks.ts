@@ -277,7 +277,7 @@ export function useActorRef<TLogic extends AnyActorLogic>(
 }
 
 /** @xstate/react's check for an actor passed in place of its logic: an actor has `send`, and logic doesn't. */
-function isActorRef(logic: AnyActorLogic): logic is AnyActorLogic & AnyActorRef {
+function isActorRef(logic: AnyActorLogic): logic is AnyActorLogic & Pick<AnyActorRef, 'send'> {
   return !!logic && 'send' in logic && typeof logic.send === 'function';
 }
 

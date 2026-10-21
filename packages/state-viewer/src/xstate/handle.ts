@@ -1,6 +1,6 @@
 // The machine handle: what the registry sees of an actor and of the child machines it starts.
 
-import { isMachineSnapshot, type AnyActorRef, type AnyStateMachine, type MachineContext, type Snapshot } from 'xstate';
+import { isMachineSnapshot, type AnyActorRef, type AnyEventObject, type AnyStateMachine, type Snapshot } from 'xstate';
 import { callLoggingErrors, toInstanceKey } from '../core/registry';
 import type { Capabilities, MachineHandle, Registry } from '../core/types';
 import { isMachineActor, liveChildren, type MachineActor } from './actor';
@@ -207,7 +207,7 @@ export function inspect(
         const source = event.sourceRef as AnyActorRef;
 
         // A child that fails sends its parent an error event, and no last snapshot.
-        if (event.event.type.startsWith('xstate.error.actor')) remove(source);
+        if (isActorErrorEvent(event.event)) remove(source);
       }
     },
   });
@@ -231,12 +231,26 @@ export function inspect(
   };
 }
 
+/**
+ * Whether a relayed event is the error event of a child that failed.
+ * XState relays an event from one actor to another without a check, so an app can send one with no string type.
+ */
+function isActorErrorEvent(event: AnyEventObject | undefined): event is AnyEventObject {
+  return typeof event?.type === 'string' && event.type.startsWith('xstate.error.actor');
+}
+
 /** An invoke or spawn id names the child better than its session id. */
 function childLabel(ref: AnyActorRef): string | undefined {
-  return ref.id !== ref.sessionId ? ref.id : undefined;
+  return isChildId(ref.id) && ref.id !== ref.sessionId ? ref.id : undefined;
+}
+
+/** Whether an invoke or spawn id is text. A JavaScript app can give any value, such as a number. */
+function isChildId(id: AnyActorRef['id']): id is string {
+  return typeof id === 'string';
 }
 
 /** The context of a machine snapshot; an actor that failed on start has a snapshot without one. */
-function contextOf(snapshot: Snapshot<unknown>): MachineContext | undefined {
+// oxlint-disable-next-line anti-slop/no-unknown-returns -- A context is the app's own data, and it has no schema.
+function contextOf(snapshot: Snapshot<unknown>): unknown {
   return isMachineSnapshot(snapshot) ? snapshot.context : undefined;
 }

@@ -339,7 +339,7 @@ function createBinding(actor: MachineActor): Binding {
 
       if (property === observable) return observe;
       // SAFETY: The trap forwards every key a consumer reads. A key the actor's type doesn't declare, such as a private
-      // field of XState's Actor, reads what the actor holds. The trap passes it on, or binds it as a declared method.
+      // field of XState's Actor, reads what the actor holds. The trap passes it on, or binds it when it is a function.
       const value: unknown = target[property as keyof MachineActor];
 
       // Unbound: a bound constructor isn't the class, and test snapshots print it as "bound Actor".
