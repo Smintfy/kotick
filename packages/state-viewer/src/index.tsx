@@ -5,6 +5,7 @@ import type { StateViewerProps } from './overlay/props';
 import { StateViewer as DevStateViewer } from './overlay/StateViewer';
 
 export type { FixtureSet } from './core/types';
+
 export type { FixturesInput, FixturesResult, Position, StateViewerProps, Theme } from './overlay/props';
 
 // As in xstate.ts: declared here rather than through @types/node, for apps that typecheck this source without it.

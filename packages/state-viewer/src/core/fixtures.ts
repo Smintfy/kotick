@@ -49,10 +49,12 @@ export function createFixtureStore(): FixtureStore {
 
   function addAlias(machineId: string, source: unknown): void {
     let sources = aliases.get(machineId);
+
     if (!sources) {
       sources = new Set();
       aliases.set(machineId, sources);
     }
+
     if (sources.has(source)) return;
     sources.add(source);
     byId.delete(machineId);
@@ -62,24 +64,30 @@ export function createFixtureStore(): FixtureStore {
   function matchSource(source: unknown): MergedFixtures | undefined {
     if (!hasSource(source)) return undefined;
     let merged = bySource.get(source);
+
     if (!merged) {
       const matched = sets.filter((set) => set.source === source);
+
       if (matched.length === 0) return undefined;
       merged = merge(matched);
       bySource.set(source, merged);
     }
+
     return merged;
   }
 
   function resolve({ machineId, source }: FixtureTarget): MergedFixtures {
     const sourceMatch = matchSource(source);
+
     if (sourceMatch) return sourceMatch;
     let merged = byId.get(machineId);
+
     if (!merged) {
       const sources = aliases.get(machineId);
       merged = merge(sets.filter((set) => set.machineId === machineId || sources?.has(set.source) === true));
       byId.set(machineId, merged);
     }
+
     return merged;
   }
 
@@ -87,15 +95,19 @@ export function createFixtureStore(): FixtureStore {
     register(input) {
       if (!Array.isArray(input)) {
         console.warn('[state-viewer] Ignoring fixtures: expected an array of fixture sets.');
+
         return;
       }
+
       let added = false;
       input.forEach((value: unknown, index) => {
         const set = toStoredSet(value, index);
+
         if (!set) return;
         sets.push(set);
         added = true;
       });
+
       if (added) {
         bySource.clear();
         byId.clear();
@@ -104,14 +116,18 @@ export function createFixtureStore(): FixtureStore {
 
     lookup(target, requested, normalized) {
       const { contexts } = resolve(target);
+
       if (contexts.size === 0) return undefined;
+
       for (const leaf of requested) {
         if (contexts.has(leaf)) return { leaf, context: contexts.get(leaf) };
       }
+
       // Requested leaves repeated here already came up empty, so they can't match a second time.
       for (const leaf of normalized) {
         if (contexts.has(leaf)) return { leaf, context: contexts.get(leaf) };
       }
+
       return undefined;
     },
 
@@ -132,27 +148,37 @@ function hasSource(source: unknown): boolean {
 
 function merge(matched: StoredSet[]): MergedFixtures {
   const contexts = new Map<string, unknown>();
+
   for (const set of matched) {
     for (const [leaf, context] of set.contexts) contexts.set(leaf, context);
   }
+
   return contexts.size > 0 ? { contexts, leaves: new Set(contexts.keys()) } : NO_FIXTURES;
 }
 
 function toStoredSet(value: unknown, index: number): StoredSet | undefined {
   if (!isRecord(value)) {
     console.warn(`[state-viewer] Ignoring fixture set at index ${index}: expected an object from defineFixtures().`);
+
     return undefined;
   }
+
   const { machineId, source, states } = value;
+
   if (typeof machineId !== 'string' || machineId === '') {
     console.warn(`[state-viewer] Ignoring fixture set at index ${index}: machineId must be a non-empty string.`);
+
     return undefined;
   }
+
   if (!isRecord(states)) {
     console.warn(`[state-viewer] Ignoring fixture set "${machineId}": states must be an object keyed by leaf id.`);
+
     return undefined;
   }
+
   const contexts = new Map<string, unknown>();
+
   for (const [leaf, entry] of Object.entries(states)) {
     if (isRecord(entry) && Object.hasOwn(entry, 'context')) {
       contexts.set(leaf, entry.context);
@@ -160,6 +186,7 @@ function toStoredSet(value: unknown, index: number): StoredSet | undefined {
       console.warn(`[state-viewer] Ignoring fixture "${leaf}" for "${machineId}": expected an object with a context.`);
     }
   }
+
   return { machineId, source, contexts };
 }
 

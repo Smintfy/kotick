@@ -8,6 +8,7 @@ export const SESSION_TTL = 5 * 60 * 1000;
 
 const authenticate = fromPromise<User>(async () => {
   await new Promise((resolve) => setTimeout(resolve, 600));
+
   return { name: 'Ada Lovelace' };
 });
 

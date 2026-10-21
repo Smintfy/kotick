@@ -49,7 +49,9 @@ export function defineFixtures<TMachine extends AnyStateMachine>(
     source: machine.config,
     states: states as Record<string, { context: unknown }>,
   };
+
   if (process.env.NODE_ENV !== 'production') warnUnknownLeaves(machine, set);
+
   return set;
 }
 
@@ -57,6 +59,7 @@ function warnUnknownLeaves(machine: AnyStateMachine, set: FixtureSet): void {
   if (typeof set.states !== 'object' || set.states === null) return;
   const { leaves } = getTree(machine);
   const unknown = Object.keys(set.states).filter((leaf) => !leaves.has(leaf));
+
   if (unknown.length === 0) return;
   const list = unknown.map((leaf) => `"${leaf}"`).join(', ');
   console.warn(

@@ -23,12 +23,14 @@ const config: NextConfig = {
       const files = (await readdir(chunks, { recursive: true })).filter((file) => file.endsWith('.js'));
       const code = (await Promise.all(files.map((file) => readFile(path.join(chunks, file), 'utf8')))).join('\n');
       const missing = Object.entries(MARKERS).flatMap(([marker, part]) => (code.includes(marker) ? [] : [part]));
+
       if (missing.length > 0) {
         throw new Error(
           `The client chunks do not have these parts of state-viewer: ${missing.join(', ')}. ` +
             'The demo needs them. Check the *.ts and *.tsx rules in site/next.config.ts.',
         );
       }
+
       console.log(`✓ The client chunks have all ${Object.keys(MARKERS).length} parts of the state-viewer debug code`);
     },
   },

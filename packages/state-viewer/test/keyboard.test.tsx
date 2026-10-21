@@ -30,13 +30,16 @@ function createToggleMachine() {
 
 function Run({ machine }: { machine: AnyStateMachine }) {
   useMachine(machine);
+
   return null;
 }
 
 /** The element that has focus inside the overlay. */
 function focusedInOverlay(): HTMLElement {
   const focused = overlay().activeElement;
+
   if (!(focused instanceof HTMLElement)) throw new Error('Nothing in the overlay has focus.');
+
   return focused;
 }
 
@@ -48,7 +51,9 @@ function focusedLeaf(): string {
 /** The leaf in the tab order. Tab moves into the tree there. */
 function tabStop(): HTMLElement {
   const stop = overlay().querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+
   if (!stop) throw new Error('The tree has no tab stop.');
+
   return stop;
 }
 
@@ -61,14 +66,18 @@ function tabStops(): string {
 
 function control(selector: string): HTMLElement {
   const found = overlay().querySelector<HTMLElement>(selector);
+
   if (!found) throw new Error(`Nothing in the overlay matches ${selector}.`);
+
   return found;
 }
 
 /** The row of the machine list that has focus: its machine id, or else its label. `none` when no row has focus. */
 function focusedRow(): string {
   const focused = overlay().activeElement as HTMLElement | null;
+
   if (!focused?.hasAttribute('data-row')) return 'none';
+
   return focused.dataset.machine ?? focused.querySelector('[data-part="row-label"]')?.textContent ?? '';
 }
 
@@ -135,6 +144,7 @@ describe('the shortcut prop', () => {
       bubble: control('button[aria-expanded]').title,
       close: control('button[aria-label="Close"]').title,
     });
+
     const { rerender } = render(<StateViewer defaultOpen />);
     await flush();
 
@@ -260,10 +270,12 @@ describe('focus', () => {
     tabStop().focus();
 
     const seen: { machine: unknown; focus: string }[] = [];
+
     for (const key of [']', '[']) {
       await press({ key }, overlay().activeElement ?? document.body);
       seen.push({ machine: shownMachine(), focus: focusedLeaf() });
     }
+
     expect(seen).toEqual([
       { machine: toggle.id, focus: 'off' },
       { machine: checkout.id, focus: 'shipping.standard' },
@@ -292,6 +304,7 @@ describe('in the panel', () => {
     const none = 'State viewer';
     const one = 'State viewer, 1 preview active';
     const two = 'State viewer, 2 previews active';
+
     const step = (key: string) => ({
       key,
       focus: focusedLeaf(),
@@ -299,7 +312,9 @@ describe('in the panel', () => {
       previewed: panel().previewed,
       bubble: control('button[aria-expanded]').getAttribute('aria-label'),
     });
+
     const steps = [step('start')];
+
     // A control keeps the keys it handles itself: arrows change a select, and Enter clicks a button.
     const keys: [string, HTMLElement?][] = [
       ['ArrowDown'],
@@ -314,10 +329,12 @@ describe('in the panel', () => {
       ['Enter'],
       ['Escape'],
     ];
+
     for (const [key, target] of keys) {
       await press({ key }, target ?? focusedInOverlay());
       steps.push(step(target ? `${key} on ${target.localName}` : key));
     }
+
     expect(steps).toEqual([
       { key: 'start', focus: 'shipping.standard', stops: 'shipping.standard', previewed: [], bubble: one },
       { key: 'ArrowDown', focus: 'shipping.express', stops: 'shipping.express', previewed: [], bubble: one },
@@ -360,10 +377,12 @@ describe('in the panel', () => {
     tabStop().focus();
 
     const seen = [`start: ${focusedLeaf()}`];
+
     for (const key of ['ArrowUp', 'End', 'ArrowDown', 'Home']) {
       await press({ key }, focusedInOverlay());
       seen.push(`${key}: ${focusedLeaf()}`);
     }
+
     expect(seen).toEqual([
       // The live shipping leaf is hidden, so the tab stop is on the live payment leaf.
       'start: payment.editing',
@@ -390,10 +409,12 @@ describe('in the panel', () => {
     control('[data-row]').focus();
 
     const seen = [focusedRow()];
+
     for (const key of ['ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowDown', 'ArrowUp', 'Home', 'End']) {
       await press({ key }, focusedInOverlay());
       seen.push(`${key}: ${focusedRow()}`);
     }
+
     expect(seen).toEqual([
       checkout.id,
       `ArrowDown: ${toggle.id}`,
@@ -410,11 +431,13 @@ describe('in the panel', () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
     const fetcher = createMachine({ id: freshId('fetcher'), initial: 'loading', states: { loading: {}, failed: {} } });
+
     const parent = setup({ actors: { fetcher } }).createMachine({
       id: freshId('parent'),
       initial: 'active',
       states: { active: { invoke: { id: 'load', src: 'fetcher' } } },
     });
+
     render(
       <>
         <Run machine={checkout} />
@@ -427,10 +450,12 @@ describe('in the panel', () => {
     await show(checkout.id);
 
     const shown = [shownMachine()];
+
     for (const key of [']', '[', '[']) {
       await press({ key }, control('[data-instance]'));
       shown.push(shownMachine());
     }
+
     expect(shown).toEqual([checkout.id, toggle.id, checkout.id, fetcher.id]);
   });
 });
@@ -441,10 +466,12 @@ describe('matching a key press', () => {
     await flush();
 
     const open: boolean[] = [];
+
     for (const key of ['ß', 'S']) {
       await press({ key, code: 'KeyS', altKey: true });
       open.push(isOpen());
     }
+
     expect(open).toEqual([true, false]);
   });
 
@@ -453,6 +480,7 @@ describe('matching a key press', () => {
     await flush();
 
     const open: boolean[] = [];
+
     for (const init of [
       { key: 's', code: 'KeyS' },
       { key: 's', code: 'KeyS', altKey: true, shiftKey: true },
@@ -462,6 +490,7 @@ describe('matching a key press', () => {
       await press(init);
       open.push(isOpen());
     }
+
     expect(open).toEqual([false, false, false, true]);
   });
 });
@@ -485,6 +514,7 @@ describe('typing', () => {
     await flush();
 
     const toggled: Record<string, boolean> = {};
+
     const fields = {
       text: screen.getByLabelText('text'),
       search: screen.getByLabelText('search'),
@@ -494,11 +524,13 @@ describe('typing', () => {
       button: screen.getByRole('button', { name: 'button' }),
       select: screen.getByLabelText('select'),
     };
+
     for (const [name, field] of Object.entries(fields)) {
       const before = isOpen();
       await press(ALT_S, field);
       toggled[name] = isOpen() !== before;
     }
+
     expect(toggled).toEqual({
       text: false,
       search: false,
@@ -520,11 +552,13 @@ describe('typing', () => {
     document.body.append(host);
 
     const toggled: Record<string, boolean> = {};
+
     for (const [name, field] of Object.entries({ input, button })) {
       const before = isOpen();
       await press(ALT_S, field);
       toggled[name] = isOpen() !== before;
     }
+
     host.remove();
     expect(toggled).toEqual({ input: false, button: true });
   });

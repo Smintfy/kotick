@@ -25,6 +25,7 @@ interface PanelProps {
 export function Panel(props: PanelProps) {
   function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
     if (event.key !== 'Escape' || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+
     if (isTyping(event.target as HTMLElement)) return;
     event.preventDefault();
     props.onReleaseAll();

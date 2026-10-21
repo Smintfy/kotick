@@ -21,6 +21,7 @@ interface ParsedDeepLink {
 function parseDeepLink(raw: string): ParsedDeepLink {
   const errors: string[] = [];
   let value = raw.replace(/\+/g, ' ');
+
   // A valid value always contains ':', so one without it went through URLSearchParams, which encodes ':' as %3A.
   // If code passed our value to set(), that added one encoding and one decode restores what we wrote. If a router
   // parsed and rebuilt the query, our value was decoded before being encoded, so one decode gives the fully decoded
@@ -34,28 +35,34 @@ function parseDeepLink(raw: string): ParsedDeepLink {
   }
 
   const byMachine = new Map<string, { target: DeepLinkTarget; segment: string }>();
+
   for (const segment of value.split(TARGET_SEPARATOR)) {
     if (segment === '') continue;
 
     const idEnd = segment.indexOf(MACHINE_ID_END);
+
     if (idEnd === -1) {
       errors.push(`Skipped "${segment}": expected <machineId>:<leaf>.`);
       continue;
     }
+
     if (idEnd === 0) {
       errors.push(`Skipped "${segment}": the machine id is empty.`);
       continue;
     }
+
     const rawLeaves = segment
       .slice(idEnd + 1)
       .split(LEAF_SEPARATOR)
       .filter((leaf) => leaf !== '');
+
     if (rawLeaves.length === 0) {
       errors.push(`Skipped "${segment}": no leaves after the machine id.`);
       continue;
     }
 
     let target: DeepLinkTarget;
+
     try {
       target = {
         machineId: decodeURIComponent(segment.slice(0, idEnd)),
@@ -67,12 +74,14 @@ function parseDeepLink(raw: string): ParsedDeepLink {
     }
 
     const previous = byMachine.get(target.machineId);
+
     if (previous) {
       errors.push(
         `Skipped "${previous.segment}": machine "${target.machineId}" appears again in "${segment}", which wins.`,
       );
       byMachine.delete(target.machineId);
     }
+
     byMachine.set(target.machineId, { target, segment });
   }
 
@@ -96,13 +105,16 @@ function serializeDeepLink(targets: DeepLinkTarget[]): string {
 /** Reads targets from a query string such as `location.search`, warning about skipped segments. */
 export function readDeepLink(search: string, param = DEFAULT_URL_PARAM): DeepLinkTarget[] {
   const pair = splitQuery(search).find((candidate) => pairKey(candidate) === param);
+
   if (pair === undefined) return [];
 
   const equals = pair.indexOf('=');
   const { targets, errors } = parseDeepLink(equals === -1 ? '' : pair.slice(equals + 1));
+
   for (const error of errors) {
     console.warn(`[state-viewer] Deep link "${param}": ${error}`);
   }
+
   return targets;
 }
 
@@ -115,17 +127,20 @@ export function writeDeepLink(search: string, targets: DeepLinkTarget[], param =
   const value = serializeDeepLink(targets);
   const pairs: string[] = [];
   let insertAt = -1;
+
   for (const pair of splitQuery(search)) {
     if (pairKey(pair) === param) {
       if (insertAt === -1) insertAt = pairs.length;
       continue;
     }
+
     pairs.push(pair);
   }
 
   if (value !== '') {
     pairs.splice(insertAt === -1 ? pairs.length : insertAt, 0, `${encodeURIComponent(param)}=${value}`);
   }
+
   return pairs.length === 0 ? '' : `?${pairs.join('&')}`;
 }
 
@@ -136,6 +151,7 @@ function splitQuery(search: string): string[] {
 /** The pair's form-decoded key, or `undefined` when it isn't valid percent-encoding. */
 function pairKey(pair: string): string | undefined {
   const equals = pair.indexOf('=');
+
   try {
     return decodeURIComponent((equals === -1 ? pair : pair.slice(0, equals)).replace(/\+/g, ' '));
   } catch {

@@ -122,6 +122,7 @@ type Section = ReadmeHeading & {
 
 function* walk(node: Nodes): Generator<Nodes> {
   yield node;
+
   if ('children' in node) for (const child of node.children) yield* walk(child);
 }
 
@@ -132,44 +133,55 @@ function parse() {
   const tree = fromMarkdown(readme, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
   const slugger = new GithubSlugger();
   const ids = new Set<string>();
+
   const identify = (node: MdastHeading): ReadmeHeading => {
     const text = toString(node);
     const id = slugger.slug(text);
     node.data = { ...node.data, hProperties: { ...node.data?.hProperties, id } };
     ids.add(id);
+
     return { id, text, depth: node.depth };
   };
 
   const intro: RootContent[] = [];
   const sections: Section[] = [];
+
   for (const node of tree.children) {
     if (node.type === 'heading') {
       const heading = identify(node);
+
       if (node.depth === 1) continue;
+
       if (node.depth === 2) {
         sections.push({ ...heading, node, body: [], subheadings: [] });
         continue;
       }
+
       sections.at(-1)?.subheadings.push(heading);
     } else {
       for (const child of walk(node)) if (child.type === 'heading') identify(child);
     }
+
     (sections.at(-1)?.body ?? intro).push(node);
   }
+
   return { ids, intro, sections };
 }
 
 function readPackageName(install: Section | undefined): string | undefined {
   for (const node of install?.body ?? []) {
     const name = node.type === 'code' ? /^npm install (\S+)$/.exec(node.value.trim())?.[1] : undefined;
+
     if (name) return name;
   }
+
   return undefined;
 }
 
 function readCost(section: Section | undefined, pattern: RegExp): string | undefined {
   const text = toString(section?.body ?? []).replace(/\s+/g, ' ');
   const found = [...text.matchAll(pattern)];
+
   return found.length === 1 ? found[0]?.[1] : undefined;
 }
 
@@ -183,7 +195,9 @@ function loadOrThrow() {
     ...omitted.map((id) => ({ id, by: 'omitted' })),
     { id: footer, by: 'footer' },
   ];
+
   const listedIds = new Set(listed.map((item) => item.id));
+
   for (const section of sections) {
     if (listedIds.has(section.id)) continue;
     problems.push(
@@ -191,21 +205,27 @@ function loadOrThrow() {
         'Add its id to the sections of a page in pageTable, or to omitted.',
     );
   }
+
   for (const { id, by } of listed) {
     if (!byId.has(id)) problems.push(`${by} lists #${id}, but the README has no H2 with that id.`);
   }
+
   for (const id of duplicates(listed.map((item) => item.id))) problems.push(`#${id} is listed more than one time.`);
+
   for (const slug of duplicates(pageTable.map((entry) => entry.slug))) {
     problems.push(`More than one page has the slug "${slug}".`);
   }
 
   const hrefs = new Map<string, string>();
+
   for (const entry of pageTable) {
     const page = `/docs/${entry.slug}`;
     entry.sections.forEach((id, index) => {
       const section = byId.get(id);
+
       if (!section) return;
       hrefs.set(id, index === 0 ? page : `${page}#${id}`);
+
       for (const heading of section.subheadings) hrefs.set(heading.id, `${page}#${heading.id}`);
     });
   }
@@ -218,7 +238,9 @@ function loadOrThrow() {
       shown: !omitted.includes(section.id),
     })),
   ];
+
   const loaded = new Set<string>(languages);
+
   for (const part of parts) {
     for (const node of part.nodes.flatMap((child) => [...walk(child)])) {
       if (node.type === 'code' && node.lang && !loaded.has(node.lang)) {
@@ -227,8 +249,10 @@ function loadOrThrow() {
             'Add it to languages.',
         );
       }
+
       if (node.type !== 'link' || !node.url.startsWith('#')) continue;
       const id = node.url.slice(1);
+
       if (!ids.has(id)) problems.push(`The README links to #${id} in ${part.name}, but no heading has that id.`);
       else if (part.shown && !hrefs.has(id)) {
         problems.push(`The README links to #${id} in ${part.name}, but no page shows that heading.`);
@@ -237,6 +261,7 @@ function loadOrThrow() {
   }
 
   const [pitchNode, lead, bullets, ...more] = intro;
+
   if (
     pitchNode?.type !== 'paragraph' ||
     lead?.type !== 'paragraph' ||
@@ -249,18 +274,25 @@ function loadOrThrow() {
         `It is: ${intro.map((node) => node.type).join(', ') || 'empty'}.`,
     );
   }
+
   const quickStart = byId.get('quick-start')?.body.slice(0, 2) ?? [];
   const [quickLead, quickList] = quickStart;
+
   if (quickLead?.type !== 'paragraph' || quickList?.type !== 'list' || !quickList.ordered) {
     problems.push('#quick-start must start with a paragraph and then a numbered list.');
   }
+
   const packageName = readPackageName(byId.get('install'));
+
   if (packageName === undefined) problems.push('#install must have a code block "npm install <name>".');
   const transition = readCost(byId.get('performance-in-development'), /a transition costs (approximately [\d.]+ µs)/g);
+
   if (transition === undefined) {
     problems.push('#performance-in-development must say "a transition costs approximately <number> µs" one time.');
   }
+
   const startup = readCost(byId.get('production-builds'), /(approximately \d+ to \d+ bytes)/g);
+
   if (startup === undefined) {
     problems.push('#production-builds must say "approximately <number> to <number> bytes" one time.');
   }
@@ -294,10 +326,12 @@ function toPage(entry: PageEntry, [first, ...others]: Section[]): DocsPage {
     ...first.body.map((node) => (node.type === 'heading' ? { ...node, depth: oneLevelUp[node.depth] } : node)),
     ...others.flatMap((section) => [section.node, ...section.body]),
   ];
+
   const headings = [
     ...first.subheadings.map((heading) => ({ ...heading, depth: oneLevelUp[heading.depth] })),
     ...others.flatMap((section) => [section, ...section.subheadings]),
   ].flatMap(({ id, text, depth }) => (depth === 2 || depth === 3 ? [{ id, text, depth }] : []));
+
   return {
     slug: entry.slug,
     href: `/docs/${entry.slug}`,
@@ -312,11 +346,13 @@ function toPage(entry: PageEntry, [first, ...others]: Section[]): DocsPage {
 
 function sourceOf(section: Section): string {
   const last = section.body.at(-1) ?? section.node;
+
   return readme.slice(section.node.position?.start.offset, last.position?.end.offset);
 }
 
 function render(nodes: RootContent[]): ReactNode {
   const tree = toHast({ type: 'root', children: nodes }, { allowDangerousHtml: true, handlers: { code: highlight } });
+
   return toJsxRuntime(raw(tree), { Fragment, jsx, jsxs, components });
 }
 
@@ -327,11 +363,13 @@ function highlight(_state: unknown, node: Code): ElementContent[] {
     defaultColor: 'light-dark()',
     rootStyle: false,
   });
+
   return root.children.filter((child): child is ElementContent => child.type !== 'doctype');
 }
 
 function DocLink({ href = '', children }: ComponentProps<'a'>) {
   const target = href.startsWith('#') ? hrefFor(href.slice(1)) : href;
+
   return target.startsWith('/') ? <Link href={target}>{children}</Link> : <a href={target}>{children}</a>;
 }
 
@@ -396,6 +434,8 @@ export const renderLicense = (): ReactNode => render(site.license);
 
 export function hrefFor(id: string): string {
   const href = site.hrefs.get(id);
+
   if (href === undefined) throw new Error(`site/src/site.tsx: no page shows the README heading #${id}.`);
+
   return href;
 }

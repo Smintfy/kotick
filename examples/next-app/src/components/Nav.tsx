@@ -10,6 +10,7 @@ const PAGES = [
 
 export function Nav() {
   const pathname = usePathname();
+
   return (
     <nav className="nav" aria-label="Pages">
       {PAGES.map((page) => (

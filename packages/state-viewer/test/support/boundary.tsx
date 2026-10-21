@@ -13,6 +13,7 @@ export class Boundary extends React.Component<{ children: React.ReactNode }, { e
 
   override render() {
     if (this.state.error === undefined) return this.props.children;
+
     return <p role="alert">{this.state.error instanceof Error ? this.state.error.message : String(this.state.error)}</p>;
   }
 }

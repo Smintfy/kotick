@@ -29,6 +29,7 @@ interface StatesSectionProps {
 export function StatesSection(props: StatesSectionProps) {
   const titleId = useId();
   const { instance, canPreview, parentLabel, childInstances } = props;
+
   return (
     <section className={SECTION} aria-labelledby={titleId}>
       <div className={SECTION_HEAD}>
@@ -121,6 +122,7 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
 
   if (node.type !== 'atomic' && node.type !== 'final') {
     const open = !tree.collapsed.has(node.id);
+
     return (
       <li role="treeitem" aria-level={depth + 1} aria-expanded={open} className="group/state" style={style}>
         <div

@@ -11,12 +11,15 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<'/docs/[slug]'>): Promise<Metadata> {
   const page = findPage((await params).slug);
+
   return { title: page?.title, description: page?.description };
 }
 
 export default async function DocsPage({ params }: PageProps<'/docs/[slug]'>) {
   const page = findPage((await params).slug);
+
   if (!page) notFound();
+
   return (
     <article className="prose">
       <header className="page-header">

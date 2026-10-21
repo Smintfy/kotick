@@ -18,10 +18,12 @@ function createToggleMachine() {
 /** An upload that its socket, an invoked callback actor, finishes when the test calls `finish()`. */
 function createUpload(id = freshId('upload')) {
   const socket: { answer?: () => void } = {};
+
   const machine = setup({
     actors: {
       socket: fromCallback(({ sendBack }) => {
         socket.answer = () => sendBack({ type: 'UPLOADED' });
+
         return () => {
           socket.answer = undefined;
         };
@@ -36,10 +38,12 @@ function createUpload(id = freshId('upload')) {
       uploaded: { type: 'final' },
     },
   });
+
   const finish = async (): Promise<void> => {
     act(() => socket.answer?.());
     await flush();
   };
+
   return { machine, finish };
 }
 
@@ -72,23 +76,28 @@ function useRecorder(heard: string[], { object, stable }: ObserverKind): Recorde
   const next = (snapshot: Snapshot) => {
     heard.push(label(snapshot));
   };
+
   const inline = object ? { next, complete: () => heard.push('complete') } : next;
   const [first] = React.useState(() => inline);
+
   return stable ? first : inline;
 }
 
 test('debug.disabled takes the machine out of the overlay, and the observer goes on hearing the real actor', async () => {
   const machine = createToggleMachine();
   const heard: string[] = [];
+
   function Toggle({ disabled }: { disabled: boolean }) {
     const observer = useRecorder(heard, { object: false, stable: false });
     const actorRef = useActorRef(machine, { debug: { disabled } }, observer);
+
     return (
       <button type="button" onClick={() => actorRef.send({ type: 'TOGGLE' })}>
         Toggle
       </button>
     );
   }
+
   const view = render(page(<Toggle disabled={false} />));
   await flush();
 
@@ -114,18 +123,22 @@ describe('an observer that the component passes after the actor moved', () => {
     test('turning debug.disabled on, with nothing previewed, sends the observer nothing until the next change', async () => {
       const machine = createToggleMachine();
       const heard: string[] = [];
+
       const onChange = (snapshot: Snapshot) => {
         heard.push(label(snapshot));
       };
+
       // The component listens only while its panel is open, as an onChange prop or an analytics hook may.
       function Toggle({ panelOpen, disabled }: { panelOpen: boolean; disabled: boolean }) {
         const actorRef = hooks.useActorRef(machine, { debug: { disabled } } as never, panelOpen ? onChange : undefined);
+
         return (
           <button type="button" onClick={() => actorRef.send({ type: 'TOGGLE' })}>
             Toggle
           </button>
         );
       }
+
       const view = render(page(<Toggle panelOpen={false} disabled={false} />));
       await flush();
 
@@ -162,17 +175,23 @@ describe('while a preview shows', () => {
     async function mountAndPreview(kind: ObserverKind) {
       const upload = createUpload();
       const heard: string[] = [];
+
       function Upload({ disabled }: { disabled: boolean }) {
         hooks.useActorRef(upload.machine, { debug: { disabled } } as never, useRecorder(heard, kind));
+
         return null;
       }
+
       const view = render(page(<Upload disabled={false} />));
       await flush();
+
       if (previews) await preview(upload.machine.id, ['failed']);
+
       const disable = async (): Promise<void> => {
         view.rerender(page(<Upload disabled />));
         await flush();
       };
+
       return { heard, finish: upload.finish, disable };
     }
 
@@ -237,8 +256,10 @@ describe('while a preview shows', () => {
       const id = freshId('upload');
       const uploads = { old: createUpload(id), new: createUpload(id) };
       const calls: string[] = [];
+
       const actorOf = (snapshot: SnapshotFrom<typeof uploads.old.machine>) =>
         snapshot.machine === uploads.old.machine ? 'old' : 'new';
+
       // The app builds the machine from a prop.
       // The new actor starts from the snapshot of the old one, so only the machine tells their snapshots apart.
       function Upload({ version, disabled }: { version: 'old' | 'new'; disabled: boolean }) {
@@ -246,9 +267,12 @@ describe('while a preview shows', () => {
           next: (snapshot) => calls.push(`${label(snapshot)} (${actorOf(snapshot)})`),
           complete: () => calls.push('complete'),
         };
+
         useActorRef(uploads[version].machine, { debug: { disabled } }, observer);
+
         return null;
       }
+
       const view = render(page(<Upload version="old" disabled={false} />));
       await flush();
       await preview(id, ['failed']);
@@ -259,6 +283,7 @@ describe('while a preview shows', () => {
       calls.push('[replace]');
       view.rerender(page(<Upload version="new" disabled={false} />));
       await flush();
+
       if (disabling) {
         calls.push('[disable]');
         view.rerender(page(<Upload version="new" disabled />));
@@ -267,6 +292,7 @@ describe('while a preview shows', () => {
         calls.push('[release]');
         await release(id);
       }
+
       expect(calls).toEqual([
         '[finish]',
         'active:failed (old)',
@@ -317,6 +343,7 @@ describeWithActivity('while an Activity hides the component', () => {
       const disabled = disabling !== 'never';
       /** The markers of the steps between the actor's ending and the reveal, the reveal included. */
       const hideAndReveal = ['[hide]', ...(disabling === 'while hidden' ? ['[debug disabled]'] : []), '[reveal]'];
+
       /** The markers of the steps after the reveal, each followed by what the observer hears in it. */
       const later = (heard: string[]): string[] => [
         '[later render]',
@@ -335,23 +362,29 @@ describeWithActivity('while an Activity hides the component', () => {
           const upload = createUpload();
           const calls: string[] = [];
           let actorRef: AnyActorRef | undefined;
+
           function Upload({ disabled }: { disabled: boolean }) {
             const observer = useRecorder(calls, { object: true, stable });
             actorRef = hooks.useActorRef(upload.machine, { debug: { disabled } } as never, observer);
+
             return null;
           }
+
           const app = (mode: 'visible' | 'hidden', disabled: boolean) =>
             page(
               <React.Activity mode={mode}>
                 <Upload disabled={disabled} />
               </React.Activity>,
             );
+
           const view = render(app('visible', false), { reactStrictMode });
           await flush();
+
           if (previews) await preview(upload.machine.id, ['failed']);
 
           calls.length = 0;
           calls.push(ending === 'stop' ? '[app stops]' : '[finish]');
+
           if (ending === 'stop') act(() => actorRef?.stop());
           else await upload.finish();
           await flush();
@@ -361,11 +394,13 @@ describeWithActivity('while an Activity hides the component', () => {
           await flush();
           await flush();
           const hidden = badge();
+
           if (disabling === 'while hidden') {
             calls.push('[debug disabled]');
             view.rerender(app('hidden', true));
             await flush();
           }
+
           calls.push('[reveal]');
           view.rerender(app('visible', disabled));
           await flush();
@@ -376,11 +411,13 @@ describeWithActivity('while an Activity hides the component', () => {
           await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
           view.rerender(app('visible', disabled));
           await flush();
+
           if (disabled) {
             calls.push('[debug on]');
             view.rerender(app('visible', false));
             await flush();
           }
+
           return { calls, hidden, status: actorRef?.getSnapshot().status };
         }
 
@@ -437,21 +474,27 @@ describe('turned off and on again', () => {
       async function mountDisabled(object: boolean) {
         const upload = createUpload();
         const heard: string[] = [];
+
         function Upload({ disabled }: { disabled: boolean }) {
           const observer = useRecorder(heard, { object, stable: true });
           hooks.useActorRef(upload.machine, { debug: { disabled } } as never, observer);
+
           return null;
         }
+
         const view = render(page(<Upload disabled={fromMount} />));
         await flush();
+
         if (!fromMount) {
           view.rerender(page(<Upload disabled />));
           await flush();
         }
+
         const enable = async (): Promise<void> => {
           view.rerender(page(<Upload disabled={false} />));
           await flush();
         };
+
         return { heard, id: upload.machine.id, finish: upload.finish, enable };
       }
 
@@ -463,10 +506,12 @@ describe('turned off and on again', () => {
           const finished = heard.splice(0);
 
           await enable();
+
           if (previews) {
             await preview(id, ['failed']);
             await release(id);
           }
+
           expect({ finished, enabled: heard }).toEqual({
             finished: ['active:uploading', 'active:uploading', 'done:uploaded', ...(object ? ['complete'] : [])],
             enabled: [],
@@ -479,10 +524,12 @@ describe('turned off and on again', () => {
         async (_kind, object) => {
           const { heard, id, enable } = await mountDisabled(object);
           await enable();
+
           if (previews) {
             await preview(id, ['failed']);
             await release(id);
           }
+
           expect(heard).toEqual([
             'active:uploading',
             'active:uploading',
@@ -501,21 +548,26 @@ describe('turned off and on again', () => {
         const id = freshId('wizard');
         const heard: string[] = [];
         let actorRef: AnyActorRef | undefined;
+
         type Props = { machine: ReturnType<typeof createWizardMachine>; disabled: boolean };
+
         function Wizard({ machine, disabled }: Props) {
           // An inline listener, as components usually write one: @xstate/react subscribes it to the current actor.
           actorRef = hooks.useActorRef(machine, { debug: { disabled } } as never, (snapshot: Snapshot) => {
             heard.push(label(snapshot));
           });
+
           return (
             <button type="button" onClick={() => actorRef?.send({ type: 'NEXT' })}>
               Next
             </button>
           );
         }
+
         const props: Props = { machine: createWizardMachine(id), disabled: false };
         const view = render(page(<Wizard {...props} />));
         await flush();
+
         const update = async (patch: Partial<Props>): Promise<void> => {
           Object.assign(props, patch);
           view.rerender(page(<Wizard {...props} />));
@@ -529,9 +581,11 @@ describe('turned off and on again', () => {
         const replaced = actorRef;
         await update({ machine: createWizardMachine(id) });
         const refreshed = { heard: heard.splice(0), replaced: actorRef !== replaced };
+
         if (move === 'disabled') await press('Next');
         // The toggle puts the wizard back in the debugger, and later takes it out again.
         await update({ disabled: false });
+
         if (move === 'enabled') await press('Next');
         await update({ disabled: true });
         const toggled = { heard: heard.splice(0), value: actorRef?.getSnapshot().value };

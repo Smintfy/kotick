@@ -65,6 +65,7 @@ interface HookState {
 
 function createHookState(): HookState {
   const committed: HookState['committed'] = {};
+
   return {
     instanceId: nextInstanceId(),
     committed,
@@ -100,6 +101,7 @@ function useConnection<T extends object>(
   React.useEffect(() => {
     // Fast Refresh runs every cleanup and setup again, the passive ones after the layout ones.
     ensureConnection(slot, key, connect);
+
     return () => {
       // A newer key's connection, made in this commit's layout phase, stays.
       if (slot.current === undefined || slot.current.key !== key) return;
@@ -112,12 +114,15 @@ function useConnection<T extends object>(
 /** Follows the binding's previews in the view, until the returned cleanup. */
 function listen(committed: HookState['committed'], { binding, view }: Listening): () => void {
   const stop = binding.onPreviewChange(view.showCurrent);
+
   // The preview that held back how the actor ended can end while the hook isn't listening (an Activity hid it), and a
   // replaced actor's owed ending isn't held by a preview of another key. XState repeats a finished or failed actor's
   // ending when @xstate/react restarts it, but tells a stopped one nothing.
   if (view.owes()) view.showCurrent();
+
   return () => {
     stop();
+
     // The hook no longer previews the actor (debug.disabled): the observer leaves the preview, as on a release. The
     // committed view's, which @xstate/react subscribes to the new actor when one replaced this one in the same render.
     if (committed.binding === undefined) (committed.view ?? view).detach(binding);
@@ -143,6 +148,7 @@ function useProxiedActorRef(
   const { debug, ...actorOptions } = options ?? {};
   const [hook] = React.useState(createHookState);
   const { committed } = hook;
+
   const observed = React.useMemo(() => {
     if (!observer) return undefined;
     // The actor @xstate/react subscribed this observer to, once it has. It subscribes an observer again only when the
@@ -150,17 +156,21 @@ function useProxiedActorRef(
     // the actor a new config replaced, which then tells it nothing, and so do the new actor's previews. Each view has
     // its own, so a render React throws away, which passes a new observer, doesn't move the committed one.
     const subscription: { actor?: AnyActorRef; afterStop?: boolean } = {};
+
     const view = createView(toObserver(observer), () => committed.binding, lifetime, undefined, hook.memory, {
       subscribed: () => subscription.actor !== undefined,
       replaced: () => {
         const { actor } = subscription;
+
         return actor === undefined || actor === committed.actor ? undefined : { source: findBinding(actor) };
       },
       subscribedAfterStop: () => subscription.afterStop === true,
     });
+
     return { view, subscription };
     // observerKey isn't read, but decides when @xstate/react subscribes the observer again.
   }, [observer, observerKey]);
+
   const view = observed?.view;
   // Runs right before @xstate/react's effect that subscribes the observer, whenever that one runs, and reads the actor
   // that one's closure holds: the one committed last. XState ends an observer inside subscribe() when the actor has
@@ -176,12 +186,14 @@ function useProxiedActorRef(
   // subscriptions made through the proxy end with them. A connect()ed child stops following previews once it stops.
   React.useEffect(() => () => findBinding(actor)?.dropObservers(), [actor]);
   const binding = debug?.disabled || !isMachineActor(actor) ? undefined : getBinding(actor);
+
   const registration = binding?.registration({
     // The actor's logic rather than this render's: @xstate/react keeps the actor while the config stays the same.
     machineId: resolveMachineId((actor as unknown as { logic: AnyStateMachine }).logic, debug?.id),
     instanceId: hook.instanceId,
     label: debug?.label,
   });
+
   const listening = React.useMemo(() => (binding && view ? { binding, view } : undefined), [binding, view]);
   const connectListening = (key: Listening): (() => void) => listen(committed, key);
   // One layout effect for four steps, which keep this order. A step does nothing while its own values stay the same.
@@ -193,6 +205,7 @@ function useProxiedActorRef(
     committed.view = view;
     // Before the registration, so a preview applied when the actor registers (a deep link) reaches the observer.
     ensureConnection(hook.listening, listening, connectListening);
+
     // The observer leaves the preview here, as in listen()'s cleanup, when the hook stopped previewing while it wasn't
     // listening (debug.disabled while an Activity hid it): layout effects run again on the reveal, before
     // @xstate/react restarts the actor. With a new actor too, so the memory moves to it in the commit, before the
@@ -211,13 +224,16 @@ function useProxiedActorRef(
 /** Wakes useSyncExternalStore; the snapshot itself is read through the proxy. */
 function createStore() {
   const listeners = new Set<() => void>();
+
   const emit = (): void => {
     for (const listener of [...listeners]) listener();
   };
+
   return {
     observer: { next: emit, error: emit } satisfies Observer<unknown>,
     subscribe(listener: () => void) {
       listeners.add(listener);
+
       return () => {
         listeners.delete(listener);
       };
@@ -249,17 +265,21 @@ export function useActor<TLogic extends AnyActorLogic>(
       `useActor() expects actor logic (e.g. a machine), but received an ActorRef. Use the useSelector(actorRef, ...) hook instead to read the ActorRef's snapshot.`,
     );
   }
+
   const [store] = React.useState(createStore);
+
   // Subscribed again when @xstate/react makes a new actor, which it does when the config changes (Fast Refresh).
   const actorRef = useProxiedActorRef(logic, options, store.observer, {
     observerKey: (logic as { config?: unknown }).config,
     lifetime: 'stopped',
   });
+
   // A proxy's getSnapshot doesn't use `this`. useSyncExternalStore calls it often, so it skips the proxy's get trap.
   const getSnapshot = React.useMemo(
     () => (isProxy(actorRef) ? actorRef.getSnapshot : () => actorRef.getSnapshot()),
     [actorRef],
   );
+
   const snapshot = React.useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
   // useSyncExternalStore subscribes, and checks the snapshot it rendered, in a passive effect, which runs after the
   // paint unless the commit was synchronous. A preview applied in this commit's layout phase (a deep link, as the actor
@@ -268,9 +288,11 @@ export function useActor<TLogic extends AnyActorLogic>(
   useIsomorphicLayoutEffect(() => {
     if (!Object.is(getSnapshot(), snapshot)) rerender();
   });
+
   if (typeof snapshot === 'object' && snapshot !== null && 'status' in snapshot && snapshot.status === 'error') {
     throw (snapshot as { error: unknown }).error;
   }
+
   return [snapshot, actorRef.send, actorRef] as [SnapshotFrom<TLogic>, Actor<TLogic>['send'], Actor<TLogic>];
 }
 
@@ -317,7 +339,9 @@ export function createActorContext<TLogic extends AnyActorLogic>(
     if (machine) {
       throw new Error(`The "machine" prop has been deprecated. Please use "logic" instead.`);
     }
+
     const actor = useProxiedActorRef(providedLogic, { ...actorOptions, ...providedOptions }) as Actor<TLogic>;
+
     return React.createElement(OriginalProvider, { value: actor, children });
   }
 
@@ -325,16 +349,19 @@ export function createActorContext<TLogic extends AnyActorLogic>(
 
   function useContext() {
     const actor = React.useContext(ReactContext);
+
     if (!actor) {
       throw new Error(
         `You used a hook from "${Provider.displayName}" but it's not inside a <${Provider.displayName}> component.`,
       );
     }
+
     return actor;
   }
 
   function useContextSelector<T>(selector: (snapshot: SnapshotFrom<TLogic>) => T, compare?: (a: T, b: T) => boolean) {
     const actor = useContext();
+
     return useSelector(actor, selector as (snapshot: unknown) => T, compare);
   }
 

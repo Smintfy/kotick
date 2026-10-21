@@ -11,6 +11,7 @@ type ConsoleOutput = { warn: string[]; error: string[] };
  */
 export function watchConsole(): ConsoleOutput {
   const output: ConsoleOutput = { warn: [], error: [] };
+
   for (const level of ['warn', 'error'] as const) {
     const channel = `console.${level}`;
     const record = (args: unknown) => output[level].push(format(...(args as unknown[])));
@@ -19,6 +20,7 @@ export function watchConsole(): ConsoleOutput {
       unsubscribe(channel, record);
     });
   }
+
   return output;
 }
 
@@ -29,10 +31,13 @@ export function watchConsole(): ConsoleOutput {
  */
 export async function uncaught(run: () => unknown): Promise<unknown[]> {
   const errors: unknown[] = [];
+
   const record = (error: unknown) => {
     errors.push(error);
   };
+
   process.on('uncaughtException', record);
+
   try {
     await act(async () => {
       await run();
@@ -41,5 +46,6 @@ export async function uncaught(run: () => unknown): Promise<unknown[]> {
   } finally {
     process.off('uncaughtException', record);
   }
+
   return errors;
 }

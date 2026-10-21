@@ -45,11 +45,14 @@ function readCatalog() {
   const yaml = readFileSync(join(root, 'pnpm-workspace.yaml'), 'utf8');
   const section = yaml.split(/^catalog:\s*$/m)[1] ?? '';
   const catalog = {};
+
   for (const line of section.split('\n')) {
     const match = /^\s+'?([^':\s]+)'?:\s*(\S+)\s*$/.exec(line);
+
     if (match) catalog[match[1]] = match[2];
     else if (/^\S/.test(line)) break;
   }
+
   return catalog;
 }
 
@@ -57,28 +60,35 @@ function combosToRun() {
   if (values.react || values.xstate || values['xstate-react']) {
     const major = values.react?.split('.')[0];
     const custom = { name: 'custom', react: values.react, xstate: values.xstate, xstateReact: values['xstate-react'] };
+
     if (major === '18') Object.assign(custom, { types: REACT_18.types, domTypes: REACT_18.domTypes });
+
     return [custom];
   }
+
   return values.only ? COMBOS.filter((combo) => combo.name.includes(values.only)) : COMBOS;
 }
 
 function run(command, args, cwd) {
   const result = spawnSync(command, args, { cwd, stdio: 'inherit', env: { ...process.env, CI: 'true' } });
+
   return result.status === 0;
 }
 
 function prepare(combo, catalog) {
   const dir = mkdtempSync(join(tmpdir(), 'state-viewer-matrix-'));
+
   for (const entry of ['src', 'test', 'tsconfig.json', 'vitest.config.ts']) {
     cpSync(join(packageDir, entry), join(dir, entry), { recursive: true });
   }
 
   const pkg = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
   const devDependencies = {};
+
   for (const [name, range] of Object.entries(pkg.devDependencies)) {
     devDependencies[name] = range === 'catalog:' ? catalog[name] : range;
   }
+
   const pins = {
     react: combo.react,
     'react-dom': combo.react,
@@ -87,6 +97,7 @@ function prepare(combo, catalog) {
     xstate: combo.xstate,
     '@xstate/react': combo.xstateReact,
   };
+
   for (const [name, version] of Object.entries(pins)) {
     if (version) devDependencies[name] = version;
   }
@@ -103,6 +114,7 @@ function prepare(combo, catalog) {
     // Keeps @xstate/react's nested copy of use-sync-external-store and others on the pinned React.
     pnpm: { overrides: { react: devDependencies.react, 'react-dom': devDependencies['react-dom'] } },
   };
+
   writeFileSync(join(dir, 'package.json'), `${JSON.stringify(copy, null, 2)}\n`);
 
   // Typechecks the library and the type tests only.
@@ -111,6 +123,7 @@ function prepare(combo, catalog) {
   const tsconfig = JSON.parse(readFileSync(join(packageDir, 'tsconfig.json'), 'utf8'));
   tsconfig.include = ['src', 'test/**/*.test-d.ts'];
   writeFileSync(join(dir, 'tsconfig.json'), `${JSON.stringify(tsconfig, null, 2)}\n`);
+
   return { dir, devDependencies };
 }
 
@@ -119,22 +132,27 @@ const results = [];
 
 for (const combo of combosToRun()) {
   const { dir, devDependencies } = prepare(combo, catalog);
+
   const versions = [
     `react ${devDependencies.react}`,
     `xstate ${devDependencies.xstate}`,
     `@xstate/react ${devDependencies['@xstate/react']}`,
   ];
+
   const label = `${combo.name}: ${versions.join(', ')}`;
   console.log(`\n=== ${label}\n    ${dir}\n`);
 
   const ok =
     run('pnpm', ['install', '--ignore-workspace', '--no-frozen-lockfile', '--reporter=silent'], dir) &&
     run('pnpm', ['exec', 'vitest', 'run'], dir);
+
   results.push({ label, ok });
 
   if (!values.keep) rmSync(dir, { recursive: true, force: true });
 }
 
 console.log('\n=== Results');
+
 for (const { label, ok } of results) console.log(`${ok ? 'pass' : 'FAIL'}  ${label}`);
+
 process.exitCode = results.every((result) => result.ok) ? 0 : 1;

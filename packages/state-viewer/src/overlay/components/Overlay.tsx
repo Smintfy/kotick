@@ -64,7 +64,9 @@ export function Overlay(props: OverlayProps) {
 
   function pickInstance(key: string): void {
     const entry = findInstance(groups, key);
+
     if (!entry) return;
+
     if (entry.handle.machineId !== settings.machine) update({ machine: entry.handle.machineId });
     setInstanceKey(key);
   }
@@ -84,6 +86,7 @@ export function Overlay(props: OverlayProps) {
   function setOpen(next: boolean, from: ToggleOrigin): void {
     if (next === open) return;
     onToggle(next, from);
+
     if (!next) setSubpage(undefined);
     update({ open: next });
   }
@@ -91,17 +94,22 @@ export function Overlay(props: OverlayProps) {
   const toggle = useLatest(() => setOpen(!open, 'shortcut'));
   React.useEffect(() => {
     if (!shortcut) return;
+
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.defaultPrevented || event.repeat || event.isComposing) return;
+
       if (!matchesShortcut(shortcut.parsed, event) || isTyping(eventOrigin(event))) return;
       event.preventDefault();
       toggle.current();
     };
+
     window.addEventListener('keydown', onKeyDown);
+
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [shortcut, toggle]);
 
   const previewCount = Object.keys(snapshot.overrides).length;
+
   const bubbleLabel =
     previewCount === 0
       ? 'State viewer'
@@ -146,6 +154,7 @@ export function Overlay(props: OverlayProps) {
         };
       case 'machine': {
         const requested = snapshot.overrides[page.instance.key]?.requested.length ?? 0;
+
         return {
           title: page.group.machineId,
           chips: requested > 0 && (
@@ -241,8 +250,10 @@ function pageToShow(
 ): PanelPage {
   if (subpage === 'settings') return { kind: 'settings' };
   const group = groups.find((candidate) => candidate.machineId === storedMachine);
+
   if (!group) return { kind: 'machines' };
   const instance = group.instances.find((entry) => entry.key === instanceKey) ?? group.instances[0];
+
   return { kind: 'machine', group, instance };
 }
 
@@ -254,6 +265,7 @@ function useStoredSettings() {
     if (settings !== initialSettings.current) writeSettings(settings);
   }, [settings]);
   const update = (patch: Settings) => setSettings((current) => ({ ...current, ...patch }));
+
   return [settings, update] as const;
 }
 
@@ -276,6 +288,7 @@ function usePanelFocus(open: boolean, host: OverlayHost, page: PanelPage) {
     const request = moveFocus.current;
     moveFocus.current = null;
     const panel = panelRef.current;
+
     if (request && open && panel) focusTarget(panel, page, request.from).focus();
   });
 
@@ -285,13 +298,17 @@ function usePanelFocus(open: boolean, host: OverlayHost, page: PanelPage) {
       const outside = active instanceof HTMLElement && active !== host.host;
       returnFocus.current = from === 'shortcut' && outside ? active : null;
       moveFocus.current = { from: undefined };
+
       return;
     }
+
     if (panelRef.current?.contains(host.shadow.activeElement)) {
       const back = returnFocus.current;
+
       if (back?.isConnected) back.focus();
       else bubbleRef.current?.focus();
     }
+
     returnFocus.current = null;
   }
 
@@ -319,12 +336,14 @@ function focusTarget(panel: HTMLElement, page: PanelPage, from: PanelPage | unde
       return panel.querySelector<HTMLElement>('[role="radiogroup"] input:checked') ?? panel;
     case 'machines': {
       const rows = [...panel.querySelectorAll<HTMLElement>('[data-row]')];
+
       const cameFrom =
         from?.kind === 'machine'
           ? rows.find((row) => row.dataset.machine === from.group.machineId)
           : from?.kind === 'settings'
             ? rows.find((row) => row.dataset.row === 'settings')
             : undefined;
+
       return cameFrom ?? rows[0] ?? panel;
     }
   }
@@ -335,20 +354,25 @@ const warnedShortcuts = new Set<string>();
 
 function useShortcut(value: string | false | undefined) {
   const source = value === undefined ? 'alt+s' : value;
+
   return React.useMemo(() => {
     if (source === false) return undefined;
     const parsed = parseShortcut(source);
+
     if (!parsed) {
       if (!warnedShortcuts.has(source)) {
         warnedShortcuts.add(source);
         console.warn(`[state-viewer] Ignoring the shortcut "${String(source)}": expected something like "alt+s".`);
       }
+
       return undefined;
     }
+
     const label = source
       .split('+')
       .map((part) => (part.length === 1 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1)))
       .join('+');
+
     return { parsed, label };
   }, [source]);
 }

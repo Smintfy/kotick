@@ -84,6 +84,7 @@ function CheckoutView(props: {
   send: (event: EventFrom<CheckoutMachine>) => void;
 }) {
   const { value, context } = props.snapshot;
+
   return (
     <section aria-label={props.name}>
       <output>{JSON.stringify({ value, context })}</output>
@@ -98,31 +99,37 @@ function CheckoutView(props: {
 
 function Checkout({ machine, name = 'checkout' }: { machine: CheckoutMachine; name?: string }) {
   const [snapshot, send] = useMachine(machine);
+
   return <CheckoutView name={name} snapshot={snapshot} send={send} />;
 }
 
 function ConnectedCheckout({ actor }: { actor: Actor<CheckoutMachine> }) {
   const snapshot = useSelector(actor, (state) => state);
+
   return <CheckoutView name="checkout" snapshot={snapshot} send={actor.send} />;
 }
 
 /** An app that renders nothing of its machine: one button per event, in a region when `name` is given. */
 function Controls(props: { machine: AnyStateMachine; events?: Record<string, AnyEventObject>; name?: string }) {
   const actorRef = useActorRef(props.machine);
+
   const buttons = Object.entries(props.events ?? {}).map(([label, event]) => (
     <button key={label} type="button" onClick={() => actorRef.send(event)}>
       {label}
     </button>
   ));
+
   return props.name === undefined ? <>{buttons}</> : <section aria-label={props.name}>{buttons}</section>;
 }
 
 /** States s0 to s<count - 1>, and NEXT goes from each one to the next. */
 function steps(count: number) {
   const states: Record<string, { on?: { NEXT: string } }> = {};
+
   for (let index = 0; index < count; index++) {
     states[`s${index}`] = index < count - 1 ? { on: { NEXT: `s${index + 1}` } } : {};
   }
+
   return states;
 }
 
@@ -134,7 +141,9 @@ async function mount(app: ReactElement, { overlay = true } = {}) {
       {overlay && <StateViewer defaultOpen />}
     </>,
   );
+
   await flush();
+
   return view;
 }
 
@@ -169,6 +178,7 @@ function recordedKey(machineId: string) {
 
 function readStored(machineId: string): Payload | null {
   const raw = sessionStorage.getItem(recordedKey(machineId));
+
   return raw === null ? null : (JSON.parse(raw) as Payload);
 }
 
@@ -249,6 +259,7 @@ describe('with several recordings that hold a leaf', () => {
     await visitCheckout();
 
     const previews = [];
+
     for (const leaves of [
       ['paying.card.error', 'paying.shipping.express'],
       ['paying.shipping.pickup', 'paying.card.error'],
@@ -258,6 +269,7 @@ describe('with several recordings that hold a leaf', () => {
       await preview(machine.id, leaves);
       previews.push({ leaves, value: shown().value, step: shown().context.step, source: panel().source });
     }
+
     expect(previews).toEqual([
       {
         leaves: ['paying.card.error', 'paying.shipping.express'],
@@ -450,16 +462,19 @@ describe('with an actor that moves while it starts', () => {
   }
 
   type SessionMachine = ReturnType<typeof createSessionMachine>;
+
   const describeSession = (snapshot: SnapshotFrom<SessionMachine>) =>
     `${String(snapshot.value)}:${snapshot.context.user}`;
 
   function MachineSession({ machine }: { machine: SessionMachine }) {
     const [snapshot] = useMachine(machine);
+
     return <output>{describeSession(snapshot)}</output>;
   }
 
   function ActorRefSession({ machine }: { machine: SessionMachine }) {
     const actorRef = useActorRef(machine);
+
     return <output>{useSelector(actorRef, describeSession)}</output>;
   }
 
@@ -472,6 +487,7 @@ describe('with an actor that moves while it starts', () => {
     onTestFinished(() => {
       actor.stop();
     });
+
     return <ConnectedSession actor={actor} />;
   }
 
@@ -524,6 +540,7 @@ describe('with more than 50 configurations', () => {
 
   async function next(times: number) {
     const button = screen.getByRole('button', { name: 'Next' });
+
     for (let index = 0; index < times; index++) fireEvent.click(button);
     await flush();
   }
@@ -582,10 +599,12 @@ describe('in sessionStorage', () => {
     const after = Date.now();
 
     const payload = readStored(machine.id);
+
     const timed = payload && {
       ...payload,
       entries: payload.entries.map(({ at, ...entry }) => ({ ...entry, at: before <= at && at <= after ? 'now' : at })),
     };
+
     expect(timed).toEqual({
       v: 1,
       entries: [
@@ -655,6 +674,7 @@ describe('with a context that JSON cannot hold as it is', () => {
     await mount(<Controls machine={machine} events={{ Keep: { type: 'KEEP' } }} />, { overlay: false });
     await press('Keep');
     hidePage();
+
     return storedEntries(machine.id);
   }
 
@@ -685,11 +705,13 @@ describe('with a context that JSON cannot hold as it is', () => {
   class Point {
     x = 1;
   }
+
   class FakeActor {
     send() {}
     getSnapshot() {}
     subscribe() {}
   }
+
   const cycle: Record<string, unknown> = { n: 1 };
   cycle.self = cycle;
   const ref = { id: 'child', send() {}, getSnapshot() {}, subscribe() {} };
@@ -751,6 +773,7 @@ describe('with a context that JSON cannot hold as it is', () => {
               target: 'picked',
               actions: assign(() => {
                 const first = { id: 1 };
+
                 return { items: [first, { id: 2 }], selected: first };
               }),
             },
@@ -759,9 +782,11 @@ describe('with a context that JSON cannot hold as it is', () => {
         picked: { on: { CLEAR: { target: 'empty', actions: assign({ items: [], selected: null }) } } },
       },
     });
+
     function Cart() {
       const [snapshot, send] = useMachine(machine);
       const { items, selected } = snapshot.context;
+
       return (
         <>
           <output>{`${String(snapshot.value)}: ${items.length} items, first selected: ${selected === items[0]}`}</output>
@@ -774,6 +799,7 @@ describe('with a context that JSON cannot hold as it is', () => {
         </>
       );
     }
+
     await mount(<Cart />);
     await press('Pick');
     await press('Clear');
@@ -789,6 +815,7 @@ describe('with a context that JSON cannot hold as it is', () => {
 
   test('a spawned actor in the context stays in memory, and the child machine stores its own recordings', async () => {
     const worker = createMachine({ id: freshId('worker'), context: {}, initial: 'working', states: { working: {} } });
+
     const crew = setup({
       types: {
         context: {} as { workers: ActorRefFrom<typeof worker>[] },
@@ -811,8 +838,10 @@ describe('with a context that JSON cannot hold as it is', () => {
         hiring: { on: { DISMISS: { target: 'idle', actions: assign({ workers: [] }) } } },
       },
     });
+
     function Crew() {
       const [snapshot, send] = useMachine(crew);
+
       return (
         <>
           <output>{`${String(snapshot.value)}: ${snapshot.context.workers.length} workers`}</output>
@@ -825,6 +854,7 @@ describe('with a context that JSON cannot hold as it is', () => {
         </>
       );
     }
+
     await mount(<Crew />);
     await press('Hire');
     await press('Dismiss');
@@ -929,6 +959,7 @@ describe('at the storage limits', () => {
   test('all machines share 1,000,000 characters, and a key that goes gives its share back', async () => {
     const output = watchConsole();
     const text = 'x'.repeat(95_000);
+
     function createBulkMachine() {
       return setup({
         types: {
@@ -943,6 +974,7 @@ describe('at the storage limits', () => {
         states: steps(6),
       });
     }
+
     const events = { Next: { type: 'NEXT' }, First: { type: 'FIRST' }, Stamp: { type: 'STAMP' } };
     // The app's own data stays.
     sessionStorage.setItem('cart', 'x'.repeat(60_000));
@@ -955,13 +987,16 @@ describe('at the storage limits', () => {
       </>,
       { overlay: false },
     );
+
     for (let index = 0; index < 5; index++) await press('Next', 'first');
+
     for (let index = 0; index < 5; index++) await press('Next', 'second');
     hidePage();
     const shared = { first: storedLeaves(first.id), second: storedLeaves(second.id) };
 
     // A Date keeps every configuration of the first machine in memory, so its key goes.
     await press('Stamp', 'first');
+
     for (let index = 0; index < 5; index++) await press('Next', 'first');
     await press('First', 'second');
     hidePage();
@@ -983,6 +1018,7 @@ describe('at the storage limits', () => {
 
   test('a context of up to 100,000 characters of JSON is stored, and a larger one stays in memory', async () => {
     const output = watchConsole();
+
     const machine = setup({
       types: {
         context: {} as { text: string },
@@ -998,9 +1034,11 @@ describe('at the storage limits', () => {
       },
       states: { empty: {}, written: {} },
     });
+
     // The context JSON is the text and 11 characters: {"text":""}.
     function Notes() {
       const [snapshot, send] = useMachine(machine);
+
       return (
         <>
           <output>{`${String(snapshot.value)}: ${snapshot.context.text.length}`}</output>
@@ -1016,8 +1054,10 @@ describe('at the storage limits', () => {
         </>
       );
     }
+
     const sizes = () =>
       readStored(machine.id)?.entries.map(({ leaves, context }) => [leaves, JSON.stringify(context).length]) ?? null;
+
     await mount(<Notes />);
     await press('Write 100,000');
     hidePage();
@@ -1046,6 +1086,7 @@ describe('at the storage limits', () => {
 
   test('a full storage keeps the newest recordings that fit, warns once, and drops the key when none fit', async () => {
     const output = watchConsole();
+
     const machine = setup({
       types: { context: {} as { pad: string }, events: {} as { type: 'NEXT' } | { type: 'GROW' } },
     }).createMachine({
@@ -1055,11 +1096,13 @@ describe('at the storage limits', () => {
       on: { GROW: { target: '.grown', actions: assign({ pad: 'x'.repeat(1_000) }) } },
       states: { ...steps(8), grown: {} },
     });
+
     // jsdom's quota is 5,000,000 characters, and the app leaves 900 of them.
     // An entry takes about 257 characters, so eight entries don't fit, four don't fit, and two fit.
     const appData = 'x'.repeat(5_000_000 - 'app'.length - 900);
     sessionStorage.setItem('app', appData);
     await mount(<Controls machine={machine} events={{ Next: { type: 'NEXT' }, Grow: { type: 'GROW' } }} />);
+
     for (let index = 0; index < 7; index++) await press('Next');
     hidePage();
     const full = storedLeaves(machine.id);

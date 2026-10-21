@@ -19,7 +19,9 @@ const warned = new Set<string>();
 /** `debug.id`, then `machine.id`, then a generated id for machines still on XState's default. */
 export function resolveMachineId(machine: AnyStateMachine, debugId?: string): string {
   if (typeof debugId === 'string' && debugId !== '') return debugId;
+
   if (typeof machine.id === 'string' && machine.id !== '' && machine.id !== DEFAULT_MACHINE_ID) return machine.id;
+
   return machineIdFromShape(machine);
 }
 
@@ -38,10 +40,12 @@ export function isFallbackId(machine: AnyStateMachine, machineId: string): boole
  */
 function machineIdFromShape(machine: AnyStateMachine): string {
   let id = fallbackIds.get(machine);
+
   if (id === undefined) {
     id = `machine-${hash(`${signature(machine.root)}|${contextKeys(machine)}`)}`;
     fallbackIds.set(machine, id);
   }
+
   return id;
 }
 
@@ -65,6 +69,7 @@ export function nextInstanceId(): string {
   const scope = globalThis as typeof globalThis & { [COUNTER_KEY]?: number };
   const next = (scope[COUNTER_KEY] ?? 0) + 1;
   scope[COUNTER_KEY] = next;
+
   return String(next);
 }
 
@@ -73,23 +78,29 @@ function signature(node: AnyStateNode): string {
   const children = (Object.values(node.states ?? {}) as AnyStateNode[]).sort((a, b) =>
     a.key < b.key ? -1 : a.key > b.key ? 1 : 0,
   );
+
   if (children.length === 0) return node.type;
+
   return `${node.type}{${children.map((child) => `${JSON.stringify(child.key)}:${signature(child)}`).join(',')}}`;
 }
 
 /** Sorted keys of a context given as an object; a context factory contributes nothing. */
 function contextKeys(machine: AnyStateMachine): string {
   const context: unknown = (machine.config as { context?: unknown } | undefined)?.context;
+
   if (typeof context !== 'object' || context === null || Array.isArray(context)) return '';
+
   return JSON.stringify(Object.keys(context).sort());
 }
 
 /** FNV-1a, 32 bits, as 7 base-36 digits. Only needs to tell apart the anonymous machines on one page. */
 function hash(text: string): string {
   let value = 0x811c9dc5;
+
   for (let i = 0; i < text.length; i++) {
     value ^= text.charCodeAt(i);
     value = Math.imul(value, 0x01000193);
   }
+
   return (value >>> 0).toString(36).padStart(7, '0');
 }

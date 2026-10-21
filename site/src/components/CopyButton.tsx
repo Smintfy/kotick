@@ -8,6 +8,7 @@ function Copy({ label, read }: { label: string; read: (button: HTMLButtonElement
   useEffect(() => {
     if (!copied) return;
     const timer = setTimeout(() => setCopied(false), 1500);
+
     return () => clearTimeout(timer);
   }, [copied]);
 

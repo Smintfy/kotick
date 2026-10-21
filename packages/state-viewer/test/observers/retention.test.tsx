@@ -17,6 +17,7 @@ function createJobMachine() {
 }
 
 type JobSnapshot = SnapshotFrom<ReturnType<typeof createJobMachine>>;
+
 type JobSubscriber = Observer<JobSnapshot> | ((snapshot: JobSnapshot) => void);
 
 const listener =
@@ -24,10 +25,12 @@ const listener =
   (snapshot: JobSnapshot): void => {
     heard.push(`next ${snapshot.status}`);
   };
+
 const withError = (heard: string[]): Observer<JobSnapshot> => ({
   next: listener(heard),
   error: () => heard.push('error'),
 });
+
 const withComplete = (heard: string[]): Observer<JobSnapshot> => ({
   next: listener(heard),
   complete: () => heard.push('complete'),
@@ -40,9 +43,12 @@ const withComplete = (heard: string[]): Observer<JobSnapshot> => ({
 function finishJob(subscriber: JobSubscriber, subscribe: 'before' | 'after'): WeakRef<object> {
   const actor = createActor(createJobMachine()).start();
   const job = connect(actor);
+
   if (subscribe === 'before') job.subscribe(subscriber as Observer<JobSnapshot>);
   job.send({ type: 'FINISH' });
+
   if (subscribe === 'after') job.subscribe(subscriber as Observer<JobSnapshot>);
+
   return new WeakRef(actor);
 }
 
@@ -88,6 +94,7 @@ describe('a connect()ed job that finishes while a preview shows', () => {
     await act(async () => {
       actor.send({ type: 'FINISH' });
     });
+
     return new WeakRef(actor);
   }
 
@@ -140,11 +147,13 @@ function Form({ hooks, machine, hand }: { hooks: Hooks; machine: FormMachine; ha
   const actorRef = hooks.useActorRef(machine);
   hand.actorRef = actorRef;
   const value = hooks.useSelector(actorRef, (snapshot) => snapshot.value);
+
   return <output aria-label="form">{JSON.stringify(value)}</output>;
 }
 
 function actorOf(hand: Hand): AnyActorRef {
   if (!hand.actorRef) throw new Error('The form did not render.');
+
   return hand.actorRef;
 }
 
@@ -155,6 +164,7 @@ function actorOf(hand: Hand): AnyActorRef {
 function take(hand: Hand): AnyActorRef {
   const actorRef = actorOf(hand);
   hand.actorRef = undefined;
+
   return actorRef;
 }
 
@@ -180,12 +190,15 @@ async function navigateAway(
   const { unmount } = render(<Form hooks={hooks} machine={createFormMachine()} hand={hand} />);
   await flush();
   const actorRef = take(hand);
+
   if (when === 'while mounted') subscribe(actorRef, []);
   unmount();
   await flush();
+
   if (when === 'after unmount') subscribe(actorRef, []);
   const system = new WeakRef(actorRef.system);
   await flush();
+
   return system;
 }
 
@@ -218,6 +231,7 @@ describe('a hook actor unmounted while a subscription to its proxy is open', () 
     const subscribe: Subscribe = (actorRef) => {
       connect(actorRef.getSnapshot().children.field as AnyActorRef).subscribe(() => {});
     };
+
     const system = await navigateAway(stateViewer, subscribe, 'while mounted');
 
     expect(await collected([system])).toEqual([true]);
@@ -231,6 +245,7 @@ describe('under StrictMode, an effect without cleanup that follows the hook acto
     const heard: string[] = [];
     const hand: Hand = {};
     let runs = 0;
+
     function FollowingForm() {
       const actorRef = hooks.useActorRef(machine);
       hand.actorRef = actorRef;
@@ -238,11 +253,14 @@ describe('under StrictMode, an effect without cleanup that follows the hook acto
         runs += 1;
         const run = runs;
         const hear = (snapshot: { value: unknown }) => heard.push(`${run}:${String(snapshot.value)}`);
+
         if (follow === 'waitFor') void waitFor(actorRef, (snapshot) => snapshot.matches('ready')).then(hear, () => {});
         else actorRef.subscribe(hear);
       }, [actorRef]);
+
       return null;
     }
+
     render(
       <>
         <FollowingForm />
@@ -250,6 +268,7 @@ describe('under StrictMode, an effect without cleanup that follows the hook acto
       </>,
     );
     await flush();
+
     return { machine, heard, hand };
   }
 
@@ -281,6 +300,7 @@ describeWithActivity('an Activity hiding and revealing the component', () => {
     const machine = createFormMachine();
     const hand: Hand = {};
     const heard: string[] = [];
+
     const app = (mode: 'visible' | 'hidden') => (
       <>
         <Activity mode={mode}>
@@ -289,6 +309,7 @@ describeWithActivity('an Activity hiding and revealing the component', () => {
         {withOverlay && <StateViewer defaultOpen />}
       </>
     );
+
     const view = render(app('visible'));
     await flush();
     actorOf(hand).subscribe((snapshot: { value: unknown }) => heard.push(String(snapshot.value)));
@@ -296,6 +317,7 @@ describeWithActivity('an Activity hiding and revealing the component', () => {
     await flush();
     view.rerender(app('visible'));
     await flush();
+
     return { machine, heard, hand };
   }
 
@@ -321,6 +343,7 @@ const LATE_SUBSCRIPTIONS: [name: string, subscribe: Subscribe][] = [
     (actorRef, heard) => {
       void waitFor(actorRef, (snapshot) => {
         heard.push(String(snapshot.value));
+
         return snapshot.status === 'done';
       }).catch(() => {});
     },
@@ -346,6 +369,7 @@ const LATE_SUBSCRIPTIONS: [name: string, subscribe: Subscribe][] = [
  */
 function lateSubscriptions(previews: boolean): [name: string, subscribe: Subscribe][] {
   if (previews || ACTOR_SELECT) return LATE_SUBSCRIPTIONS;
+
   return LATE_SUBSCRIPTIONS.filter(([name]) => !name.startsWith('select'));
 }
 
@@ -364,12 +388,14 @@ describeWithActivity('a subscription made while an <Activity> hides the componen
   async function subscribeWhileHiddenThenRemove(hooks: Hooks, subscribe: Subscribe): Promise<WeakRef<object>> {
     const machine = createFormMachine();
     const hand: Hand = {};
+
     const app = (mode: 'visible' | 'hidden', present: boolean) =>
       present ? (
         <Activity mode={mode}>
           <Form hooks={hooks} machine={machine} hand={hand} />
         </Activity>
       ) : null;
+
     const view = render(app('visible', true));
     await flush();
     view.rerender(app('hidden', true));
@@ -381,6 +407,7 @@ describeWithActivity('a subscription made while an <Activity> hides the componen
     await flush();
     view.unmount();
     await flush();
+
     return system;
   }
 
@@ -407,6 +434,7 @@ describeWithActivity('a subscription made while an <Activity> hides the componen
     const machine = createFormMachine();
     const hand: Hand = {};
     const heard: string[] = [];
+
     const app = (mode: 'visible' | 'hidden') => (
       <>
         <Activity mode={mode}>
@@ -415,6 +443,7 @@ describeWithActivity('a subscription made while an <Activity> hides the componen
         {withOverlay && <StateViewer defaultOpen />}
       </>
     );
+
     const view = render(app('visible'), { reactStrictMode });
     await flush();
     view.rerender(app('hidden'));
@@ -424,6 +453,7 @@ describeWithActivity('a subscription made while an <Activity> hides the componen
     await flush();
     // The test asserts what the subscription hears after the reveal.
     heard.length = 0;
+
     return { machine, heard, hand };
   }
 

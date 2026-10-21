@@ -15,16 +15,20 @@ function useHeadingInView(headings: readonly Heading[]): string | undefined {
 
   useEffect(() => {
     const elements = headings.flatMap(({ id }) => document.getElementById(id) ?? []);
+
     const update = () => {
       const line = (window.innerHeight * readingLinePercent) / 100;
       setActive(elements.filter((element) => element.getBoundingClientRect().top < line).at(-1)?.id);
     };
+
     // The observed area is everything above the line, not only the part in the window.
     // Thus, each heading that crosses the line calls update, also on a long scroll step.
     const observer = new IntersectionObserver(update, {
       rootMargin: `100000px 0px -${100 - readingLinePercent}% 0px`,
     });
+
     for (const element of elements) observer.observe(element);
+
     return () => observer.disconnect();
   }, [headings]);
 
@@ -39,10 +43,13 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
 
   useEffect(() => {
     if (!open) return;
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
+
     window.addEventListener('keydown', onKeyDown);
+
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open]);
 

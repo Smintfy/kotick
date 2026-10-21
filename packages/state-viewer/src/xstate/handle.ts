@@ -13,6 +13,7 @@ const PREVIEW_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
   live: false,
   children: true,
 });
+
 const READ_ONLY_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
   preview: false,
   live: false,
@@ -55,13 +56,16 @@ export function createHandle(
     subscribe(onChange) {
       const listener = (): void => onChange();
       (listeners ??= new Set()).add(listener);
+
       return () => {
         listeners!.delete(listener);
       };
     },
     normalizeTarget: (leaves) => completeTarget(machine, leaves, leavesOfSnapshot(machine, actor.getSnapshot())),
   };
+
   if (identity.label !== undefined) handle.label = identity.label;
+
   if (parentKey !== undefined) handle.parentKey = parentKey;
   Object.freeze(handle);
 
@@ -69,17 +73,21 @@ export function createHandle(
     handle,
     notify() {
       if (!listeners || listeners.size === 0) return;
+
       for (const listener of [...listeners]) {
         if (listeners.has(listener)) callLoggingErrors(listener, `A listener of "${key}" threw.`);
       }
     },
     record(snapshot) {
       const status = statusOf(snapshot);
+
       if (status !== 'active' && status !== 'done') return;
+
       if (snapshot !== recordedSnapshot) {
         recordedSnapshot = snapshot;
         recordedLeaves = leavesOfSnapshot(machine, snapshot);
       }
+
       if (recordedLeaves.length > 0) registry.record(key, recordedLeaves, (snapshot as AnyMachineSnapshot).context);
     },
   };
@@ -105,6 +113,7 @@ export function inspect(
   function keyOf(ref: AnyActorRef): string | undefined {
     if (ref === root) return rootKey;
     const handle = connected?.get(ref)?.child.handle;
+
     return handle && toInstanceKey(handle.machineId, handle.instanceId);
   }
 
@@ -113,16 +122,21 @@ export function inspect(
     // The system reports all its actors, including the ancestors and siblings of an actor connect()ed below its root.
     // XState also leaves the children of a failed actor running.
     const parentKey = ref._parent && keyOf(ref._parent);
+
     if (parentKey === undefined) return;
+
     if (statusOf(ref.getSnapshot()) !== 'active') return;
     let child = childHandles.get(ref);
+
     if (child?.handle.parentKey !== parentKey) {
       const machineId = resolveMachineId(ref.logic);
+
       if (isFallbackId(ref.logic, machineId)) warnFallbackId(machineId);
       const identity = { machineId, instanceId: ref.sessionId, label: childLabel(ref) };
       child = createHandle(ref, ref.logic, identity, parentKey, false, registry);
       childHandles.set(ref, child);
     }
+
     (connected ??= new Map()).set(ref, { child, unregister: registry.register(child.handle) });
     child.record(ref.getSnapshot());
     // XState starts children before their parent's first snapshot, so the ones turned away above come in now.
@@ -131,12 +145,14 @@ export function inspect(
 
   function remove(ref: AnyActorRef): void {
     const entry = connected?.get(ref);
+
     if (!connected || !entry) return;
     // A final configuration can still be unseen here.
     // For example, a grandchild that finishes can end its parent before the grandchild's own snapshot comes in.
     entry.child.record(ref.getSnapshot());
     connected.delete(ref);
     entry.unregister();
+
     // XState leaves the children of a failed actor running, out of reach of the tree.
     for (const other of [...connected.keys()]) {
       if (other._parent === ref) remove(other);
@@ -150,51 +166,66 @@ export function inspect(
   /** A backstop for children that ended without telling anyone, or before their own snapshot came in. */
   function removeEndedChildren(): void {
     if (!connected) return;
+
     for (const child of [...connected.keys()]) {
       if (statusOf(child.getSnapshot()) !== 'active') remove(child);
     }
   }
 
   walk(root);
+
   const subscription = root.system.inspect({
     next(event) {
       if (event.type === '@xstate.snapshot') {
         const ref = event.actorRef as AnyActorRef;
+
         if (ref === root) {
           onRootSnapshot(event.snapshot);
           removeEndedChildren();
+
           return;
         }
+
         if (statusOf(event.snapshot) !== 'active') {
           remove(ref);
+
           return;
         }
+
         const entry = connected?.get(ref);
+
         if (!entry) {
           add(ref);
+
           return;
         }
+
         entry.child.record(event.snapshot);
         entry.child.notify();
       } else if (event.type === '@xstate.event' && event.sourceRef) {
         // A child that fails sends its parent an error event, and no last snapshot.
         const type: unknown = event.event?.type;
+
         if (typeof type === 'string' && type.startsWith('xstate.error.actor')) remove(event.sourceRef as AnyActorRef);
       }
     },
   });
 
   let active = true;
+
   return () => {
     if (!active) return;
     active = false;
     subscription.unsubscribe();
+
     if (!connected) return;
+
     // A connect()ed actor that finishes along with its child disconnects before the child's done snapshot comes in.
     for (const [ref, { child, unregister }] of connected) {
       child.record(ref.getSnapshot());
       unregister();
     }
+
     connected.clear();
   };
 }

@@ -31,10 +31,13 @@ async function generate() {
     polyfills: Polyfills.None,
     onDependency() {},
   });
+
   const candidates = new Scanner({ sources: compiler.sources }).scan();
   const { code } = optimize(withPropertyFallbacks(compiler.build(candidates)), { minify: true });
   const rem = code.match(/[\d.]+rem\b/);
+
   if (rem) throw new Error(`The CSS contains ${rem[0]}. Use px, because the page sets the root font size.`);
+
   return `// Generated from styles.css by scripts/build-styles.mjs. Do not edit it.
 // Run \`pnpm --filter state-viewer styles\` to write it again.
 
@@ -54,10 +57,13 @@ export function overlayStyles(): string {
 function withPropertyFallbacks(css) {
   const declarations = [...css.matchAll(/@property\s+(--tw-[\w-]+)\s*\{([^}]*)\}/g)].map(([, name, body]) => {
     const initial = body.match(/initial-value:\s*([^;]*?)\s*(;|$)/);
+
     return `${name}: ${initial ? initial[1] : 'initial'};`;
   });
+
   if (declarations.length === 0) return css;
   const rule = `:host, *, ::before, ::after, ::backdrop { ${declarations.join(' ')} }`;
+
   return `${css}\n@layer properties { ${rule} }\n`;
 }
 
@@ -67,8 +73,10 @@ function current() {
 
 async function write() {
   const next = await generate();
+
   if (next === current()) return false;
   writeFileSync(output, next);
+
   return true;
 }
 
@@ -81,6 +89,7 @@ if (values.check) {
   }
 } else if (values.watch) {
   let queued = Promise.resolve();
+
   const rebuild = () => {
     queued = queued.then(async () => {
       try {
@@ -90,6 +99,7 @@ if (values.check) {
       }
     });
   };
+
   rebuild();
   // Editors often save with a rename, so the watcher follows the directory, not the file.
   watch(root, (_event, file) => file === 'styles.css' && rebuild());

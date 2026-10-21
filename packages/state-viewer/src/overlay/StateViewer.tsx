@@ -17,6 +17,7 @@ export function StateViewer(props: StateViewerProps): React.ReactNode {
   useDeepLink(registry, resolveUrlParam(props.urlParam));
   useFixtures(registry, props.fixtures);
   const host = useHost(props.portalTarget);
+
   return host && createPortal(<Overlay {...props} registry={registry} host={host} />, host.container);
 }
 
@@ -30,14 +31,18 @@ function useDeepLink(registry: Registry, param: string): void {
   React.useInsertionEffect(() => {
     const search = window.location.search;
     let applied = appliedLinks.get(registry);
+
     if (!applied) {
       applied = new Set();
       appliedLinks.set(registry, applied);
     }
+
     const id = `${param}\n${search}`;
+
     if (applied.has(id)) return;
     applied.add(id);
     const targets = readDeepLink(search, param);
+
     if (targets.length > 0) registry.applyDeepLink(targets);
   }, [registry, param]);
 }
@@ -59,16 +64,21 @@ function useFixtures(registry: Registry, input: FixturesInput | undefined): void
         // A newer input took over; its sets win.
         if (!current) return;
         let seen = registeredSets.get(registry);
+
         if (!seen) {
           seen = new WeakSet();
           registeredSets.set(registry, seen);
         }
+
         const fresh = sets.filter((set) => !seen.has(set));
+
         if (fresh.length === 0) return;
+
         for (const set of fresh) seen.add(set);
         registry.registerFixtures(fresh);
       })
       .finally(endLoad);
+
     return () => {
       current = false;
     };
@@ -80,6 +90,7 @@ function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   useIsomorphicLayoutEffect(() => {
     const created = createHost(target ?? document.body ?? document.documentElement);
     setHost(created);
+
     return () => {
       created.remove();
       setHost((current) => (current === created ? null : current));
@@ -90,36 +101,46 @@ function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   useIsomorphicLayoutEffect(() => {
     if (host && host.style.textContent !== css) host.style.textContent = css;
   }, [host, css]);
+
   return host;
 }
 
 async function loadFixtures(input: FixturesInput): Promise<FixtureSet[]> {
   let result: unknown;
+
   try {
     result = typeof input === 'function' ? await input() : input;
   } catch (error) {
     console.warn('[state-viewer] The fixtures loader failed.', error);
+
     return [];
   }
+
   if (!Array.isArray(result) && typeof result === 'object' && result !== null && 'default' in result) {
     result = (result as { default: unknown }).default;
   }
+
   if (!Array.isArray(result)) {
     console.warn(
       '[state-viewer] Expected fixtures to be an array of sets from defineFixtures(), ' +
         'or a module whose default export is one.',
     );
+
     return [];
   }
+
   const sets = result.filter(isFixtureSet);
+
   if (sets.length < result.length) {
     console.warn('[state-viewer] Ignoring fixture entries that are not sets from defineFixtures().');
   }
+
   return sets;
 }
 
 function isFixtureSet(value: unknown): value is FixtureSet {
   if (typeof value !== 'object' || value === null) return false;
   const { machineId, states } = value as Partial<FixtureSet>;
+
   return typeof machineId === 'string' && typeof states === 'object' && states !== null;
 }

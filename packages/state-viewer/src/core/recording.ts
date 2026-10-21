@@ -1,15 +1,19 @@
 // Recording store: the latest context per state configuration, in memory and in sessionStorage.
 
 const STORAGE_PREFIX = 'state-viewer:recorded:';
+
 /** Configurations kept per machine. */
 const MAX_CONFIGURATIONS = 50;
+
 /** Largest serialized context that gets persisted, in UTF-16 code units (what storage quotas count). */
 const MAX_ENTRY_SIZE = 100_000;
+
 /**
  * Largest combined size of every machine's stored recordings (key plus value of each `state-viewer:recorded:` key),
  * in UTF-16 code units, so recordings leave room for the app's own data in storage.
  */
 const MAX_TOTAL_SIZE = 1_000_000;
+
 /** Delay before pending changes are written, in milliseconds. */
 const PERSIST_DELAY = 500;
 
@@ -58,10 +62,12 @@ const UNSERIALIZABLE = Symbol('unserializable');
  */
 function serializeContext(context: unknown): string | undefined {
   const seen = new Set<object>();
+
   try {
     const json = JSON.stringify(context, function (this: Record<string, unknown>, key: string) {
       return replaceValue(this, key, seen);
     });
+
     return json !== undefined && json.length <= MAX_ENTRY_SIZE ? json : undefined;
   } catch {
     return undefined;
@@ -71,32 +77,42 @@ function serializeContext(context: unknown): string | undefined {
 function replaceValue(holder: Record<string, unknown>, key: string, seen: Set<object>): unknown {
   // JSON.stringify applies toJSON before the replacer sees its value argument, which would hide a Date behind a string.
   const value = holder[key];
+
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+
   if (typeof value === 'number') {
     if (Number.isFinite(value)) return value;
     throw UNSERIALIZABLE;
   }
+
   // Checked before the plain-object case below, which would otherwise persist a ref as `{}`.
   if (isActorRef(value)) throw UNSERIALIZABLE;
+
   if (typeof value === 'function' || typeof value === 'undefined') {
     // Dropping a property is fine, but an array would get a null in its place.
     if (Array.isArray(holder)) throw UNSERIALIZABLE;
+
     return undefined;
   }
+
   if (typeof value === 'object' && !seen.has(value)) {
     const prototype = Object.getPrototypeOf(value);
+
     if (Array.isArray(value) || prototype === Object.prototype || prototype === null) {
       // An object reached twice would come back as two copies, so identity checks (`item === selected`) would differ.
       seen.add(value);
+
       return value;
     }
   }
+
   throw UNSERIALIZABLE;
 }
 
 function isActorRef(value: unknown): boolean {
   if (typeof value !== 'object' || value === null) return false;
   const ref = value as { send?: unknown; getSnapshot?: unknown; subscribe?: unknown };
+
   return typeof ref.send === 'function' && typeof ref.getSnapshot === 'function' && typeof ref.subscribe === 'function';
 }
 
@@ -120,15 +136,19 @@ function isObject(value: unknown): value is Record<string, unknown> {
 /** Stored entries, oldest first, or `undefined` when nothing valid is stored. */
 function readStored(storage: Storage, key: string): RecordedEntry[] | undefined {
   let payload: unknown;
+
   try {
     const raw = storage.getItem(key);
+
     if (raw === null) return undefined;
     payload = JSON.parse(raw);
   } catch {
     return undefined;
   }
+
   if (!isObject(payload) || payload.v !== 1 || !Array.isArray(payload.entries)) return undefined;
   const entries: RecordedEntry[] = [];
+
   for (const item of payload.entries) {
     if (
       !isObject(item) ||
@@ -140,25 +160,31 @@ function readStored(storage: Storage, key: string): RecordedEntry[] | undefined 
     ) {
       return undefined;
     }
+
     entries.push({ leaves: [...(item.leaves as string[])].sort(), context: item.context, at: item.at });
   }
+
   return entries;
 }
 
 /** Size (key plus value) of every stored recordings key, including ones written by earlier page loads. */
 function readStoredSizes(storage: Storage): Map<string, number> {
   const sizes = new Map<string, number>();
+
   try {
     for (let i = 0; i < storage.length; i++) {
       const key = storage.key(i);
+
       if (key === null || !key.startsWith(STORAGE_PREFIX)) continue;
       const value = storage.getItem(key);
+
       if (value !== null) sizes.set(key, key.length + value.length);
     }
   } catch {
     // Counted as empty: writes to storage this broken fail too, and the quota fallback handles them.
     return new Map();
   }
+
   return sizes;
 }
 
@@ -176,6 +202,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
 
   function machineFor(machineId: string): MachineRecordings {
     let machine = machines.get(machineId);
+
     if (!machine) {
       machine = {
         entries: new Map(),
@@ -188,25 +215,31 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
       };
       machines.set(machineId, machine);
     }
+
     return machine;
   }
 
   /** Returns true when a leaf gained its first entry. */
   function addLeaves(machine: MachineRecordings, leaves: string[]): boolean {
     let changed = false;
+
     for (const leaf of leaves) {
       const count = machine.leafCounts.get(leaf) ?? 0;
       machine.leafCounts.set(leaf, count + 1);
+
       if (count === 0) changed = true;
     }
+
     return changed;
   }
 
   /** Returns true when a leaf lost its last entry. */
   function removeLeaves(machine: MachineRecordings, leaves: string[]): boolean {
     let changed = false;
+
     for (const leaf of leaves) {
       const count = machine.leafCounts.get(leaf) ?? 0;
+
       if (count > 1) {
         machine.leafCounts.set(leaf, count - 1);
       } else {
@@ -214,6 +247,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
         changed = true;
       }
     }
+
     return changed;
   }
 
@@ -230,6 +264,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
     const previous = machine.entries.get(key);
     let changed = false;
     const entry: RecordedEntry = { leaves: sorted, context, at: Date.now() };
+
     // The newest entry is replaced in place, as a delete makes the Map rehash.
     // The instances of a list record the same configuration one after the other.
     if (previous && previous !== machine.newest) machine.entries.delete(key);
@@ -238,6 +273,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
 
     if (!previous) {
       changed = addLeaves(machine, sorted);
+
       if (machine.entries.size > MAX_CONFIGURATIONS) {
         for (const [oldestKey, oldest] of machine.entries) {
           if (machine.entries.size <= MAX_CONFIGURATIONS) break;
@@ -252,67 +288,88 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
     }
 
     machine.dirty = true;
+
     // Never postponed, so a machine that transitions constantly still gets written every PERSIST_DELAY.
     if (storage && timer === undefined) timer = setTimeout(flush, PERSIST_DELAY);
+
     if (changed) availabilityChanged(machineId, machine);
   }
 
   function lookup(machineId: string, requested: string[], normalized: string[]): RecordedEntry | undefined {
     const machine = machines.get(machineId);
+
     if (!machine) return undefined;
     const sorted = [...normalized].sort();
     const exact = machine.entries.get(sorted.join('|'));
+
     if (exact && sameLeaves(exact.leaves, sorted)) return exact;
 
     let newestFirst: RecordedEntry[] | undefined;
+
     for (const leaf of requested) {
       if (!machine.leafCounts.has(leaf)) continue;
       newestFirst ??= [...machine.entries.values()].reverse();
       const match = newestFirst.find((entry) => entry.leaves.includes(leaf));
+
       if (match) return match;
     }
+
     return undefined;
   }
 
   function recordedLeaves(machineId: string): ReadonlySet<string> {
     const machine = machines.get(machineId);
+
     if (!machine || machine.leafCounts.size === 0) return EMPTY_LEAVES;
     machine.leaves ??= new Set(machine.leafCounts.keys());
+
     return machine.leaves;
   }
 
   function hydrate(machineId: string): void {
     const machine = machineFor(machineId);
+
     if (machine.hydrated) return;
     machine.hydrated = true;
+
     if (!storage) return;
     const stored = readStored(storage, STORAGE_PREFIX + machineId);
+
     if (!stored) return;
 
     const restored = new Map<string, RecordedEntry>();
+
     for (const entry of stored) {
       const key = entry.leaves.join('|');
+
       if (machine.entries.has(key)) continue;
       restored.delete(key);
       restored.set(key, entry);
     }
+
     // Stored entries come from an earlier page load, so they rank older than everything in memory.
     const room = Math.max(0, MAX_CONFIGURATIONS - machine.entries.size);
     const kept = [...restored].slice(Math.max(0, restored.size - room));
+
     if (kept.length === 0) return;
 
     const entries = new Map(kept);
     let changed = false;
+
     for (const [, entry] of kept) changed = addLeaves(machine, entry.leaves) || changed;
+
     for (const [key, entry] of machine.entries) entries.set(key, entry);
     machine.entries = entries;
+
     if (changed) availabilityChanged(machineId, machine);
   }
 
   function persist(machineId: string, machine: MachineRecordings, target: Storage): void {
     const items: string[] = [];
+
     for (const entry of machine.entries.values()) {
       let item = serialized.get(entry);
+
       if (item === undefined) {
         const context = serializeContext(entry.context);
         item =
@@ -321,27 +378,33 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
             : `{"leaves":${JSON.stringify(entry.leaves)},"at":${entry.at},"context":${context}}`;
         serialized.set(entry, item);
       }
+
       if (item !== null) items.push(item);
     }
 
     const key = STORAGE_PREFIX + machineId;
     const sizes = (storedSizes ??= readStoredSizes(target));
     let budget = MAX_TOTAL_SIZE;
+
     for (const [storedKey, size] of sizes) if (storedKey !== key) budget -= size;
 
     // The newest items that fit what the other keys leave of the budget.
     let count = 0;
     let length = key.length + EMPTY_PAYLOAD.length;
+
     for (let i = items.length - 1; i >= 0; i--) {
       length += items[i].length + (count > 0 ? 1 : 0);
+
       if (length > budget) break;
       count++;
     }
+
     const withinBudget = count;
 
     // The browser's quota can still be lower than the budget, or already used up by the app.
     while (count > 0) {
       const value = `{"v":1,"entries":[${items.slice(items.length - count).join(',')}]}`;
+
       try {
         target.setItem(key, value);
         sizes.set(key, key.length + value.length);
@@ -350,6 +413,7 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
         count = Math.floor(count / 2);
       }
     }
+
     if (count === 0) {
       try {
         target.removeItem(key);
@@ -358,13 +422,16 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
         // Nothing else to do with storage that can't be written.
       }
     }
+
     if (count < items.length && !machine.warned) {
       machine.warned = true;
       const saved = count === 0 ? 'none' : `only the newest ${count}`;
+
       const reason =
         count < withinBudget
           ? 'Storage is full or unavailable'
           : `Recordings are limited to ${MAX_TOTAL_SIZE.toLocaleString('en-US')} characters of storage in total`;
+
       console.warn(
         `[state-viewer] ${reason}, so ${saved} of the ${items.length} recordings ` +
           `for "${machineId}" were saved. All of them stay available until the page reloads.`,
@@ -375,7 +442,9 @@ export function createRecordingStore(onAvailabilityChange: (machineId: string) =
   function flush(): void {
     clearTimeout(timer);
     timer = undefined;
+
     if (!storage) return;
+
     for (const [machineId, machine] of machines) {
       if (!machine.dirty) continue;
       machine.dirty = false;

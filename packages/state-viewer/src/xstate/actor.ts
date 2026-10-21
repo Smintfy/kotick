@@ -28,5 +28,6 @@ export function statusOf(snapshot: unknown): unknown {
 
 export function liveChildren(snapshot: unknown): Readonly<Record<string, AnyActorRef>> {
   const children = (snapshot as { children?: unknown } | null | undefined)?.children;
+
   return typeof children === 'object' && children !== null ? (children as Record<string, AnyActorRef>) : EMPTY_CHILDREN;
 }

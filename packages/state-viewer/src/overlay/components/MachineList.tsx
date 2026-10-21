@@ -27,6 +27,7 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
   function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     const move = moveOf(event.key);
+
     if (!move) return;
     const rows = [...event.currentTarget.querySelectorAll<HTMLElement>('[data-row]')];
     event.preventDefault();
@@ -79,6 +80,7 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
 function MachineRow({ group, previewing, onOpen }: { group: MachineGroup; previewing: boolean; onOpen(id: string): void }) {
   const states = attempt(() => leavesOf(group.instances[0].handle.describe()).length, 0);
   const instances = group.instances.length;
+
   return (
     <button
       type="button"
@@ -109,7 +111,9 @@ function MachineRow({ group, previewing, onOpen }: { group: MachineGroup; previe
 /** The page's path, in a code chip. It renders nothing on the server. */
 export function PathChip() {
   const pathname = usePathname();
+
   if (pathname === '') return null;
+
   return (
     <code
       className="inline-block h-4.5 min-w-0 flex-initial truncate rounded-sm bg-chip px-1.25 text-center font-mono text-sm leading-4.5 font-normal text-fg tabular-nums"

@@ -47,20 +47,25 @@ function mountOverlay(overlay: boolean): void {
 test('a transition that re-renders a useMachine component', async ({ bench }) => {
   const runs = IMPLEMENTATIONS.map(([name, hooks, overlay]) => {
     let send: (event: { type: 'INC' }) => void = () => {};
+
     function Counter() {
       const [snapshot, sendEvent] = hooks.useMachine(counterMachine);
       send = sendEvent;
+
       return <output>{snapshot.context.count}</output>;
     }
+
     const mount = () => {
       reset();
       mountOverlay(overlay);
       render(<Counter />);
     };
+
     return bench(name, { beforeAll: mount, afterAll: reset }, async () => {
       await act(async () => send({ type: 'INC' }));
     });
   });
+
   await bench.compare(...runs);
 });
 
@@ -68,8 +73,10 @@ test('mounting and unmounting 50 rows, each with useMachine', async ({ bench }) 
   const runs = IMPLEMENTATIONS.map(([name, hooks, overlay]) => {
     function Row() {
       const [snapshot] = hooks.useMachine(counterMachine);
+
       return <li>{String(snapshot.value)}</li>;
     }
+
     function List() {
       return (
         <ul>
@@ -79,23 +86,28 @@ test('mounting and unmounting 50 rows, each with useMachine', async ({ bench }) 
         </ul>
       );
     }
+
     const mount = () => {
       reset();
       mountOverlay(overlay);
     };
+
     return bench(name, { beforeAll: mount, afterAll: reset }, async () => {
       let unmount: () => void = () => {};
+
       await act(async () => {
         unmount = render(<List />).unmount;
       });
       await act(async () => unmount());
     });
   });
+
   await bench.compare(...runs);
 });
 
 test('100 events to an actor outside React', async ({ bench }) => {
   let plainActor: Actor<typeof counterMachine> | undefined;
+
   const plain = bench(
     'plain actor',
     {
@@ -116,8 +128,10 @@ test('100 events to an actor outside React', async ({ bench }) => {
     ['connect(), no <StateViewer />', false],
     ['connect(), panel closed', true],
   ] as const;
+
   const runs = connected.map(([name, overlay]) => {
     let actor: Actor<typeof counterMachine> | undefined;
+
     return bench(
       name,
       {

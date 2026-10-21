@@ -25,5 +25,6 @@ export function createHost(target: Element | ShadowRoot): OverlayHost {
   const container = document.createElement('div');
   shadow.append(style, container);
   target.appendChild(host);
+
   return { host, shadow, style, container, remove: () => host.remove() };
 }

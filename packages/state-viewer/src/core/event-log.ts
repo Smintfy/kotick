@@ -20,8 +20,10 @@ export function createEventLog(): EventLog {
     push(entry) {
       if (buffer.length < CAPACITY) {
         buffer.push(entry);
+
         return;
       }
+
       buffer[head] = entry;
       head = (head + 1) % CAPACITY;
     },

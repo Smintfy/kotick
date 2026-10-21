@@ -17,13 +17,16 @@ export function useHandleUpdates(handle: MachineHandle | undefined): void {
   React.useEffect(() => {
     if (!handle) return;
     let unsubscribe: (() => void) | undefined;
+
     try {
       unsubscribe = handle.subscribe(() => update());
     } catch (error) {
       console.warn(`[state-viewer] Can't follow "${handle.machineId}#${handle.instanceId}": subscribe() threw.`, error);
     }
+
     // A change between the render and this effect would otherwise go unseen.
     update();
+
     return () => unsubscribe?.();
   }, [handle]);
 }
@@ -34,6 +37,7 @@ export function useLatest<T>(value: T): { readonly current: T } {
   useIsomorphicLayoutEffect(() => {
     ref.current = value;
   });
+
   return ref;
 }
 
@@ -54,6 +58,7 @@ function subscribeToLocation(onChange: () => void): () => void {
   const navigation = 'navigation' in window ? window.navigation : undefined;
   window.addEventListener('popstate', onChange);
   navigation?.addEventListener('currententrychange', onChange);
+
   return () => {
     window.removeEventListener('popstate', onChange);
     navigation?.removeEventListener('currententrychange', onChange);

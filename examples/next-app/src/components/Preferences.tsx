@@ -11,6 +11,7 @@ const DIGESTS = [
 function ThemeSwitch() {
   const dark = PreferencesContext.useSelector((snapshot) => snapshot.matches({ theme: 'dark' }));
   const actorRef = PreferencesContext.useActorRef();
+
   return (
     <div className="row">
       <span>Theme: {dark ? 'Dark' : 'Light'}</span>
@@ -24,6 +25,7 @@ function ThemeSwitch() {
 function DigestPicker() {
   const digest = PreferencesContext.useSelector((snapshot) => snapshot.value.digest);
   const actorRef = PreferencesContext.useActorRef();
+
   return (
     <fieldset>
       <legend>Email digest</legend>

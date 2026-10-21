@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import * as esbuild from 'esbuild';
 
 const [entry, outdir] = process.argv.slice(2);
+
 const result = await esbuild.build({
   entryPoints: { main: entry },
   outdir,
@@ -19,4 +20,5 @@ const result = await esbuild.build({
   metafile: true,
   logLevel: 'warning',
 });
+
 writeFileSync(join(outdir, 'meta.json'), JSON.stringify(result.metafile));

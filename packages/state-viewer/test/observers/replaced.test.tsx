@@ -8,6 +8,7 @@ import { describeWithActivity, IMPLEMENTATIONS } from '../support/hooks';
 import { badge, clickLeaf, flush, freshId, machines, preview, release, show } from '../support/panel';
 
 type SocketEvent = { type: 'FINISH' | 'PAUSE' | 'BREAK' };
+
 type Socket = (event: SocketEvent) => void;
 
 /** What Fast Refresh changed in the machine's states. */
@@ -27,6 +28,7 @@ function createUploadMachine(
     actors: {
       socket: fromCallback<SocketEvent>(({ sendBack }) => {
         sockets.set(version, sendBack);
+
         return () => {
           if (sockets.get(version) === sendBack) sockets.delete(version);
         };
@@ -61,8 +63,11 @@ function createUploadMachine(
 }
 
 type UploadMachine = ReturnType<typeof createUploadMachine>;
+
 type UploadActor = Actor<UploadMachine>;
+
 type UploadSnapshot = SnapshotFrom<UploadMachine>;
+
 type Mode = 'visible' | 'hidden';
 
 /** A new observer on every render, as apps usually write it, or the first render's throughout. */
@@ -127,6 +132,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
     const calls: string[] = [];
     const sockets = new Map<string, Socket>();
     let committed: UploadActor | undefined;
+
     function Upload({ machine, kind, disabled, inWindow }: Omit<Props, 'mode'>) {
       const inline = observe(calls);
       const [first] = React.useState(inline);
@@ -135,21 +141,27 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
       // After the hook's own layout effect, and before @xstate/react's passive effect stops the replaced actor.
       React.useLayoutEffect(() => {
         committed = actorRef;
+
         if (previous.current.machine !== machine) inWindow?.(previous.current);
         previous.current = { machine, actor: actorRef };
       });
+
       return null;
     }
+
     function App({ mode, ...props }: Props) {
       const upload = <Upload {...props} />;
+
       return mode === undefined ? upload : <Activity mode={mode}>{upload}</Activity>;
     }
+
     const props: Props = {
       machine: createUploadMachine({ id, version: 'old' }, sockets),
       kind,
       disabled,
       mode,
     };
+
     const view = render(page(<App {...props} />));
     await flush();
     calls.length = 0;
@@ -159,17 +171,22 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
       view.rerender(page(<App {...props} />));
       await flush();
     };
+
     const socket = (machine: UploadMachine): Socket => {
       const send = sockets.get(String(machine.version));
+
       if (!send) throw new Error(`No socket runs for the ${machine.version} upload.`);
+
       return send;
     };
+
     /** Pushes the marker, runs the step, and logs each error that reached the page uncaught meanwhile. */
     const step = async (marker: string, run: () => unknown): Promise<void> => {
       calls.push(marker);
       const errors = await uncaught(run);
       calls.push(...errors.map((error) => `uncaught:${(error as Error).message}`));
     };
+
     return {
       calls,
       /** The socket of the upload of `machine` reports, past the hook's actor. */
@@ -395,29 +412,35 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
       async (_, end) => {
         const id = freshId('upload');
         const sockets = new Map<string, Socket>();
+
         function Upload({ version, disabled }: { version: string; disabled: boolean }) {
           const machine = React.useMemo(() => createUploadMachine({ id, version }, sockets), [version]);
           const [status, setStatus] = React.useState('?');
           const [observer] = React.useState(() => (snapshot: UploadSnapshot) => setStatus(String(snapshot.value)));
           hooks.useActorRef(machine, { debug: { disabled } } as never, observer);
+
           return <output aria-label="upload">{status}</output>;
         }
+
         const status = () => screen.getByRole('status', { name: 'upload' }).textContent;
         const view = render(page(<Upload version="old" disabled={false} />));
         await flush();
 
         const mounted = status();
+
         if (previews) await preview(id, ['failed']);
         const previewed = status();
         view.rerender(page(<Upload version="new" disabled={false} />));
         await flush();
         const replaced = status();
+
         if (end === 'release') {
           if (previews) await release(id);
         } else {
           view.rerender(page(<Upload version="new" disabled />));
           await flush();
         }
+
         expect({ mounted, previewed, replaced, ended: status() }).toEqual({
           mounted: 'uploading',
           previewed: previews ? 'failed' : 'uploading',
@@ -696,6 +719,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
           await upload.finish();
           await upload.replace({ edit: 'with retrying' });
           upload.calls.push('[preview retrying]');
+
           if (previews) await clickLeaf('retrying');
           await upload.release();
           expect(upload.calls).toEqual(
@@ -959,24 +983,31 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
       const sockets = new Map<string, Socket>();
       const calls: string[] = [];
       let first: UploadActor | undefined;
+
       function Upload({ version }: { version: string }) {
         const machine = React.useMemo(() => createUploadMachine({ id, version }, sockets), [version]);
+
         const [observer] = React.useState<Observer<UploadSnapshot>>(() => ({
           complete: () => calls.push(`complete: ${String(first?.getSnapshot().value)}`),
         }));
+
         const actorRef = hooks.useActorRef(machine, undefined, observer);
         const previous = React.useRef(version);
         React.useLayoutEffect(() => {
           first ??= actorRef;
+
           if (previous.current !== version) sockets.get(previous.current)?.({ type: 'FINISH' });
           previous.current = version;
         });
+
         return null;
       }
+
       const view = render(page(<Upload version="old" />));
       await flush();
 
       calls.push('[preview failed]');
+
       if (previews) await preview(id, ['failed']);
       calls.push('[replace]');
       view.rerender(page(<Upload version="new" />));
@@ -1008,8 +1039,10 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
       const upload = await mountUpload('stable', {
         disabled: disabledAt === 'from the mount',
       });
+
       if (disabledAt === 'after the mount') await upload.disable();
       upload.calls.length = 0;
+
       return upload;
     }
 
@@ -1052,6 +1085,7 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
           if (reports) upload.report(previous.machine, reports);
         },
       });
+
       if (disabledAt === 'never') await upload.disable();
       await upload.enable();
       expect(upload.calls).toEqual(heard);
@@ -1170,10 +1204,12 @@ describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks, preview
         const upload = await mountUpload('stable', { mode: 'visible' });
 
         await upload.replace();
+
         if (previewedBefore) {
           await upload.preview('failed');
           await upload.release();
         }
+
         await upload.hide();
         await upload.reveal();
         await upload.preview('failed');

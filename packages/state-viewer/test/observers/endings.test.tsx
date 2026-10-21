@@ -48,6 +48,7 @@ function createUploadMachine() {
 
 /** What an observer records of a snapshot. Every machine snapshot has these. */
 type Recorded = { status: string; value: unknown };
+
 type RecordingObserver = Observer<Recorded> | ((snapshot: Recorded) => void);
 
 function entry(snapshot: Recorded): string {
@@ -65,13 +66,16 @@ function observerInto(heard: string[], { error = true } = {}): Observer<Recorded
     next: (snapshot) => heard.push(`next ${entry(snapshot)}`),
     complete: () => heard.push('complete'),
   };
+
   if (error) observer.error = (cause) => heard.push(`error ${(cause as Error).message}`);
+
   return observer;
 }
 
 /** What the server sends to the real actor of the upload, as a socket would, past the proxy. */
 function Server({ actorRef }: { actorRef: AnyActorRef }) {
   const send = (type: 'UPLOADED' | 'BREAK') => (actorRef.system.get(UPLOAD) as AnyActorRef).send({ type });
+
   return (
     <>
       <button type="button" onClick={() => send('UPLOADED')}>
@@ -100,7 +104,9 @@ function releaseAllButton(): HTMLButtonElement {
   const found = [...overlay().querySelectorAll('button')].find(
     (button) => button.querySelector('[data-part="row-label"]')?.textContent === 'Release all',
   );
+
   if (!found) throw new Error('The machine list has no Release all button.');
+
   return found;
 }
 
@@ -120,19 +126,24 @@ describe.each(IMPLEMENTATIONS)(
         const machine = createUploadMachine();
         const heard: string[] = [];
         const observer = observe(heard);
+
         function Upload() {
           return <Server actorRef={hooks.useActorRef(machine, { systemId: UPLOAD }, observer)} />;
         }
+
         render(page(<Upload />));
         await flush();
 
         const started = heard.splice(0);
+
         if (previews) await preview(machine.id, ['failed']);
         const previewed = heard.splice(0);
         await press('Finish upload');
         const finished = heard.splice(0);
+
         if (previews) await release(machine.id);
         const released = heard.splice(0);
+
         if (previews) await lookAround(machine.id, 'failed', 'uploading');
         expect({ started, previewed, finished, released, later: heard }).toEqual({
           // StrictMode starts the actor twice.
@@ -156,6 +167,7 @@ describe('the component renders again between the ending and the release', () =>
         'a stable listener (useCallback)',
         (heard) => {
           const listener = listenerInto(heard);
+
           return () => listener;
         },
         ['next done uploaded'],
@@ -173,8 +185,10 @@ describe('the component renders again between the ending and the release', () =>
         const machine = createUploadMachine();
         const heard: string[] = [];
         const observer = make(heard);
+
         function Upload({ hint }: { hint: string }) {
           const actorRef = hooks.useActorRef(machine, { systemId: UPLOAD }, observer());
+
           return (
             <>
               <p>{hint}</p>
@@ -182,6 +196,7 @@ describe('the component renders again between the ending and the release', () =>
             </>
           );
         }
+
         const view = render(page(<Upload hint="Uploading" />));
         await flush();
         heard.length = 0;
@@ -192,6 +207,7 @@ describe('the component renders again between the ending and the release', () =>
         view.rerender(page(<Upload hint="Still uploading" />));
         await flush();
         const rerendered = heard.splice(0);
+
         if (previews) await release(machine.id);
         expect({ rerendered, released: heard }).toEqual({
           rerendered: previews ? ['next active failed'] : ending,
@@ -203,9 +219,11 @@ describe('the component renders again between the ending and the release', () =>
     test('an inline listener hears it when useSelector in the same component follows the preview', async () => {
       const machine = createUploadMachine();
       const heard: string[] = [];
+
       function Upload() {
         const actorRef = hooks.useActorRef(machine, { systemId: UPLOAD }, listenerInto(heard));
         const value = hooks.useSelector(actorRef, (snapshot) => String(snapshot.value));
+
         return (
           <>
             <output aria-label="upload">{value}</output>
@@ -213,15 +231,18 @@ describe('the component renders again between the ending and the release', () =>
           </>
         );
       }
+
       render(page(<Upload />));
       await flush();
       heard.length = 0;
 
       if (previews) await preview(machine.id, ['failed']);
       await press('Finish upload');
+
       // The developer clicks another state, and the component renders again through useSelector.
       if (previews) await clickLeaf('uploading');
       const previewing = { shown: shown(), heard: heard.splice(0) };
+
       if (previews) await release(machine.id);
       expect({ previewing, released: { shown: shown(), heard } }).toEqual({
         previewing: previews
@@ -241,9 +262,11 @@ describe('the actor finished while no preview was on', () => {
      */
     async function finishThenLookAround(heard: string[], makeObserver: () => RecordingObserver) {
       const machine = createUploadMachine();
+
       function Upload() {
         const actorRef = hooks.useActorRef(machine, { systemId: UPLOAD }, makeObserver());
         const value = hooks.useSelector(actorRef, (snapshot) => String(snapshot.value));
+
         return (
           <>
             <output aria-label="upload">{value}</output>
@@ -251,13 +274,16 @@ describe('the actor finished while no preview was on', () => {
           </>
         );
       }
+
       render(page(<Upload />));
       await flush();
       heard.length = 0;
 
       await press('Finish upload');
       const finished = heard.splice(0);
+
       if (previews) await lookAround(machine.id, 'failed', 'uploading');
+
       return { finished, shown: shown(), later: heard };
     }
 
@@ -289,6 +315,7 @@ describe('the actor finished while no preview was on', () => {
         'a stable listener',
         (heard) => {
           const listener = listenerInto(heard);
+
           return () => listener;
         },
       ],
@@ -296,8 +323,10 @@ describe('the actor finished while no preview was on', () => {
       const machine = createUploadMachine();
       const heard: string[] = [];
       const observer = make(heard);
+
       function Upload({ hint }: { hint: string }) {
         const actorRef = useActorRef(machine, { systemId: UPLOAD }, observer());
+
         return (
           <>
             <p>{hint}</p>
@@ -305,6 +334,7 @@ describe('the actor finished while no preview was on', () => {
           </>
         );
       }
+
       const view = render(page(<Upload hint="a" />));
       await flush();
       heard.length = 0;
@@ -332,15 +362,18 @@ describe('the actor fails', () => {
       const machine = createUploadMachine();
       const heard: string[] = [];
       const observer = observerInto(heard, { error });
+
       function Upload() {
         return <Server actorRef={hooks.useActorRef(machine, { systemId: UPLOAD }, observer)} />;
       }
+
       render(page(<Upload />));
       await flush();
       heard.length = 0;
 
       const errors = await uncaught(() => fireEvent.click(screen.getByRole('button', { name: 'Break upload' })));
       const failed = heard.splice(0);
+
       if (previews) await lookAround(machine.id, 'failed', 'uploading');
       expect({ uncaught: messages(errors), failed, later: heard }).toEqual({
         uncaught: error ? [] : [BROKEN],
@@ -361,15 +394,19 @@ describe('an observer passed only after the actor ended', () => {
      */
     async function mountUpload(heard: string[], observer: RecordingObserver) {
       const machine = createUploadMachine();
+
       function Upload({ panelOpen }: { panelOpen: boolean }) {
         return <Server actorRef={hooks.useActorRef(machine, { systemId: UPLOAD }, panelOpen ? observer : undefined)} />;
       }
+
       const view = render(page(<Upload panelOpen={false} />));
       await flush();
+
       const setPanel = async (panelOpen: boolean) => {
         view.rerender(page(<Upload panelOpen={panelOpen} />));
         await flush();
       };
+
       return {
         setPanel,
         previewPaused: async () => {
@@ -379,12 +416,15 @@ describe('an observer passed only after the actor ended', () => {
         },
         lookAround: async () => {
           heard.push('[preview failed]');
+
           if (previews) await preview(machine.id, ['failed']);
           heard.push('[panel opens]');
           await setPanel(true);
           heard.push('[click paused]');
+
           if (previews) await clickLeaf('paused');
           heard.push('[release]');
+
           if (previews) await release(machine.id);
         },
       };
@@ -451,11 +491,13 @@ describe('@xstate/react restarts an actor that ended', () => {
   function createRecorder(inline: boolean) {
     const heard: Record<string, string[]> = {};
     let current: string[] = [];
+
     const observer: Observer<Recorded> = {
       next: (snapshot) => current.push(`next ${entry(snapshot)}`),
       error: (cause) => current.push(`error ${(cause as Error).message}`),
       complete: () => current.push('complete'),
     };
+
     return {
       heard,
       observer: () => (inline ? { ...observer } : observer),
@@ -479,25 +521,30 @@ describe('@xstate/react restarts an actor that ended', () => {
         async function endHideReveal(inline: boolean, rerender: boolean): Promise<Record<string, string[]>> {
           const machine = createUploadMachine();
           const { heard, observer, phase } = createRecorder(inline);
+
           function Upload() {
             return <Server actorRef={hooks.useActorRef(machine, { systemId: UPLOAD }, observer())} />;
           }
+
           const app = (mode: 'visible' | 'hidden') =>
             page(
               <React.Activity mode={mode}>
                 <Upload />
               </React.Activity>,
             );
+
           const view = render(app('visible'), { reactStrictMode: strict });
           await flush();
 
           phase('ending');
           await press(button);
+
           if (rerender) {
             phase('rerender');
             view.rerender(app('visible'));
             await flush();
           }
+
           phase('hide');
           view.rerender(app('hidden'));
           await flush();
@@ -505,7 +552,9 @@ describe('@xstate/react restarts an actor that ended', () => {
           view.rerender(app('visible'));
           await flush();
           phase('preview');
+
           if (previews) await lookAround(machine.id, 'failed', 'uploading');
+
           return heard;
         }
 
@@ -548,16 +597,22 @@ describe('@xstate/react restarts an actor that ended', () => {
           initial: 'done',
           states: { idle: {}, done: { type: 'final' } },
         });
+
         const { heard, observer, phase } = createRecorder(inline);
+
         function Instant() {
           hooks.useActorRef(machine, undefined, observer());
+
           return null;
         }
+
         phase('mount');
         render(page(<Instant />), { reactStrictMode });
         await flush();
         phase('preview');
+
         if (previews) await lookAround(machine.id, 'idle', 'done');
+
         return heard;
       }
 
@@ -612,6 +667,7 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
   }
 
   type Answer = 'SAVED' | 'REJECTED';
+
   type UseFormActorRef = (machine: ReturnType<typeof createFormMachine>, options: { systemId: string }) => AnyActorRef;
 
   /** How the waitFor of the page settles, and the status that the page shows then. */
@@ -639,8 +695,10 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
     const machine = createFormMachine();
     const log: string[] = [];
     let saved: AnyActorRef | undefined;
+
     function Form({ onSave }: { onSave: (actorRef: AnyActorRef) => void }) {
       const actorRef = useFormActorRef(machine, { systemId: FORM });
+
       return (
         <button
           type="button"
@@ -653,8 +711,10 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
         </button>
       );
     }
+
     function Page({ dialog }: { dialog: 'open' | 'closed' }) {
       const [status, setStatus] = React.useState('idle');
+
       const track = (actorRef: AnyActorRef) => {
         saved = actorRef;
         setStatus('saving');
@@ -669,7 +729,9 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
           },
         );
       };
+
       const form = <Form onSave={track} />;
+
       return (
         <>
           <output aria-label="save">{status}</output>
@@ -681,17 +743,20 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
         </>
       );
     }
+
     const view = render(page(<Page dialog="open" />));
     await flush();
     await press('Save');
 
     if (previews) await preview(machine.id, ['failed']);
+
     if (answer) {
       log.push('answer');
       await act(async () => {
         (saved!.system.get(FORM) as AnyActorRef).send({ type: answer });
       });
     }
+
     return {
       log,
       close: (): void => {
@@ -769,6 +834,7 @@ describe('a waitFor on the actor of a hook whose component goes away while a pre
       page.log.push('release');
       fireEvent.click(releaseAllButton());
       await flush();
+
       return { log: page.log, status: shown('save'), previewing: badge() };
     }
 
@@ -802,6 +868,7 @@ describe("a subscription through the hook's actor, made before an Activity hides
   }
 
   type Job = Actor<ReturnType<typeof createJobMachine>>;
+
   type Subscribe = (actorRef: Job, hear: (heard: string) => void) => void;
 
   /** Subscribers without complete, which nothing else ends once they are told. */
@@ -822,28 +889,35 @@ describe("a subscription through the hook's actor, made before an Activity hides
     async function mount(subscribe: Subscribe, reactStrictMode: boolean) {
       const machine = createJobMachine();
       let current: Job | undefined;
+
       function JobPanel() {
         current = hooks.useActorRef(machine, { systemId: JOB });
+
         return null;
       }
+
       const app = (mode: 'visible' | 'hidden') =>
         page(
           <React.Activity mode={mode}>
             <JobPanel />
           </React.Activity>,
         );
+
       const view = render(app('visible'), { reactStrictMode });
       await flush();
       const heard: string[] = [];
       subscribe(current!, (entry) => heard.push(entry));
 
       const take = (): string[] => heard.splice(0);
+
       const previewWaiting = async () => {
         if (previews) await preview(machine.id, ['waiting']);
       };
+
       const releasePreview = async () => {
         if (previews) await release(machine.id);
       };
+
       return {
         take,
         hide: () => view.rerender(app('hidden')),
@@ -861,6 +935,7 @@ describe("a subscription through the hook's actor, made before an Activity hides
           await act(async () => {
             (current!.system.get(JOB) as AnyActorRef).send({ type: 'FINISHED' });
           });
+
           return { previewed, finished: take() };
         },
         /** The developer previews the actor that the revealed component restarted, then releases it. */
@@ -868,6 +943,7 @@ describe("a subscription through the hook's actor, made before an Activity hides
           await previewWaiting();
           const previewing = { shown: entry(current!.getSnapshot()), heard: take() };
           await releasePreview();
+
           return { previewing, released: { shown: entry(current!.getSnapshot()), heard: take() } };
         },
       };
@@ -877,6 +953,7 @@ describe("a subscription through the hook's actor, made before an Activity hides
       previewed: previews ? ['active waiting'] : [],
       finished: previews ? [] : ['done finished'],
     };
+
     const RESTARTED = {
       previewing: { shown: previews ? 'active waiting' : 'done finished', heard: [] },
       released: { shown: 'done finished', heard: [] },
@@ -986,14 +1063,17 @@ describe('an observer callback that throws', () => {
     return {
       next: (snapshot) => {
         heard.push(`next ${entry(snapshot)}`);
+
         if (throwing === 'next' && snapshot.status === 'done') throw new TypeError('next failed');
       },
       complete: () => {
         heard.push('complete');
+
         if (throwing === 'ending') throw new Error('complete failed');
       },
       error: (cause) => {
         heard.push(`error ${(cause as Error).message}`);
+
         if (throwing === 'ending') throw new Error('error failed');
       },
     };
@@ -1017,21 +1097,27 @@ describe('an observer callback that throws', () => {
       const read = observe(connect(actor));
       render(page(null));
       await flush();
+
       if (previews) await preview(machine.id, ['waiting']);
       let held: T | undefined;
+
       const reported = await uncaught(() => {
         actor.send({ type: 'FINISH' });
         held = read();
       });
+
       return { held, reported: messages(reported) };
     }
 
     test('an observer whose next throws on the done snapshot still hears complete', async () => {
       const heard: string[] = [];
+
       const { held, reported } = await finishJob((actor) => {
         actor.subscribe(throwingObserver(heard, 'next'));
+
         return () => [...heard];
       });
+
       const preview = previews ? ['next active waiting'] : [];
       expect({ held, heard, reported }).toEqual({
         // The preview holds back the ending until the overlay drops it.
@@ -1044,17 +1130,22 @@ describe('an observer callback that throws', () => {
     test('a waitFor whose predicate throws on the final snapshot still rejects', async () => {
       const checked: string[] = [];
       let settled = 'pending';
+
       const { held, reported } = await finishJob((actor) => {
         waitFor(actor, (snapshot) => {
           checked.push(entry(snapshot));
+
           if (snapshot.status === 'done') throw new TypeError('predicate failed');
+
           return false;
         }).then(
           (snapshot) => (settled = `resolved ${entry(snapshot)}`),
           (error: Error) => (settled = `rejected ${error.message}`),
         );
+
         return () => ({ checked: [...checked], settled });
       });
+
       // waitFor checks the snapshot that it starts with.
       const preview = previews ? ['active waiting'] : [];
       expect({ held, checked, settled, reported }).toEqual({
@@ -1072,14 +1163,18 @@ describe('an observer callback that throws', () => {
       async function mountJob() {
         const machine = createJobMachine();
         let actorRef: Actor<JobMachine> | undefined;
+
         function Job() {
           actorRef = hooks.useActorRef(machine, { systemId: JOB });
+
           return null;
         }
+
         render(page(<Job />));
         await flush();
         const heard: string[] = [];
         actorRef!.subscribe(throwingObserver(heard, 'ending'));
+
         return {
           heard,
           end: (type: 'FINISH' | 'FAIL') => (actorRef!.system.get(JOB) as AnyActorRef).send({ type }),
@@ -1124,11 +1219,13 @@ describe('an observer callback that throws', () => {
           await job.previewWaiting();
           const previewed = job.heard.splice(0);
           let ended: string[] = [];
+
           const reported = await uncaught(async () => {
             job.end(type);
             ended = job.heard.splice(0);
             await job.release();
           });
+
           const released = job.heard.splice(0);
 
           await job.previewWaiting();
@@ -1160,10 +1257,12 @@ describe('an actor that fails while a preview hides the failure', () => {
    */
   function createCrashingUpload() {
     const socket: { push?: () => void } = {};
+
     const machine = setup({
       actors: {
         socket: fromCallback(({ sendBack }) => {
           socket.push = () => sendBack({ type: 'BREAK' });
+
           return () => {
             socket.push = undefined;
           };
@@ -1187,10 +1286,12 @@ describe('an actor that fails while a preview hides the failure', () => {
         done: {},
       },
     });
+
     return { machine, crash: () => socket.push?.() };
   }
 
   type CrashingMachine = ReturnType<typeof createCrashingUpload>['machine'];
+
   type AppProps = { showStatus: boolean };
 
   const SELECTOR_APPS = [
@@ -1207,15 +1308,19 @@ describe('an actor that fails while a preview hides the failure', () => {
     machine: CrashingMachine,
   ): Record<(typeof SELECTOR_APPS)[number], (props: AppProps) => React.ReactNode> {
     const UploadContext = createActorContext(machine);
+
     function ContextStatus() {
       return <Status value={UploadContext.useSelector((snapshot) => String(snapshot.value))} />;
     }
+
     function RefStatus({ actorRef }: { actorRef: Actor<CrashingMachine> }) {
       return <Status value={useSelector(actorRef, (snapshot) => String(snapshot.value))} />;
     }
+
     return {
       'useSelector on the actor that useActorRef returns': function RefApp({ showStatus }: AppProps) {
         const actorRef = useActorRef(machine);
+
         return showStatus ? <RefStatus actorRef={actorRef} /> : null;
       },
       "createActorContext's useSelector": function ContextApp({ showStatus }: AppProps) {
@@ -1238,6 +1343,7 @@ describe('an actor that fails while a preview hides the failure', () => {
     await flush();
     await preview(machine.id, ['retrying']);
     const errors = await uncaught(crash);
+
     return {
       uncaught: messages(errors),
       rerender: async (next: React.ReactNode) => {
@@ -1249,10 +1355,13 @@ describe('an actor that fails while a preview hides the failure', () => {
 
   test('useMachine follows later previews of the failed actor, and the release throws the failure to the boundary', async () => {
     const { machine, crash } = createCrashingUpload();
+
     function MachineApp() {
       const [snapshot] = useMachine(machine);
+
       return <Status value={String(snapshot.value)} />;
     }
+
     const failed = await failDuringPreview(machine, crash, <MachineApp />);
     const steps = [shownUpload()];
     await clickLeaf('done');
@@ -1331,10 +1440,12 @@ describe('an actor that fails while a preview hides the failure', () => {
       if (previews) await preview(machine.id, ['retrying']);
       const previewed = heard.splice(0);
       let held: string[] = [];
+
       const errors = await uncaught(() => {
         crash();
         held = [...heard];
       });
+
       const listed = await machines();
       expect({ previewed, held, uncaught: messages(errors), heard, machines: listed, previewing: badge() }).toEqual({
         previewed: previews ? ['next retrying'] : [],
@@ -1353,15 +1464,18 @@ describe('an error that useSelector throws to an error boundary', () => {
   describe.each(IMPLEMENTATIONS)('like @xstate/react, with %s', (_, hooks) => {
     test('useActorRef and useSelector: an action error caught by an error boundary is not also reported as unhandled', async () => {
       const machine = createUploadMachine();
+
       function Upload() {
         const actorRef = hooks.useActorRef(machine);
         const value = hooks.useSelector(actorRef, (snapshot) => String(snapshot.value));
+
         return (
           <button type="button" onClick={() => actorRef.send({ type: 'BREAK' })}>
             {value}
           </button>
         );
       }
+
       render(
         <Boundary>
           <Upload />

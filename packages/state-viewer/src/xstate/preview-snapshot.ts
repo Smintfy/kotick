@@ -10,10 +10,13 @@ import { getTree, leavesOfValue, nodeId, type AnyStateNode, type MachineTree } f
  */
 function toStateValue(nodes: readonly AnyStateNode[]): StateValue {
   const value: Record<string, Record<string, unknown>> = {};
+
   for (const node of [...nodes].sort((a, b) => a.order - b.order)) {
     let level: Record<string, unknown> = value;
+
     for (const key of node.path) {
       const next = Object.hasOwn(level, key) ? level[key] : undefined;
+
       if (typeof next === 'object' && next !== null) {
         level = next as Record<string, unknown>;
       } else {
@@ -23,13 +26,16 @@ function toStateValue(nodes: readonly AnyStateNode[]): StateValue {
       }
     }
   }
+
   return value as StateValue;
 }
 
 function leafNodes(tree: MachineTree, leaves: readonly string[]): AnyStateNode[] {
   return leaves.map((leaf) => {
     const node = tree.leaves.get(leaf);
+
     if (!node) throw new Error(`"${leaf}" is not a leaf state of this machine.`);
+
     return node;
   });
 }
@@ -41,9 +47,12 @@ function leafNodes(tree: MachineTree, leaves: readonly string[]): AnyStateNode[]
 function orthogonal(a: AnyStateNode, b: AnyStateNode): boolean {
   if (a === b) return false;
   let depth = 0;
+
   while (depth < a.path.length && depth < b.path.length && a.path[depth] === b.path[depth]) depth++;
   let ancestor: AnyStateNode | undefined = a;
+
   while (ancestor && ancestor.path.length > depth) ancestor = ancestor.parent;
+
   return ancestor?.type === 'parallel';
 }
 
@@ -55,17 +64,23 @@ function orthogonal(a: AnyStateNode, b: AnyStateNode): boolean {
 export function completeTarget(machine: AnyStateMachine, requested: readonly string[], current: readonly string[]) {
   const tree = getTree(machine);
   const kept: AnyStateNode[] = [];
+
   const add = (leaf: string): void => {
     const node = tree.leaves.get(leaf);
+
     if (node && kept.every((other) => orthogonal(other, node))) kept.push(node);
   };
+
   for (const leaf of requested) add(leaf);
   const requestedCount = kept.length;
+
   if (requestedCount === 0) return [];
+
   for (const leaf of current) add(leaf);
 
   const resolved = machine.resolveState({ value: toStateValue(kept), context: {} });
   const first = kept.slice(0, requestedCount).map(nodeId);
+
   return [...first, ...leavesOfValue(machine, resolved.value).filter((leaf) => !first.includes(leaf))];
 }
 
@@ -77,6 +92,7 @@ export function completeTarget(machine: AnyStateMachine, requested: readonly str
 export function resolveSnapshot(machine: AnyStateMachine, leaves: readonly string[], context: unknown, self?: unknown) {
   const tree = getTree(machine);
   const nodes = [...new Set(leafNodes(tree, leaves))];
+
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
       if (!orthogonal(nodes[i], nodes[j])) {
@@ -84,19 +100,23 @@ export function resolveSnapshot(machine: AnyStateMachine, leaves: readonly strin
       }
     }
   }
+
   let snapshot = machine.resolveState({ value: toStateValue(nodes), context: context as never }) as AnyMachineSnapshot;
   const resolved = leavesOfValue(machine, snapshot.value);
+
   if (resolved.length !== nodes.length) {
     // XState entered regions the leaves left out (a region HMR added) after the given ones; resolving the complete
     // configuration again puts the value's keys back in document order.
     const complete = resolved.map((leaf) => tree.leaves.get(leaf)).filter((node) => node !== undefined);
     snapshot = machine.resolveState({ value: toStateValue(complete), context: context as never }) as AnyMachineSnapshot;
   }
+
   if (snapshot.status === 'done' && machine.root.output !== undefined) {
     // resolveState leaves out the output a machine has once done, which components read alongside status.
     const output = machineOutput(machine, nodes, context, self);
     snapshot = machine.resolveState({ value: snapshot.value, context: context as never, output }) as AnyMachineSnapshot;
   }
+
   return snapshot;
 }
 
@@ -109,15 +129,20 @@ const PREVIEW_EVENT = { type: 'state-viewer.preview' };
  */
 function machineOutput(machine: AnyStateMachine, nodes: readonly AnyStateNode[], context: unknown, self: unknown) {
   const { root } = machine;
+
   try {
     const final = root.type === 'parallel' ? undefined : nodes.find((node) => node.parent === root && node.type === 'final');
     const completion = final ?? root;
+
     const doneOutput =
       final && final.output !== undefined ? resolveOutput(final.output, context, PREVIEW_EVENT, self) : undefined;
+
     const doneEvent = { type: `xstate.done.state.${completion.id}`, output: doneOutput };
+
     return resolveOutput(root.output, context, doneEvent, self);
   } catch (error) {
     console.warn(`[state-viewer] The output of "${machine.id}" couldn't be computed for the preview.`, error);
+
     return undefined;
   }
 }

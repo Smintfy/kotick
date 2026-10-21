@@ -69,6 +69,7 @@ function createCheckoutMachine() {
 }
 
 type CheckoutMachine = ReturnType<typeof createCheckoutMachine>;
+
 type Checkout = Actor<CheckoutMachine>;
 
 function createToggleMachine() {
@@ -82,6 +83,7 @@ function createToggleMachine() {
 /** Shows what a component reads from the actor that connect() returns. */
 function CheckoutView({ actor }: { actor: Checkout }) {
   const snapshot = useSelector(actor, (current) => current);
+
   return <output aria-label="checkout">{JSON.stringify({ value: snapshot.value, items: snapshot.context.items })}</output>;
 }
 
@@ -193,6 +195,7 @@ describe('actors that connect() gives back unchanged', () => {
       () => {
         const actor = createActor(createCheckoutMachine()).start();
         actor.stop();
+
         return { actor };
       },
     ],
@@ -200,7 +203,9 @@ describe('actors that connect() gives back unchanged', () => {
       'an actor that already reached its final state',
       () => {
         const actor = createActor(createCheckoutMachine()).start();
+
         for (const type of ['ADD', 'PAY', 'SUCCEED'] as const) actor.send({ type });
+
         return { actor };
       },
     ],
@@ -310,6 +315,7 @@ describe('an actor connected before it starts', () => {
         },
       },
     });
+
     const actor = createActor(machine);
     onTestFinished(() => {
       actor.stop();
@@ -330,23 +336,28 @@ describe('an actor connected before it starts', () => {
 
 describe('an actor that a hook runs', () => {
   const SYSTEM_ID = 'toggle';
+
   const HOOK_ACTOR_WARNING =
     "[state-viewer] connect() was given an actor that a hook already registers, so it keeps the hook's id and label.";
 
   type ToggleMachine = ReturnType<typeof createToggleMachine>;
+
   type Hook = { actor?: AnyActorRef };
+
   type Actors = { hook: AnyActorRef; real: AnyActorRef };
 
   /** Keeps the actor that useMachine returns in `hook`, as an app that hands it on does. */
   function Toggle({ machine, hook }: { machine: ToggleMachine; hook: Hook }) {
     const [snapshot, , actor] = useMachine(machine, { systemId: SYSTEM_ID });
     hook.actor = actor;
+
     return <output aria-label="toggle">{JSON.stringify(snapshot.value)}</output>;
   }
 
   /** The hook's actor, and the real actor behind it, which app code finds through the system. */
   function actorsOf(hook: Hook): Actors {
     if (!hook.actor) throw new Error('The toggle did not render.');
+
     return { hook: hook.actor, real: hook.actor.system.get(SYSTEM_ID) as AnyActorRef };
   }
 
@@ -393,6 +404,7 @@ describe('an actor that a hook runs', () => {
       connect(second, { id: freshId('other'), label: 'Other toggle' }),
       connect(second, { label: 'Other toggle' }),
     ].map((actor) => actor === actors.hook);
+
     await flush();
     const rows = await machines();
     await show(machine.id);
@@ -412,11 +424,13 @@ describe('an actor that is not the root of its system', () => {
       initial: 'signedOut',
       states: { signedOut: { on: { SIGN_IN: 'signedIn' } }, signedIn: {} },
     });
+
     const settings = createMachine({
       id: freshId('settings'),
       initial: 'closed',
       states: { closed: { on: { OPEN: 'open' } }, open: {} },
     });
+
     const appMachine = setup({
       types: { events: {} as { type: 'TOGGLE' } | { type: 'OPEN_SETTINGS' } },
       actors: { auth, settings },
@@ -430,17 +444,20 @@ describe('an actor that is not the root of its system', () => {
       on: { OPEN_SETTINGS: { actions: sendTo('settings', { type: 'OPEN' }) } },
       states: { light: { on: { TOGGLE: 'dark' } }, dark: { on: { TOGGLE: 'light' } } },
     });
+
     const app = start(appMachine);
     connect(app.system.get('auth'));
     await mount(null);
 
     const steps = [await machines()];
+
     for (const type of ['TOGGLE', 'OPEN_SETTINGS'] as const) {
       await act(async () => {
         app.send({ type });
       });
       steps.push(await machines());
     }
+
     expect(steps).toEqual([[auth.id], [auth.id], [auth.id]]);
   });
 });

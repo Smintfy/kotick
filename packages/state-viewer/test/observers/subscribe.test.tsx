@@ -53,6 +53,7 @@ function createCheckoutMachine() {
 }
 
 type CheckoutMachine = ReturnType<typeof createCheckoutMachine>;
+
 type Checkout = Actor<CheckoutMachine>;
 
 /** Finishes with output 42 on FINISH. `waiting` and `cancelled` are there to be previewed. */
@@ -80,6 +81,7 @@ function createJobMachine() {
  */
 function createFetchMachine() {
   let settle: (response: number) => void = () => {};
+
   const machine = setup({
     types: { context: {} as { result: number } },
     actors: {
@@ -104,6 +106,7 @@ function createFetchMachine() {
     },
     output: ({ context }) => context.result,
   });
+
   return { machine, respond: (response: number) => settle(response) };
 }
 
@@ -114,12 +117,17 @@ async function mountHook(
   props?: StateViewerProps,
 ): Promise<AnyActorRef> {
   const held: { actor?: AnyActorRef } = {};
+
   function Job() {
     held.actor = use(machine);
+
     return null;
   }
+
   await mount(<Job />, props);
+
   if (!held.actor) throw new Error('The job did not render.');
+
   return held.actor;
 }
 
@@ -142,6 +150,7 @@ function summary(snapshot: SnapshotFrom<CheckoutMachine>): string {
 /** What an app reads from the actor: its status, its state value, and its output when it is done. */
 function read(actor: AnyActorRef) {
   const { status, value, output } = actor.getSnapshot();
+
   return { status, value, output };
 }
 
@@ -159,12 +168,14 @@ function outcome(promise: Promise<unknown>): () => string {
       settled = `rejected ${error.message}`;
     },
   );
+
   return () => settled;
 }
 
 /** Waits for the final state of a job, and records the status and output of the snapshot that the wait resolves with. */
 function waitForFinished(job: AnyActorRef): () => string {
   const finished = waitFor(job, (snapshot) => snapshot.matches('finished'));
+
   return outcome(finished.then((snapshot) => `${snapshot.status} ${snapshot.output}`));
 }
 
@@ -175,6 +186,7 @@ function observe(job: AnyActorRef): string[] {
     next: (snapshot) => calls.push(`next ${snapshot.status} ${String(snapshot.value)}`),
     complete: () => calls.push('complete'),
   });
+
   return calls;
 }
 
@@ -195,6 +207,7 @@ const OWNERS: [owner: string, end: string, run: (machine: AnyStateMachine) => Pr
       const actor = start(machine);
       const job = connect(actor);
       await mount(null);
+
       return { job, finish: () => actor.send({ type: 'FINISH' }), end: flush };
     },
   ],
@@ -203,6 +216,7 @@ const OWNERS: [owner: string, end: string, run: (machine: AnyStateMachine) => Pr
     'the preview is released',
     async (machine) => {
       const job = await mountHook(machine, (logic) => useActorRef(logic, { systemId: 'job' }));
+
       return {
         job,
         finish: () => job.system.get('job')?.send({ type: 'FINISH' }),
@@ -235,6 +249,7 @@ describe('subscribing to the actor that connect() returns', () => {
     const machine = createCheckoutMachine();
     const checkout = connect(start(machine));
     const calls: string[] = [];
+
     const observer = {
       name: 'observer',
       next(snapshot: SnapshotFrom<CheckoutMachine>) {
@@ -244,6 +259,7 @@ describe('subscribing to the actor that connect() returns', () => {
         calls.push(`${this.name} complete`);
       },
     };
+
     checkout.subscribe(observer);
     checkout.subscribe(
       (snapshot) => calls.push(`callbacks next ${summary(snapshot)}`),
@@ -323,11 +339,13 @@ describe('subscribing to the actor that connect() returns', () => {
     const machine = createCheckoutMachine();
     const actor = start(machine);
     const checkout = connect(actor);
+
     const observe = (calls: string[]) =>
       checkout.subscribe({
         next: (snapshot) => calls.push(`next ${summary(snapshot)}`),
         complete: () => calls.push('complete'),
       });
+
     const early: string[] = [];
     const late: string[] = [];
     observe(early);
@@ -359,6 +377,7 @@ describe('an error in the actor', () => {
         },
       },
     });
+
     return start(machine);
   }
 
@@ -451,13 +470,16 @@ describe('an observer that unsubscribes in next on the done snapshot', () => {
   /** Subscribes an observer that unsubscribes once it gets the done snapshot, and returns its calls. */
   function observeUntilDone(job: AnyActorRef): string[] {
     const calls: string[] = [];
+
     const subscription = job.subscribe({
       next: (snapshot) => {
         calls.push(`next ${snapshot.status}`);
+
         if (snapshot.status === 'done') subscription.unsubscribe();
       },
       complete: () => calls.push('complete'),
     });
+
     return calls;
   }
 
@@ -584,11 +606,13 @@ describe('waitFor called during a preview on an actor that already finished', ()
       await act(async () => {
         job.send({ type: 'FINISH' });
       });
+
       if (previews) await preview(machine.id, ['waiting']);
 
       const finished = waitForFinished(job);
       await flush();
       const previewing = { shown: read(job), waitFor: finished() };
+
       if (previews) await release(machine.id);
       expect({ previewing, released: finished() }).toEqual({
         previewing: previews
@@ -619,7 +643,9 @@ describe('waitFor called during a preview on an actor that already finished', ()
 
 describe('a subscriber that subscribes again as it hears the end of an actor that finished during a preview', () => {
   type Where = 'next' | 'complete';
+
   type Position = 'first' | 'middle' | 'last';
+
   type Resubscribe = (job: AnyActorRef) => void;
 
   const HOWS: [how: string, resubscribe: Resubscribe][] = [
@@ -643,6 +669,7 @@ describe('a subscriber that subscribes again as it hears the end of an actor tha
       },
     ],
   ];
+
   const WHERES: Where[] = ['next', 'complete'];
   const POSITIONS: Position[] = ['first', 'middle', 'last'];
 
@@ -664,14 +691,17 @@ describe('a subscriber that subscribes again as it hears the end of an actor tha
       job.subscribe({
         next: (snapshot: { status: string }) => {
           calls.push(`${name} ${snapshot.status}`);
+
           if (again && where === 'next' && snapshot.status === 'done') resubscribe(job);
         },
         complete: () => {
           calls.push(`${name} complete`);
+
           if (again && where === 'complete') resubscribe(job);
         },
       });
     }
+
     return waitForFinished(job);
   }
 
@@ -716,6 +746,7 @@ describe('a subscriber that subscribes again as it hears the end of an actor tha
       const machine = createJobMachine();
       const view = await mount(null);
       const heard: (() => string)[] = [];
+
       // A function of its own, so that no frame of the test holds the actor.
       // Nothing ends the subscriptions.
       const finishDuringPreview = async (): Promise<WeakRef<AnyActorRef>> => {
@@ -726,8 +757,10 @@ describe('a subscriber that subscribes again as it hears the end of an actor tha
         await act(async () => {
           actor.send({ type: 'FINISH' });
         });
+
         return new WeakRef(actor);
       };
+
       const refs = [await finishDuringPreview(), await finishDuringPreview(), await finishDuringPreview()];
 
       const listed = await machines();

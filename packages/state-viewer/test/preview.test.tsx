@@ -72,6 +72,7 @@ type CheckoutMachine = ReturnType<typeof createCheckoutMachine>;
 
 function Checkout({ machine, name = 'checkout' }: { machine: CheckoutMachine; name?: string }) {
   const [snapshot, send] = useMachine(machine);
+
   return (
     <>
       <output aria-label={name}>{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>
@@ -89,6 +90,7 @@ function Checkout({ machine, name = 'checkout' }: { machine: CheckoutMachine; na
 /** Shows what a component sees through the proxy that connect() returns. */
 function Connected({ actor }: { actor: Actor<CheckoutMachine> }) {
   const snapshot = useSelector(actor, (current) => current);
+
   return <output aria-label="checkout">{JSON.stringify({ value: snapshot.value, context: snapshot.context })}</output>;
 }
 
@@ -115,6 +117,7 @@ async function mountConnected(machine: CheckoutMachine, fixtures?: FixturesInput
     </>,
   );
   await flush();
+
   // The module sends to the actor itself, not to the proxy, so a preview doesn't block these events.
   return async (event: EventFrom<CheckoutMachine>) => {
     await act(async () => {
@@ -135,6 +138,7 @@ function shown(name = 'checkout') {
 /** Each source of the context switcher: `checked`, `enabled`, or `disabled` when it has no context to give. */
 function sources(): Record<string, string> {
   const inputs = overlay().querySelectorAll<HTMLInputElement>('[aria-label="Context source"] input');
+
   return Object.fromEntries(
     [...inputs].map((input) => [input.value, input.checked ? 'checked' : input.disabled ? 'disabled' : 'enabled']),
   );
@@ -201,6 +205,7 @@ async function connectCart(machine: CartMachine, fixtures?: FixturesInput) {
   const proxy = connect(actor);
   render(<StateViewer defaultOpen fixtures={fixtures} />);
   await flush();
+
   return { actor, proxy };
 }
 
@@ -253,6 +258,7 @@ function MachineView({
 }) {
   const [snapshot, send] = useMachine(machine);
   rendered?.push(JSON.stringify(snapshot.value));
+
   return (
     <>
       <output aria-label="app">
@@ -274,9 +280,11 @@ type Edit = 'as written' | 'without paying.card.error' | 'with paying made compo
 function createEditedMachine(id: string, edit: Edit = 'as written') {
   const cardStates: Record<string, object> =
     edit === 'without paying.card.error' ? { idle: {} } : { idle: {}, error: {} };
+
   const card = { initial: 'idle', states: cardStates };
   const shipping = { initial: 'standard', states: { standard: {}, express: {} } };
   const gift = { initial: 'none', states: { none: {}, wrapped: {} } };
+
   return createMachine({
     id,
     context: { note: 'live' },
@@ -364,6 +372,7 @@ describe('releasing', () => {
       machines: await machines(),
       actions: listActions(),
     });
+
     await release(first.id);
     const one = await seen();
     await releaseAll();
@@ -418,8 +427,10 @@ describe('context', () => {
     await press('Express');
     await show(machine.id);
     const before = { source: panel().source, context: panel().context };
+
     const contextOf = async (leaf: string) => {
       await preview(machine.id, [leaf]);
+
       return `${panel().source}: ${JSON.stringify(shown().context)}`;
     };
 
@@ -449,10 +460,12 @@ describe('context', () => {
 
     await preview(machine.id, ['paying.shipping.standard']);
     const steps = [seen()];
+
     for (const source of ['fixture', 'live', 'recorded'] as const) {
       await pickSource(source);
       steps.push(seen());
     }
+
     await preview(machine.id, ['done']);
     steps.push(seen());
     const standard = ['paying.shipping.standard'];
@@ -590,8 +603,10 @@ describe('parallel regions', () => {
         'paying.shipping.standard': { context: { step: 1, note: 'standard shipping' } },
       }),
     ]);
+
     const noteOf = async (leaves: string[]) => {
       await preview(machine.id, leaves);
+
       return `${panel().source}: ${shown().context.note}`;
     };
 
@@ -635,6 +650,7 @@ describe('parallel regions', () => {
       </>,
     );
     await flush();
+
     for (const event of ['SAVE', 'PROGRESS', 'DARK']) await press(event);
 
     await preview(machine.id, ['document.saving.upload.failed']);
@@ -692,9 +708,11 @@ describe('an actor that moves on during a preview', () => {
   test('a picked source without context in the current state falls back in the usual order, and warns', async () => {
     const output = watchConsole();
     const machine = createCheckoutMachine();
+
     const send = await mountConnected(machine, [
       defineFixtures(machine, { 'paying.shipping.standard': { context: { step: 7, note: 'standard shipping' } } }),
     ]);
+
     await show(machine.id);
     const key = shownKey();
     await send({ type: 'START' });
@@ -730,6 +748,7 @@ describe('an actor read outside React', () => {
     await preview(machine.id, ['paying.declined']);
     const previewed = getSnapshot();
     await outsideReact(() => actor.send({ type: 'PAY' }));
+
     // useSyncExternalStore needs the same object on every call while nothing that it shows changes.
     const previewing = {
       value: previewed.value,
@@ -737,6 +756,7 @@ describe('an actor read outside React', () => {
       unchanged: proxy.getSnapshot() === previewed,
       real: actor.getSnapshot().value,
     };
+
     await release(machine.id);
     const released = { isReal: isReal(), value: getSnapshot().value };
     await preview(machine.id, ['paid']);
@@ -758,13 +778,17 @@ describe('an actor read outside React', () => {
 
   test('a previewed snapshot answers matches, hasTag and can, and can checks guards on the previewed context', async () => {
     const machine = createCartMachine();
+
     const { actor, proxy } = await connectCart(machine, [
       defineFixtures(machine, { shopping: { context: { items: [5] } } }),
     ]);
+
     const states = ['shopping', 'paying', { paying: 'pending' }, { paying: 'declined' }] as const;
     const events = [{ type: 'ADD', price: 1 }, { type: 'PAY' }, { type: 'RETRY' }] as const;
+
     const answers = () => {
       const snapshot = proxy.getSnapshot();
+
       return {
         status: snapshot.status,
         matches: states.filter((state) => snapshot.matches(state)),
@@ -788,14 +812,18 @@ describe('an actor read outside React', () => {
 
   test('select() reads through the preview, and its subscriber hears each selection that changes', async () => {
     const machine = createCartMachine();
+
     const { actor, proxy } = await connectCart(machine, [
       defineFixtures(machine, { 'paying.declined': { context: { items: [9, 9, 9] } } }),
     ]);
+
     const value = proxy.select((snapshot) => snapshot.value);
     const counts: number[] = [];
+
     const subscription = proxy.select((snapshot) => snapshot.context.items.length).subscribe((count) => {
       counts.push(count);
     });
+
     await outsideReact(() => actor.send({ type: 'ADD', price: 3 }));
     // PAY changes the state but not the count.
     await outsideReact(() => actor.send({ type: 'PAY' }));
@@ -840,18 +868,22 @@ describe('an actor read outside React', () => {
     const added: unknown[] = [];
     // An app can take on() off the actor.
     const { on } = proxy;
+
     const listener = on('added', (event) => {
       added.push(event);
     });
+
     await outsideReact(() => proxy.send({ type: 'ADD', price: 3 }));
 
     await preview(machine.id, ['paying.declined']);
     const { value, context, status } = proxy.getPersistedSnapshot() as Record<string, unknown>;
+
     const during = {
       persisted: { value, context, status },
       toJSON: proxy.toJSON(),
       json: JSON.stringify({ ref: proxy }),
     };
+
     await releaseAll();
     listener.unsubscribe();
     await outsideReact(() => proxy.send({ type: 'ADD', price: 4 }));
@@ -902,9 +934,11 @@ describe('an actor read outside React', () => {
 describe('final states', () => {
   test('a previewed final state is done, with the output that the machine computes from the previewed context', async () => {
     const machine = createCartMachine();
+
     const { actor, proxy } = await connectCart(machine, [
       defineFixtures(machine, { paid: { context: { items: [1, 2, 3] } } }),
     ]);
+
     await outsideReact(() => actor.send({ type: 'ADD', price: 4 }));
 
     await preview(machine.id, ['paid']);
@@ -923,11 +957,13 @@ describe('final states', () => {
 
   test('a parallel root is done once every region is in a final state', async () => {
     const region = { initial: 'sending', states: { sending: {}, sent: { type: 'final' as const } } };
+
     const machine = createMachine({
       id: freshId('upload'),
       type: 'parallel',
       states: { file: region, thumbnail: region },
     });
+
     render(
       <>
         <MachineView machine={machine} />
@@ -935,8 +971,10 @@ describe('final states', () => {
       </>,
     );
     await flush();
+
     const seen = () => {
       const { value, status } = shown('app');
+
       return { value, status };
     };
 

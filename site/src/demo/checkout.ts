@@ -31,7 +31,9 @@ const digitsOf = (cardNumber: string) => cardNumber.replace(/\D/g, '');
 
 const charge = fromPromise<{ receiptId: string }, { cardNumber: string }>(async ({ input }) => {
   await new Promise((resolve) => setTimeout(resolve, 800));
+
   if (digitsOf(input.cardNumber).endsWith('0002')) throw new Error('Card declined');
+
   return { receiptId: `rcpt_${Math.random().toString(36).slice(2, 8)}` };
 });
 
@@ -117,6 +119,7 @@ const base: CheckoutContext = {
   total: 4800,
   cardNumber: '',
 };
+
 const withCard: CheckoutContext = { ...base, cardNumber: '4242 4242 4242 4242' };
 
 export const fixturesInEveryBuild = [
