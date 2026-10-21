@@ -276,7 +276,7 @@ export function createView(
   // hook's, so the target hears it even when the view has closed on a new actor that was restored stopped. An actor
   // registered under another id isn't previewed by what previews the new one.
   const settleOwed = (force: boolean): void => {
-    for (const owed of [...remember().owed]) {
+    for (const owed of Array.from(remember().owed)) {
       const index = memory.owed.indexOf(owed);
 
       // Settled already, from inside a callback this loop made.

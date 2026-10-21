@@ -245,7 +245,7 @@ function createStore() {
   const listeners = new Set<() => void>();
 
   const emit = (): void => {
-    for (const listener of [...listeners]) listener();
+    for (const listener of Array.from(listeners)) listener();
   };
 
   return {

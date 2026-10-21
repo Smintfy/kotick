@@ -69,7 +69,7 @@ export function createHandle(
     notify() {
       if (!listeners || listeners.size === 0) return;
 
-      for (const listener of [...listeners]) {
+      for (const listener of Array.from(listeners)) {
         if (listeners.has(listener)) callLoggingErrors(listener, `A listener of "${key}" threw.`);
       }
     },
@@ -147,7 +147,7 @@ export function inspect(
     entry.unregister();
 
     // XState leaves the children of a failed actor running, out of reach of the tree.
-    for (const other of [...connected.keys()]) {
+    for (const other of Array.from(connected.keys())) {
       if (other._parent === ref) remove(other);
     }
   }
@@ -160,7 +160,7 @@ export function inspect(
   function removeEndedChildren(): void {
     if (!connected) return;
 
-    for (const child of [...connected.keys()]) {
+    for (const child of Array.from(connected.keys())) {
       if (child.getSnapshot().status !== 'active') remove(child);
     }
   }
