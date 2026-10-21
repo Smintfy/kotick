@@ -18,9 +18,8 @@ import { parseArgs } from 'node:util';
 const root = join(import.meta.dirname, '..');
 const packageDir = join(root, 'packages/konat');
 
-// The minimum versions are the lowest that the peer ranges in packages/konat/package.json allow.
-// Keep the two in sync.
-const MIN = { xstate: '5.28.0', xstateReact: '6.1.0' };
+const { peerDependencies } = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
+const MIN = { xstate: lowestVersion('xstate'), xstateReact: lowestVersion('@xstate/react') };
 const REACT_18 = { react: '18.3.1', types: '18.3.31', domTypes: '18.3.7' };
 
 const COMBOS = [
@@ -39,6 +38,16 @@ const { values } = parseArgs({
     keep: { type: 'boolean', default: false },
   },
 });
+
+/** The lowest version that konat's peer range for `name`, such as "^5.28.0", allows. */
+function lowestVersion(name) {
+  const range = peerDependencies[name];
+  const match = /^\^(\d+\.\d+\.\d+)$/.exec(range ?? '');
+
+  if (!match) throw new Error(`packages/konat/package.json: expected a caret range for ${name}, not "${range}".`);
+
+  return match[1];
+}
 
 /** Versions from the `catalog:` section of pnpm-workspace.yaml. The temporary copy is outside the workspace. */
 function readCatalog() {
