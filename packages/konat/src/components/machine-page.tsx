@@ -1,6 +1,3 @@
-// A machine's page: the instance picker, the state tree, context, the event log, and the Copy JSON button.
-// It handles the keys that move through the tree and switch machines.
-
 import * as React from 'react';
 import { useHandleUpdates } from '../hooks/use-handle-updates';
 import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../types';
@@ -46,14 +43,12 @@ export function MachinePage(props: MachinePageProps) {
 
   if (collapse.key !== key) setCollapse({ key, groups: NONE_COLLAPSED });
   const collapsed = collapse.groups;
-  // The leaves that show: the arrows and the cursor skip the leaves of a collapsed group.
   const leaves = React.useMemo(() => shownLeaves(nodes, collapsed), [nodes, collapsed]);
   // Read on every render: the handle's updates re-render the page, the registry snapshot doesn't change for them.
   const active = new Set<string>(attempt(() => handle.getActiveLeaves(), []));
   const liveContext = attempt(() => handle.getContext(), undefined);
   const data = snapshot.data[handle.machineId] || EMPTY_DATA;
 
-  // The leaf keyboard navigation is on: the one last moved to or clicked, else the previewed, live or first leaf.
   const [cursorState, setCursor] = React.useState<string>();
 
   const cursor =
@@ -64,7 +59,6 @@ export function MachinePage(props: MachinePageProps) {
         leaves[0]);
 
   const pageRef = React.useRef<HTMLDivElement>(null);
-  // What the last copy did. The button shows it in place of its label for 2 s.
   const [copyStatus, setCopyStatus] = React.useState<string>();
   React.useEffect(() => {
     if (copyStatus === undefined) return;

@@ -1,6 +1,3 @@
-// The context section: a read-only JSON viewer, and while previewing, which source the context came from
-// with a switcher for it.
-
 import { useId, useState } from 'react';
 import type { DataSource, Override } from '../types';
 import { inspect } from '../utils/format';
@@ -15,9 +12,7 @@ const SOURCES: readonly { source: DataSource; label: string; missing: string }[]
 
 interface ContextViewProps {
   context: unknown;
-  /** Set while the instance is previewed. */
   override: Override | undefined;
-  /** Which sources have context for the preview's leaves. */
   available: Readonly<Record<DataSource, boolean>>;
   onSource(source: DataSource): void;
 }
@@ -68,7 +63,6 @@ export function ContextView({ context, override, available, onSource }: ContextV
   );
 }
 
-/** The class of a value by its type. */
 const VALUE_CLASSES = {
   string: 'whitespace-pre text-json-string',
   number: 'text-json-number',
@@ -119,7 +113,6 @@ interface JsonEntryProps {
   name?: string;
   value: unknown;
   depth: number;
-  /** Objects above this one, to show a cycle rather than follow it. */
   ancestors: unknown[];
 }
 
@@ -133,7 +126,6 @@ function JsonEntry({ name, value, depth, ancestors }: JsonEntryProps) {
     </>
   );
 
-  // The ancestors are branches, so a leaf can't be among them.
   const circular = ancestors.includes(value);
   const inspected = circular ? undefined : inspect(value);
 

@@ -1,6 +1,3 @@
-// The panel's shell around the page that Overlay picks: a header with Back, the page's title and chips, and Close.
-// Escape releases every preview on every page. Each page handles its other keys.
-
 import type * as React from 'react';
 import type { PanelPage } from '../utils/model';
 import { isTyping } from '../utils/shortcut';
@@ -11,11 +8,8 @@ interface PanelProps {
   panelRef: React.Ref<HTMLElement>;
   page: PanelPage['kind'];
   title: string;
-  /** Counts and the path, after the title. */
   chips?: React.ReactNode;
-  /** Shows the Back button. */
   onBack: (() => void) | undefined;
-  /** Shown in the close button's tooltip, such as 'Alt+S'. */
   shortcutLabel: string | undefined;
   onClose(): void;
   onReleaseAll(): void;

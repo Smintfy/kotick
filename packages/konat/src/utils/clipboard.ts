@@ -1,4 +1,3 @@
-/** Copies text, through the Clipboard API where the page allows it and a selected textarea otherwise. */
 export async function copyText(text: string, container: Node): Promise<boolean> {
   try {
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
@@ -39,12 +38,10 @@ export async function copyText(text: string, container: Node): Promise<boolean> 
 // The checks read properties, not instanceof, so they hold for a node of another window too.
 // The overlay can be in the document of an iframe or a popup.
 
-/** Whether a root node is a document or a shadow root, which know their focused element. */
 function hasActiveElement(root: Node): root is Document | ShadowRoot {
   return 'activeElement' in root;
 }
 
-/** Whether an element can take focus back, as an HTML or an SVG element can. */
 function isFocusable(element: Element | null): element is HTMLElement | SVGElement {
   return element !== null && 'focus' in element && typeof element.focus === 'function';
 }

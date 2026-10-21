@@ -1,5 +1,3 @@
-// Panel UI state kept in localStorage: whether the panel is open, its corner, and the machine whose page it shows.
-
 import { isId } from '../core/ids';
 import type { Position } from '../types';
 
@@ -14,13 +12,12 @@ export interface Settings {
    */
   positionDefault?: Position;
   /**
-   * The id of the machine whose page the panel shows. Unset shows the machine list.
-   * Instance ids change on every page load, so the instance isn't kept.
+   * Unset shows the machine list.
+   * An instance id is valid only during one page load, so the settings don't keep it.
    */
   machine?: string;
 }
 
-/** What the settings key holds: the version, then each setting as it was written, checked on its own. */
 interface StoredSettings {
   v: 1;
   open?: unknown;
@@ -48,7 +45,6 @@ function defaultStorage(): Storage | null {
   }
 }
 
-/** The stored settings, leaving out whatever is missing or invalid. */
 export function readSettings(): Settings {
   const storage = defaultStorage();
 
@@ -80,7 +76,6 @@ export function readSettings(): Settings {
   return settings;
 }
 
-/** Best effort: settings that can't be stored last until the page reloads. */
 export function writeSettings(settings: Settings): void {
   const storage = defaultStorage();
 

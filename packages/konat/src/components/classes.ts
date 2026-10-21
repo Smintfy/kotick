@@ -1,5 +1,4 @@
-// Class lists that more than one component uses.
-// Each is a whole list, so Tailwind's scanner finds every class.
+// Each constant is a whole class list, so Tailwind's scanner finds every class.
 
 export const CHIP =
   'inline-block h-4 min-w-4 flex-none rounded-sm bg-chip px-1 text-center text-sm leading-4 font-medium text-fg tabular-nums';

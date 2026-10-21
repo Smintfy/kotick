@@ -20,7 +20,6 @@ function Icon({ size = 16, className, children }: { size?: number; className?: s
   );
 }
 
-/** A state as a hexagon, with a dot for the current one. */
 export function HexagonIcon() {
   return (
     <Icon>
@@ -46,7 +45,7 @@ export function BackIcon() {
   );
 }
 
-/** Points down while its group is open. CSS turns it to the right while the group is closed. */
+/** Points down. CSS turns it to the right while its group is closed. */
 export function ChevronIcon({ size, className }: { size: number; className: string }) {
   return (
     <Icon size={size} className={className}>

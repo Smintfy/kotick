@@ -1,24 +1,19 @@
-// What the panel derives from the registry snapshot, as pure functions.
-// It groups machines by id, labels instances, names the panel's pages, and finds the leaves a click previews.
-
 import { toInstanceKey } from '../core/registry';
 import type { MachineHandle, StateNodeInfo } from '../types';
 
 export interface InstanceEntry {
   key: string;
   handle: MachineHandle;
-  /** `checkout · 1`, or the handle's label in place of the machine id. */
   label: string;
 }
 
 export interface MachineGroup {
   machineId: string;
   instances: InstanceEntry[];
-  /** Child machines are listed read-only. */
   childrenOnly: boolean;
 }
 
-/** Groups handles by machine id, in the order each id first registered. */
+/** In the order that each machine id first registered. */
 export function groupMachines(handles: readonly MachineHandle[]): MachineGroup[] {
   const groups = new Map<string, MachineGroup>();
 
@@ -43,7 +38,6 @@ export function groupMachines(handles: readonly MachineHandle[]): MachineGroup[]
   return [...groups.values()];
 }
 
-/** The page that the panel shows. Overlay derives it on each render and never stores it. */
 export type PanelPage =
   | { kind: 'machines' }
   | { kind: 'settings' }
@@ -61,7 +55,6 @@ export function findInstance(groups: readonly MachineGroup[], key: string | unde
   return undefined;
 }
 
-/** What a click on a leaf does to the instance's preview. */
 export type LeafToggle = { action: 'preview'; leaves: string[] } | { action: 'release' };
 
 /**
@@ -79,7 +72,7 @@ export function toggleLeaf(requested: readonly string[] | undefined, leaf: strin
   return kept.length === 0 ? { action: 'release' } : { action: 'preview', leaves: kept };
 }
 
-/** The leaf ids in tree order, without the leaves inside a collapsed compound or parallel state. */
+/** In tree order, without the leaves inside a collapsed compound or parallel state. */
 export function shownLeaves(
   nodes: readonly StateNodeInfo[],
   collapsed: ReadonlySet<string>,
@@ -93,7 +86,7 @@ export function shownLeaves(
   return into;
 }
 
-/** What a handle method returns, or `fallback` when the adapter throws: the panel must keep rendering. */
+/** The adapter can throw, and the panel must keep rendering. */
 export function attempt<T>(read: () => T, fallback: T): T {
   try {
     return read();

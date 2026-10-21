@@ -1,6 +1,3 @@
-// The overlay's host element: a <div data-konat-root> with an open shadow root holding the styles
-// and the container React renders the overlay into.
-
 import { overlayStyles } from '../styles.generated';
 
 const HOST_ATTRIBUTE = 'data-konat-root';
@@ -8,9 +5,7 @@ const HOST_ATTRIBUTE = 'data-konat-root';
 export interface OverlayHost {
   host: HTMLElement;
   shadow: ShadowRoot;
-  /** The <style> with the overlay's CSS. */
   style: HTMLStyleElement;
-  /** Where the overlay is rendered, inside the shadow root. */
   container: HTMLElement;
   remove(): void;
 }

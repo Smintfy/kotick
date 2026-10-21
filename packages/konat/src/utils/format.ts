@@ -1,16 +1,13 @@
-// Turning contexts and events into text for the panel and the clipboard. Contexts can hold anything: actor refs,
-// functions, Maps, cycles; none of it may throw.
+// A context can hold any value, such as an actor ref, a function, a Map or a cycle.
+// The functions in this file must not throw on any of them.
 
 import type { EventLogEntry } from '../types';
 
-/** An object inside a context or an event's payload, as the panel walks it. */
 // oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- A context or an event is the app's own data, with no schema.
 type ContextObject = Record<string, unknown>;
 
-/** What an XState actor ref has. It is shown as `[Actor id]`, not as its properties. */
 type ActorRefLike = { sessionId: string; send: Function; getSnapshot: Function };
 
-/** One value as the JSON viewer shows it: a leaf with its text, or a branch with entries to expand. */
 type Inspected =
   | { kind: 'leaf'; type: 'string' | 'number' | 'boolean' | 'null' | 'undefined' | 'special'; text: string }
   | { kind: 'branch'; summary: string; entries: () => [string, unknown][]; size: number };
@@ -87,10 +84,6 @@ function inspectObject(value: ContextObject): Inspected {
   };
 }
 
-/**
- * JSON for the clipboard. Cycles, functions, actors, Maps and Sets become readable placeholders rather than errors,
- * and `undefined` properties are left out as JSON.stringify does.
- */
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- The clipboard and the event log get any value of a context or an event.
 export function toJson(value: unknown, space: number | string = 2): string {
   const ancestors: unknown[] = [];
@@ -100,8 +93,8 @@ export function toJson(value: unknown, space: number | string = 2): string {
       value,
       // oxlint-disable-next-line anti-slop/no-unknown-parameters -- `item` is what toJSON() gave for any value of a context or an event.
       function replacer(this: ContextObject, key: string, item: unknown) {
-        // `item` is what toJSON() returned. Actors have one that hides what they are, so placeholders use the raw
-        // value.
+        // `item` is what toJSON() returned.
+        // Actors have one that hides what they are, so placeholders use the raw value.
         const raw = this[key];
 
         if (isObject(raw)) {
@@ -139,7 +132,6 @@ export function toJson(value: unknown, space: number | string = 2): string {
   }
 }
 
-/** A short one-line form of an event's payload, without its type: `{ cardNumber: "4242…" }`. */
 export function summarizePayload(event: EventLogEntry['event']): string {
   const { type: _type, ...payload } = event;
 
@@ -206,7 +198,7 @@ function constructorName(value: ContextObject): string | undefined {
   }
 }
 
-/** One entry of an object. A getter that throws shows as unreadable. */
+/** A getter that throws shows as unreadable. */
 function entryOf(value: ContextObject, key: string): [string, unknown] {
   try {
     return [key, value[key]];
