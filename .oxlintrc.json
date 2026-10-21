@@ -4,7 +4,22 @@
   "categories": {
     "correctness": "error"
   },
-  "ignorePatterns": ["**/dist/**", "**/.next/**", ".claude/**"],
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/.next/**",
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".opencode/**",
+    ".pi/**",
+    ".roo/**",
+    ".windsurf/**",
+    "tools/oxlint/anti-slop/**"
+  ],
   "rules": {
     // Some loops copy a set or a map before they iterate it, and this rule flags each copy.
     // A loop over the live collection also visits the entries that its callbacks add.
