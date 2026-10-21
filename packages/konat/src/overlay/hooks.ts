@@ -56,11 +56,16 @@ function readPathname(): string {
 
 function subscribeToLocation(onChange: () => void): () => void {
   const navigation = 'navigation' in window ? window.navigation : undefined;
-  window.addEventListener('popstate', onChange);
-  navigation?.addEventListener('currententrychange', onChange);
+
+  // The Next.js App Router calls pushState() in an insertion effect, and Chrome fires currententrychange in that call.
+  // React must not get an update while it runs insertion effects, so it gets the change after the commit.
+  const onLocationChange = () => queueMicrotask(onChange);
+
+  window.addEventListener('popstate', onLocationChange);
+  navigation?.addEventListener('currententrychange', onLocationChange);
 
   return () => {
-    window.removeEventListener('popstate', onChange);
-    navigation?.removeEventListener('currententrychange', onChange);
+    window.removeEventListener('popstate', onLocationChange);
+    navigation?.removeEventListener('currententrychange', onLocationChange);
   };
 }

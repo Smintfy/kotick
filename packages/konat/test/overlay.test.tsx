@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import * as React from 'react';
 import { Konat, type Theme } from 'konat';
 import { defineFixtures, useMachine } from 'konat/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import { createMachine, setup, type AnyStateMachine } from 'xstate';
+import { watchConsole } from './support/console';
 import type { Json } from './support/json';
 import {
   copy,
@@ -67,6 +69,20 @@ function Checkout({ machine }: { machine: AnyStateMachine }) {
 
 function Run({ machine }: { machine: AnyStateMachine }) {
   useMachine(machine);
+
+  return null;
+}
+
+/**
+ * Goes to `path` as the Next.js App Router does: it calls pushState() in an insertion effect, and Chrome tells the
+ * listeners of the Navigation API in that call.
+ */
+function Router({ path }: { path: string }) {
+  React.useInsertionEffect(() => {
+    if (window.location.pathname === path) return;
+    window.history.pushState(null, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, [path]);
 
   return null;
 }
@@ -236,6 +252,29 @@ describe('the machine list', () => {
         ],
       },
       navigated: ['Machines', '/cart', '4'],
+    });
+  });
+
+  test('the path follows a router that changes it in an insertion effect, and React logs no error', async () => {
+    window.history.replaceState(null, '', '/checkout');
+    const toggle = createToggleMachine();
+    const output = watchConsole();
+
+    const page = (path: string) => (
+      <>
+        <Router path={path} />
+        <Run machine={toggle} />
+        <Konat defaultOpen />
+      </>
+    );
+
+    const { rerender } = render(page('/checkout'));
+    await flush();
+    rerender(page('/cart'));
+    await flush();
+    expect({ header: (await machineList()).header, errors: output.error }).toEqual({
+      header: ['Machines', '/cart', '1'],
+      errors: [],
     });
   });
 
