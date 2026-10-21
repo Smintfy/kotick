@@ -23,6 +23,7 @@ type CheckoutEvent = { type: 'PAY' } | { type: 'RETRY' } | { type: 'UPDATE_CARD'
 
 // Compound root: nested compound states, a history state and final states at two depths.
 const checkoutMachine = setup({
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
   types: { context: {} as CheckoutContext, events: {} as CheckoutEvent },
 }).createMachine({
   id: 'checkout',
@@ -57,8 +58,11 @@ type CheckoutLeaf =
 
 const base: CheckoutContext = { items: ['sku_1'], total: 4800 };
 
+type LayoutContext = { width: number };
+
 // Parallel root whose regions are all compound, with a parallel state nested inside one of them.
-const layoutMachine = setup({ types: { context: {} as { width: number } } }).createMachine({
+// SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+const layoutMachine = setup({ types: { context: {} as LayoutContext } }).createMachine({
   id: 'layout',
   type: 'parallel',
   context: { width: 1024 },
@@ -89,8 +93,11 @@ type LayoutLeaf =
   | 'content.split.right.detail'
   | 'content.split.right.edit';
 
+type EditorContext = { text: string };
+
 // Parallel states with atomic regions, which appear as `{}` in the state value: one at the root, one nested.
-const editorMachine = setup({ types: { context: {} as { text: string } } }).createMachine({
+// SAFETY: XState reads the types of setup() only at compile time. It never reads this value.
+const editorMachine = setup({ types: { context: {} as EditorContext } }).createMachine({
   id: 'editor',
   type: 'parallel',
   context: { text: '' },
@@ -124,9 +131,12 @@ type EditorLeaf =
   | 'upload.sent'
   | 'autosave';
 
+type ProfileInput = { userId: string };
+
 // A machine whose actors must be given input.
 const profileMachine = setup({
-  types: { input: {} as { userId: string }, context: {} as { userId: string } },
+  // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
+  types: { input: {} as ProfileInput, context: {} as ProfileInput },
 }).createMachine({
   id: 'profile',
   context: ({ input }) => ({ userId: input.userId }),
