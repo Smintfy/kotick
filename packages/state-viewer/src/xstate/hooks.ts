@@ -13,6 +13,7 @@ import {
   type IsNotNever,
   type Observer,
   type RequiredActorOptionsKeys,
+  type Snapshot,
   type SnapshotFrom,
   type StateFrom,
 } from 'xstate';
@@ -41,6 +42,22 @@ interface ConnectionSlot<T> {
 interface Listening {
   binding: Binding;
   view: View;
+}
+
+/**
+ * The actor @xstate/react subscribed an observer to, once it has. It subscribes an observer again only when the
+ * observer changes, or when its effects run again (StrictMode, an Activity reveal): a stable observer stays with
+ * the actor a new config replaced, which then tells it nothing, and so do the new actor's previews.
+ */
+interface ObserverSubscription {
+  actor?: AnyActorRef;
+  /** Whether the actor had stopped by then: XState ends the observer inside subscribe() and tells it nothing more. */
+  afterStop?: boolean;
+}
+
+/** XState keeps an actor's ProcessingStatus in `_processingStatus`, which its types don't declare. Stopped is 2. */
+function isStoppedByXState(actor: AnyActorRef | undefined): boolean {
+  return actor !== undefined && '_processingStatus' in actor && actor._processingStatus === 2;
 }
 
 /**
@@ -151,11 +168,8 @@ function useProxiedActorRef(
 
   const observed = React.useMemo(() => {
     if (!observer) return undefined;
-    // The actor @xstate/react subscribed this observer to, once it has. It subscribes an observer again only when the
-    // observer changes, or when its effects run again (StrictMode, an Activity reveal): a stable observer stays with
-    // the actor a new config replaced, which then tells it nothing, and so do the new actor's previews. Each view has
-    // its own, so a render React throws away, which passes a new observer, doesn't move the committed one.
-    const subscription: { actor?: AnyActorRef; afterStop?: boolean } = {};
+    // Each view has its own, so a render React throws away, with a new observer, doesn't move the committed one.
+    const subscription: ObserverSubscription = {};
 
     const view = createView(toObserver(observer), () => committed.binding, lifetime, undefined, hook.memory, {
       subscribed: () => subscription.actor !== undefined,
@@ -173,26 +187,30 @@ function useProxiedActorRef(
 
   const view = observed?.view;
   // Runs right before @xstate/react's effect that subscribes the observer, whenever that one runs, and reads the actor
-  // that one's closure holds: the one committed last. XState ends an observer inside subscribe() when the actor has
-  // stopped (ProcessingStatus.Stopped, which @xstate/react resets when it restarts one).
+  // that one's closure holds: the one committed last. @xstate/react resets the status when it restarts a stopped actor.
   React.useEffect(() => {
     if (!observed) return;
     const actor = committed.actor;
     observed.subscription.actor = actor;
-    observed.subscription.afterStop = (actor as { _processingStatus?: number } | undefined)?._processingStatus === 2;
+    observed.subscription.afterStop = isStoppedByXState(actor);
   }, [observed]);
-  const actor = (useXStateActorRef as (...args: unknown[]) => AnyActorRef)(logic, actorOptions, view?.observer);
+  // An actor ref rather than @xstate/react's Actor, whose private _error keeps it from narrowing to a MachineActor.
+  const actor: AnyActorRef = useXStateActorRef(logic, actorOptions, view?.observer);
   // After @xstate/react's cleanup, which stops the actor and drops its observers without telling them: the
   // subscriptions made through the proxy end with them. A connect()ed child stops following previews once it stops.
   React.useEffect(() => () => findBinding(actor)?.dropObservers(), [actor]);
-  const binding = debug?.disabled || !isMachineActor(actor) ? undefined : getBinding(actor);
+  let binding: Binding | undefined;
+  let registration: Registration | undefined;
 
-  const registration = binding?.registration({
-    // The actor's logic rather than this render's: @xstate/react keeps the actor while the config stays the same.
-    machineId: resolveMachineId((actor as unknown as { logic: AnyStateMachine }).logic, debug?.id),
-    instanceId: hook.instanceId,
-    label: debug?.label,
-  });
+  if (!debug?.disabled && isMachineActor(actor)) {
+    binding = getBinding(actor);
+    registration = binding.registration({
+      // The actor's logic rather than this render's: @xstate/react keeps the actor while the config stays the same.
+      machineId: resolveMachineId(actor.logic, debug?.id),
+      instanceId: hook.instanceId,
+      label: debug?.label,
+    });
+  }
 
   const listening = React.useMemo(() => (binding && view ? { binding, view } : undefined), [binding, view]);
   const connectListening = (key: Listening): (() => void) => listen(committed, key);
@@ -253,14 +271,21 @@ export function useActorRef<TLogic extends AnyActorLogic>(
         observerOrListener?: Observer<SnapshotFrom<TLogic>> | ((value: SnapshotFrom<TLogic>) => void),
       ]
 ): Actor<TLogic> {
+  // SAFETY: The actor @xstate/react makes from `machine` has the logic's types, and so does the proxy that stands in
+  // for it. The observer takes that actor's snapshots, which the hook hands it as it gets them.
   return useProxiedActorRef(machine, options, observerOrListener as ObserverOrListener<unknown>) as Actor<TLogic>;
+}
+
+/** @xstate/react's check for an actor passed in place of its logic: an actor has `send`, and logic doesn't. */
+function isActorRef(logic: AnyActorLogic): logic is AnyActorLogic & AnyActorRef {
+  return !!logic && 'send' in logic && typeof logic.send === 'function';
 }
 
 export function useActor<TLogic extends AnyActorLogic>(
   logic: TLogic,
   ...[options]: ConditionalRequired<[options?: HookActorOptions<TLogic>], IsNotNever<RequiredActorOptionsKeys<TLogic>>>
 ): [SnapshotFrom<TLogic>, Actor<TLogic>['send'], Actor<TLogic>] {
-  if (!!logic && 'send' in logic && typeof logic.send === 'function') {
+  if (isActorRef(logic)) {
     throw new Error(
       `useActor() expects actor logic (e.g. a machine), but received an ActorRef. Use the useSelector(actorRef, ...) hook instead to read the ActorRef's snapshot.`,
     );
@@ -270,13 +295,13 @@ export function useActor<TLogic extends AnyActorLogic>(
 
   // Subscribed again when @xstate/react makes a new actor, which it does when the config changes (Fast Refresh).
   const actorRef = useProxiedActorRef(logic, options, store.observer, {
-    observerKey: (logic as { config?: unknown }).config,
+    observerKey: logic.config,
     lifetime: 'stopped',
   });
 
   // A proxy's getSnapshot doesn't use `this`. useSyncExternalStore calls it often, so it skips the proxy's get trap.
   const getSnapshot = React.useMemo(
-    () => (isProxy(actorRef) ? actorRef.getSnapshot : () => actorRef.getSnapshot()),
+    (): (() => Snapshot<unknown>) => (isProxy(actorRef) ? actorRef.getSnapshot : () => actorRef.getSnapshot()),
     [actorRef],
   );
 
@@ -289,10 +314,10 @@ export function useActor<TLogic extends AnyActorLogic>(
     if (!Object.is(getSnapshot(), snapshot)) rerender();
   });
 
-  if (typeof snapshot === 'object' && snapshot !== null && 'status' in snapshot && snapshot.status === 'error') {
-    throw (snapshot as { error: unknown }).error;
-  }
+  if (snapshot.status === 'error') throw snapshot.error;
 
+  // SAFETY: The proxy stands in for the actor @xstate/react made from `logic`, so it and its snapshots have the logic's
+  // types.
   return [snapshot, actorRef.send, actorRef] as [SnapshotFrom<TLogic>, Actor<TLogic>['send'], Actor<TLogic>];
 }
 
@@ -304,7 +329,14 @@ export function useMachine<TMachine extends AnyStateMachine>(
     IsNotNever<RequiredActorOptionsKeys<TMachine>>
   >
 ): [StateFrom<TMachine>, Actor<TMachine>['send'], Actor<TMachine>] {
-  return (useActor as (logic: AnyActorLogic, options?: unknown) => never)(machine, options);
+  // SAFETY: useMachine is useActor with a machine's types, which has StateFrom for SnapshotFrom. The conditional tuple
+  // of the options can't be spread into useActor while TMachine is unresolved.
+  return (
+    useActor as (
+      logic: TMachine,
+      options?: HookActorOptions<TMachine>,
+    ) => [StateFrom<TMachine>, Actor<TMachine>['send'], Actor<TMachine>]
+  )(machine, options);
 }
 
 /** @xstate/react's createActorContext, with a Provider that creates a proxied actor. */
@@ -340,6 +372,7 @@ export function createActorContext<TLogic extends AnyActorLogic>(
       throw new Error(`The "machine" prop has been deprecated. Please use "logic" instead.`);
     }
 
+    // SAFETY: The proxy stands in for the actor @xstate/react made from the logic, so it has the logic's types.
     const actor = useProxiedActorRef(providedLogic, { ...actorOptions, ...providedOptions }) as Actor<TLogic>;
 
     return React.createElement(OriginalProvider, { value: actor, children });
@@ -362,9 +395,10 @@ export function createActorContext<TLogic extends AnyActorLogic>(
   function useContextSelector<T>(selector: (snapshot: SnapshotFrom<TLogic>) => T, compare?: (a: T, b: T) => boolean) {
     const actor = useContext();
 
-    return useSelector(actor, selector as (snapshot: unknown) => T, compare);
+    return useSelector(actor, selector, compare);
   }
 
+  // oxlint-disable-next-line anti-slop/no-known-value-widening -- The return type is public, as @xstate/react has it.
   return {
     Provider,
     useActorRef: useContext,

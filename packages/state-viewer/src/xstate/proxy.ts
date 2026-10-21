@@ -1,9 +1,16 @@
 // The actor proxy: what consumers hold in place of the real actor.
 
-import { toObserver, type AnyActorRef, type AnyMachineSnapshot, type Observer } from 'xstate';
+import {
+  toObserver,
+  type AnyActorRef,
+  type AnyEventObject,
+  type AnyMachineSnapshot,
+  type Observer,
+  type Snapshot,
+} from 'xstate';
 import { callLoggingErrors, getPageRegistry, toInstanceKey } from '../core/registry';
-import type { MachineHandle, Override } from '../core/types';
-import { EMPTY_CHILDREN, liveChildren, statusOf, type MachineActor } from './actor';
+import type { EventLogEntry, MachineHandle, Override } from '../core/types';
+import { EMPTY_CHILDREN, liveChildren, type ChildActors, type MachineActor } from './actor';
 import { createHandle, inspect } from './handle';
 import { isFallbackId, warnFallbackId, type Identity } from './identity';
 import { resolveSnapshot } from './preview-snapshot';
@@ -36,34 +43,52 @@ export interface Binding<TActor extends AnyActorRef = AnyActorRef> extends ViewS
   dropObservers(): void;
 }
 
+/** The forced snapshot for an override, with what it was built from. */
+interface ForcedSnapshot {
+  override: Override;
+  base: AnyMachineSnapshot | undefined;
+  children: ChildActors;
+  snapshot: AnyMachineSnapshot | undefined;
+}
+
+/** A function read from the real actor, which the proxy binds to the actor. */
+type ActorMethod = (this: MachineActor, ...args: never[]) => void;
+
+interface BoundMethod {
+  source: ActorMethod;
+  bound: ActorMethod;
+}
+
 // observableKey is a function, not a constant, so production builds can remove it.
-const observableKey = (): PropertyKey => (Symbol as { observable?: symbol }).observable ?? '@@observable';
+const observableKey = (): PropertyKey => Symbol.observable ?? '@@observable';
 const noop = (): void => {};
 
 // One binding per real actor, so re-renders, StrictMode's second render and label changes all hand out the same
 // proxy. Creating one has no side effects; Registration.connect() has them.
 const bindings = new WeakMap<AnyActorRef, Binding>();
-const proxies = new WeakSet<object>();
+const proxies = new WeakSet<AnyActorRef>();
 
 /** True for proxies made by the adapter, so they aren't wrapped twice. */
-export function isProxy(value: unknown): boolean {
-  return typeof value === 'object' && value !== null && proxies.has(value);
+export function isProxy(actor: AnyActorRef): boolean {
+  return proxies.has(actor);
 }
 
 /** The actor's binding, if a hook or connect() made one. */
 export function findBinding<TActor extends AnyActorRef>(actor: TActor): Binding<TActor> | undefined {
+  // SAFETY: The map holds each binding under its own actor, so the one found here has a proxy of `actor`.
   return bindings.get(actor) as Binding<TActor> | undefined;
 }
 
-export function getBinding<TActor extends AnyActorRef>(actor: TActor): Binding<TActor> {
+export function getBinding<TActor extends MachineActor>(actor: TActor): Binding<TActor> {
   let binding = bindings.get(actor);
 
   if (!binding) {
-    binding = createBinding(actor as unknown as MachineActor);
+    binding = createBinding(actor);
     bindings.set(actor, binding);
   }
 
-  return binding as unknown as Binding<TActor>;
+  // SAFETY: The map holds each binding under its own actor, so this one has a proxy of `actor`.
+  return binding as Binding<TActor>;
 }
 
 function createBinding(actor: MachineActor): Binding {
@@ -144,11 +169,9 @@ function createBinding(actor: MachineActor): Binding {
 
   // The forced snapshot for the current override, kept until the override or the carried-over children change,
   // so getSnapshot() returns the same object for useSyncExternalStore.
-  let forced:
-    | { override: Override; base: AnyMachineSnapshot | undefined; children: object; snapshot: AnyMachineSnapshot | undefined }
-    | undefined;
+  let forced: ForcedSnapshot | undefined;
 
-  function forcedSnapshot(override: Override, live: unknown): AnyMachineSnapshot | undefined {
+  function forcedSnapshot(override: Override, live: Snapshot<unknown>): AnyMachineSnapshot | undefined {
     if (forced?.override !== override) {
       let base: AnyMachineSnapshot | undefined;
 
@@ -188,7 +211,7 @@ function createBinding(actor: MachineActor): Binding {
     }
   }
 
-  function getSnapshot(): unknown {
+  function getSnapshot(): Snapshot<unknown> {
     const live = actor.getSnapshot();
     const override = showingLiveDepth > 0 ? undefined : currentOverride();
 
@@ -206,8 +229,8 @@ function createBinding(actor: MachineActor): Binding {
   let views: Set<View> | undefined;
 
   function subscribe(
-    nextOrObserver?: Observer<unknown> | ((snapshot: unknown) => void),
-    error?: (error: unknown) => void,
+    nextOrObserver?: Observer<Snapshot<unknown>> | ((snapshot: Snapshot<unknown>) => void),
+    error?: Observer<Snapshot<unknown>>['error'],
     complete?: () => void,
   ) {
     const target = toObserver(nextOrObserver, error, complete);
@@ -234,7 +257,7 @@ function createBinding(actor: MachineActor): Binding {
   }
 
   /** Logs an event sent during a preview as blocked, and drops it. Returns false when there's no preview. */
-  function blockIfPreviewing(event: unknown): boolean {
+  function blockIfPreviewing(event: AnyEventObject): boolean {
     const override = currentOverride();
 
     if (!override) return false;
@@ -251,7 +274,7 @@ function createBinding(actor: MachineActor): Binding {
   }
 
   // Actor.select, reading through the proxy so the selection follows the preview.
-  function select<T>(selector: (snapshot: unknown) => T, equalityFn: (a: T, b: T) => boolean = Object.is) {
+  function select<T>(selector: (snapshot: Snapshot<unknown>) => T, equalityFn: (a: T, b: T) => boolean = Object.is) {
     return {
       subscribe(observerOrFn: Observer<T> | ((value: T) => void)) {
         const observer = toObserver(observerOrFn);
@@ -270,51 +293,62 @@ function createBinding(actor: MachineActor): Binding {
     };
   }
 
-  let proxy: AnyActorRef;
+  let proxy: MachineActor;
 
-  const members: Record<PropertyKey, unknown> = {
+  // The members the proxy answers itself. Every other read goes to the real actor.
+  const members = {
     getSnapshot,
     subscribe,
     // XState rejects string events itself, before anything is delivered.
-    send: (event: unknown) => {
-      if (typeof event === 'string' || !blockIfPreviewing(event)) actor.send(event as never);
+    send: (event: AnyEventObject): void => {
+      if (isStringEvent(event) || !blockIfPreviewing(event)) actor.send(event);
     },
     // What sendTo, forwardTo and delayed sends call on their target, so an actor handed the proxy is blocked too.
-    _send: (event: unknown) => {
+    _send: (event: AnyEventObject): void => {
       if (!blockIfPreviewing(event)) actor._send(event);
     },
     select,
     // These return the actor itself, which has to stay the proxy: `connect(createActor(m)).start()`.
-    start: () => {
+    start: (): MachineActor => {
       actor.start();
 
       return proxy;
     },
-    stop: () => {
+    stop: (): MachineActor => {
       actor.stop();
 
       return proxy;
     },
-    [observableKey()]: () => proxy,
+  } satisfies Pick<MachineActor, 'getSnapshot' | 'subscribe' | 'send' | '_send' | 'start' | 'stop'> & {
+    // XState 5.28 has no select() on an actor, so the type of the proxy's own select() is the contract.
+    select: typeof select;
   };
 
+  const isMember = (property: PropertyKey): property is keyof typeof members => Object.hasOwn(members, property);
+  const observable = observableKey();
+  const observe = (): MachineActor => proxy;
+
   // Bound once per method, so `proxy.on === proxy.on` and React dependency arrays stay stable.
-  let bound: Map<PropertyKey, { source: (...args: unknown[]) => unknown; bound: unknown }> | undefined;
+  let bound: Map<PropertyKey, BoundMethod> | undefined;
 
   proxy = new Proxy(actor, {
     get(target, property) {
-      if (Object.hasOwn(members, property)) return members[property];
+      if (isMember(property)) return members[property];
 
       if (property === 'ref') return proxy;
-      const value: unknown = Reflect.get(target, property, target);
+
+      if (property === observable) return observe;
+      // SAFETY: The trap forwards every key a consumer reads. A key the actor's type doesn't declare, such as a private
+      // field of XState's Actor, reads what the actor holds. The trap passes it on, or binds it as a declared method.
+      const value: unknown = target[property as keyof MachineActor];
 
       // Unbound: a bound constructor isn't the class, and test snapshots print it as "bound Actor".
-      if (typeof value !== 'function' || property === 'constructor') return value;
+      if (!isActorMethod(value) || property === 'constructor') return value;
       bound ??= new Map();
       let entry = bound.get(property);
 
       if (entry?.source !== value) {
-        entry = { source: value as (...args: unknown[]) => unknown, bound: value.bind(target) };
+        entry = { source: value, bound: value.bind(target) };
         bound.set(property, entry);
       }
 
@@ -384,7 +418,7 @@ function createBinding(actor: MachineActor): Binding {
           record(snapshot);
           notify();
 
-          if (untilStopped && statusOf(snapshot) !== 'active') disconnect();
+          if (untilStopped && snapshot.status !== 'active') disconnect();
         });
 
         if (untilStopped) onEnd(disconnect);
@@ -423,17 +457,27 @@ function createBinding(actor: MachineActor): Binding {
   };
 }
 
-function sameChildren(a: object, b: object): boolean {
+function sameChildren(a: ChildActors, b: ChildActors): boolean {
   if (a === b) return true;
   const keysA = Object.keys(a);
 
   if (keysA.length !== Object.keys(b).length) return false;
 
-  return keysA.every(
-    (key) => Object.hasOwn(b, key) && (a as Record<string, unknown>)[key] === (b as Record<string, unknown>)[key],
-  );
+  return keysA.every((key) => Object.hasOwn(b, key) && a[key] === b[key]);
 }
 
-function isEventObject(event: unknown): event is { type: string; [key: string]: unknown } {
-  return typeof event === 'object' && event !== null && typeof (event as { type?: unknown }).type === 'string';
+function isActorMethod(value: unknown): value is ActorMethod {
+  return typeof value === 'function';
+}
+
+// The two checks below are for callers without types, which can send anything.
+
+/** XState throws on a string event itself, so the proxy passes one on, preview or not. */
+function isStringEvent(event: AnyEventObject | string): event is string {
+  return typeof event === 'string';
+}
+
+/** An event the registry can log: one with a string type, as XState requires of events. */
+function isEventObject(event: AnyEventObject): event is EventLogEntry['event'] {
+  return typeof event === 'object' && event !== null && 'type' in event && typeof event.type === 'string';
 }
