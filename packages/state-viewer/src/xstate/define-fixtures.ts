@@ -47,7 +47,9 @@ export function defineFixtures<TMachine extends AnyStateMachine>(
   const set: FixtureSet = {
     machineId: resolveMachineId(machine),
     source: machine.config,
-    states: states as Record<string, { context: unknown }>,
+    // SAFETY: The states are keyed by leaf id, as the registry's record is. TypeScript can't relate the mapped type of
+    // a generic machine to that record.
+    states: states as FixtureSet['states'],
   };
 
   if (process.env.NODE_ENV !== 'production') warnUnknownLeaves(machine, set);
@@ -56,7 +58,6 @@ export function defineFixtures<TMachine extends AnyStateMachine>(
 }
 
 function warnUnknownLeaves(machine: AnyStateMachine, set: FixtureSet): void {
-  if (typeof set.states !== 'object' || set.states === null) return;
   const { leaves } = getTree(machine);
   const unknown = Object.keys(set.states).filter((leaf) => !leaves.has(leaf));
 

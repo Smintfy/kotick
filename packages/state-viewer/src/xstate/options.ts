@@ -15,6 +15,7 @@ export interface WithDebug {
 }
 
 /** XState's actor options, with the keys the logic requires (such as `input`) and `debug`. */
+// oxlint-disable-next-line anti-slop/no-unsafe-dictionary-type -- The type is public. unknown makes each key required, and ActorOptions types it.
 export type HookActorOptions<TLogic extends AnyActorLogic> = ActorOptions<TLogic> & {
   [K in RequiredActorOptionsKeys<TLogic>]: unknown;
 } & WithDebug;
