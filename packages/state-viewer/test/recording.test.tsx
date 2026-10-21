@@ -154,8 +154,13 @@ function region(name: string | undefined) {
   return name === undefined ? screen : within(screen.getByRole('region', { name }));
 }
 
-async function press(name: string, where?: string) {
+/** Clicks and does not wait for React, so no timer can run between clicks in a row. */
+function click(name: string, where?: string) {
   fireEvent.click(region(where).getByRole('button', { name }));
+}
+
+async function press(name: string, where?: string) {
+  click(name, where);
   await flush();
 }
 
@@ -1011,9 +1016,11 @@ describe('at the storage limits', () => {
       { overlay: false },
     );
 
-    for (let index = 0; index < 5; index++) await press('Next', 'first');
+    // The clicks and the pagehide run in one task. Thus the write 500 ms after the first visit can't come between them,
+    // and the one warning counts all 6 recordings of the second machine.
+    for (let index = 0; index < 5; index++) click('Next', 'first');
 
-    for (let index = 0; index < 5; index++) await press('Next', 'second');
+    for (let index = 0; index < 5; index++) click('Next', 'second');
     hidePage();
     const shared = { first: storedLeaves(first.id), second: storedLeaves(second.id) };
 
@@ -1133,7 +1140,9 @@ describe('at the storage limits', () => {
     sessionStorage.setItem('app', appData);
     await mount(<Controls machine={machine} events={{ Next: { type: 'NEXT' }, Grow: { type: 'GROW' } }} />);
 
-    for (let index = 0; index < 7; index++) await press('Next');
+    // The clicks and the pagehide run in one task. Thus the write 500 ms after the first visit can't come between them,
+    // and the one warning counts all 8 recordings.
+    for (let index = 0; index < 7; index++) click('Next');
     hidePage();
     const full = storedLeaves(machine.id);
 
