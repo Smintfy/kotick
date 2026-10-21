@@ -42,6 +42,14 @@ export function getTree(machine: AnyStateMachine): MachineTree {
   return tree;
 }
 
+/**
+ * Whether a state's description is text that the overlay can show.
+ * A JavaScript machine can give any value, and React throws when it renders an object.
+ */
+function isDescriptionText(description: AnyStateNode['description']): description is string {
+  return typeof description === 'string' && description !== '';
+}
+
 function describeChildren(node: AnyStateNode, leaves: Map<string, AnyStateNode>): StateNodeInfo[] {
   const children: StateNodeInfo[] = [];
 
@@ -58,7 +66,7 @@ function describeChildren(node: AnyStateNode, leaves: Map<string, AnyStateNode>)
       children: describeChildren(child, leaves),
     };
 
-    if (child.description !== undefined && child.description !== '') info.description = child.description;
+    if (isDescriptionText(child.description)) info.description = child.description;
 
     if (child.tags.length > 0) info.tags = frozen([...child.tags]);
     children.push(Object.freeze(info));

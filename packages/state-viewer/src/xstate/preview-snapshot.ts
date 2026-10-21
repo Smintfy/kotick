@@ -179,6 +179,7 @@ function resolveOutput(output: StateOutput, context: Override['context'], event:
   if (!isOutputMapper(output)) return output;
 
   // SAFETY: A mapper gets the context of its machine, which XState types as an object. The override's context is the
-  // app's own value for this machine: what the registry recorded from a snapshot, or what a fixture wrote.
+  // app's own value for this machine: a recorded one, a fixture's, or the live one.
+  // The live context is undefined for an actor that failed on start. The caller catches what a mapper throws then.
   return output({ context: context as MachineContext, event, self });
 }

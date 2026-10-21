@@ -7,6 +7,7 @@ import {
   assign,
   createActor,
   forwardTo,
+  fromCallback,
   sendTo,
   setup,
   spawnChild,
@@ -736,6 +737,32 @@ async function mountWatcher(machine: AnyStateMachine) {
 function timerShown() {
   return screen.queryByRole('region', { name: 'timer' }) ? shown('timer') : null;
 }
+
+describe('an event without a string type, sent to a child', () => {
+  test('reaches a callback child, and the parent keeps running', async () => {
+    const received: AnyEventObject[] = [];
+
+    const listener = fromCallback(({ receive }) => {
+      receive((event) => {
+        received.push(event);
+      });
+    });
+
+    const parent = setup({ actors: { listener } }).createMachine({
+      id: freshId('relay'),
+      invoke: { id: 'listener', src: 'listener' },
+      on: {
+        // sendTo() with a child's id takes any object, and XState relays it to the child without a check.
+        PING: { actions: sendTo('listener', { kind: 'ping' }) },
+      },
+    });
+
+    const { actor } = await RUNS.useActorRef(parent);
+    await send(actor, { type: 'PING' });
+
+    expect({ received, status: actor.getSnapshot().status }).toEqual({ received: [{ kind: 'ping' }], status: 'active' });
+  });
+});
 
 describe('during a preview of the parent', () => {
   test.each([

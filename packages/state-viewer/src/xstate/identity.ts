@@ -1,6 +1,7 @@
 // What names an actor in the registry: its machine id, its instance id, and an optional label.
 
 import type { AnyStateMachine, MachineContext } from 'xstate';
+import { isId } from '../core/ids';
 import { childNodes, type AnyStateNode } from './tree';
 
 export interface Identity {
@@ -18,16 +19,12 @@ const warned = new Set<string>();
 
 /** `debug.id`, then `machine.id`, then a generated id for machines still on XState's default. */
 export function resolveMachineId(machine: AnyStateMachine, debugId?: string): string {
-  if (isDebugId(debugId)) return debugId;
+  if (isId(debugId)) return debugId;
 
-  if (machine.id !== '' && machine.id !== DEFAULT_MACHINE_ID) return machine.id;
+  // A JavaScript app can give a machine an id that is not a string.
+  if (isId(machine.id) && machine.id !== DEFAULT_MACHINE_ID) return machine.id;
 
   return fallbackMachineId(machine);
-}
-
-/** Whether `debug.id` names the machine. A JavaScript app can give any value, and an empty id names nothing. */
-function isDebugId(debugId: string | undefined): debugId is string {
-  return typeof debugId === 'string' && debugId !== '';
 }
 
 export function isFallbackId(machine: AnyStateMachine, machineId: string): boolean {

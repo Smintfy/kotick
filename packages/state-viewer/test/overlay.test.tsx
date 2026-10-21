@@ -654,6 +654,31 @@ describe('the state tree', () => {
     });
   });
 
+  test('a description that is not text, as a JavaScript machine can give, is left out', async () => {
+    const machine = createMachine({
+      id: freshId('described'),
+      initial: 'object',
+      states: {
+        // @ts-expect-error A JavaScript machine can give a description that is not a string.
+        object: { description: { en: 'Waits for the server' } },
+        // @ts-expect-error A JavaScript machine can give a description that is not a string.
+        number: { description: 42 },
+        text: { description: 'Shown' },
+      },
+    });
+
+    render(
+      <>
+        <Run machine={machine} />
+        <StateViewer defaultOpen />
+      </>,
+    );
+    await flush();
+    await show(machine.id);
+
+    expect(treeRows()).toEqual(['object', 'number', 'text “Shown”']);
+  });
+
   test('without a machine on the page, the panel says how machines get there', async () => {
     render(<StateViewer defaultOpen />);
     await flush();

@@ -24,7 +24,8 @@ export function connect<TActor extends AnyActorRef>(actor: TActor, options?: Deb
 
   if (binding) return existing(binding.proxy, options);
 
-  if (actor.getSnapshot().status !== 'active') return actor;
+  // XState's production build gives no snapshot while the actor starts.
+  if (actor.getSnapshot()?.status !== 'active') return actor;
 
   const created = getBinding(actor);
   connected.add(created.proxy);
