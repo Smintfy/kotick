@@ -14,7 +14,7 @@ function ProductionKonat(_props: KonatProps): null {
 }
 
 /**
- * Lists every XState machine on the page and previews any of its states in place. Renders nothing in production
+ * Lists every state machine on the page and previews any of its states in place. Renders nothing in production
  * builds, and its fixtures loader is never called there.
  */
 export const Konat: (props: KonatProps) => ReactNode =

@@ -1,8 +1,8 @@
 {
   "name": "konat",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "Preview every state of every XState machine on the page, in place.",
+  "description": "Preview every state of every state machine on the page, in place. Supports XState v5.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
