@@ -1,8 +1,8 @@
 # konat
 
-See every state of every XState machine on the page, and preview any of them in place.
+See every state of every state machine on the page, and preview any of them in place.
 
-`<Konat />` is a development overlay for React apps that use XState v5. It lists each machine that runs on the page and all of its states, also the states the UI never went to. Click a state to show it in the real app, with real layout and data. You do not have to click through the flow, slow down the network, or force an API error to get there.
+`<Konat />` is a development overlay for React apps that use state machines. It lists each machine that runs on the page and all of its states, also the states the UI never went to. Click a state to show it in the real app, with real layout and data. You do not have to click through the flow, slow down the network, or force an API error to get there. This version supports XState v5.
 
 - **Every state, in context.** Previews render in the running app, not in a separate story or sandbox.
 - **Safe.** A preview changes only what components see. The real actor keeps running, and events that the UI sends during a preview are blocked and logged.
@@ -167,7 +167,9 @@ The shortcuts do nothing while you type in an input, a text area or an editable 
 
 ## API
 
-### `<Konat />` from `konat`
+### Props
+
+`<Konat />` from `konat` takes these props:
 
 ```tsx
 <Konat
@@ -184,7 +186,9 @@ All props are optional. The panel keeps its open state, its corner and the machi
 
 The overlay renders in a shadow root, so the styles of the page do not change it, and its styles do not change the page.
 
-### `konat/xstate`
+### Exports
+
+`konat/xstate` has these exports:
 
 | Export | What it is |
 |---|---|

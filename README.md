@@ -1,6 +1,6 @@
 # konat
 
-A development overlay that lists every state of every XState machine on the page, and previews any of them in place.
+A development overlay that lists every state of every state machine on the page, and previews any of them in place. It supports XState v5.
 For installation and usage, see the [package README](packages/konat/README.md).
 
 ## Repository
