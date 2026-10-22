@@ -1,19 +1,23 @@
 import 'server-only';
+import { codeToTokens, isSupportedLanguage, type ThemedToken } from '@pierre/highlights';
 import GithubSlugger from 'github-slugger';
-import type { ElementContent } from 'hast';
+import type { Element, ElementContent } from 'hast';
 import { raw } from 'hast-util-raw';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
-import type { Code, Heading as MdastHeading, Nodes, RootContent } from 'mdast';
+import type { Code, Heading as MdastHeading, Node, Nodes, Paragraph, Parent, PhrasingContent, RootContent } from 'mdast';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { gfmFromMarkdown } from 'mdast-util-gfm';
 import { toHast, type State } from 'mdast-util-to-hast';
 import { toString } from 'mdast-util-to-string';
 import { gfm } from 'micromark-extension-gfm';
+import konatPackage from 'konat/package.json';
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
-import { createHighlighter } from 'shiki';
-import { CopyCodeButton } from '@/components/CopyButton';
+import { AccordionItem, AccordionTrigger } from '@/components/accordion';
+import { codeTheme } from '@/code-theme';
+import { CopyCodeButton } from '@/components/copy-button';
+import { InstallTabs } from '@/components/install-tabs';
 import readme from '../../packages/konat/README.md';
 
 export type Heading = { id: string; text: string; depth: 2 | 3 };
@@ -25,11 +29,10 @@ export type DocsPage = {
   description: string;
   id: string;
   headings: readonly Heading[];
-  markdown: string;
   render(): ReactNode;
 };
 
-export type NavItem = { href: string; title: string; headings: readonly Heading[] };
+export type NavItem = { href: string; title: string; headings: readonly Heading[]; version?: string };
 
 type PageEntry = {
   slug: string;
@@ -40,8 +43,8 @@ type PageEntry = {
 
 const pageTable: readonly PageEntry[] = [
   {
-    slug: 'getting-started',
-    title: 'Getting started',
+    slug: 'install',
+    title: 'Install',
     sections: ['install', 'quick-start'],
     description: 'Install the package, mount the overlay, and import the XState hooks from konat/xstate.',
   },
@@ -83,28 +86,51 @@ const pageTable: readonly PageEntry[] = [
   },
   {
     slug: 'limitations',
-    title: 'Limitations and FAQ',
-    sections: ['limitations', 'faq'],
-    description: 'What konat cannot do in this version, and answers to common questions.',
+    title: 'Limitations',
+    sections: ['limitations'],
+    description: 'What konat cannot do in this version.',
+  },
+  {
+    slug: 'faq',
+    title: 'FAQ',
+    sections: ['faq'],
+    description: 'Answers to common questions.',
   },
 ];
 
-const omitted: readonly string[] = ['contents'];
+const omitted: readonly string[] = ['contents', 'license'];
 
-const footer = 'license';
+const accordion = 'faq';
+
+const installSection = 'install';
 
 export const landingHeadings = [
+  { id: 'konat', text: 'Konat', depth: 2 },
   { id: 'how-it-works', text: 'How it works', depth: 2 },
   { id: 'why', text: 'Why konat', depth: 2 },
-  { id: 'install', text: 'Install', depth: 2 },
-  { id: 'explore', text: 'Explore', depth: 2 },
 ] as const satisfies readonly Heading[];
 
 export type LandingId = (typeof landingHeadings)[number]['id'];
 
-const theme = 'github-light-high-contrast';
+/** A FAQ question and its answer, without the "Q: " and "A: " that the README writes. */
+interface Question extends Parent {
+  type: 'question';
+  id: string;
+  question: PhrasingContent[];
+}
 
-const languages = ['bash', 'diff', 'ts', 'tsx'] as const;
+/** The "npm install <name>" block of the README. The site shows it as one tab for each package manager. */
+interface InstallCommand extends Node {
+  type: 'installCommand';
+  name: string;
+}
+
+declare module 'mdast' {
+  interface RootContentMap {
+    question: Question;
+    installCommand: InstallCommand;
+  }
+}
 
 type ReadmeHeading = { id: string; text: string; depth: MdastHeading['depth'] };
 
@@ -162,11 +188,11 @@ function parse() {
   return { ids, intro, sections };
 }
 
-function readPackageName(install: Section | undefined): string | undefined {
+function readInstall(install: Section | undefined): { name: string; node: Code } | undefined {
   for (const node of install?.body ?? []) {
     const name = node.type === 'code' ? /^npm install (\S+)$/.exec(node.value.trim())?.[1] : undefined;
 
-    if (name) return name;
+    if (name && node.type === 'code') return { name, node };
   }
 
   return undefined;
@@ -179,6 +205,40 @@ function readCost(section: Section | undefined, pattern: RegExp): string | undef
   return found.length === 1 ? found[0]?.[1] : undefined;
 }
 
+function withoutPrefix(node: MdastHeading | Paragraph, prefix: string): PhrasingContent[] | undefined {
+  const [first, ...rest] = node.children;
+
+  return first?.type === 'text' && first.value.startsWith(prefix)
+    ? [{ ...first, value: first.value.slice(prefix.length) }, ...rest]
+    : undefined;
+}
+
+function readQuestions(section: Section | undefined): Question[] | undefined {
+  if (section === undefined) return undefined;
+  const questions: Question[] = [];
+
+  for (const node of section.body) {
+    const current = questions.at(-1);
+
+    if (node.type === 'heading') {
+      const heading = section.subheadings[questions.length];
+      const question = withoutPrefix(node, 'Q: ');
+
+      if (heading === undefined || question === undefined) return undefined;
+      questions.push({ type: 'question', id: heading.id, question, children: [] });
+    } else if (current !== undefined && current.children.length > 0) {
+      current.children.push(node);
+    } else {
+      const answer = current !== undefined && node.type === 'paragraph' ? withoutPrefix(node, 'A: ') : undefined;
+
+      if (current === undefined || answer === undefined) return undefined;
+      current.children.push({ type: 'paragraph', children: answer });
+    }
+  }
+
+  return questions.length > 0 ? questions : undefined;
+}
+
 function loadOrThrow() {
   const { ids, intro, sections } = parse();
   const byId = new Map(sections.map((section) => [section.id, section]));
@@ -187,7 +247,6 @@ function loadOrThrow() {
   const listed = [
     ...pageTable.flatMap((entry) => entry.sections.map((id) => ({ id, by: `The page "${entry.slug}"` }))),
     ...omitted.map((id) => ({ id, by: 'omitted' })),
-    { id: footer, by: 'footer' },
   ];
 
   const listedIds = new Set(listed.map((item) => item.id));
@@ -233,15 +292,10 @@ function loadOrThrow() {
     })),
   ];
 
-  const loaded = new Set<string>(languages);
-
   for (const part of parts) {
     for (const node of part.nodes.flatMap((child) => [...walk(child)])) {
-      if (node.type === 'code' && node.lang && !loaded.has(node.lang)) {
-        problems.push(
-          `A code block in ${part.name} has the language "${node.lang}", which the highlighter does not load. ` +
-            'Add it to languages.',
-        );
+      if (node.type === 'code' && node.lang && !isSupportedLanguage(node.lang)) {
+        problems.push(`A code block in ${part.name} has the language "${node.lang}", which Highlights does not support.`);
       }
 
       if (node.type !== 'link' || !node.url.startsWith('#')) continue;
@@ -269,16 +323,9 @@ function loadOrThrow() {
     );
   }
 
-  const quickStart = byId.get('quick-start')?.body.slice(0, 2) ?? [];
-  const [quickLead, quickList] = quickStart;
+  const install = readInstall(byId.get(installSection));
 
-  if (quickLead?.type !== 'paragraph' || quickList?.type !== 'list' || !quickList.ordered) {
-    problems.push('#quick-start must start with a paragraph and then a numbered list.');
-  }
-
-  const packageName = readPackageName(byId.get('install'));
-
-  if (packageName === undefined) problems.push('#install must have a code block "npm install <name>".');
+  if (install === undefined) problems.push(`#${installSection} must have a code block "npm install <name>".`);
   const transition = readCost(byId.get('performance-in-development'), /a transition costs (approximately [\d.]+ µs)/g);
 
   if (transition === undefined) {
@@ -291,7 +338,19 @@ function loadOrThrow() {
     problems.push('#production-builds must say "approximately <number> to <number> bytes" one time.');
   }
 
-  if (problems.length > 0 || packageName === undefined || transition === undefined || startup === undefined) {
+  const questions = readQuestions(byId.get(accordion));
+
+  if (questions === undefined) {
+    problems.push(`#${accordion} must be headings "Q: <question>", and each heading must start with a paragraph "A: <answer>".`);
+  }
+
+  if (
+    problems.length > 0 ||
+    install === undefined ||
+    transition === undefined ||
+    startup === undefined ||
+    questions === undefined
+  ) {
     throw new Error(
       'site/src/site.tsx and packages/konat/README.md do not agree.\n' +
         problems.map((problem) => `- ${problem}`).join('\n'),
@@ -299,13 +358,23 @@ function loadOrThrow() {
   }
 
   return {
-    pages: pageTable.map((entry) => toPage(entry, entry.sections.flatMap((id) => byId.get(id) ?? []))),
+    pages: pageTable.map((entry) =>
+      toPage(
+        entry,
+        entry.sections.flatMap((id) => byId.get(id) ?? []).map((section) => {
+          if (section.id === accordion) return { ...section, body: questions, subheadings: [] };
+
+          if (section.id !== installSection) return section;
+          const tabs: InstallCommand = { type: 'installCommand', name: install.name };
+
+          return { ...section, body: section.body.map((node) => (node === install.node ? tabs : node)) };
+        }),
+      ),
+    ),
     hrefs,
     pitch: toString(pitchNode),
-    intro: [lead, bullets],
-    quickStart,
-    license: byId.get(footer)?.body ?? [],
-    packageName,
+    lead: [lead],
+    benefits: [bullets],
     costs: { transition, startup },
   };
 }
@@ -333,31 +402,79 @@ function toPage(entry: PageEntry, [first, ...others]: Section[]): DocsPage {
     description: entry.description,
     id: first.id,
     headings,
-    markdown: [first, ...others].map(sourceOf).join('\n\n'),
     render: () => render(body),
   };
 }
 
-function sourceOf(section: Section): string {
-  const last = section.body.at(-1) ?? section.node;
-
-  return readme.slice(section.node.position?.start.offset, last.position?.end.offset);
-}
-
 function render(nodes: RootContent[]): ReactNode {
-  const tree = toHast({ type: 'root', children: nodes }, { allowDangerousHtml: true, handlers: { code: highlight } });
+  const tree = toHast({ type: 'root', children: nodes }, {
+    allowDangerousHtml: true,
+    handlers: { code: highlight, question: toDetails, installCommand: toInstallTabs },
+  });
 
   return toJsxRuntime(raw(tree), { Fragment, jsx, jsxs, components });
 }
 
-function highlight(_state: State, node: Code): ElementContent[] {
-  const root = highlighter.codeToHast(node.value, {
-    lang: node.lang ?? 'text',
-    theme,
-    rootStyle: false,
-  });
+function highlight(_state: State, node: Code): Element {
+  const lang = node.lang && isSupportedLanguage(node.lang) ? node.lang : 'plain';
+  const { tokens } = codeToTokens(node.value, { lang, theme: codeTheme });
 
-  return root.children.filter((child): child is ElementContent => child.type !== 'doctype');
+  const lines = tokens.map((line): Element => ({
+    type: 'element',
+    tagName: 'span',
+    properties: { className: ['line'] },
+    children: line.map(toSpan),
+  }));
+
+  return {
+    type: 'element',
+    tagName: 'pre',
+    properties: { tabIndex: 0 },
+    children: [
+      {
+        type: 'element',
+        tagName: 'code',
+        properties: {},
+        children: lines.flatMap((line, index): ElementContent[] => (index === 0 ? [line] : [{ type: 'text', value: '\n' }, line])),
+      },
+    ],
+  };
+}
+
+function toSpan({ content, color, fontStyle = 0 }: ThemedToken): Element {
+  const style = [
+    color && `color:${color}`,
+    fontStyle & 1 && 'font-style:italic',
+    fontStyle & 2 && 'font-weight:bold',
+  ].filter(Boolean);
+
+  return {
+    type: 'element',
+    tagName: 'span',
+    properties: style.length > 0 ? { style: style.join(';') } : {},
+    children: [{ type: 'text', value: content }],
+  };
+}
+
+function toDetails(state: State, node: Question): Element {
+  return {
+    type: 'element',
+    tagName: 'details',
+    properties: { id: node.id },
+    children: [
+      {
+        type: 'element',
+        tagName: 'summary',
+        properties: {},
+        children: state.all({ type: 'paragraph', children: node.question }),
+      },
+      { type: 'element', tagName: 'div', properties: {}, children: state.all(node) },
+    ],
+  };
+}
+
+function toInstallTabs(_state: State, node: InstallCommand): Element {
+  return { type: 'element', tagName: 'install-tabs', properties: { name: node.name }, children: [] };
 }
 
 function DocLink({ href = '', children }: ComponentProps<'a'>) {
@@ -371,7 +488,7 @@ function CodeBlock({ className = '', ...props }: ComponentProps<'pre'>) {
     <figure className="group relative mb-4">
       <pre
         {...props}
-        className={`m-0 overflow-x-auto rounded-xl bg-surface px-5 py-4 text-[13.5px] leading-[1.6] [@media(hover:none)]:pt-10 ${className}`}
+        className={`m-0 overflow-x-auto rounded-xl bg-surface px-5 py-4 text-[13px] leading-[1.6] [@media(hover:none)]:pt-10 ${className}`}
       />
       <CopyCodeButton />
     </figure>
@@ -380,7 +497,7 @@ function CodeBlock({ className = '', ...props }: ComponentProps<'pre'>) {
 
 function ScrollTable(props: ComponentProps<'table'>) {
   return (
-    <div className="mb-4 overflow-x-auto">
+    <div className="my-6 overflow-x-auto rounded-xl border border-line">
       <table {...props} />
     </div>
   );
@@ -390,16 +507,19 @@ const components = {
   a: DocLink,
   pre: CodeBlock,
   table: ScrollTable,
+  details: AccordionItem,
+  summary: AccordionTrigger,
+  'install-tabs': InstallTabs,
   h2: ({ id, children }: ComponentProps<'h2'>) => (
     <h2 id={id}>
-      <a href={`#${id}`} className="no-underline hover:underline">
+      <a href={`#${id}`} className="text-inherit no-underline hover:underline">
         {children}
       </a>
     </h2>
   ),
   h3: ({ id, children }: ComponentProps<'h3'>) => (
     <h3 id={id}>
-      <a href={`#${id}`} className="no-underline hover:underline">
+      <a href={`#${id}`} className="text-inherit no-underline hover:underline">
         {children}
       </a>
     </h3>
@@ -407,7 +527,6 @@ const components = {
 };
 
 const site = loadOrThrow();
-const highlighter = await createHighlighter({ themes: [theme], langs: [...languages] });
 
 export const pages: readonly DocsPage[] = site.pages;
 
@@ -416,21 +535,22 @@ export function findPage(slug: string): DocsPage | undefined {
 }
 
 export const nav: readonly NavItem[] = [
-  { href: '/', title: 'Introduction', headings: landingHeadings },
-  ...pages.map(({ href, title, headings }) => ({ href, title, headings })),
+  { href: '/', title: 'Overview', headings: landingHeadings },
+  ...pages.map(({ slug, href, title, headings }) => ({
+    href,
+    title,
+    headings,
+    version: slug === 'install' ? `v${konatPackage.version}` : undefined,
+  })),
 ];
 
 export const pitch: string = site.pitch;
 
-export const packageName: string = site.packageName;
-
 export const costs: { transition: string; startup: string } = site.costs;
 
-export const renderIntro = (): ReactNode => render(site.intro);
+export const renderLead = (): ReactNode => render(site.lead);
 
-export const renderQuickStart = (): ReactNode => render(site.quickStart);
-
-export const renderLicense = (): ReactNode => render(site.license);
+export const renderBenefits = (): ReactNode => render(site.benefits);
 
 export function hrefFor(id: string): string {
   const href = site.hrefs.get(id);

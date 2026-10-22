@@ -11,10 +11,13 @@
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@pierre/highlights": "^0.2.0",
     "@xstate/react": "catalog:",
     "github-slugger": "^2.0.0",
     "hast-util-raw": "^9.1.0",
     "hast-util-to-jsx-runtime": "^2.3.6",
+    "konat": "workspace:*",
+    "lucide-react": "^1.61.0",
     "mdast-util-from-markdown": "^2.1.0",
     "mdast-util-gfm": "^3.1.0",
     "mdast-util-to-hast": "^13.2.1",
@@ -23,8 +26,6 @@
     "next": "^16.4.0",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "shiki": "^4.5.0",
-    "konat": "workspace:*",
     "xstate": "catalog:"
   },
   "devDependencies": {

@@ -1,9 +1,9 @@
 'use client';
 
+import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Mark } from '@/components/Mark';
 import type { Heading, NavItem } from '@/site';
 
 const noHeadings: readonly Heading[] = [];
@@ -57,28 +57,25 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
 
   return (
     <header
-      className="group sticky top-0 h-dvh overflow-y-auto py-10 max-md:z-10 max-md:h-auto max-md:overflow-visible max-md:border-b max-md:border-line max-md:bg-bg max-md:p-0"
+      className="group sticky top-0 h-dvh overflow-y-auto py-10 max-md:z-20 max-md:h-auto max-md:overflow-visible max-md:border-b max-md:border-line max-md:bg-bg max-md:p-0"
       data-open={open || undefined}
     >
-      <div className="flex items-center justify-between max-md:h-bar max-md:px-4">
-        <Link href="/" className="inline-flex items-center gap-2.5 font-medium no-underline" onClick={close}>
-          <Mark size={24} />
-          konat
-        </Link>
+      <div className="hidden h-bar items-center justify-end px-4 max-md:flex">
         <button
           type="button"
-          className="hidden cursor-pointer rounded-lg bg-surface px-3 py-1.5 text-[14px] max-md:block"
+          className="-mr-1.5 grid size-8 cursor-pointer place-items-center rounded-lg hover:bg-selected"
+          aria-label="Menu"
           aria-expanded={open}
           aria-controls="nav"
           onClick={() => setOpen(!open)}
         >
-          Menu
+          <Menu className="size-5" />
         </button>
       </div>
       <nav
         id="nav"
         aria-label="Docs"
-        className="mt-8 text-[14px] max-md:absolute max-md:inset-x-0 max-md:top-full max-md:m-0 max-md:hidden max-md:max-h-[calc(100dvh-var(--spacing-bar))] max-md:overflow-y-auto max-md:border-b max-md:border-line max-md:bg-bg max-md:px-4 max-md:pt-2 max-md:pb-6 max-md:group-data-open:block"
+        className="text-[13px] max-md:absolute max-md:inset-x-0 max-md:top-full max-md:m-0 max-md:hidden max-md:max-h-[calc(100dvh-var(--spacing-bar))] max-md:overflow-y-auto max-md:border-b max-md:border-line max-md:bg-bg max-md:px-4 max-md:pt-2 max-md:pb-6 max-md:group-data-open:block"
       >
         <ul>
           {items.map((item) => (
@@ -90,6 +87,7 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
                 onClick={close}
               >
                 {item.title}
+                {item.version && <span className="ml-1.5 text-[11px] font-normal text-faint">{item.version}</span>}
               </Link>
               {item === current && item.headings.length > 0 && (
                 <ul className="mt-0.5 mb-2 border-l border-line pl-3">
@@ -98,7 +96,7 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
                       <a
                         href={`#${heading.id}`}
                         data-active={heading.id === active || undefined}
-                        className={`relative block py-[3px] text-muted no-underline hover:text-fg data-active:text-fg data-active:before:absolute data-active:before:top-1/2 data-active:before:-left-[15.5px] data-active:before:-mt-[3px] data-active:before:size-1.5 data-active:before:rounded-full data-active:before:bg-live ${heading.depth === 3 ? 'pl-3' : ''}`}
+                        className={`block py-[3px] text-muted no-underline hover:text-fg data-active:text-fg ${heading.depth === 3 ? 'pl-3' : ''}`}
                         onClick={close}
                       >
                         {heading.text}

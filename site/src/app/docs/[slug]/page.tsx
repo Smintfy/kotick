@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CopyButton } from '@/components/CopyButton';
+import { Pager } from '@/components/pager';
 import { findPage, pages } from '@/site';
 
 export const dynamicParams = false;
@@ -21,13 +21,15 @@ export default async function DocsPage({ params }: PageProps<'/docs/[slug]'>) {
   if (!page) notFound();
 
   return (
-    <article className="prose">
-      <header className="mb-8">
-        <h1 id={page.id}>{page.title}</h1>
-        <p className="mt-2 mb-4 text-muted">{page.description}</p>
-        <CopyButton text={page.markdown} label="Copy Markdown" className="bg-surface" />
-      </header>
-      {page.render()}
-    </article>
+    <>
+      <article className="prose">
+        <header className="mb-8">
+          <h1 id={page.id}>{page.title}</h1>
+          <p className="mt-2 mb-4 text-muted">{page.description}</p>
+        </header>
+        {page.render()}
+      </article>
+      <Pager href={page.href} />
+    </>
   );
 }

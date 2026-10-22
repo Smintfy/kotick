@@ -3,28 +3,37 @@
 /*
  * The tokens of the overlay, from packages/konat/styles.css.
  * Thus, the site and the panel look like one product.
+ * The text colors are different: the site has its own heading, fg, and muted colors.
  */
 @theme {
   --color-*: initial;
   --color-bg: #ffffff;
-  --color-surface: #f4f4f5;
-  --color-selected: #e9e9eb;
-  --color-line: #ececee;
-  --color-fg: #0a0a0a;
-  --color-muted: #71717a;
+  --color-surface: oklch(0 0 0 / 0.025);
+  --color-code: oklch(0 0 0 / 0.04);
+  --color-selected: oklch(0 0 0 / 0.07);
+  --color-line: oklch(0 0 0 / 0.06);
+  --color-heading: oklch(0 0 0 / 0.85);
+  --color-fg: oklch(0.321 0 0);
+  --color-muted: oklch(0.556 0 0);
+  --color-faint: oklch(0.715 0 0);
+  --color-callout: oklch(0.882 0 0);
   --color-live: #16a34a;
   --color-recorded: #15803d;
   --color-fixture: #b45309;
   --color-accent: #2563eb;
+  --color-link: oklch(0.588 0.158 241.966);
   --color-recorded-soft: rgba(22, 163, 74, 0.12);
   --color-fixture-soft: rgba(217, 119, 6, 0.14);
-  --color-chip: #e4e4e7;
+  --color-chip: oklch(0 0 0 / 0.06);
   --color-badge: #ef4444;
-  --color-muted-on-surface: #626269;
+  --color-muted-on-surface: oklch(0.556 0 0);
+  --text-*: initial;
+  --text-sm: 14px;
+  --text-base: 16px;
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --spacing-bar: 52px;
 }
 
@@ -36,34 +45,38 @@
     font: 16px/1.6 var(--font-sans);
   }
 
+  /* Keep 1rem at 16px. A smaller root font also makes the Tailwind spacing smaller. */
+  body {
+    font-size: var(--text-sm);
+  }
+
   h1,
   h2,
   h3 {
     line-height: 1.3;
+    font-size: var(--text-base);
     font-weight: 500;
-  }
-
-  h1 {
-    font-size: 28px;
+    color: var(--color-heading);
   }
 
   h2 {
     margin: 48px 0 12px;
-    font-size: 20px;
   }
 
   h3 {
     margin: 32px 0 8px;
-    font-size: 16px;
   }
 
   b,
-  strong,
-  th {
+  strong {
     font-weight: 500;
   }
 
-  :where(h1, h2, h3)[id] {
+  th {
+    font-weight: 400;
+  }
+
+  :where(h1, h2, h3, details)[id] {
     scroll-margin-top: 24px;
 
     @variant max-md {
@@ -76,13 +89,12 @@
   }
 
   a {
-    text-decoration-line: underline;
-    text-decoration-color: var(--color-muted);
+    color: var(--color-link);
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
 
     &:hover {
-      text-decoration-color: currentColor;
+      text-decoration-line: underline;
     }
   }
 
@@ -94,8 +106,8 @@
   :not(pre) > code {
     padding: 2px 5px;
     border-radius: 5px;
-    background: var(--color-surface);
-    font-size: 0.875em;
+    background: var(--color-code);
+    font-size: 13px;
   }
 
   ::placeholder {
@@ -108,12 +120,28 @@
     border-bottom-width: 2px;
     border-radius: 5px;
     background: var(--color-surface);
-    font-size: 12px;
+    font-size: 13px;
   }
 }
 
 /* The Markdown renderer makes these elements, so they cannot get utility classes. */
 @layer components {
+  /* The numbers are not in the text of the block. Thus, Copy and a text selection do not include them. */
+  pre:has(.line ~ .line) {
+    counter-reset: line;
+
+    & .line::before {
+      counter-increment: line;
+      content: counter(line);
+      display: inline-block;
+      width: 2ch;
+      margin-right: 16px;
+      text-align: right;
+      color: var(--color-faint);
+      user-select: none;
+    }
+  }
+
   .prose {
     & > :first-child {
       margin-top: 0;
@@ -132,6 +160,11 @@
       list-style: decimal;
     }
 
+    & ol:has(pre) {
+      padding-left: 0;
+      list-style: none;
+    }
+
     & li {
       margin-block: 4px;
     }
@@ -142,22 +175,51 @@
 
     & table {
       width: 100%;
-      font-size: 14px;
+      font-size: var(--text-sm);
     }
 
     & :is(th, td) {
-      padding: 8px 16px 8px 0;
+      padding: 8px 16px;
       border-bottom: 1px solid var(--color-line);
       text-align: left;
       vertical-align: top;
+    }
 
-      &:last-child {
-        padding-right: 0;
-      }
+    & tbody tr:last-child > * {
+      border-bottom: 0;
     }
 
     & th {
-      color: var(--color-muted);
+      color: var(--color-heading);
+    }
+
+    & details {
+      interpolate-size: allow-keywords;
+
+      & > div {
+        padding-bottom: 16px;
+
+        & > :last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      /* A browser without interpolate-size opens and closes the answer with no animation. */
+      &::details-content {
+        block-size: 0;
+        overflow-y: clip;
+        transition:
+          block-size 200ms ease,
+          content-visibility 200ms ease allow-discrete;
+
+        @media (prefers-reduced-motion: reduce) {
+          transition: none;
+        }
+      }
+
+      &[open]::details-content {
+        block-size: auto;
+      }
     }
   }
 
@@ -172,15 +234,16 @@
     & li {
       display: flow-root;
       margin: 0;
-      padding: 12px 0 12px 184px;
+      padding: 12px 0 12px 216px;
       border-bottom: 1px solid var(--color-line);
     }
 
     /* The lead-in floats, because in a grid each run of text and each code span would become a cell. */
     & li > strong:first-child {
       float: left;
-      width: 168px;
-      margin-left: -184px;
+      width: 200px;
+      margin-left: -216px;
+      font-weight: 400;
     }
 
     @container (width < 520px) {
