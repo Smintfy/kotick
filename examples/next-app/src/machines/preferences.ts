@@ -30,5 +30,5 @@ export const preferencesMachine = setup({
   },
 });
 
-/** The provider in Preferences.tsx creates the actor. The components in it read the actor with useSelector. */
+/** The provider in preferences.tsx creates the actor. The components in it read the actor with useSelector. */
 export const PreferencesContext = createActorContext(preferencesMachine);

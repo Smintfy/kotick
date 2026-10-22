@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { DevTools } from '@/components/DevTools';
-import { Nav } from '@/components/Nav';
+import { DevTools } from '@/components/dev-tools';
+import { Nav } from '@/components/nav';
 import './globals.css';
 
 export const metadata: Metadata = {

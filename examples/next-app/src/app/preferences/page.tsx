@@ -1,4 +1,4 @@
-import { Preferences } from '@/components/Preferences';
+import { Preferences } from '@/components/preferences';
 
 export default function PreferencesPage() {
   return (
