@@ -107,6 +107,7 @@ async function toList(): Promise<void> {
 export async function show(machineId: string, nth = 1): Promise<void> {
 	if (shownMachine() !== machineId) {
 		await toList();
+
 		const row = all<HTMLButtonElement>("button[data-machine]").find(
 			(found) => found.dataset.machine === machineId,
 		);
@@ -278,6 +279,7 @@ export async function pickCorner(label: string): Promise<void> {
 
 	if (!settings) throw new Error("The machine list has no Settings button.");
 	await click(settings);
+
 	const corner = all<HTMLLabelElement>('[role="radiogroup"] label').find(
 		(found) => found.textContent === label,
 	);
@@ -322,12 +324,14 @@ export async function machines(): Promise<string[]> {
 		const parts = [
 			row.querySelector('[data-part="row-name"]')?.textContent ?? "",
 		];
+
 		const tag = row.querySelector('[data-part="tag"]')?.textContent;
 
 		if (tag) parts.push(tag);
 		const count = row.querySelector('[data-part="chip"]')?.textContent;
 
 		if (count) parts.push(`${count} instances`);
+
 		const previewing = row
 			.querySelector('[data-part="dot"]')
 			?.textContent?.replace(/^, /, "");
@@ -364,6 +368,7 @@ export function badge(): string {
 export function panel() {
 	one("[data-instance]");
 	const leaves = all("[data-leaf]");
+
 	const pick = (test: (leaf: HTMLElement) => boolean) =>
 		leaves.filter(test).map((leaf) => leaf.dataset.leaf);
 
