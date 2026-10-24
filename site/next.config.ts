@@ -10,6 +10,9 @@ const keepOverlayInProduction = {
 
 const config: NextConfig = {
   transpilePackages: ['konat'],
+  experimental: {
+    agentUpgrade: 'security',
+  },
   turbopack: {
     rules: {
       '*.md': { type: 'text' },
