@@ -41,7 +41,7 @@ konat needs `react` 18 or 19, `xstate` 5.28 or later, and `@xstate/react` 6.1 or
    + import { useMachine, useSelector, createActorContext } from 'konat/xstate';
    ```
 
-Start the dev server and click the bubble in the bottom-right corner, or press <kbd>Alt</kbd>+<kbd>S</kbd>.
+Start the dev server and click the bubble in the bottom-right corner, or press <kbd>Alt</kbd>+<kbd>S</kbd> (<kbd>⌥S</kbd> on macOS).
 
 ## How it works
 

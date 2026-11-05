@@ -7,7 +7,7 @@ import type { KonatProps, Registry } from '../types';
 import type { OverlayHost } from '../utils/host';
 import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../utils/model';
 import { isPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../utils/settings';
-import { eventOrigin, isShortcutText, isTyping, matchesShortcut, parseShortcut } from '../utils/shortcut';
+import { eventOrigin, formatShortcut, isShortcutText, isTyping, matchesShortcut, parseShortcut } from '../utils/shortcut';
 import { CHIP } from './classes';
 import { HexagonIcon } from './icons';
 import { MachineList, PathChip } from './machine-list';
@@ -347,11 +347,6 @@ function useShortcut(value: string | false | undefined) {
       return undefined;
     }
 
-    const label = source
-      .split('+')
-      .map((part) => (part.length === 1 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1)))
-      .join('+');
-
-    return { parsed, label };
+    return { parsed, label: formatShortcut(parsed) };
   }, [source]);
 }

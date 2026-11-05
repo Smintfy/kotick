@@ -17,7 +17,7 @@ export function App() {
     <>
       <section aria-label="Player">
         <p>
-          The global styles on this page try to change the overlay. Open the panel with the bubble or Alt+S, and
+          The global styles on this page try to change the overlay. Open the panel with the bubble or Alt+S (⌥S on macOS), and
           compare it with the panel in the vite-react example. The two panels must look the same.
         </p>
         <p>

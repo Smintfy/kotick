@@ -6,6 +6,7 @@ import { codeTheme } from '@/code-theme';
 import { CopyCodeButton } from '@/components/copy-button';
 import { InstallTabs } from '@/components/install-tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Shortcut } from '@/components/shortcut';
 import { Kbd } from '@/components/ui/kbd';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -102,6 +103,7 @@ const components = {
   th: TableHead,
   td: (props: ComponentProps<'td'>) => <TableCell {...props} className="whitespace-normal" />,
   Kbd,
+  Shortcut,
   InstallTabs,
   Faq,
   FaqItem,

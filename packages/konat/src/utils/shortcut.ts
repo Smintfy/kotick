@@ -68,6 +68,33 @@ export function parseShortcut(value: string): Shortcut | undefined {
   return shortcut;
 }
 
+const MODIFIER_LABELS: Record<Platform, Record<Modifier, string>> = {
+  apple: { ctrl: '⌃', alt: '⌥', shift: '⇧', meta: '⌘' },
+  windows: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift', meta: 'Win' },
+  other: { ctrl: 'Ctrl', alt: 'Alt', shift: 'Shift', meta: 'Super' },
+};
+
+/** The order of macOS menus: ⌃⌥⇧⌘. Windows and Linux put Ctrl, Alt and Shift in the same order. */
+const MODIFIER_ORDER: readonly Modifier[] = ['ctrl', 'alt', 'shift', 'meta'];
+
+const KEY_LABELS = new Map<string, string>([
+  ['escape', 'Esc'],
+  [' ', 'Space'],
+  ['arrowup', '↑'],
+  ['arrowdown', '↓'],
+  ['arrowleft', '←'],
+  ['arrowright', '→'],
+]);
+
+/** The shortcut as the operating system writes it: '⌥S' on macOS and iOS, 'Alt+S' on other systems. */
+export function formatShortcut(shortcut: Shortcut): string {
+  const os = platform();
+  const modifiers = MODIFIER_ORDER.flatMap((modifier) => (shortcut[modifier] ? [MODIFIER_LABELS[os][modifier]] : []));
+  const key = KEY_LABELS.get(shortcut.key) ?? shortcut.key.charAt(0).toUpperCase() + shortcut.key.slice(1);
+
+  return [...modifiers, key].join(os === 'apple' ? '' : '+');
+}
+
 export function matchesShortcut(shortcut: Shortcut, event: KeyboardEvent): boolean {
   if (
     event.altKey !== shortcut.alt ||
@@ -127,8 +154,20 @@ export function eventOrigin(event: Event): EventTarget | null {
   return event.composedPath()[0] ?? event.target;
 }
 
-function isApple(): boolean {
-  return typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform ?? '');
+type Platform = 'apple' | 'windows' | 'other';
+
+function platform(): Platform {
+  if (typeof navigator === 'undefined') return 'other';
+  // Some browsers and jsdom give an empty platform. The user agent also names the system.
+  const name = navigator.platform || navigator.userAgent;
+
+  if (/Mac|iPhone|iPad|iPod/.test(name)) return 'apple';
+
+  return /Win/.test(name) ? 'windows' : 'other';
+}
+
+export function isApple(): boolean {
+  return platform() === 'apple';
 }
 
 export type Move = 'next' | 'previous' | 'first' | 'last';
@@ -140,8 +179,15 @@ const MOVES = new Map<string, Move>([
   ['End', 'last'],
 ]);
 
-export function moveOf(key: string): Move | undefined {
-  return MOVES.get(key);
+/** Apple has no Home and End keys on most keyboards, so ⌘↑ and ⌘↓ also go to the first and last item there. */
+export function moveOf(event: Pick<KeyboardEvent, 'key' | 'altKey' | 'ctrlKey' | 'metaKey'>): Move | undefined {
+  if (event.altKey || event.ctrlKey) return undefined;
+
+  if (!event.metaKey) return MOVES.get(event.key);
+
+  if (!isApple()) return undefined;
+
+  return event.key === 'ArrowUp' ? 'first' : event.key === 'ArrowDown' ? 'last' : undefined;
 }
 
 /** `index` is -1 when no item is current. A move stops at the ends. */

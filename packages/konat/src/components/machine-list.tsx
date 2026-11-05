@@ -19,8 +19,8 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
   const previewCount = Object.keys(snapshot.overrides).length;
 
   function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
-    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
-    const move = moveOf(event.key);
+    if (event.defaultPrevented) return;
+    const move = moveOf(event);
 
     if (!move) return;
     const rows = [...event.currentTarget.querySelectorAll<HTMLElement>('[data-row]')];
