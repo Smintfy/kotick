@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Pager } from '@/components/pager';
 import { OnboardingExample } from '@/demo/onboarding-example';
-import { checkedHref, type ExampleId, examplesPage } from '@/site';
+import { checkedHref, demoHref, type ExampleId, examplesPage } from '@/site';
 
 export const metadata: Metadata = { title: examplesPage.title, description: examplesPage.description };
 
@@ -15,7 +15,7 @@ export default function ExamplesPage() {
           An onboarding flow in four steps. Each step is a state of the onboarding machine. Step 3 sends a request
           that can fail.
         </p>
-        <OnboardingExample />
+        <OnboardingExample href={demoHref('onboarding')} />
         <div className="prose">
           <ol>
             <li>

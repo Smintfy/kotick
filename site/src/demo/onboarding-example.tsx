@@ -237,7 +237,7 @@ const steps = [
   { state: 'invite', title: 'Invite your teammates', Body: InviteStep },
 ] as const;
 
-function Onboarding() {
+export function Onboarding() {
   const [snapshot, send] = useMachine(onboardingMachine);
   const index = steps.findIndex((step) => snapshot.matches(step.state));
   const step = steps[index];
@@ -262,9 +262,9 @@ function Onboarding() {
   );
 }
 
-export function OnboardingExample() {
+export function OnboardingExample({ href }: { href: string }) {
   return (
-    <DemoWindow fixtures={onboardingFixtures}>
+    <DemoWindow fixtures={onboardingFixtures} href={href}>
       <Onboarding />
     </DemoWindow>
   );

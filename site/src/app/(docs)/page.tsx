@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Pager } from '@/components/pager';
 import { Demo } from '@/demo/Demo';
 import { costs } from '@/content/costs';
-import { checkedHref, type LandingId, landingHeadings, pitch } from '@/site';
+import { checkedHref, demoHref, type LandingId, landingHeadings, pitch } from '@/site';
 
 export default function Home() {
   const bodies: Record<LandingId, ReactNode> = {
@@ -15,7 +15,7 @@ export default function Home() {
         or force an API error to get there. This version supports XState v5.
       </p>
     ),
-    'how-it-works': <Demo fixturesHref={checkedHref('/docs/fixtures')} />,
+    'how-it-works': <Demo fixturesHref={checkedHref('/docs/fixtures')} pageHref={demoHref('checkout')} />,
     why: (
       <>
         <p>

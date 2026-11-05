@@ -58,6 +58,19 @@ export const examplesPage = {
   headings: examplesHeadings,
 } as const satisfies NavItem & { description: string };
 
+/**
+ * The demo apps. Each demo has a full-window page at /docs/examples/<id>, where the panel has more space.
+ * `from` is the docs section that shows the demo in a frame.
+ */
+export const demos = [
+  { id: 'checkout', title: 'Checkout', from: '/#how-it-works' },
+  { id: 'onboarding', title: 'Onboarding', from: '/docs/examples#onboarding' },
+] as const;
+
+export type DemoId = (typeof demos)[number]['id'];
+
+export const demoHref = (id: DemoId) => `/docs/examples/${id}`;
+
 export const pages: readonly DocsPage[] = docs.map(([slug, { metadata, headings, default: Content }]) => {
   if (!metadata?.title || !metadata.description) {
     throw new Error(`src/content/docs/${slug}.mdx must export metadata with a title and a description.`);
