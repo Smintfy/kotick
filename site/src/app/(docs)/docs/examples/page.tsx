@@ -20,7 +20,8 @@ export default function ExamplesPage() {
           <ol>
             <li>
               Click the bubble to open the panel. Select <strong>onboarding</strong>, then <strong>invite</strong>.
-              The page shows step 4, with a name, a role and a workspace from the fixture. You did not have to
+              The page shows step 4, with a name, a role, a workspace and an invite from the fixture. The email
+              of a second teammate is in the field, so <strong>Add</strong> is ready to click. You did not have to
               complete steps 1 to 3 to get there.
             </li>
             <li>

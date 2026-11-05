@@ -130,12 +130,12 @@ const withWorkspace: OnboardingContext = { ...withRole, workspace: 'Analytical E
 
 export const onboardingFixtures = [
   defineFixtures(onboardingMachine, {
-    profile: { context: empty },
-    role: { context: profile },
+    profile: { context: profile },
+    role: { context: withRole },
     'workspace.editing': { context: withRole },
     'workspace.creating': { context: withWorkspace },
     'workspace.error': { context: { ...withRole, workspace: takenWorkspace, error: `The name ${takenWorkspace} is taken` } },
-    invite: { context: { ...withWorkspace, invites: ['charles@example.com'] } },
+    invite: { context: { ...withWorkspace, email: 'mary@example.com', invites: ['charles@example.com'] } },
     done: { context: { ...withWorkspace, invites: ['charles@example.com', 'mary@example.com'] } },
   }),
 ];
