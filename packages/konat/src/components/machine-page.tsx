@@ -103,13 +103,13 @@ export function MachinePage(props: MachinePageProps) {
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
-    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.defaultPrevented) return;
     const { target } = event;
 
     if (!isElement(target) || isTyping(target)) return;
     // Form controls and buttons keep their own keys: arrows change a select or radio, Enter clicks a button.
     const control = target.closest('select, input, textarea');
-    const move = moveOf(event.key);
+    const move = moveOf(event);
 
     if (move) {
       if (control) return;
@@ -118,6 +118,8 @@ export function MachinePage(props: MachinePageProps) {
 
       return;
     }
+
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
 
     switch (event.key) {
       case 'Enter':

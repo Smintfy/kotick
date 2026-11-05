@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import type { Position } from '../types';
+import { isApple } from '../utils/shortcut';
 import { BODY, SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
 
 const CORNERS: readonly { position: Position; label: string }[] = [
@@ -9,9 +10,10 @@ const CORNERS: readonly { position: Position; label: string }[] = [
   { position: 'bottom-right', label: 'Bottom right' },
 ];
 
-const PAGE_SHORTCUTS: readonly { keys: string[]; action: string }[] = [
+/** A function, so the module reads the platform in the browser, not when a server imports it. */
+const pageShortcuts = (): readonly { keys: string[]; action: string }[] => [
   { keys: ['↑', '↓'], action: 'Previous or next row' },
-  { keys: ['Home', 'End'], action: 'First or last row' },
+  { keys: isApple() ? ['⌘↑', '⌘↓'] : ['Home', 'End'], action: 'First or last row' },
   { keys: ['Enter'], action: 'Preview or release the state' },
   { keys: ['Esc'], action: 'Release all previews' },
   { keys: ['[', ']'], action: 'Previous or next machine' },
@@ -30,8 +32,8 @@ export function SettingsPage({ position, shortcutLabel, onPosition }: SettingsPa
   const name = useId();
 
   const shortcuts = shortcutLabel
-    ? [{ keys: [shortcutLabel], action: 'Open or close the panel' }, ...PAGE_SHORTCUTS]
-    : PAGE_SHORTCUTS;
+    ? [{ keys: [shortcutLabel], action: 'Open or close the panel' }, ...pageShortcuts()]
+    : pageShortcuts();
 
   return (
     <div className={BODY}>

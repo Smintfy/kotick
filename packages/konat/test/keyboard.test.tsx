@@ -120,6 +120,7 @@ describe('the shortcut prop', () => {
   test.each([
     ['Shift + Ctrl + 1', { key: '1', code: 'Digit1', ctrlKey: true, shiftKey: true }],
     ['cmd+option+esc', { key: 'Escape', code: 'Escape', metaKey: true, altKey: true }],
+    ['mod+k', { key: 'k', code: 'KeyK', ctrlKey: true }],
   ])('takes modifiers in any case and order, and their aliases: %s', async (shortcut, init) => {
     render(<Konat shortcut={shortcut} />);
     await flush();
@@ -147,7 +148,7 @@ describe('the shortcut prop', () => {
     });
   });
 
-  test('the tooltips of the bubble and the Close button name the shortcut', async () => {
+  test('the tooltips of the bubble and the Close button name the shortcut, as Windows and Linux write it', async () => {
     const tooltips = () => ({
       bubble: control('button[aria-expanded]').title,
       close: control('button[aria-label="Close"]').title,
@@ -159,11 +160,14 @@ describe('the shortcut prop', () => {
     const seen = [tooltips()];
     rerender(<Konat defaultOpen shortcut="ctrl+shift+d" />);
     seen.push(tooltips());
+    rerender(<Konat defaultOpen shortcut="shift+mod+cmd+esc" />);
+    seen.push(tooltips());
     rerender(<Konat defaultOpen shortcut={false} />);
     seen.push(tooltips());
     expect(seen).toEqual([
       { bubble: 'Konat (Alt+S)', close: 'Close (Alt+S)' },
       { bubble: 'Konat (Ctrl+Shift+D)', close: 'Close (Ctrl+Shift+D)' },
+      { bubble: 'Konat (Ctrl+Shift+Super+Esc)', close: 'Close (Ctrl+Shift+Super+Esc)' },
       { bubble: 'Konat', close: 'Close' },
     ]);
   });

@@ -128,7 +128,10 @@ export interface KonatProps {
   position?: Position;
   /** Whether the panel starts open, until the user opens or closes it. Defaults to `false`. */
   defaultOpen?: boolean;
-  /** Toggles the panel from anywhere, such as `'alt+s'` (the default) or `'ctrl+shift+d'`; `false` turns it off. */
+  /**
+   * Toggles the panel from anywhere, such as `'alt+s'` (the default) or `'ctrl+shift+d'`; `false` turns it off.
+   * `mod` is ⌘ on macOS and Ctrl on other systems. The overlay writes the keys as the system does, such as ⌥S on macOS.
+   */
   shortcut?: string | false;
   /** Fixture sets, or a loader for them, which becomes its own chunk. Wrap it in a dev check to drop it from builds. */
   fixtures?: FixturesInput;
