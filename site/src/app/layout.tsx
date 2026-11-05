@@ -26,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           <Nav items={nav} />
           <div className="min-w-0 pt-10 pb-16 max-md:px-4 max-md:pt-6 max-md:pb-12">
             <main id="content">{children}</main>
-            <footer className="mt-24 flex flex-wrap justify-between gap-x-6 gap-y-1.5 border-t border-line pt-6 text-[13px] text-muted">
+            <footer className="mt-24 flex flex-wrap justify-between gap-x-6 gap-y-1.5 border-t border-line pt-6 text-[13px] text-muted-foreground">
               <p className="m-0">
                 Made by <a href="https://x.com/smintfy" target="_blank" rel="noreferrer">Smintfy</a>
               </p>

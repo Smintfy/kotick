@@ -4,6 +4,7 @@ import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import type { Heading, NavItem } from '@/site';
 
 const noHeadings: readonly Heading[] = [];
@@ -61,16 +62,17 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
       data-open={open || undefined}
     >
       <div className="hidden h-bar items-center justify-end px-4 max-md:flex">
-        <button
-          type="button"
-          className="-mr-1.5 grid size-8 cursor-pointer place-items-center rounded-lg hover:bg-selected"
+        <Button
+          variant="ghost"
+          size="icon"
+          className="-mr-1.5"
           aria-label="Menu"
           aria-expanded={open}
           aria-controls="nav"
           onClick={() => setOpen(!open)}
         >
           <Menu className="size-5" />
-        </button>
+        </Button>
       </div>
       <nav
         id="nav"
@@ -83,7 +85,7 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
               <Link
                 href={item.href}
                 aria-current={item === current ? 'page' : undefined}
-                className="block py-1 text-muted no-underline hover:text-fg aria-[current=page]:font-medium aria-[current=page]:text-fg"
+                className="block py-1 text-muted-foreground no-underline hover:text-fg aria-[current=page]:font-medium aria-[current=page]:text-fg"
                 onClick={close}
               >
                 {item.title}
@@ -96,7 +98,7 @@ export function Nav({ items }: { items: readonly NavItem[] }) {
                       <a
                         href={`#${heading.id}`}
                         data-active={heading.id === active || undefined}
-                        className={`block py-[3px] text-muted no-underline hover:text-fg data-active:text-fg ${heading.depth === 3 ? 'pl-3' : ''}`}
+                        className={`block py-[3px] text-muted-foreground no-underline hover:text-fg data-active:text-fg ${heading.depth === 3 ? 'pl-3' : ''}`}
                         onClick={close}
                       >
                         {heading.text}

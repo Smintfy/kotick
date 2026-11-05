@@ -2,6 +2,7 @@
 
 import { Check, Copy as CopyIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 
 type CopyProps = {
   className: string;
@@ -20,15 +21,16 @@ function Copy({ className, label, read }: CopyProps) {
   }, [copied]);
 
   return (
-    <button
-      type="button"
-      className={`grid size-7 cursor-pointer place-items-center rounded-md text-muted-on-surface hover:bg-selected hover:text-fg ${className}`}
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      className={`text-muted-on-surface ${className}`}
       aria-label={copied ? 'Copied' : label}
       aria-live="polite"
       onClick={(event) => void navigator.clipboard.writeText(read(event.currentTarget)).then(() => setCopied(true))}
     >
       {copied ? <Check className="size-4" /> : <CopyIcon className="size-4" />}
-    </button>
+    </Button>
   );
 }
 

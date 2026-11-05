@@ -1,4 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
+import createMDX from '@next/mdx';
 import path from 'node:path';
 import type { NextConfig } from 'next';
 import { MARKERS } from '../scripts/debug-markers.mjs';
@@ -15,7 +16,6 @@ const config: NextConfig = {
   },
   turbopack: {
     rules: {
-      '*.md': { type: 'text' },
       '*.ts': keepOverlayInProduction,
       '*.tsx': keepOverlayInProduction,
     },
@@ -39,4 +39,10 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: ['remark-gfm', path.join(import.meta.dirname, 'src/mdx/remark-headings.mjs')],
+  },
+});
+
+export default withMDX(config);

@@ -24,10 +24,10 @@ export default async function DocsPage({ params }: PageProps<'/docs/[slug]'>) {
     <>
       <article className="prose">
         <header className="mb-8">
-          <h1 id={page.id}>{page.title}</h1>
-          <p className="mt-2 mb-4 text-muted">{page.description}</p>
+          <h1>{page.title}</h1>
+          <p className="mt-2 mb-4 text-muted-foreground">{page.description}</p>
         </header>
-        {page.render()}
+        <page.Content />
       </article>
       <Pager href={page.href} />
     </>

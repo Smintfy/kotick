@@ -1,0 +1,53 @@
+export const metadata = {
+  title: 'API',
+  description: 'The props of <Konat /> and the exports of konat/xstate.',
+};
+
+## Props
+
+`<Konat />` from `konat` takes these props:
+
+```tsx
+<Konat
+  position="bottom-right"    // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+  defaultOpen={false}        // Open the panel on the first visit.
+  shortcut="alt+s"           // For example 'ctrl+shift+d'. false turns the shortcut off.
+  fixtures={loader}          // Fixture sets, or a function that loads them.
+  portalTarget={undefined}   // The element that gets the overlay. The default is document.body.
+/>
+```
+
+All props are optional. The panel keeps its open state, its corner and the machine whose page it shows in `localStorage`, so `position` and `defaultOpen` apply only until the user changes them. The user changes the corner in **Settings**. After a reload, the panel shows the page of the same machine when that machine registers.
+
+The overlay renders in a shadow root, so the styles of the page do not change it, and its styles do not change the page. It is dark on every page.
+
+## Exports
+
+`konat/xstate` has these exports:
+
+| Export | What it is |
+|---|---|
+| `useMachine(machine, options?)` | Same as `@xstate/react`. Returns `[snapshot, send, actorRef]`. |
+| `useActor(logic, options?)` | Same as `@xstate/react`. Returns `[snapshot, send, actorRef]`. |
+| `useActorRef(logic, options?, observer?)` | Same as `@xstate/react`. Returns the actor. |
+| `createActorContext(logic, options?)` | Same as `@xstate/react`. Its `Provider` creates the actor. |
+| `useSelector(actor, selector, compare?)` | Same as `@xstate/react`. It works with each actor from this package. |
+| `shallowEqual` | A re-export of `@xstate/react`. |
+| `connect(actor, debug?)` | Registers an actor that you created outside React. Returns the actor to use in the app. |
+| `defineFixtures(machine, states)` | Makes a fixture set for `<Konat fixtures>`. |
+
+The hooks and `createActorContext` accept one more option, `debug`. konat removes it before the options get to XState. `connect()` takes the same object as its second argument.
+
+```ts
+type DebugOptions = {
+  id?: string;        // The machine id in the panel. The default is machine.id.
+  label?: string;     // The name of the instance in the panel.
+  disabled?: boolean; // Keep this actor out of konat.
+};
+
+const [snapshot, send] = useMachine(checkoutMachine, { input, debug: { label: 'Checkout (modal)' } });
+```
+
+Give each machine an `id`. A machine without one has the XState default id `(machine)`. konat then makes an id from the states and context keys of the machine, and logs a warning once. That id changes when you add or remove states or context keys, so the previews and recordings of the machine do not carry over after such a change.
+
+The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed.
