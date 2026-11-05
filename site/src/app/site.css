@@ -147,7 +147,8 @@
     margin: 0 0 16px;
   }
 
-  a {
+  /* Only the links in the text of a page have the link color. Other links, such as the nav, inherit the color. */
+  main :where(p, li, td) a {
     color: var(--color-link);
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
