@@ -6,8 +6,6 @@ export interface StateNodeInfo {
   /** Key within the parent, such as `error`. */
   key: string;
   type: StateNodeType;
-  description?: string;
-  tags?: string[];
   children: StateNodeInfo[];
 }
 
@@ -60,7 +58,6 @@ export interface EventLogEntry {
   event: { type: string; [key: string]: unknown };
   /** State the UI showed when it sent the event. */
   leaves: string[];
-  blocked: boolean;
   at: number;
 }
 
@@ -120,8 +117,6 @@ export interface Registry {
 
 export type Position = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
-export type Theme = 'system' | 'light' | 'dark';
-
 /** What a fixtures loader gives: the sets, or a module whose default export is them, as `import()` resolves. */
 export type FixturesResult = readonly FixtureSet[] | { default: readonly FixtureSet[] };
 
@@ -133,8 +128,6 @@ export interface KonatProps {
   position?: Position;
   /** Whether the panel starts open, until the user opens or closes it. Defaults to `false`. */
   defaultOpen?: boolean;
-  /** Defaults to `'system'`. */
-  theme?: Theme;
   /** Toggles the panel from anywhere, such as `'alt+s'` (the default) or `'ctrl+shift+d'`; `false` turns it off. */
   shortcut?: string | false;
   /** Fixture sets, or a loader for them, which becomes its own chunk. Wrap it in a dev check to drop it from builds. */

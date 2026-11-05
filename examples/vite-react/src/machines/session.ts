@@ -44,7 +44,6 @@ export const sessionMachine = setup({
       on: { SIGN_OUT: { target: 'signedOut', actions: assign({ user: null }) } },
     },
     expired: {
-      description: 'Timed out; the user is kept so they can sign back in',
       on: {
         SIGN_IN: 'signingIn',
         SIGN_OUT: { target: 'signedOut', actions: assign({ user: null }) },

@@ -218,14 +218,25 @@ export function marks(): Record<string, string[]> {
 	);
 }
 
-/** The rows of the blocked-event log, newest first, as `EVENT · instance · in leaves`, then the payload if any. */
+/**
+ * The rows of the blocked-event log, newest first, as `EVENT ×count · instance · in leaves`, then the payload if any.
+ * The instance, the leaves and the payload come from the part of the row that opens.
+ */
 export function blockedEvents(): string[] {
 	return all('[data-part="log-entry"]').map((row) => {
-		const event = row.querySelector('[data-part="event"]')?.textContent;
-		const where = row.querySelector('[data-part="log-meta"]')?.textContent;
-		const payload = row.querySelector('[data-part="payload"]')?.textContent;
+		const text = (selector: string) => row.querySelector(selector)?.textContent;
+		const repeats = text('[data-part="repeats"]');
 
-		return [event, where, payload]
+		const leaves = [
+			...row.querySelectorAll('[data-part="log-state"] > span'),
+		].map((leaf) => leaf.textContent);
+
+		return [
+			repeats === undefined ? text('[data-part="event"]') : `${text('[data-part="event"]')} ${repeats}`,
+			text('[data-part="log-instance"]'),
+			`in ${leaves.join(", ")}`,
+			text('[data-part="log-payload"]'),
+		]
 			.filter((part) => part !== undefined)
 			.join(" · ");
 	});
@@ -374,7 +385,6 @@ export function panel() {
 
 	return {
 		instance: shownName(),
-		live: pick((leaf) => leaf.hasAttribute("data-active")),
 		previewed: pick((leaf) => leaf.getAttribute("aria-selected") === "true"),
 		filled: pick((leaf) => leaf.hasAttribute("data-filled")),
 		source:

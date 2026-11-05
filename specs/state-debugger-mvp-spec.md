@@ -113,7 +113,6 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 
 - **R6 (P0)** The state tree comes from `machine.root`: compound, parallel, atomic and final nodes. History nodes are excluded.
 - **R7 (P0)** The current state is shown as active leaves.
-- **R8 (P1)** State `description` and `tags` appear as hints in the tree.
 
 ### 6.3 Preview
 
@@ -139,7 +138,7 @@ P0 = required for 0.1.0. P1 = in 0.1.0 if time allows.
 - **R22 (P0)** Panel sections: machine list with instance picker, state tree, context viewer, event log.
 - **R23 (P0)** Keyboard support as described in §10.5. Shortcuts are ignored while typing.
 - **R24 (P0)** Panel open state, position and selected machine persist in localStorage.
-- **R25 (P1)** Theme: system, light or dark.
+- **R25 (P1)** The overlay is dark on every page.
 - **R26 (P1)** Copy the current state as JSON.
 
 ### 6.6 Production
@@ -204,7 +203,7 @@ sequenceDiagram
   C->>P: getSnapshot()
   P-->>C: Forced snapshot
   C->>P: send(RETRY)
-  P->>R: logEvent(RETRY, blocked)
+  P->>R: logEvent(RETRY)
 ```
 
 ## 8. Public API
@@ -217,7 +216,6 @@ import { Konat } from 'konat';
 <Konat
   position="bottom-right"                      // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
   defaultOpen={false}
-  theme="system"                               // 'system' | 'light' | 'dark'
   shortcut="alt+s"                             // toggles the panel
   fixtures={() => import('./debug/fixtures')}  // FixtureSet[] or a lazy loader
   portalTarget={undefined}                     // Element | ShadowRoot
@@ -284,8 +282,6 @@ interface StateNodeInfo {
   id: string;            // path from root: "payment.error"
   key: string;           // "error"
   type: StateNodeType;
-  description?: string;
-  tags?: string[];
   children: StateNodeInfo[];
 }
 
@@ -328,7 +324,6 @@ interface EventLogEntry {
   instanceKey: string;
   event: { type: string; [key: string]: unknown };
   leaves: string[];      // state the UI showed when it sent the event
-  blocked: boolean;
   at: number;
 }
 
@@ -419,12 +414,12 @@ Checked in the XState source at tag `xstate@5.28.0`:
 ### 10.5 Overlay
 
 - **Host:** a `<div data-konat-root>` appended to `document.body`, with an open shadow root, styles injected inside it, a system font stack and `z-index: 2147483647`. Only the toolbar and panel take pointer events.
-- **Toolbar:** a 40px bubble, bottom-right by default, carrying the preview badge.
-- **Panel:** about 320px wide, at most 70vh tall, scrolling internally.
+- **Toolbar:** a 32px bubble, bottom-right by default, carrying the preview badge.
+- **Panel:** 280px wide, at most 70vh tall, scrolling internally.
   - Header: machine selector, instance picker, release all, move to the next corner, close
-  - State tree (`role="tree"`): active leaves highlighted, previewed leaf marked, data indicator per state (recorded, fixture, none)
+  - State tree (`role="tree"`): previewed leaf marked, data indicator after each leaf (recorded, fixture, none)
   - Context: read-only JSON viewer with a data-source switcher
-  - Event log: blocked events with state and time, and a clear button
+  - Event log: one row per blocked event, with repeats merged into a count; a row opens to show the state, the instance, the times and the payload; a clear button while the log has events
   - Footer: copy JSON
 - **Selecting a leaf** (click or `Enter`) adds it to the instance's preview, first, so its fixture is looked up first; `normalizeTarget` drops the previewed leaves it can't be active with, and leaves in other parallel regions stay. Selecting a previewed leaf takes it out, and taking out the last one releases the instance. Child machines are listed read-only.
 - **Focus:** opening the panel by hand (bubble or shortcut) moves focus to the tree; closing gives it back to where the shortcut was pressed, or to the bubble. A panel left open across a reload doesn't take focus.
@@ -546,7 +541,7 @@ Checked by the Vitest suite, `pnpm check:bundles` and `pnpm test:matrix`, and by
 - [x] Panel: machine list and instance picker, state tree with data indicators, context viewer and source switcher, event log
 - [x] Keyboard shortcuts
 - [x] Persisted panel UI state
-- [x] P1: copy JSON, theming, description and tag hints
+- [x] P1: copy JSON
 - [x] Accessibility pass
 - [x] Hostile-CSS example (`examples/hostile-css`)
 

@@ -5,7 +5,7 @@ import { copyText } from '../utils/clipboard';
 import { toJson } from '../utils/format';
 import { attempt, findInstance, shownLeaves, toggleLeaf, type InstanceEntry, type MachineGroup } from '../utils/model';
 import { isElement, isTyping, moveIndex, moveOf, type Move } from '../utils/shortcut';
-import { BODY } from './classes';
+import { ACTION, BODY, FOOTER } from './classes';
 import { ContextView } from './context-view';
 import { EventLog } from './event-log';
 import { CopyIcon } from './icons';
@@ -170,7 +170,7 @@ export function MachinePage(props: MachinePageProps) {
         <div className="flex-none px-1.5 pt-1.5">
           <span className="relative block min-w-0 after:pointer-events-none after:absolute after:top-1/2 after:right-2.5 after:-mt-1 after:size-1.25 after:transform-[rotate(45deg)] after:border-r-[1.5px] after:border-b-[1.5px] after:border-r-muted after:border-b-muted">
             <select
-              className="block h-6.5 w-full cursor-pointer appearance-none rounded-md bg-surface py-0 pr-6 pl-1.5 text-base text-ellipsis text-fg"
+              className="block h-8 w-full cursor-pointer appearance-none rounded-md bg-surface py-0 pr-6 pl-1.5 text-base text-ellipsis text-fg"
               aria-label="Instance"
               value={key}
               onChange={(event) => props.onPickInstance(event.target.value)}
@@ -193,7 +193,6 @@ export function MachinePage(props: MachinePageProps) {
         <StatesSection
           instance={instance}
           nodes={nodes}
-          active={active}
           collapsed={collapsed}
           cursor={cursor}
           canPreview={canPreview}
@@ -214,14 +213,14 @@ export function MachinePage(props: MachinePageProps) {
             if (override) registry.preview(key, { leaves: [...override.requested], source });
           }}
         />
-        <EventLog entries={snapshot.log} labelOf={labelOf} onClear={() => registry.clearLog()} />
+        <EventLog entries={snapshot.log} instanceKey={key} labelOf={labelOf} onClear={() => registry.clearLog()} />
       </div>
 
-      <footer className="flex-none border-t border-t-line px-1.5 py-1">
+      <footer className={FOOTER}>
         {/* The name stays the same while the label shows the status, so voice control and tests still find it. */}
         <button
           type="button"
-          className="flex h-7.5 w-full cursor-pointer items-center justify-between gap-1.5 rounded-md bg-transparent px-1.5 py-0 text-lg whitespace-nowrap text-fg enabled:hover:bg-hover [&>svg]:flex-none [&>svg]:text-muted"
+          className={ACTION}
           onClick={copyJson}
           aria-label="Copy JSON"
         >

@@ -253,7 +253,7 @@ function createBinding(actor: MachineActor): Binding {
       return true;
     }
 
-    registry.logEvent({ instanceKey: override.instanceKey, event, leaves: override.leaves, blocked: true, at: Date.now() });
+    registry.logEvent({ instanceKey: override.instanceKey, event, leaves: override.leaves, at: Date.now() });
 
     return true;
   }

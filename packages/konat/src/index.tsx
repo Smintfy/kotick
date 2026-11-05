@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Konat as DevKonat } from './components/konat';
 import type { KonatProps } from './types';
 
-export type { FixtureSet, FixturesInput, FixturesResult, Position, KonatProps, Theme } from './types';
+export type { FixtureSet, FixturesInput, FixturesResult, Position, KonatProps } from './types';
 
 // Declared here, not through @types/node, so apps that typecheck this source without Node types still compile.
 declare const process: { env: { NODE_ENV?: string } };

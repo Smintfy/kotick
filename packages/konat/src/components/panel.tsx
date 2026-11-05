@@ -31,7 +31,7 @@ export function Panel(props: PanelProps) {
       id={props.id}
       // The panel is 10px past the bubble: 16px offset + 32px bubble + 10px gap. It slides in from the bubble.
       // Focus lands on the panel only as a fallback, and the controls inside show where it is.
-      className="pointer-events-auto absolute flex max-h-[min(70vh,calc(100%-80px))] w-70 max-w-[calc(100%-32px)] animate-enter flex-col overflow-hidden rounded-xl border border-outline bg-bg [box-shadow:var(--konat-shadow-lg)] focus-visible:[outline:none] in-data-[position$=left]:left-4 in-data-[position$=right]:right-4 in-data-[position^=bottom]:bottom-14.5 in-data-[position^=bottom]:[--konat-enter:6px] in-data-[position^=top]:top-14.5 in-data-[position^=top]:[--konat-enter:-6px] motion-reduce:animate-none"
+      className="pointer-events-auto absolute flex max-h-[min(70vh,calc(100%-80px))] w-70 max-w-[calc(100%-32px)] animate-enter flex-col overflow-hidden rounded-xl border border-outline bg-bg focus-visible:[outline:none] in-data-[position$=left]:left-4 in-data-[position$=right]:right-4 in-data-[position^=bottom]:bottom-14.5 in-data-[position^=bottom]:[--konat-enter:6px] in-data-[position^=top]:top-14.5 in-data-[position^=top]:[--konat-enter:-6px] motion-reduce:animate-none"
       data-page={props.page}
       aria-label="Konat"
       tabIndex={-1}
