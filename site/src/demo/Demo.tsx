@@ -19,7 +19,7 @@ const shippingOptions = [
 
 const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
-function Checkout() {
+export function Checkout() {
   const [snapshot, send] = useMachine(checkoutMachine);
   const { items, total, cardNumber, error, receiptId } = snapshot.context;
   const shipping = shippingOptions.find((option) => snapshot.matches({ shipping: option.key })) ?? shippingOptions[0];
@@ -116,14 +116,14 @@ function Checkout() {
   );
 }
 
-export function Demo({ fixturesHref }: { fixturesHref: string }) {
+export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHref: string }) {
   return (
     <>
       <p>
         A checkout page with the real overlay docked beside it. The panel lists the checkout machine and all of its
         states, also the states that the page has not gone to.
       </p>
-      <DemoWindow fixtures={fixturesInEveryBuild}>
+      <DemoWindow fixtures={fixturesInEveryBuild} href={pageHref}>
         <Checkout />
       </DemoWindow>
       <div className="prose">
