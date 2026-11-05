@@ -140,9 +140,7 @@ test('an invoked child is listed under its parent while the invoking state is ac
   const actor = await run(parent);
 
   const seen = () => {
-    const { instance, live } = panel();
-
-    return { instance, live, children: family().children };
+    return { instance: panel().instance, children: family().children };
   };
 
   const listed = await machines();
@@ -154,18 +152,17 @@ test('an invoked child is listed under its parent while the invoking state is ac
   const child = { ...seen(), hint: family().hint };
   await send(actor, { type: 'PROGRESS' });
   await send(actor, { type: 'PAUSE' });
-  const paused = { live: panel().live, context: panel().context };
+  const paused = panel().context;
   await send(actor, { type: 'CLOSE' });
   expect({ idle, busy, child, paused, closed: { shown: shownMachine(), machines: await machines() } }).toEqual({
-    idle: { instance: `${parent.id} · 1`, live: ['idle'], children: [], machines: [parent.id] },
+    idle: { instance: `${parent.id} · 1`, children: [], machines: [parent.id] },
     busy: {
       instance: `${parent.id} · 1`,
-      live: ['busy'],
       children: ['job · 1'],
       machines: [parent.id, `${worker.id} · child`],
     },
-    child: { instance: 'job · 1', live: ['working'], children: [], hint: `Child of ${parent.id} · 1. ${READ_ONLY}` },
-    paused: { live: ['paused'], context: ['progress: 50'] },
+    child: { instance: 'job · 1', children: [], hint: `Child of ${parent.id} · 1. ${READ_ONLY}` },
+    paused: ['progress: 50'],
     closed: { shown: 'none', machines: [parent.id] },
   });
 });

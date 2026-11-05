@@ -39,11 +39,6 @@ export function getTree(machine: AnyStateMachine): MachineTree {
   return tree;
 }
 
-/** A JavaScript machine can give any value, and React throws when it renders an object. */
-function isDescriptionText(description: AnyStateNode['description']): description is string {
-  return typeof description === 'string' && description !== '';
-}
-
 function describeChildren(node: AnyStateNode, leaves: Map<string, AnyStateNode>): StateNodeInfo[] {
   const children: StateNodeInfo[] = [];
 
@@ -53,17 +48,7 @@ function describeChildren(node: AnyStateNode, leaves: Map<string, AnyStateNode>)
 
     if (child.type === 'atomic' || child.type === 'final') leaves.set(id, child);
 
-    const info: StateNodeInfo = {
-      id,
-      key: child.key,
-      type: child.type,
-      children: describeChildren(child, leaves),
-    };
-
-    if (isDescriptionText(child.description)) info.description = child.description;
-
-    if (child.tags.length > 0) info.tags = frozen([...child.tags]);
-    children.push(Object.freeze(info));
+    children.push(Object.freeze({ id, key: child.key, type: child.type, children: describeChildren(child, leaves) }));
   }
 
   return frozen(children);

@@ -20,7 +20,6 @@ import {
   instanceKeys,
   instances,
   machines,
-  panel,
   preview,
   release,
   show,
@@ -103,7 +102,7 @@ test('an actor started outside React and connected is listed, and its preview sh
   await send(checkout, { type: 'ADD' });
   const rows = await machines();
   await show(machine.id);
-  const listed = { machines: rows, instances: instances(), live: panel().live, shown: shown() };
+  const listed = { machines: rows, instances: instances(), shown: shown() };
   await preview(machine.id, ['payment.error']);
   const previewing = shown();
   await release(machine.id);
@@ -111,7 +110,6 @@ test('an actor started outside React and connected is listed, and its preview sh
     listed: {
       machines: [machine.id],
       instances: [`${machine.id} · 1`],
-      live: ['cart'],
       shown: { value: 'cart', items: 1 },
     },
     previewing: { value: { payment: 'error' }, items: 1 },

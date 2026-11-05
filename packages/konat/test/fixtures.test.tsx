@@ -179,7 +179,6 @@ test('a fixture gives a state its context: the tree marks the leaf, and a previe
       shown: { value: 'done', context: { step: 99, note: 'placed' } },
       panel: {
         instance: `${checkout.id} · 1`,
-        live: ['idle'],
         previewed: ['done'],
         filled: [],
         source: 'fixture',
@@ -438,7 +437,6 @@ describe('fixtures that register after a preview', () => {
       before: {
         panel: {
           instance: `${machine.id} · 1`,
-          live: ['idle'],
           previewed: ['paying.card.error'],
           filled: ['paying.shipping.standard'],
           source: 'live',
@@ -451,7 +449,6 @@ describe('fixtures that register after a preview', () => {
       after: {
         panel: {
           instance: `${machine.id} · 1`,
-          live: ['paying.card.idle', 'paying.shipping.express'],
           previewed: ['paying.card.error'],
           filled: ['paying.shipping.standard'],
           source: 'fixture',

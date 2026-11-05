@@ -73,7 +73,7 @@ export function SettingsPage({ position, shortcutLabel, onPosition }: SettingsPa
                 {keys.map((key) => (
                   <kbd
                     key={key}
-                    className="h-4.5 min-w-4.5 rounded-sm bg-chip px-1 text-center font-[inherit] text-sm leading-4.5"
+                    className="h-4 min-w-4 rounded-sm bg-chip px-1 text-center font-[inherit] text-sm leading-4"
                   >
                     {key}
                   </kbd>

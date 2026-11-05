@@ -140,15 +140,22 @@ export function summarizePayload(event: EventLogEntry['event']): string {
   return toJson(payload, 0);
 }
 
-/** `14:03:27.041`, in local time. */
-export function formatTime(at: number): string {
+const pad = (value: number, length = 2) => String(value).padStart(length, '0');
+
+/** `14:03:27`, in local time. */
+export function formatClock(at: number): string {
   const date = new Date(at);
 
   if (Number.isNaN(date.getTime())) return '';
-  const pad = (value: number, length = 2) => String(value).padStart(length, '0');
-  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 
-  return `${time}.${pad(date.getMilliseconds(), 3)}`;
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+/** `14:03:27.041`, in local time. */
+export function formatTime(at: number): string {
+  const clock = formatClock(at);
+
+  return clock === '' ? '' : `${clock}.${pad(new Date(at).getMilliseconds(), 3)}`;
 }
 
 /** Placeholders for objects whose properties say nothing useful, or that would be dangerous to walk. */

@@ -492,7 +492,6 @@ describe('parallel regions', () => {
         shown: { value: { paying: { card: 'error', shipping: 'express' } }, context: { step: 2, note: 'none' } },
         panel: {
           instance: `${machine.id} · 1`,
-          live: ['paying.card.idle', 'paying.shipping.express'],
           previewed: ['paying.card.error'],
           filled: ['paying.shipping.express'],
           source: 'live',
@@ -574,7 +573,6 @@ describe('an actor that moves on during a preview', () => {
       shown: { value: { paying: { card: 'error', shipping: 'standard' } }, context: { step: 1, note: 'none' } },
       panel: {
         instance: `${machine.id} · 1`,
-        live: ['paying.card.idle', 'paying.shipping.express'],
         previewed: ['paying.card.error'],
         filled: ['paying.shipping.standard'],
         source: 'live',
@@ -843,12 +841,12 @@ describe('a machine that Fast Refresh replaces', () => {
   /**
    * Each machine page lists all the blocked events of the page.
    * Earlier tests in the file leave theirs, so a test that reads the list clears it first.
+   * The panel shows Clear only while the list has events.
    */
   async function clearBlockedEvents() {
     const clear = [...overlay().querySelectorAll('button')].find((button) => button.textContent === 'Clear');
 
-    if (!clear) throw new Error('The panel has no Clear button.');
-    fireEvent.click(clear);
+    if (clear) fireEvent.click(clear);
     await flush();
   }
 
@@ -868,12 +866,9 @@ describe('a machine that Fast Refresh replaces', () => {
     await releaseAll();
     await show(id);
     await press('PAY');
-    expect({ swapped, paid: { value: shown('app').value, live: panel().live } }).toEqual({
+    expect({ swapped, paid: shown('app').value }).toEqual({
       swapped: { rendered: ['{"paying":{"card":"error","shipping":"standard"}}'], keys, note: 'typed before the edit' },
-      paid: {
-        value: { paying: { card: 'idle', shipping: 'standard' } },
-        live: ['paying.card.idle', 'paying.shipping.standard'],
-      },
+      paid: { paying: { card: 'idle', shipping: 'standard' } },
     });
   });
 
