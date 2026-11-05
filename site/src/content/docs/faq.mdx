@@ -1,0 +1,62 @@
+export const metadata = {
+  title: 'FAQ',
+  description: 'Answers to common questions.',
+};
+
+<Faq>
+  <FaqItem id="machine-not-in-panel">
+    <FaqQuestion>My machine is not in the panel. Why?</FaqQuestion>
+    <FaqAnswer>
+      Make sure that the component imports the hook from `konat/xstate`, not from `@xstate/react`, and that `<Konat />` is mounted. An actor that you create with `createActor()` must go through `connect()`. An actor with `debug: { disabled: true }` is not listed.
+    </FaqAnswer>
+  </FaqItem>
+
+  <FaqItem id="preview-side-effects">
+    <FaqQuestion>Can a preview change my data or call my API?</FaqQuestion>
+    <FaqAnswer>
+      No. The real actor does not change, and events that the UI sends during a preview are blocked. Effects in components still run, for example a `useEffect` that fetches when a state shows. They run as they do when the real machine is in that state.
+    </FaqAnswer>
+  </FaqItem>
+
+  <FaqItem id="preview-wrong-data">
+    <FaqQuestion>Why does a preview show the wrong data?</FaqQuestion>
+    <FaqAnswer>
+      The state had no recording and no fixture, so the preview uses the live context. The console shows a warning, and the state tree marks the state. Go to the state once in the real app, or write a [fixture](/docs/fixtures) for it.
+    </FaqAnswer>
+  </FaqItem>
+
+  <FaqItem id="react-18-strict-mode">
+    <FaqQuestion>Does it work with React 18 and StrictMode?</FaqQuestion>
+    <FaqAnswer>
+      Yes. The test suite runs on React 18 and 19, with StrictMode on.
+    </FaqAnswer>
+  </FaqItem>
+
+  <FaqItem id="other-state-libraries">
+    <FaqQuestion>Does it work with `useReducer`, Zustand or other state libraries?</FaqQuestion>
+    <FaqAnswer>
+      Not in this version. XState machines declare their states, so konat can list states that the UI never went to. Support for other libraries is on the roadmap.
+    </FaqAnswer>
+  </FaqItem>
+
+  <FaqItem id="xstate-versions">
+    <FaqQuestion>Does it work with XState v4 or v6?</FaqQuestion>
+    <FaqAnswer>
+      No. It works with XState v5 only. Support for v6 will come when v6 is stable.
+    </FaqAnswer>
+  </FaqItem>
+
+  <FaqItem id="staging-builds">
+    <FaqQuestion>Can I use it in a staging build?</FaqQuestion>
+    <FaqAnswer>
+      Not in this version. It works only in development builds.
+    </FaqAnswer>
+  </FaqItem>
+
+  <FaqItem id="two-copies">
+    <FaqQuestion>Two copies of konat are in my bundle. Is that a problem?</FaqQuestion>
+    <FaqAnswer>
+      No. All copies use one registry on `globalThis`. If the versions are different, the console shows a warning.
+    </FaqAnswer>
+  </FaqItem>
+</Faq>

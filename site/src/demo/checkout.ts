@@ -64,9 +64,9 @@ export const checkoutMachine = setup({
         SHIP_PICKUP: { guard: 'shippingOpen', target: '.pickup' },
       },
       states: {
-        standard: { description: 'Free, 3 to 5 business days' },
-        express: { description: '$15, next business day' },
-        pickup: { description: 'Free, collect in store' },
+        standard: {},
+        express: {},
+        pickup: {},
       },
     },
     payment: {
@@ -92,7 +92,6 @@ export const checkoutMachine = setup({
         },
         processing: {
           tags: ['busy'],
-          description: 'Waiting for the payment provider',
           invoke: {
             src: 'charge',
             input: ({ context }) => ({ cardNumber: context.cardNumber }),
@@ -109,7 +108,7 @@ export const checkoutMachine = setup({
             EDIT_CARD: 'editing.last',
           },
         },
-        success: { type: 'final', description: 'Payment captured and receipt issued' },
+        success: { type: 'final' },
       },
     },
   },

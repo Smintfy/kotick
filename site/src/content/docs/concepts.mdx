@@ -1,0 +1,124 @@
+export const metadata = {
+  title: 'Concepts',
+  description: 'What a state machine is, why UI code needs one, and the terms that the panel uses.',
+};
+
+## State machines
+
+A state machine is a model of a UI flow. It has a fixed list of states, and it is in one state at a time. An event moves the machine to a different state. This move is a transition. Each state accepts only the events that it lists, and the machine ignores all other events.
+
+A component that loads a list of orders has four states:
+
+| State | Event | Next state |
+|---|---|---|
+| `idle` | `LOAD` | `loading` |
+| `loading` | The request succeeds | `success` |
+| `loading` | The request fails | `failure` |
+| `failure` | `RETRY` | `loading` |
+
+`loading` does not accept `LOAD`. Thus, a second click on the button does nothing while the request runs.
+
+In XState, the same machine is:
+
+```ts
+import { fromPromise, setup } from 'xstate';
+
+export const ordersMachine = setup({
+  actors: { load: fromPromise(() => fetch('/api/orders')) },
+}).createMachine({
+  id: 'orders',
+  initial: 'idle',
+  states: {
+    idle: { on: { LOAD: 'loading' } },
+    loading: { invoke: { src: 'load', onDone: 'success', onError: 'failure' } },
+    failure: { on: { RETRY: 'loading' } },
+    success: {},
+  },
+});
+```
+
+## Why use a state machine
+
+Many React components keep their state in flags. This is the orders component with `useState`:
+
+```tsx
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState<Error>();
+const [orders, setOrders] = useState<Order[]>();
+
+async function load() {
+  if (isLoading) return;
+  setIsLoading(true);
+  setError(undefined);
+
+  try {
+    setOrders(await fetchOrders());
+  } catch (caught) {
+    setError(caught as Error);
+  } finally {
+    setIsLoading(false);
+  }
+}
+```
+
+The component has four states, but the code does not name them. Each state is a combination of three flags, and each handler must set all three in the correct sequence. A small error in a handler causes a bug:
+
+- If you forget `setError(undefined)`, the old error stays on the page while the new request runs.
+- If you forget `if (isLoading) return`, a second click sends a second request.
+
+Three flags make eight combinations, and TypeScript accepts all eight. Only four of them are real states.
+
+A state machine puts these rules in one place. The [orders machine](/docs/concepts#state-machines) has the same four states:
+
+- **The state is one value.** `snapshot.value` is `idle`, `loading`, `success` or `failure`. Two states cannot be true at the same time.
+- **Each state lists its events.** `loading` does not accept `LOAD`. Thus, the handler does not need an `if`, and a second click does nothing.
+- **The UI shows each state.** The page shows the error only when `snapshot.matches('failure')` is true. An old error cannot stay on the page during `loading`.
+- **The states are in the code.** You can read the full list, draw it, and do a test of each state. konat reads the same list to show each state in the panel and to preview it. With flags, no tool can know which states exist.
+
+A component with one flag, such as a menu that is open or closed, does not need a machine. Use a machine when a component has three or more states. Also use one when an event is correct in one state but not in others.
+
+## Machines and instances
+
+When the app starts a machine, XState makes an actor. The actor runs the machine and keeps its current state. The panel groups actors by machine id, such as `checkout`. Each actor of a machine is an instance: `checkout · 1`, `checkout · 2`. A list with one machine per row has one instance for each row.
+
+## Leaf ids
+
+A state can contain child states. A state without child states is a leaf. konat identifies a state by the dot path to its leaf, such as `payment.error`:
+
+```
+checkout
+├── shipping
+│   ├── standard
+│   └── express
+└── payment
+    ├── editing
+    ├── processing
+    ├── error
+    └── success
+```
+
+`checkout` is a parallel machine. A parallel machine is in one leaf of each region at the same time, for example `shipping.express` and `payment.error`.
+
+## Previews
+
+When you select a leaf, the components that read the actor show that state. They do not mount again. In a parallel machine, the regions that you did not touch keep their real state. The preview is a real XState snapshot, so `matches()`, `hasTag()`, `can()` and `status` work as usual.
+
+A preview changes only what the components see. The real actor does not stop. Timers, invoked promises and callbacks continue in it. When you release the preview, the components show the real state at that time. This state can be different from the state before the preview.
+
+## Blocked events
+
+Events that the UI sends to a previewed actor do not get to the machine. The panel logs each one with the state that the UI showed. Use the log to see what a button does in a state that is difficult to get to.
+
+## Context for a preview
+
+A machine keeps data with its state, such as the items in a cart. XState calls this data context. A preview needs context, and konat looks for it in this sequence:
+
+1. **Recorded:** the last context that the real actor had in this state. konat records it on each transition and keeps it in `sessionStorage`, so it is still there after a reload.
+2. **Fixture:** context that you wrote with `defineFixtures()`. See [Fixtures](/docs/fixtures).
+3. **Live:** the current context of the real actor. konat logs a warning, because the live context often does not agree with the state.
+
+The state tree marks each state with the data it has. In the panel, you can change the source of the context for each preview.
+
+## Child actors
+
+Machines that a machine invokes or spawns are listed under their parent. You can see their state, but you cannot preview them in this version.

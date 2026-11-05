@@ -1,0 +1,56 @@
+export const metadata = {
+  title: 'Install',
+  description: 'Install the package, mount the overlay, and import the XState hooks from konat/xstate.',
+};
+
+<InstallTabs name="konat" />
+
+konat uses the versions of these packages that your app has:
+
+| Package | Versions |
+|---|---|
+| `react`, `react-dom` | 18 or 19 |
+| `xstate` | 5.28 or later |
+| `@xstate/react` | 6.1 or later |
+
+## Quick start
+
+There are two changes.
+
+1. Mount the overlay once, near the root of the app:
+
+   ```tsx
+   import { Konat } from 'konat';
+
+   export function App() {
+     return (
+       <>
+         <Routes />
+         <Konat />
+       </>
+     );
+   }
+   ```
+
+2. Import the XState hooks from `konat/xstate` instead of `@xstate/react`:
+
+   ```diff
+   - import { useMachine, useSelector, createActorContext } from '@xstate/react';
+   + import { useMachine, useSelector, createActorContext } from 'konat/xstate';
+   ```
+
+   The hooks have the same names and signatures as in `@xstate/react`.
+
+Start the dev server and click the bubble in the bottom-right corner, or press <Kbd>Alt</Kbd>+<Kbd>S</Kbd>. The panel lists each machine that a hook started. Select a machine to see its states. Select a state to preview it, and select it again to release it.
+
+Actors that you create outside React, for example in a module, need one more step. Wrap them with `connect()`:
+
+```ts
+import { createActor } from 'xstate';
+import { connect } from 'konat/xstate';
+import { sessionMachine } from '@/machines/session';
+
+export const sessionActor = connect(createActor(sessionMachine).start(), { id: 'session' });
+```
+
+Use the actor that `connect()` returns everywhere in the app, for example with `useSelector(sessionActor, …)`.

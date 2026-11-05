@@ -1,0 +1,16 @@
+export const metadata = {
+  title: 'Limitations',
+  description: 'What konat cannot do in this version.',
+};
+
+- **Effects in the machine do not run during a preview.** Invoked actors, delayed transitions and entry actions of the previewed state do not start. Effects in components that react to the state, such as a `useEffect` that depends on `snapshot.value`, do run.
+- **Only actors from `konat/xstate` or `connect()` are listed.** An actor from `createActor()` that you do not give to `connect()` is not in the panel.
+- **Child actors are read-only.** You can see them, but you cannot preview them. A preview keeps the live children in `snapshot.children`, so components that read them continue to work. This part is experimental.
+- **History states cannot be selected.**
+- **Releasing shows the real state at that time.** The real actor kept running during the preview.
+- **Functions in context are not recorded across reloads.** After a reload, a recorded preview does not have them.
+- **A transform on `body` moves the overlay.** If `body` has a `transform`, a `filter` or `contain`, it becomes the containing block of the overlay. Use `portalTarget={document.documentElement}` on such pages.
+- **The arrow keys move through the leaves that show.** Compound and parallel states cannot get focus, so only a click collapses or expands them. The arrow keys skip the leaves of a collapsed state.
+- **The state tree shows the fixtures of the first instance of a machine id.** When `debug.id` gives two different machines the same id, the instance of the second machine can get other fixtures.
+- **Around a preview, observers can get a snapshot one more or one less time than with `@xstate/react`.** Without a preview, an observer given to a hook gets the same calls as with `@xstate/react`. A few rare sequences around a preview, such as a Fast Refresh edit or an `<Activity>` that hides the component, can give it one more, one less or a later snapshot. The number of `complete` and `error` calls stays the same. An observer also gets the preview again each time the preview is built again. That happens when its live children change, when fixtures load, or when an edit adds a region.
+- **Development builds only.** For staging builds in production mode, the overlay is not available.

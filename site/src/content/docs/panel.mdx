@@ -1,0 +1,31 @@
+export const metadata = {
+  title: 'The panel',
+  description: 'The machine list, the machine pages, Settings, and the keyboard shortcuts.',
+};
+
+The bubble opens the panel on the machine list. The header shows the path of the page and the number of machines. Each row shows the number of states of its machine. A row also shows `child` when all the instances of the machine are child actors, the number of instances when there is more than one, and a dot while an instance is previewed. While a preview is on, **Release all** at the bottom of the list releases every preview.
+
+Select a machine to open its page:
+
+- **Instance** is a picker under the header, for a machine with more than one instance. A `●` follows each previewed instance.
+- **States** shows the state tree. Select a compound or parallel state to collapse or expand it. The marks after a leaf show the context that a preview of it uses: **R** is recorded context, **F** is a fixture, and **–** is none.
+- **Context** shows the context of the instance. During a preview, select its source: **Recorded**, **Fixture** or **Live**.
+- **Blocked events** lists the events that the UI sent during a preview. The same event sent again right after shows once, with a count. Select an event to see the state, the instance, the times and the payload.
+- **Copy JSON** copies the state of the instance.
+
+**Back** goes to the machine list again. **Settings**, at the bottom of the list, moves the bubble and the panel to another corner, and lists the keyboard shortcuts.
+
+## Keyboard
+
+| Keys | Where | Action |
+|---|---|---|
+| <Kbd>Alt</Kbd>+<Kbd>S</Kbd> | Anywhere | Open or close the panel |
+| <Kbd>↑</Kbd> / <Kbd>↓</Kbd> | Machine list | Go to the previous or next row |
+| <Kbd>Home</Kbd> / <Kbd>End</Kbd> | Machine list | Go to the first or last row |
+| <Kbd>↑</Kbd> / <Kbd>↓</Kbd> | Machine page | Go to the previous or next state |
+| <Kbd>Home</Kbd> / <Kbd>End</Kbd> | Machine page | Go to the first or last state |
+| <Kbd>Enter</Kbd> | Machine page | Preview or release the state |
+| <Kbd>[</Kbd> / <Kbd>]</Kbd> | Machine page | Go to the previous or next machine |
+| <Kbd>Esc</Kbd> | Panel | Release all previews |
+
+The shortcuts do nothing while you type in an input, a text area or an editable element. To change the toggle shortcut, set `shortcut`.
