@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
 
 export const metadata: Metadata = {
-  title: { default: 'konat', template: '%s · konat' },
+  title: { default: 'konat', template: '%s — konat' },
   description: pitch,
 };
 

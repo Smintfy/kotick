@@ -43,7 +43,7 @@ function CodeBlock({ children }: ComponentProps<'pre'>) {
       <pre
         tabIndex={0}
         data-language={lang}
-        className="m-0 overflow-x-auto rounded-xl bg-surface px-5 py-4 text-[13px] leading-[1.6] [@media(hover:none)]:pt-10"
+        className="m-0 overflow-x-auto rounded-xl shadow-code px-5 py-4 text-[12px] leading-[1.6] [@media(hover:none)]:pt-10"
       >
         <code>
           {tokens.map((line, row) => (

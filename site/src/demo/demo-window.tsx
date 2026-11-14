@@ -16,7 +16,7 @@ export function DemoWindow({ fixtures, href, children }: { fixtures: FixturesInp
   const toggleKeys = useIsApple() ? '⌥S' : 'Alt+S';
 
   return (
-    <figure className="relative mb-6 rounded-2xl border border-line">
+    <figure className="relative mb-6 rounded-2xl shadow-code">
       <div className="absolute top-3 right-3 z-10 flex gap-1 text-muted-foreground">
         <Button
           variant="ghost"

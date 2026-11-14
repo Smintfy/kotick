@@ -5,6 +5,29 @@ import { Demo } from '@/demo/Demo';
 import { costs } from '@/content/costs';
 import { checkedHref, demoHref, type LandingId, landingHeadings, pitch } from '@/site';
 
+const features: ReadonlyArray<{ title: string; body: ReactNode }> = [
+  {
+    title: 'Every state, in context',
+    body: 'Previews render in the running app, not in a separate story or sandbox.',
+  },
+  {
+    title: 'Safe',
+    body: 'A preview changes only what components see. The real actor keeps running, and events that the UI sends during a preview are blocked and logged.',
+  },
+  {
+    title: 'Realistic data',
+    body: 'Previews use context recorded from earlier visits, context you write as fixtures, or the live context. The panel shows which one it uses.',
+  },
+  {
+    title: 'Gone in production',
+    body: (
+      <>
+        Production builds keep a component that renders nothing and re-exports of <code>@xstate/react</code>.
+      </>
+    ),
+  },
+];
+
 export default function Home() {
   const bodies: Record<LandingId, ReactNode> = {
     konat: (
@@ -24,26 +47,13 @@ export default function Home() {
           <code>@xstate/react</code>. In production, the startup JavaScript grows by{' '}
           <Link href={checkedHref('/docs/production')}>{costs.startup}</Link> gzip with esbuild and Vite.
         </p>
-        <div className="prose intro">
-          <ul>
-            <li>
-              <strong>Every state, in context.</strong> Previews render in the running app, not in a separate story or
-              sandbox.
+        <ul className="list-disc pl-[22px] [&>li]:my-2">
+          {features.map(({ title, body }) => (
+            <li key={title}>
+              <strong className="text-heading">{title}.</strong> {body}
             </li>
-            <li>
-              <strong>Safe.</strong> A preview changes only what components see. The real actor keeps running, and
-              events that the UI sends during a preview are blocked and logged.
-            </li>
-            <li>
-              <strong>Realistic data.</strong> Previews use context recorded from earlier visits, context you write as
-              fixtures, or the live context. The panel shows which one it uses.
-            </li>
-            <li>
-              <strong>Gone in production.</strong> Production builds keep a component that renders nothing and
-              re-exports of <code>@xstate/react</code>.
-            </li>
-          </ul>
-        </div>
+          ))}
+        </ul>
       </>
     ),
   };
