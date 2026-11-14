@@ -19,7 +19,7 @@ export function InstallTabs({ name }: { name: string }) {
   const current = managers.find((manager) => manager.name === selected) ?? managers[0];
 
   return (
-    <Tabs value={selected} onValueChange={setSelected} className="mb-6 gap-0 rounded-xl bg-surface">
+    <Tabs value={selected} onValueChange={setSelected} className="mb-6 gap-0 rounded-xl shadow-code">
       <div className="flex items-center gap-2 border-b border-chip p-2">
         <TabsList aria-label="Package manager" activateOnFocus>
           {managers.map((manager) => (
@@ -32,7 +32,7 @@ export function InstallTabs({ name }: { name: string }) {
       </div>
       {managers.map((manager) => (
         <TabsContent key={manager.name} value={manager.name} className="px-5 py-4">
-          <code className="bg-transparent p-0 text-[13px]">{command(manager)}</code>
+          <code className="m-0 bg-transparent p-0 text-[12px] shadow-none">{command(manager)}</code>
         </TabsContent>
       ))}
     </Tabs>

@@ -14,20 +14,23 @@
   --color-*: initial;
   --color-bg: #ffffff;
   --color-surface: oklch(0 0 0 / 0.025);
-  --color-code: oklch(0 0 0 / 0.04);
   --color-selected: oklch(0 0 0 / 0.07);
   --color-line: oklch(0 0 0 / 0.06);
-  --color-heading: oklch(0 0 0 / 0.85);
-  --color-fg: oklch(0.321 0 0);
+  --color-heading: #171717;
+  --color-fg: #474747;
   --color-faint: oklch(0.715 0 0);
   --color-callout: oklch(0.882 0 0);
   --color-recorded: #15803d;
   --color-fixture: #b45309;
-  --color-link: oklch(0.588 0.158 241.966);
+  --color-link: var(--color-heading);
   --color-recorded-soft: rgba(22, 163, 74, 0.12);
   --color-fixture-soft: rgba(217, 119, 6, 0.14);
   --color-chip: oklch(0 0 0 / 0.06);
-  --color-muted-on-surface: oklch(0.556 0 0);
+  --color-muted-on-surface: #777777;
+  /* A 1px ring in place of a border, and a soft drop shadow. A border under a shadow looks muddy. */
+  --shadow-code:
+    0 0 0 1px oklch(0 0 0 / 0.08),
+    0 1px 2px oklch(0 0 0 / 0.05);
   --text-*: initial;
   --text-sm: 14px;
   --text-base: 16px;
@@ -59,7 +62,7 @@
   --secondary: var(--color-selected);
   --secondary-foreground: var(--color-heading);
   --muted: var(--color-selected);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: #777777;
   --accent: var(--color-selected);
   --accent-foreground: var(--color-heading);
   --destructive: oklch(0.577 0.245 27.325);
@@ -150,11 +153,13 @@
   /* Only the links in the text of a page have the link color. Other links, such as the nav, inherit the color. */
   main :where(p, li, td) a {
     color: var(--color-link);
+    text-decoration-line: underline;
+    text-decoration-color: var(--muted-foreground);
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
 
     &:hover {
-      text-decoration-line: underline;
+      text-decoration-color: var(--color-heading);
     }
   }
 
@@ -165,9 +170,11 @@
 
   :not(pre) > code {
     padding: 2px 5px;
+    margin-inline: 2px;
+    background: #fafafa;
+    box-shadow: var(--shadow-code);
     border-radius: 5px;
-    background: var(--color-code);
-    font-size: 13px;
+    font-size: 12px;
   }
 }
 
@@ -221,43 +228,6 @@
 
     & li > p {
       margin-bottom: 8px;
-    }
-  }
-
-  .intro {
-    & ul {
-      margin: 24px 0 0;
-      padding: 0;
-      border-top: 1px solid var(--color-line);
-      list-style: none;
-    }
-
-    & li {
-      display: flow-root;
-      margin: 0;
-      padding: 12px 0 12px 216px;
-      border-bottom: 1px solid var(--color-line);
-    }
-
-    /* The lead-in floats, because in a grid each run of text and each code span would become a cell. */
-    & li > strong:first-child {
-      float: left;
-      width: 200px;
-      margin-left: -216px;
-      font-weight: var(--font-weight-normal);
-    }
-
-    @container (width < 520px) {
-      & li {
-        padding-left: 0;
-      }
-
-      & li > strong:first-child {
-        display: block;
-        float: none;
-        width: auto;
-        margin: 0 0 2px;
-      }
     }
   }
 }
