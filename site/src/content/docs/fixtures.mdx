@@ -3,7 +3,11 @@ export const metadata = {
   description: 'Give context to the states that you have not recorded yet.',
 };
 
-Fixtures give context to states that you have not recorded yet, such as an error after a slow request. Put them in a file of their own, and give `<Konat />` a loader for that file:
+Fixtures give context to states that you have not recorded yet, such as an error after a slow request.
+
+## Define fixtures
+
+Put them in a file of their own, and give `<Konat />` a loader for that file:
 
 ```ts
 // src/debug/fixtures.ts
@@ -28,6 +32,8 @@ const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/f
 ```
 
 In Vite, you can use `import.meta.env.DEV` as the condition.
+
+## How fixtures apply
 
 - The keys are leaf ids. TypeScript checks them against the states of the machine, and `context` against the context type of the machine.
 - A fixture set applies to each instance of its machine, also to copies from `machine.provide()`, and to machines that `debug.id` renames.

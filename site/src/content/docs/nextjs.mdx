@@ -5,6 +5,8 @@ export const metadata = {
 
 Both entries start with `'use client'`, so you can import them in the App Router.
 
+## Server components
+
 - A server component can render `<Konat />`, for example in the root layout.
 - A server component cannot give a function to a client component, so it cannot give the `fixtures` loader. Render `<Konat fixtures={…} />` in a client component, and render that component in the layout:
 
@@ -23,5 +25,7 @@ Both entries start with `'use client'`, so you can import them in the App Router
 
 - Call the hooks and `createActorContext()` only in client components, as with `@xstate/react`.
 - On the server, konat does nothing: the overlay renders nothing, and nothing registers. The overlay mounts after hydration, so it does not cause hydration errors.
+
+## Monorepos
 
 In a monorepo that gives the TypeScript source of konat, add it to `transpilePackages`.

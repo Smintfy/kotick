@@ -1,5 +1,4 @@
 import 'server-only';
-import konatPackage from 'konat/package.json';
 import type { MDXContent } from 'mdx/types';
 import * as api from '@/content/docs/api.mdx';
 import * as concepts from '@/content/docs/concepts.mdx';
@@ -13,7 +12,7 @@ import * as production from '@/content/docs/production.mdx';
 
 export type Heading = { id: string; text: string; depth: 2 | 3 };
 
-export type NavItem = { href: string; title: string; headings: readonly Heading[]; version?: string };
+export type NavItem = { href: string; title: string; headings: readonly Heading[] };
 
 export type DocsPage = NavItem & {
   slug: string;
@@ -21,7 +20,7 @@ export type DocsPage = NavItem & {
   Content: MDXContent;
 };
 
-/** The docs pages, in the sequence of the nav. Each file is in src/content/docs. */
+/** The docs pages. Each file is in src/content/docs. navSections sets the sequence in the nav. */
 const docs = [
   ['install', install],
   ['concepts', concepts],
@@ -50,7 +49,7 @@ export const examplesHeadings = [
 
 export type ExampleId = (typeof examplesHeadings)[number]['id'];
 
-/** The examples page is TSX, not MDX. Its route is src/app/docs/examples. The nav shows it after Install. */
+/** The examples page is TSX, not MDX. Its route is src/app/docs/examples. */
 export const examplesPage = {
   href: '/docs/examples',
   title: 'Examples',
@@ -83,14 +82,37 @@ export function findPage(slug: string): DocsPage | undefined {
   return pages.find((page) => page.slug === slug);
 }
 
-export const nav: readonly NavItem[] = [
-  { href: '/', title: 'Overview', headings: landingHeadings },
-  ...pages.flatMap(({ slug, href, title, headings }) =>
-    slug === 'install'
-      ? [{ href, title, headings, version: `v${konatPackage.version}` }, examplesPage]
-      : [{ href, title, headings }],
-  ),
+export type NavSection = { title: string; items: readonly NavItem[] };
+
+function docsItem(slug: (typeof docs)[number][0]): NavItem {
+  const page = findPage(slug);
+
+  if (!page) throw new Error(`No docs page has the slug ${slug}.`);
+
+  return { href: page.href, title: page.title, headings: page.headings };
+}
+
+/** The sections of the sidebar. The pager goes through the pages in this sequence. */
+export const navSections: readonly NavSection[] = [
+  {
+    title: 'Introduction',
+    items: [
+      { href: '/', title: 'Overview', headings: landingHeadings },
+      docsItem('install'),
+      examplesPage,
+    ],
+  },
+  {
+    title: 'Guides',
+    items: [docsItem('concepts'), docsItem('panel'), docsItem('fixtures'), docsItem('nextjs'), docsItem('production')],
+  },
+  {
+    title: 'Reference',
+    items: [docsItem('api'), docsItem('limitations'), docsItem('faq')],
+  },
 ];
+
+export const nav: readonly NavItem[] = navSections.flatMap(({ items }) => items);
 
 const ids = new Map(nav.map(({ href, headings }) => [href, new Set(headings.map(({ id }) => id))]));
 

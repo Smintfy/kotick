@@ -349,7 +349,7 @@ export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHre
           </li>
         </ol>
         <p>A preview needs context. The marks after each leaf in the panel show where it comes from:</p>
-        <Table className="mb-4">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-28">Source</TableHead>
@@ -365,7 +365,7 @@ export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHre
                   R
                 </span>
               </TableCell>
-              <TableCell className="whitespace-normal">
+              <TableCell>
                 The last context that the real actor had in this state. It stays in <code>sessionStorage</code>, so it
                 is still there after a reload.
               </TableCell>
@@ -377,7 +377,7 @@ export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHre
                   F
                 </span>
               </TableCell>
-              <TableCell className="whitespace-normal">
+              <TableCell>
                 Context that you wrote with <code>defineFixtures()</code>.
               </TableCell>
             </TableRow>
@@ -388,12 +388,12 @@ export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHre
                   –
                 </span>
               </TableCell>
-              <TableCell className="whitespace-normal">
+              <TableCell>
                 The preview uses the live context of the real actor, and logs a warning, because the live context often
                 does not agree with the state.
               </TableCell>
             </TableRow>
-        </TableBody>
+          </TableBody>
         </Table>
         <p>
           This demo has a <Link href={fixturesHref}>fixture</Link> for each state, so no preview uses the live context.
