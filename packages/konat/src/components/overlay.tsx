@@ -6,7 +6,7 @@ import { useRegistrySnapshot } from '../hooks/use-registry-snapshot';
 import type { KonatProps, Registry } from '../types';
 import type { OverlayHost } from '../utils/host';
 import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../utils/model';
-import { isPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../utils/settings';
+import { isPosition, resolvePosition, type Settings, type SettingsStore } from '../utils/settings';
 import { eventOrigin, formatShortcut, isShortcutText, isTyping, matchesShortcut, parseShortcut } from '../utils/shortcut';
 import { CHIP } from './classes';
 import { HexagonIcon } from './icons';
@@ -18,6 +18,9 @@ import { SettingsPage } from './settings-page';
 interface OverlayProps extends KonatProps {
   registry: Registry;
   host: OverlayHost;
+  settings: SettingsStore;
+  /** Opens the panel on this page instead of the machine list or the stored machine. */
+  defaultSubpage?: 'settings';
 }
 
 export function Overlay(props: OverlayProps) {
@@ -27,12 +30,12 @@ export function Overlay(props: OverlayProps) {
   const snapshot = useRegistrySnapshot(registry);
   const panelId = React.useId();
 
-  const [settings, update] = useStoredSettings();
+  const [settings, update] = useStoredSettings(props.settings);
   const open = settings.open ?? props.defaultOpen === true;
   const position = resolvePosition(settings, defaultPosition);
 
   const groups = React.useMemo(() => groupMachines(snapshot.machines), [snapshot.machines]);
-  const [subpage, setSubpage] = React.useState<'settings'>();
+  const [subpage, setSubpage] = React.useState(props.defaultSubpage);
   const [instanceKey, setInstanceKey] = React.useState<string>();
   const page = pageToShow(subpage, groups, settings.machine, instanceKey);
 
@@ -243,13 +246,13 @@ function pageToShow(
   return { kind: 'machine', group, instance };
 }
 
-/** The panel settings in localStorage. They are read once, and written only when the user changes something. */
-function useStoredSettings() {
-  const [settings, setSettings] = React.useState(readSettings);
+/** The panel settings. They are read once, and written only when the user changes something. */
+function useStoredSettings(store: SettingsStore) {
+  const [settings, setSettings] = React.useState(() => store.read());
   const initialSettings = React.useRef(settings);
   React.useEffect(() => {
-    if (settings !== initialSettings.current) writeSettings(settings);
-  }, [settings]);
+    if (settings !== initialSettings.current) store.write(settings);
+  }, [settings, store]);
   const update = (patch: Settings) => setSettings((current) => ({ ...current, ...patch }));
 
   return [settings, update] as const;
