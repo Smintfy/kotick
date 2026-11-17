@@ -1,3 +1,4 @@
+import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area';
 import { codeToTokens, isSupportedLanguage, type ThemedToken } from '@pierre/highlights';
 import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
@@ -8,6 +9,7 @@ import { InstallTabs } from '@/components/install-tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Shortcut } from '@/components/shortcut';
 import { Kbd } from '@/components/ui/kbd';
+import { ScrollBar } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 function DocLink({ href = '', children }: ComponentProps<'a'>) {
@@ -40,26 +42,37 @@ function CodeBlock({ children }: ComponentProps<'pre'>) {
 
   return (
     <figure className="group relative mb-4">
-      <pre
-        tabIndex={0}
-        data-language={lang}
-        className="m-0 overflow-x-auto rounded-xl shadow-code px-5 py-4 text-[12px] leading-[1.6] [@media(hover:none)]:pt-10"
-      >
-        <code>
-          {tokens.map((line, row) => (
-            <Fragment key={row}>
-              {row > 0 && '\n'}
-              <span className="line">
-                {line.map((token, column) => (
-                  <span key={column} style={tokenStyle(token)}>
-                    {token.content}
+      {/*
+       * The ScrollArea component of shadcn has only a vertical scrollbar and does not accept other scrollbars.
+       * Thus, the code block uses the parts, with the classes of the shadcn component.
+       */}
+      <ScrollAreaPrimitive.Root data-slot="scroll-area" className="relative overflow-clip rounded-xl shadow-code">
+        <ScrollAreaPrimitive.Viewport
+          data-slot="scroll-area-viewport"
+          className="size-full scroll-fade-x overflow-y-hidden! overscroll-x-none rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset focus-visible:outline-1"
+        >
+          <pre
+            data-language={lang}
+            className="m-0 w-max min-w-full px-4 py-4 text-[13px] leading-[1.6] [@media(hover:none)]:pt-10"
+          >
+            <code>
+              {tokens.map((line, row) => (
+                <Fragment key={row}>
+                  {row > 0 && '\n'}
+                  <span className="line">
+                    {line.map((token, column) => (
+                      <span key={column} style={tokenStyle(token)}>
+                        {token.content}
+                      </span>
+                    ))}
                   </span>
-                ))}
-              </span>
-            </Fragment>
-          ))}
-        </code>
-      </pre>
+                </Fragment>
+              ))}
+            </code>
+          </pre>
+        </ScrollAreaPrimitive.Viewport>
+        <ScrollBar orientation="horizontal" className="p-0.5 data-horizontal:border-t-0 *:bg-faint/50 *:transition-colors hover:*:bg-faint" />
+      </ScrollAreaPrimitive.Root>
       <CopyCodeButton />
     </figure>
   );
@@ -96,12 +109,12 @@ const components = {
   pre: CodeBlock,
   h2: (props: ComponentProps<'h2'>) => <AnchorHeading as="h2" {...props} />,
   h3: (props: ComponentProps<'h3'>) => <AnchorHeading as="h3" {...props} />,
-  table: (props: ComponentProps<'table'>) => <Table {...props} className="mb-4" />,
+  table: Table,
   thead: TableHeader,
   tbody: TableBody,
   tr: TableRow,
   th: TableHead,
-  td: (props: ComponentProps<'td'>) => <TableCell {...props} className="whitespace-normal" />,
+  td: TableCell,
   Kbd,
   Shortcut,
   InstallTabs,

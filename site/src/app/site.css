@@ -69,7 +69,15 @@
   --border: var(--color-line);
   --input: var(--color-chip);
   --ring: #2563eb;
-  --radius: 0.5rem;
+  --radius: 0.375rem;
+  --sidebar: var(--color-bg);
+  --sidebar-foreground: var(--color-heading);
+  --sidebar-primary: var(--color-fg);
+  --sidebar-primary-foreground: var(--color-bg);
+  --sidebar-accent: var(--color-selected);
+  --sidebar-accent-foreground: var(--color-heading);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--ring);
 }
 
 @theme inline {
@@ -91,6 +99,22 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  /* The shadcn radius scale. Each rounded-* class follows --radius. */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
   --font-heading: var(--font-sans);
 }
 
@@ -140,10 +164,6 @@
 
   :where(h1, h2, h3, [data-slot="accordion-item"])[id] {
     scroll-margin-top: 24px;
-
-    @variant max-md {
-      scroll-margin-top: calc(var(--spacing-bar) + 16px);
-    }
   }
 
   p {
@@ -187,16 +207,41 @@
   pre:not([data-language="plain"]):has(.line ~ .line) {
     counter-reset: line;
 
+    /*
+     * The numbers stay at the left edge on a horizontal scroll.
+     * Each number covers the left padding of the block. Thus, the code goes under the numbers.
+     */
     & .line::before {
       counter-increment: line;
       content: counter(line);
+      position: sticky;
+      left: 0;
       display: inline-block;
-      width: 2ch;
-      margin-right: 16px;
+      width: var(--code-gutter);
+      margin-left: -16px;
+      padding: 0 16px;
       text-align: right;
       color: var(--color-faint);
+      background: var(--color-bg);
       user-select: none;
     }
+  }
+
+  /* The left fade of scroll-fade-x starts after the numbers, so the numbers do not fade. */
+  [data-slot="scroll-area-viewport"]:has(> pre:not([data-language="plain"]) .line ~ .line) {
+    --scroll-fade-mask: linear-gradient(
+      to right,
+      #000 var(--code-gutter),
+      transparent var(--code-gutter),
+      #000 calc(var(--code-gutter) + var(--scroll-fade-s, 0px)),
+      #000 calc(100% - var(--scroll-fade-e, 0px)),
+      transparent 100%
+    );
+  }
+
+  :root {
+    /* The left padding of a code block, the width of a line number, and the gap after it. */
+    --code-gutter: 48px;
   }
 
   .prose {

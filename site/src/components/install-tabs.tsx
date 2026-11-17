@@ -21,9 +21,9 @@ export function InstallTabs({ name }: { name: string }) {
   return (
     <Tabs value={selected} onValueChange={setSelected} className="mb-6 gap-0 rounded-xl shadow-code">
       <div className="flex items-center gap-2 border-b border-chip p-2">
-        <TabsList aria-label="Package manager" activateOnFocus>
+        <TabsList aria-label="Package manager" activateOnFocus className="gap-px bg-transparent p-0">
           {managers.map((manager) => (
-            <TabsTrigger key={manager.name} value={manager.name} className="px-2">
+            <TabsTrigger key={manager.name} value={manager.name} className="h-7 flex-none px-[7px] text-[13px] font-normal transition-[background-color,color] duration-120 ease-[ease] not-data-active:hover:bg-surface data-active:bg-selected data-active:text-heading data-active:shadow-none! motion-reduce:transition-none">
               {manager.name}
             </TabsTrigger>
           ))}
@@ -31,8 +31,8 @@ export function InstallTabs({ name }: { name: string }) {
         <CopyButton text={command(current)} className="ml-auto" />
       </div>
       {managers.map((manager) => (
-        <TabsContent key={manager.name} value={manager.name} className="px-5 py-4">
-          <code className="m-0 bg-transparent p-0 text-[12px] shadow-none">{command(manager)}</code>
+        <TabsContent key={manager.name} value={manager.name} className="px-4 py-4">
+          <code className="m-0 bg-transparent p-0 text-[13px] shadow-none">{command(manager)}</code>
         </TabsContent>
       ))}
     </Tabs>
