@@ -14,7 +14,6 @@ For installation and usage, see the [package README](packages/konat/README.md).
 | `site` | The landing page and the docs, in Next.js. The docs pages are MDX files in `site/src/content/docs` |
 | `tests/bundles` | A fixture app for the production-build check |
 | `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` and the site build |
-| `specs` | The [MVP spec and roadmap](specs/state-debugger-mvp-spec.md) |
 
 ## Development
 
