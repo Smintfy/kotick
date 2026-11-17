@@ -17,6 +17,8 @@ export type NavItem = { href: string; title: string; headings: readonly Heading[
 export type DocsPage = NavItem & {
   slug: string;
   description: string;
+  /** The path of the Markdown copy of the page, or `undefined` when the page has none. */
+  markdownHref: string | undefined;
   Content: MDXContent;
 };
 
@@ -32,6 +34,11 @@ const docs = [
   ['limitations', limitations],
   ['faq', faq],
 ] as const;
+
+type DocsSlug = (typeof docs)[number][0];
+
+/** These pages have no Markdown copy and no "Copy page" button. */
+const withoutMarkdown: ReadonlySet<DocsSlug> = new Set(['faq', 'limitations']);
 
 export const pitch = 'See every state of every state machine on the page, and preview any of them in place.';
 
@@ -75,7 +82,15 @@ export const pages: readonly DocsPage[] = docs.map(([slug, { metadata, headings,
     throw new Error(`src/content/docs/${slug}.mdx must export metadata with a title and a description.`);
   }
 
-  return { slug, href: `/docs/${slug}`, title: metadata.title, description: metadata.description, headings, Content };
+  return {
+    slug,
+    href: `/docs/${slug}`,
+    title: metadata.title,
+    description: metadata.description,
+    markdownHref: withoutMarkdown.has(slug) ? undefined : `/docs/${slug}.md`,
+    headings,
+    Content,
+  };
 });
 
 export function findPage(slug: string): DocsPage | undefined {
@@ -84,7 +99,7 @@ export function findPage(slug: string): DocsPage | undefined {
 
 export type NavSection = { title: string; items: readonly NavItem[] };
 
-function docsItem(slug: (typeof docs)[number][0]): NavItem {
+function docsItem(slug: DocsSlug): NavItem {
   const page = findPage(slug);
 
   if (!page) throw new Error(`No docs page has the slug ${slug}.`);

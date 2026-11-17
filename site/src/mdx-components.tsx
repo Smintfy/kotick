@@ -1,5 +1,5 @@
 import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area';
-import { codeToTokens, isSupportedLanguage, type ThemedToken } from '@pierre/highlights';
+import { codeToTokens, isSupportedLanguage, type Lang, type ThemedToken } from '@pierre/highlights';
 import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
 import { type ComponentProps, Fragment, isValidElement, type ReactNode } from 'react';
@@ -8,6 +8,7 @@ import { CopyCodeButton } from '@/components/copy-button';
 import { InstallTabs } from '@/components/install-tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Shortcut } from '@/components/shortcut';
+import { packageManagers } from '@/content/package-managers';
 import { Kbd } from '@/components/ui/kbd';
 import { ScrollBar } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -36,9 +37,26 @@ function tokenStyle({ color, fontStyle = 0 }: ThemedToken) {
   return { color, fontStyle: fontStyle & 1 ? 'italic' : undefined };
 }
 
+/** The lines of `text` in the syntax colors. Each line is a `.line` span, so that the code blocks can number it. */
+function HighlightedCode({ text, lang }: { text: string; lang: Lang }) {
+  const { tokens } = codeToTokens(text, { lang, theme: codeTheme });
+
+  return tokens.map((line, row) => (
+    <Fragment key={row}>
+      {row > 0 && '\n'}
+      <span className="line">
+        {line.map((token, column) => (
+          <span key={column} style={tokenStyle(token)}>
+            {token.content}
+          </span>
+        ))}
+      </span>
+    </Fragment>
+  ));
+}
+
 function CodeBlock({ children }: ComponentProps<'pre'>) {
   const { lang, text } = readCode(children);
-  const { tokens } = codeToTokens(text, { lang, theme: codeTheme });
 
   return (
     <figure className="group relative mb-4">
@@ -56,18 +74,7 @@ function CodeBlock({ children }: ComponentProps<'pre'>) {
             className="m-0 w-max min-w-full px-4 py-4 text-[13px] leading-[1.6] [@media(hover:none)]:pt-10"
           >
             <code>
-              {tokens.map((line, row) => (
-                <Fragment key={row}>
-                  {row > 0 && '\n'}
-                  <span className="line">
-                    {line.map((token, column) => (
-                      <span key={column} style={tokenStyle(token)}>
-                        {token.content}
-                      </span>
-                    ))}
-                  </span>
-                </Fragment>
-              ))}
+              <HighlightedCode text={text} lang={lang} />
             </code>
           </pre>
         </ScrollAreaPrimitive.Viewport>
@@ -104,6 +111,17 @@ function FaqItem({ id, children }: { id: string; children: ReactNode }) {
   );
 }
 
+/** The install command of each package manager. The server colors the commands, so the client gets no highlighter. */
+function Install({ name }: { name: string }) {
+  const commands = packageManagers.map(({ manager, add }) => {
+    const text = `${add} ${name}`;
+
+    return { manager, text, code: <HighlightedCode text={text} lang="bash" /> };
+  });
+
+  return <InstallTabs commands={commands} />;
+}
+
 const components = {
   a: DocLink,
   pre: CodeBlock,
@@ -117,7 +135,7 @@ const components = {
   td: TableCell,
   Kbd,
   Shortcut,
-  InstallTabs,
+  InstallTabs: Install,
   Faq,
   FaqItem,
   FaqQuestion: AccordionTrigger,
