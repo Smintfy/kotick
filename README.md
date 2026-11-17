@@ -11,10 +11,9 @@ For installation and usage, see the [package README](packages/konat/README.md).
 | `examples/vite-react` | Vite and React Router. One page for each way to read a machine: `useMachine`, `createActorContext`, `useActor`, and `connect()` in the header |
 | `examples/hostile-css` | A page with global styles that try to change the overlay |
 | `examples/next-app` | The Next.js App Router, with server rendering |
-| `site` | The landing page and the docs, in Next.js. The docs pages show the package README |
+| `site` | The landing page and the docs, in Next.js. The docs pages are MDX files in `site/src/content/docs` |
 | `tests/bundles` | A fixture app for the production-build check |
 | `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` and the site build |
-| `specs` | The [MVP spec and roadmap](specs/state-debugger-mvp-spec.md) |
 
 ## Development
 
@@ -50,6 +49,7 @@ few minutes. Both accept `--only <name>` to run part of the work, and `--keep` t
 Tests use the package the way an app does, with no mocks. The rules are in
 [writing-tests](packages/konat/.claude/skills/writing-tests/SKILL.md), and `pnpm lint` enforces most of them.
 
-The docs pages of the site render `packages/konat/README.md`, and `site/src/site.tsx` lists which section goes on
-which page. The site build fails when the README and that list do not agree, or when the build loses the overlay that
-the demo on the landing page shows.
+The docs pages of the site are MDX files in `site/src/content/docs`, and `site/src/site.tsx` lists them in the
+sequence of the nav. The site build fails when a docs link goes to a page or a heading that does not exist, when a code
+block has a language that Highlights does not support, or when the build loses the overlay that the demo on the landing
+page shows.

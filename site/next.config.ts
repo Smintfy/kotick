@@ -1,4 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
+import createMDX from '@next/mdx';
 import path from 'node:path';
 import type { NextConfig } from 'next';
 import { MARKERS } from '../scripts/debug-markers.mjs';
@@ -10,9 +11,14 @@ const keepOverlayInProduction = {
 
 const config: NextConfig = {
   transpilePackages: ['konat'],
+  async rewrites() {
+    return [{ source: '/docs/:slug([a-z-]+)\\.md', destination: '/docs/:slug/md' }];
+  },
+  experimental: {
+    agentUpgrade: 'security',
+  },
   turbopack: {
     rules: {
-      '*.md': { type: 'text' },
       '*.ts': keepOverlayInProduction,
       '*.tsx': keepOverlayInProduction,
     },
@@ -36,4 +42,10 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: ['remark-gfm', path.join(import.meta.dirname, 'src/mdx/remark-headings.mjs')],
+  },
+});
+
+export default withMDX(config);

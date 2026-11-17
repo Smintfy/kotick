@@ -4,11 +4,8 @@ import { usePathname } from '../hooks/use-pathname';
 import type { RegistrySnapshot } from '../types';
 import { attempt, type MachineGroup } from '../utils/model';
 import { moveIndex, moveOf } from '../utils/shortcut';
-import { CHIP, TAG } from './classes';
+import { ACTION, CHIP, FOOTER, ROW, TAG } from './classes';
 import { GearIcon } from './icons';
-
-const ACTION =
-  'flex h-8.5 w-full cursor-pointer items-center gap-1.5 rounded-md bg-transparent px-1.5 py-0 text-left text-lg text-fg hover:bg-hover [&>:last-child]:ml-auto [&>svg]:text-muted';
 
 interface MachineListProps {
   groups: readonly MachineGroup[];
@@ -22,8 +19,8 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
   const previewCount = Object.keys(snapshot.overrides).length;
 
   function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
-    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
-    const move = moveOf(event.key);
+    if (event.defaultPrevented) return;
+    const move = moveOf(event);
 
     if (!move) return;
     const rows = [...event.currentTarget.querySelectorAll<HTMLElement>('[data-row]')];
@@ -51,7 +48,7 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
           ))}
         </div>
       )}
-      <div className="grid flex-none border-t border-t-line px-1.5 py-0.5">
+      <div className={FOOTER}>
         {previewCount > 0 && (
           <button
             type="button"
@@ -82,7 +79,7 @@ function MachineRow({ group, previewing, onOpen }: { group: MachineGroup; previe
   return (
     <button
       type="button"
-      className="flex h-6.5 w-full cursor-pointer items-center gap-1.5 rounded-md bg-transparent px-1.5 py-0 text-left text-fg hover:bg-hover"
+      className={ROW}
       data-row="machine"
       data-machine={group.machineId}
       onClick={() => onOpen(group.machineId)}
@@ -113,7 +110,7 @@ export function PathChip() {
 
   return (
     <code
-      className="inline-block h-4.5 min-w-0 flex-initial truncate rounded-sm bg-chip px-1.25 text-center font-mono text-sm leading-4.5 font-normal text-fg tabular-nums"
+      className="inline-block h-4 min-w-4 flex-initial truncate rounded-sm bg-chip px-1 text-center font-mono text-sm leading-4 font-normal text-fg tabular-nums"
       data-part="chip"
       title={pathname}
     >

@@ -1,43 +1,132 @@
 @import "tailwindcss" source("../");
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* The site has no dark theme. Thus, the dark: classes in the shadcn components must not follow the system setting. */
+@custom-variant dark (&:is(.dark *));
 
 /*
  * The tokens of the overlay, from packages/konat/styles.css.
  * Thus, the site and the panel look like one product.
- * The text colors are different: the site has its own heading, fg, and muted colors.
+ * The text colors are different: the site has its own heading and fg colors, and the muted-foreground color below.
  */
 @theme {
   --color-*: initial;
   --color-bg: #ffffff;
   --color-surface: oklch(0 0 0 / 0.025);
-  --color-code: oklch(0 0 0 / 0.04);
   --color-selected: oklch(0 0 0 / 0.07);
   --color-line: oklch(0 0 0 / 0.06);
-  --color-heading: oklch(0 0 0 / 0.85);
-  --color-fg: oklch(0.321 0 0);
-  --color-muted: oklch(0.556 0 0);
+  --color-hairline: oklch(0 0 0 / 0.08);
+  --color-heading: #171717;
+  --color-fg: #474747;
   --color-faint: oklch(0.715 0 0);
   --color-callout: oklch(0.882 0 0);
-  --color-live: #16a34a;
   --color-recorded: #15803d;
   --color-fixture: #b45309;
-  --color-accent: #2563eb;
-  --color-link: oklch(0.588 0.158 241.966);
+  --color-link: var(--color-heading);
   --color-recorded-soft: rgba(22, 163, 74, 0.12);
   --color-fixture-soft: rgba(217, 119, 6, 0.14);
   --color-chip: oklch(0 0 0 / 0.06);
-  --color-badge: #ef4444;
-  --color-muted-on-surface: oklch(0.556 0 0);
+  --color-muted-on-surface: #777777;
+  /* A 1px ring in place of a border. The outline buttons and the button groups use it alone. */
+  --shadow-hairline: 0 0 0 1px var(--color-hairline);
+  /* The hairline and a soft drop shadow. A border under a shadow looks muddy. */
+  --shadow-code:
+    var(--shadow-hairline),
+    0 1px 2px oklch(0 0 0 / 0.05);
   --text-*: initial;
   --text-sm: 14px;
   --text-base: 16px;
+  --text-2xl: 24px;
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
   --spacing-bar: 52px;
+  /* The site has two weights. Thus, the weight classes other than font-normal and font-medium make no CSS. */
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+}
+
+/*
+ * The shadcn tokens. The components that "shadcn add" writes use these names, also as var(--name) in classes.
+ * Most values come from the site tokens. Thus, the components and the site look like one product.
+ * The site also uses muted-foreground for secondary text and ring for the focus outline.
+ */
+:root {
+  --background: var(--color-bg);
+  --foreground: var(--color-fg);
+  --card: var(--color-bg);
+  --card-foreground: var(--color-fg);
+  --popover: var(--color-bg);
+  --popover-foreground: var(--color-fg);
+  --primary: var(--color-fg);
+  --primary-foreground: var(--color-bg);
+  --secondary: var(--color-selected);
+  --secondary-foreground: var(--color-heading);
+  --muted: var(--color-selected);
+  --muted-foreground: #777777;
+  --accent: var(--color-selected);
+  --accent-foreground: var(--color-heading);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: var(--color-line);
+  --input: var(--color-chip);
+  --ring: #2563eb;
+  --radius: 0.375rem;
+  --sidebar: var(--color-bg);
+  --sidebar-foreground: var(--color-heading);
+  --sidebar-primary: var(--color-fg);
+  --sidebar-primary-foreground: var(--color-bg);
+  --sidebar-accent: var(--color-selected);
+  --sidebar-accent-foreground: var(--color-heading);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--ring);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  /* The shadcn radius scale. Each rounded-* class follows --radius. */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --font-heading: var(--font-sans);
 }
 
 @layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
   :root {
     color-scheme: light;
     background: var(--color-bg);
@@ -55,8 +144,12 @@
   h3 {
     line-height: 1.3;
     font-size: var(--text-base);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     color: var(--color-heading);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
   }
 
   h2 {
@@ -67,79 +160,97 @@
     margin: 32px 0 8px;
   }
 
+  /* Base UI puts each FAQ question in an h3. The trigger in the h3 sets the spacing. */
+  [data-slot="accordion-item"] h3 {
+    margin: 0;
+  }
+
   b,
   strong {
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
+    color: var(--color-heading);
   }
 
-  th {
-    font-weight: 400;
-  }
-
-  :where(h1, h2, h3, details)[id] {
+  :where(h1, h2, h3, [data-slot="accordion-item"])[id] {
     scroll-margin-top: 24px;
-
-    @variant max-md {
-      scroll-margin-top: calc(var(--spacing-bar) + 16px);
-    }
   }
 
   p {
     margin: 0 0 16px;
   }
 
-  a {
+  /* Only the links in the text of a page have the link color. Other links, such as the nav, inherit the color. */
+  main :where(p, li, td) a {
     color: var(--color-link);
+    text-decoration-line: underline;
+    text-decoration-color: var(--muted-foreground);
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
 
     &:hover {
-      text-decoration-line: underline;
+      text-decoration-color: var(--color-heading);
     }
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 
   :not(pre) > code {
     padding: 2px 5px;
+    margin-inline: 2px;
+    background: #fafafa;
+    box-shadow: var(--shadow-code);
     border-radius: 5px;
-    background: var(--color-code);
-    font-size: 13px;
-  }
-
-  ::placeholder {
-    color: revert;
-  }
-
-  kbd {
-    padding: 2px 5px;
-    border: 1px solid var(--color-selected);
-    border-bottom-width: 2px;
-    border-radius: 5px;
-    background: var(--color-surface);
-    font-size: 13px;
+    font-size: 12px;
   }
 }
 
 /* The Markdown renderer makes these elements, so they cannot get utility classes. */
 @layer components {
-  /* The numbers are not in the text of the block. Thus, Copy and a text selection do not include them. */
-  pre:has(.line ~ .line) {
+  /*
+   * The numbers are not in the text of the block. Thus, Copy and a text selection do not include them.
+   * A block without a language, such as a state tree, is not code. Thus, it has no numbers.
+   */
+  pre:not([data-language="plain"]):has(.line ~ .line) {
     counter-reset: line;
 
+    /*
+     * The numbers stay at the left edge on a horizontal scroll.
+     * Each number covers the left padding of the block. Thus, the code goes under the numbers.
+     */
     & .line::before {
       counter-increment: line;
       content: counter(line);
+      position: sticky;
+      left: 0;
       display: inline-block;
-      width: 2ch;
-      margin-right: 16px;
+      width: var(--code-gutter);
+      margin-left: -16px;
+      padding: 0 16px;
       text-align: right;
       color: var(--color-faint);
+      background: var(--color-bg);
       user-select: none;
     }
+  }
+
+  /* The left fade of scroll-fade-x starts after the numbers, so the numbers do not fade. */
+  [data-slot="scroll-area-viewport"]:has(> pre:not([data-language="plain"]) .line ~ .line) {
+    --scroll-fade-mask: linear-gradient(
+      to right,
+      #000 var(--code-gutter),
+      transparent var(--code-gutter),
+      #000 calc(var(--code-gutter) + var(--scroll-fade-s, 0px)),
+      #000 calc(100% - var(--scroll-fade-e, 0px)),
+      transparent 100%
+    );
+  }
+
+  :root {
+    /* The left padding of a code block, the width of a line number, and the gap after it. */
+    --code-gutter: 48px;
   }
 
   .prose {
@@ -171,92 +282,6 @@
 
     & li > p {
       margin-bottom: 8px;
-    }
-
-    & table {
-      width: 100%;
-      font-size: var(--text-sm);
-    }
-
-    & :is(th, td) {
-      padding: 8px 16px;
-      border-bottom: 1px solid var(--color-line);
-      text-align: left;
-      vertical-align: top;
-    }
-
-    & tbody tr:last-child > * {
-      border-bottom: 0;
-    }
-
-    & th {
-      color: var(--color-heading);
-    }
-
-    & details {
-      interpolate-size: allow-keywords;
-
-      & > div {
-        padding-bottom: 16px;
-
-        & > :last-child {
-          margin-bottom: 0;
-        }
-      }
-
-      /* A browser without interpolate-size opens and closes the answer with no animation. */
-      &::details-content {
-        block-size: 0;
-        overflow-y: clip;
-        transition:
-          block-size 200ms ease,
-          content-visibility 200ms ease allow-discrete;
-
-        @media (prefers-reduced-motion: reduce) {
-          transition: none;
-        }
-      }
-
-      &[open]::details-content {
-        block-size: auto;
-      }
-    }
-  }
-
-  .intro {
-    & ul {
-      margin: 24px 0 0;
-      padding: 0;
-      border-top: 1px solid var(--color-line);
-      list-style: none;
-    }
-
-    & li {
-      display: flow-root;
-      margin: 0;
-      padding: 12px 0 12px 216px;
-      border-bottom: 1px solid var(--color-line);
-    }
-
-    /* The lead-in floats, because in a grid each run of text and each code span would become a cell. */
-    & li > strong:first-child {
-      float: left;
-      width: 200px;
-      margin-left: -216px;
-      font-weight: 400;
-    }
-
-    @container (width < 520px) {
-      & li {
-        padding-left: 0;
-      }
-
-      & li > strong:first-child {
-        display: block;
-        float: none;
-        width: auto;
-        margin: 0 0 2px;
-      }
     }
   }
 }

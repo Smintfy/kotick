@@ -16,7 +16,7 @@ import { mount, page, press } from './support/app';
 import { alerts, Boundary } from './support/boundary';
 import { uncaught } from './support/console';
 import { REACT_MAJOR } from './support/react';
-import { flush, freshId, instances, machines, panel, preview, release, show } from './support/panel';
+import { flush, freshId, instances, machines, preview, release, show } from './support/panel';
 
 type ToggleEvent = { type: 'TOGGLE' };
 
@@ -177,11 +177,11 @@ describe('a preview', () => {
     await preview(machine.id, ['failed']);
     const previewed = delivered.splice(0);
     await press('Finish loading');
-    const moved = { delivered: delivered.splice(0), live: panel().live };
+    const moved = delivered.splice(0);
     await release(machine.id);
     expect({ previewed, moved, released: delivered }).toEqual({
       previewed: [{ value: 'failed', current: true }],
-      moved: { delivered: [], live: ['loaded'] },
+      moved: [],
       released: [{ value: 'loaded', current: true }],
     });
   });

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import * as React from 'react';
-import { Konat, type Theme } from 'konat';
+import { Konat } from 'konat';
 import { defineFixtures, useMachine } from 'konat/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
 import { createMachine, setup, type AnyStateMachine } from 'xstate';
@@ -112,25 +112,17 @@ function button(label: string): HTMLButtonElement {
 }
 
 function look() {
-  const { position, theme } = overlay().querySelector<HTMLElement>('[data-position]')?.dataset ?? {};
+  const { position } = overlay().querySelector<HTMLElement>('[data-position]')?.dataset ?? {};
 
-  return { corner: position, theme };
+  return { corner: position };
 }
 
 function treeRows(): string[] {
   return [...overlay().querySelectorAll<HTMLElement>('[role="treeitem"]')].map((item) => {
     const row = item.hasAttribute('data-leaf') ? item : item.firstElementChild;
     const indent = '  '.repeat(Number(item.getAttribute('aria-level')) - 1);
-    const key = row?.querySelector('[data-part="key"]')?.textContent;
-    const description = row?.querySelector('[data-part="description"]')?.textContent;
-    const badges = [...(row?.querySelectorAll('[data-part="type"], [data-part="tag"]') ?? [])].map((badge) => badge.textContent);
-    const parts = [`${indent}${key}`];
 
-    if (description !== undefined) parts.push(`“${description}”`);
-
-    if (badges.length > 0) parts.push(`[${badges.join(', ')}]`);
-
-    return parts.join(' ');
+    return `${indent}${row?.querySelector('[data-part="key"]')?.textContent}`;
   });
 }
 
@@ -188,12 +180,12 @@ test('the bubble opens a panel that lists the page’s machines, a row shows its
   await click(bubble());
   const opened = { open: isOpen(), controls: controlled(), machines: await machines() };
   await show(machine.id);
-  const shown = { machine: shownMachine(), live: panel().live };
+  const shown = shownMachine();
   await click(button('Close'));
   expect({ closed, opened, shown, reclosed: { open: isOpen(), controls: controlled() } }).toEqual({
     closed: { open: false, controls: null },
     opened: { open: true, controls: 'Konat', machines: [machine.id] },
-    shown: { machine: machine.id, live: ['shipping.standard', 'payment.editing'] },
+    shown: machine.id,
     reclosed: { open: false, controls: null },
   });
 });
@@ -278,7 +270,7 @@ describe('the machine list', () => {
     const before = shownMachine();
     rerender(page(true));
     await flush();
-    const registered = { machine: shownMachine(), live: panel().live };
+    const registered = shownMachine();
     rerender(page(false));
     await flush();
     const gone = shownMachine();
@@ -286,7 +278,7 @@ describe('the machine list', () => {
     await flush();
     expect({ before, registered, gone, back: shownMachine() }).toEqual({
       before: 'none',
-      registered: { machine: toggle.id, live: ['off'] },
+      registered: toggle.id,
       gone: 'none',
       back: toggle.id,
     });
@@ -374,27 +366,25 @@ describe('the state tree', () => {
       id: freshId('editor'),
       initial: 'cart',
       states: {
-        cart: { description: 'Items waiting to be paid for', tags: ['editable'] },
+        cart: {},
         payment: {
           // The tree names a state by its path, never by an id like this one.
           id: 'pay',
           initial: 'idle',
-          tags: 'busy',
           states: {
-            idle: { description: '' },
-            error: { description: 'The card was declined', tags: ['error', 'retryable'] },
+            idle: {},
+            error: {},
             previous: { type: 'history' },
           },
         },
         shipping: {
           type: 'parallel',
-          description: 'Speed and wrapping are chosen independently',
           states: {
             speed: {
               initial: 'standard',
               states: { standard: {}, express: { id: 'fast' }, remembered: { type: 'history', history: 'deep' } },
             },
-            gift: { tags: [] },
+            gift: {},
             saving: {
               type: 'parallel',
               states: { upload: { initial: 'pending', states: { pending: {}, failed: {} } }, spinner: {} },
@@ -420,7 +410,7 @@ describe('the state tree', () => {
     'done',
   ];
 
-  test('shows every state but history ones, nested, with descriptions, types and tags', async () => {
+  test('shows every state but history ones, nested', async () => {
     const machine = createEditorMachine();
     await mount(<Run machine={machine} />);
     await show(machine.id);
@@ -432,43 +422,38 @@ describe('the state tree', () => {
     }).toEqual({
       label: `States of ${machine.id} · 1`,
       rows: [
-        'cart “Items waiting to be paid for” [editable]',
-        'payment [busy]',
+        'cart',
+        'payment',
         '  idle',
-        '  error “The card was declined” [error, retryable]',
-        'shipping “Speed and wrapping are chosen independently” [parallel]',
+        '  error',
+        'shipping',
         '  speed',
         '    standard',
         '    express',
         '  gift',
-        '  saving [parallel]',
+        '  saving',
         '    upload',
         '      pending',
         '      failed',
         '    spinner',
-        'done [final]',
+        'done',
       ],
       leaves: EDITOR_LEAVES,
     });
   });
 
-  test('marks the live leaves and the data a preview of each leaf would use, and follows the app', async () => {
+  test('marks the data a preview of each leaf would use, and follows the app', async () => {
     const machine = createCheckoutMachine();
     const fixtures = [defineFixtures(machine, { 'payment.error': { context: { note: 'fixture' } } })];
     await mount(<Checkout machine={machine} />, { fixtures });
     await show(machine.id);
 
-    const started = { live: panel().live, marks: marks(), announced: announced() };
+    const started = { marks: marks(), announced: announced() };
     fireEvent.click(screen.getByRole('button', { name: 'Express' }));
     await flush();
-    const moved = { live: panel().live, marks: marks() };
-    // Both leaves are recorded now, so only the actor changes, and the panel follows it.
-    fireEvent.click(screen.getByRole('button', { name: 'Standard' }));
-    await flush();
-    expect({ started, moved, back: panel().live }).toEqual({
+    expect({ started, moved: marks() }).toEqual({
       started: {
         // The app recorded the context of its first state as it started.
-        live: ['shipping.standard', 'payment.editing'],
         marks: {
           'shipping.standard': ['recorded'],
           'shipping.express': ['none'],
@@ -477,24 +462,20 @@ describe('the state tree', () => {
           'payment.success': ['none'],
         },
         announced: {
-          'shipping.standard': 'active, recorded context',
+          'shipping.standard': 'recorded context',
           'shipping.express': 'no recorded or fixture context',
-          'payment.editing': 'active, recorded context',
+          'payment.editing': 'recorded context',
           'payment.error': 'fixture',
           'payment.success': 'no recorded or fixture context',
         },
       },
       moved: {
-        live: ['shipping.express', 'payment.editing'],
-        marks: {
-          'shipping.standard': ['recorded'],
-          'shipping.express': ['recorded'],
-          'payment.editing': ['recorded'],
-          'payment.error': ['fixture'],
-          'payment.success': ['none'],
-        },
+        'shipping.standard': ['recorded'],
+        'shipping.express': ['recorded'],
+        'payment.editing': ['recorded'],
+        'payment.error': ['fixture'],
+        'payment.success': ['none'],
       },
-      back: ['shipping.standard', 'payment.editing'],
     });
   });
 
@@ -818,18 +799,4 @@ describe('settings', () => {
       expect({ before, saved: stored() }).toEqual({ before: shown, saved });
     });
   });
-});
-
-test('the theme prop sets the color scheme, which follows the system by default', async () => {
-  const { rerender } = render(<Konat />);
-  await flush();
-
-  const themes = [look().theme];
-
-  for (const theme of ['light', 'dark'] satisfies Theme[]) {
-    rerender(<Konat theme={theme} />);
-    themes.push(look().theme);
-  }
-
-  expect(themes).toEqual(['system', 'light', 'dark']);
 });

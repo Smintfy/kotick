@@ -61,7 +61,6 @@
   --color-chip: var(--konat-chip);
   --color-guide: var(--konat-guide);
   --color-segment-on: var(--konat-segment-on);
-  --color-live: var(--konat-live);
   --color-recorded: var(--konat-recorded);
   --color-recorded-soft: var(--konat-recorded-soft);
   --color-recorded-solid: var(--konat-recorded-solid);
@@ -76,7 +75,7 @@
   --color-json-string: var(--konat-json-string);
   --color-json-number: var(--konat-json-number);
   --color-json-literal: var(--konat-json-literal);
-  /* The bubble is near-black on every page. The dark theme adds a light edge, so it shows on dark pages. */
+  /* The light edge of the bubble shows it on dark pages. */
   --color-bubble: #0a0a0a;
   --color-bubble-hover: #1f1f1f;
   --color-bubble-edge: rgba(255, 255, 255, 0.14);
@@ -93,17 +92,6 @@
 
 /* Plain :hover. Tailwind's own hover variant also needs (hover: hover), which touch screens don't match. */
 @custom-variant hover (&:hover);
-
-@custom-variant dark {
-  &:where([data-theme="dark"] *) {
-    @slot;
-  }
-  @media (prefers-color-scheme: dark) {
-    &:where([data-theme="system"] *) {
-      @slot;
-    }
-  }
-}
 
 @layer base {
   /*
@@ -125,77 +113,8 @@
     box-sizing: border-box;
   }
 
-  [data-theme] {
-    color-scheme: light;
-    --konat-bg: #ffffff;
-    --konat-surface: #f4f4f5;
-    --konat-hover: #f4f4f5;
-    --konat-selected: #e9e9eb;
-    --konat-fg: #0a0a0a;
-    --konat-muted: #71717a;
-    --konat-border: #ececee;
-    --konat-outline: rgba(0, 0, 0, 0.1);
-    --konat-chip: #e4e4e7;
-    --konat-guide: #e4e4e7;
-    --konat-scrollbar: #c4c4c8;
-    --konat-scrollbar-hover: #a1a1a8;
-    --konat-segment-on: #ffffff;
-    --konat-segment-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    --konat-live: #16a34a;
-    --konat-recorded: #15803d;
-    --konat-recorded-soft: rgba(22, 163, 74, 0.12);
-    --konat-recorded-solid: #16a34a;
-    --konat-fixture: #b45309;
-    --konat-fixture-soft: rgba(217, 119, 6, 0.14);
-    --konat-fixture-solid: #d97706;
-    --konat-accent: #2563eb;
-    --konat-focus: #2563eb;
-    --konat-warn: #b45309;
-    --konat-badge: #ef4444;
-    --konat-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.12);
-    --konat-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.16);
-    --konat-json-key: #7c3aed;
-    --konat-json-string: #15803d;
-    --konat-json-number: #1d4ed8;
-    --konat-json-literal: #be185d;
-  }
-  @media (prefers-color-scheme: dark) {
-    [data-theme]:not([data-theme="light"]) {
-      color-scheme: dark;
-      --konat-bg: #0a0a0a;
-      --konat-surface: #1a1a1a;
-      --konat-hover: #1f1f1f;
-      --konat-selected: #2b2b2b;
-      --konat-fg: #fafafa;
-      --konat-muted: #8b8b8b;
-      --konat-border: #232323;
-      --konat-outline: rgba(255, 255, 255, 0.1);
-      --konat-chip: #333333;
-      --konat-guide: #2e2e2e;
-      --konat-scrollbar: #3d3d3d;
-      --konat-scrollbar-hover: #555555;
-      --konat-segment-on: #3a3a3a;
-      --konat-segment-shadow: none;
-      --konat-live: #22c55e;
-      --konat-recorded: #4ade80;
-      --konat-recorded-soft: rgba(34, 197, 94, 0.16);
-      --konat-recorded-solid: #16a34a;
-      --konat-fixture: #fbbf24;
-      --konat-fixture-soft: rgba(245, 158, 11, 0.16);
-      --konat-fixture-solid: #d97706;
-      --konat-accent: #3b82f6;
-      --konat-focus: #60a5fa;
-      --konat-warn: #fbbf24;
-      --konat-badge: #ef4444;
-      --konat-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
-      --konat-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.5);
-      --konat-json-key: #c084fc;
-      --konat-json-string: #4ade80;
-      --konat-json-number: #60a5fa;
-      --konat-json-literal: #f472b6;
-    }
-  }
-  [data-theme="dark"] {
+  /* The root element. The overlay is dark on every page. */
+  [data-position] {
     color-scheme: dark;
     --konat-bg: #0a0a0a;
     --konat-surface: #1a1a1a;
@@ -211,7 +130,6 @@
     --konat-scrollbar-hover: #555555;
     --konat-segment-on: #3a3a3a;
     --konat-segment-shadow: none;
-    --konat-live: #22c55e;
     --konat-recorded: #4ade80;
     --konat-recorded-soft: rgba(34, 197, 94, 0.16);
     --konat-recorded-solid: #16a34a;
@@ -222,8 +140,6 @@
     --konat-focus: #60a5fa;
     --konat-warn: #fbbf24;
     --konat-badge: #ef4444;
-    --konat-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.4);
-    --konat-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.5);
     --konat-json-key: #c084fc;
     --konat-json-string: #4ade80;
     --konat-json-number: #60a5fa;
@@ -246,7 +162,9 @@
   }
   h2,
   h3,
-  p {
+  p,
+  dl,
+  dd {
     margin: 0;
     font: inherit;
   }

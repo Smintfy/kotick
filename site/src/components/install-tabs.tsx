@@ -1,70 +1,32 @@
 'use client';
 
-import { SquareTerminal } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { CopyButton } from '@/components/copy-button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const managers = [
-  { name: 'npm', add: 'npm install' },
-  { name: 'pnpm', add: 'pnpm add' },
-  { name: 'yarn', add: 'yarn add' },
-  { name: 'bun', add: 'bun add' },
-] as const;
+type InstallCommand = { manager: string; text: string; code: ReactNode };
 
-export function InstallTabs({ name }: { name: string }) {
-  const [selected, setSelected] = useState(0);
-  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
-  const command = `${managers[selected].add} ${name}`;
-
-  const select = (index: number) => {
-    const next = (index + managers.length) % managers.length;
-    setSelected(next);
-    tabs.current[next]?.focus();
-  };
+export function InstallTabs({ commands }: { commands: readonly InstallCommand[] }) {
+  const [selected, setSelected] = useState(commands[0]?.manager);
+  const current = commands.find((command) => command.manager === selected) ?? commands[0];
 
   return (
-    <div className="mb-6 rounded-xl bg-surface">
+    <Tabs value={selected} onValueChange={setSelected} className="mb-6 gap-0 rounded-xl shadow-code">
       <div className="flex items-center gap-2 border-b border-chip p-2">
-        <SquareTerminal className="ml-1 size-4 text-muted-on-surface" />
-        <div
-          role="tablist"
-          className="flex gap-px"
-          aria-label="Package manager"
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowRight') select(selected + 1);
-
-            if (event.key === 'ArrowLeft') select(selected - 1);
-          }}
-        >
-          {managers.map((manager, index) => (
-            <button
-              key={manager.name}
-              ref={(element) => {
-                tabs.current[index] = element;
-              }}
-              type="button"
-              role="tab"
-              className="cursor-pointer rounded-md h-7 border border-transparent px-2 text-[13px] text-muted-on-surface aria-selected:border-chip aria-selected:bg-bg aria-selected:text-fg"
-              id={`install-${manager.name}`}
-              aria-selected={index === selected}
-              aria-controls="install-command"
-              tabIndex={index === selected ? 0 : -1}
-              onClick={() => setSelected(index)}
-            >
-              {manager.name}
-            </button>
+        <TabsList aria-label="Package manager" activateOnFocus className="gap-px bg-transparent p-0">
+          {commands.map(({ manager }) => (
+            <TabsTrigger key={manager} value={manager} className="h-7 flex-none px-[7px] text-[13px] font-normal transition-[background-color,color] duration-120 ease-[ease] not-data-active:hover:bg-surface data-active:bg-selected data-active:text-heading data-active:shadow-none! motion-reduce:transition-none">
+              {manager}
+            </TabsTrigger>
           ))}
-        </div>
-        <CopyButton text={command} className="ml-auto" />
+        </TabsList>
+        <CopyButton text={current?.text ?? ''} className="ml-auto" />
       </div>
-      <div
-        className="px-5 py-4"
-        role="tabpanel"
-        id="install-command"
-        aria-labelledby={`install-${managers[selected].name}`}
-      >
-        <code className="bg-transparent p-0 text-[13px]">{command}</code>
-      </div>
-    </div>
+      {commands.map(({ manager, code }) => (
+        <TabsContent key={manager} value={manager} className="px-4 py-4">
+          <code className="m-0 bg-transparent p-0 text-[13px] shadow-none">{code}</code>
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }

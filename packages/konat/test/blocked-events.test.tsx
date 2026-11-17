@@ -45,21 +45,16 @@ function Payment({ machine }: { machine: PaymentMachine }) {
   );
 }
 
-function clearButton(): HTMLButtonElement {
-  const found = [...overlay().querySelectorAll('button')].find((button) => button.textContent === 'Clear');
-
-  if (!found) throw new Error('The panel has no Clear button.');
-
-  return found;
+function clearButton(): HTMLButtonElement | undefined {
+  return [...overlay().querySelectorAll('button')].find((button) => button.textContent === 'Clear');
 }
 
+/** The count, the rows and the Clear button that the log shows. The panel shows the count and Clear only with events. */
 function eventLog() {
-  const titles = [...overlay().querySelectorAll('section h3')].map((title) => title.textContent ?? '');
-
   return {
-    title: titles.find((title) => title.startsWith('Blocked events')),
+    count: overlay().querySelector('[data-part="count"]')?.textContent ?? '',
     rows: blockedEvents(),
-    clear: clearButton().disabled ? 'disabled' : 'enabled',
+    clear: clearButton() ? 'shown' : 'hidden',
   };
 }
 
@@ -68,7 +63,9 @@ function times(): string[] {
 }
 
 async function clear(): Promise<void> {
-  fireEvent.click(clearButton());
+  const button = clearButton();
+
+  if (button) fireEvent.click(button);
   await flush();
 }
 
@@ -98,7 +95,7 @@ async function press(name: string): Promise<void> {
 
 /**
  * Presses a button, and returns each local time from a Date.now() read before the click to one after it.
- * The times are HH:MM:SS.mmm.
+ * The times are HH:MM:SS, as a row of the log shows them.
  */
 async function pressTimed(name: string): Promise<string[]> {
   const before = Date.now();
@@ -109,9 +106,8 @@ async function pressTimed(name: string): Promise<string[]> {
 
   return Array.from({ length: after - before + 1 }, (_, offset) => {
     const date = new Date(before + offset);
-    const time = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 
-    return `${time}.${pad(date.getMilliseconds(), 3)}`;
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   });
 }
 
@@ -151,10 +147,10 @@ test('events sent during a preview are blocked and listed, newest first, and rea
   await press('Pay');
   const rows = [`FAIL · ${machine.id} · 1 · in error · {"note":"card declined"}`, `PAY · ${machine.id} · 1 · in error`];
   expect({ empty, blocked, released, after: { shown: shown(), rows: eventLog().rows }, warnings: output.warn }).toEqual({
-    empty: { title: 'Blocked events', rows: [], clear: 'disabled' },
+    empty: { count: '', rows: [], clear: 'hidden' },
     blocked: {
       shown: { value: 'error', context: { note: 'none' } },
-      log: { title: 'Blocked events (2)', rows, clear: 'enabled' },
+      log: { count: '2', rows, clear: 'shown' },
       times: [expect.toBeOneOf(failed), expect.toBeOneOf(paid)],
     },
     released: { value: 'editing', context: { note: 'none' } },
@@ -173,11 +169,35 @@ test('Clear empties the list, and events blocked later start a new one', async (
   const cleared = eventLog();
   await press('Fail');
   expect({ cleared, later: eventLog() }).toEqual({
-    cleared: { title: 'Blocked events', rows: [], clear: 'disabled' },
+    cleared: { count: '', rows: [], clear: 'hidden' },
     later: {
-      title: 'Blocked events (1)',
+      count: '1',
       rows: [`FAIL · ${machine.id} · 1 · in error · {"note":"card declined"}`],
-      clear: 'enabled',
+      clear: 'shown',
+    },
+  });
+});
+
+test('an event sent again right after the same one shows once, with a count', async () => {
+  const machine = createPaymentMachine();
+  await mount(<Payment machine={machine} />);
+  await preview(machine.id, ['error']);
+
+  await press('Pay');
+  await press('Pay');
+  const repeated = eventLog();
+  await press('Fail');
+  await press('Pay');
+  expect({ repeated, apart: eventLog() }).toEqual({
+    repeated: { count: '2', rows: [`PAY ×2 · ${machine.id} · 1 · in error`], clear: 'shown' },
+    apart: {
+      count: '4',
+      rows: [
+        `PAY · ${machine.id} · 1 · in error`,
+        `FAIL · ${machine.id} · 1 · in error · {"note":"card declined"}`,
+        `PAY ×2 · ${machine.id} · 1 · in error`,
+      ],
+      clear: 'shown',
     },
   });
 });
@@ -208,8 +228,8 @@ describe('the limit', () => {
     await clear();
     await failUpTo(1001, 1201);
     expect({ laps, afterClear: eventLog() }).toEqual({
-      laps: { title: 'Blocked events (200)', rows: newest(408, 607), clear: 'enabled' },
-      afterClear: { title: 'Blocked events (200)', rows: newest(1002, 1201), clear: 'enabled' },
+      laps: { count: '200', rows: newest(408, 607), clear: 'shown' },
+      afterClear: { count: '200', rows: newest(1002, 1201), clear: 'shown' },
     });
   });
 });
@@ -236,7 +256,7 @@ describe('events that are not objects with a string type', () => {
     await flush();
     expect({ thrown, log: eventLog(), real: real.getSnapshot().value, warnings: output.warn }).toEqual({
       thrown: 'Only event objects may be sent to actors; use .send({ type: "PAY" }) instead',
-      log: { title: 'Blocked events', rows: [], clear: 'disabled' },
+      log: { count: '', rows: [], clear: 'hidden' },
       real: 'editing',
       warnings: [
         liveWarning('processing', key),

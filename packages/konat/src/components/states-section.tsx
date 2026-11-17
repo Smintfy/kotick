@@ -1,13 +1,12 @@
 import { useId, type CSSProperties } from 'react';
 import type { DataAvailability, Override, RegistrySnapshot, StateNodeInfo } from '../types';
 import type { InstanceEntry } from '../utils/model';
-import { BUTTON, HINT, SECTION, SECTION_HEAD, SECTION_TITLE, TAG } from './classes';
+import { BUTTON, HINT, SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
 import { ChevronIcon } from './icons';
 
 interface StatesSectionProps {
   instance: InstanceEntry;
   nodes: readonly StateNodeInfo[];
-  active: ReadonlySet<string>;
   /** The compound and parallel states whose children the tree hides, by node id. */
   collapsed: ReadonlySet<string>;
   cursor: string | undefined;
@@ -49,7 +48,6 @@ export function StatesSection(props: StatesSectionProps) {
         <StateTree
           nodes={props.nodes}
           label={`States of ${instance.label}`}
-          active={props.active}
           override={props.snapshot.overrides[instance.key]}
           data={props.data}
           collapsed={props.collapsed}
@@ -83,7 +81,6 @@ export function StatesSection(props: StatesSectionProps) {
 interface StateTreeProps {
   nodes: readonly StateNodeInfo[];
   label: string;
-  active: ReadonlySet<string>;
   override: Override | undefined;
   data: DataAvailability;
   collapsed: ReadonlySet<string>;
@@ -110,8 +107,6 @@ function StateTree(props: StateTreeProps) {
 
 function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; tree: StateTreeProps }) {
   const style: CSSProperties & Record<`--${string}`, number> = { '--konat-depth': depth };
-  const tags = Array.isArray(node.tags) ? node.tags : [];
-  const description = node.description === '' ? undefined : node.description;
 
   if (node.type !== 'atomic' && node.type !== 'final') {
     const open = !tree.collapsed.has(node.id);
@@ -121,25 +116,13 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
         <div
           className="flex cursor-pointer min-h-6 items-center gap-1.5 rounded-md py-0.5 pr-1.5 pl-[calc(6px+var(--konat-depth,0)*14px)] text-muted hover:bg-hover"
           data-part="node"
-          title={description}
           onClick={() => tree.onToggle(node.id)}
         >
           <ChevronIcon
             size={12}
             className="flex-none text-muted [transition:transform_100ms_ease] group-aria-[expanded=false]/state:transform-[rotate(-90deg)] motion-reduce:[transition:none]"
           />
-          <span className="grid min-w-0 flex-auto">
-            <span className="truncate font-mono text-base" data-part="key">{node.key}</span>
-            {description && <span className="truncate text-sm text-muted" data-part="description">{description}</span>}
-          </span>
-          <span className="flex flex-none items-center gap-1">
-            {node.type === 'parallel' && <span className="text-sm text-muted" data-part="type">parallel</span>}
-            {tags.map((tag) => (
-              <span key={tag} className={TAG} data-part="tag">
-                {tag}
-              </span>
-            ))}
-          </span>
+          <span className="min-w-0 flex-auto truncate font-mono text-base" data-part="key">{node.key}</span>
         </div>
         {open && (
           // A group's children hang from a guide under the middle of its chevron.
@@ -156,15 +139,13 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
     );
   }
 
-  const { active, override, data, cursor, readOnly, onSelect } = tree;
-  const isActive = active.has(node.id);
+  const { override, data, cursor, readOnly, onSelect } = tree;
   const requested = override?.requested.includes(node.id) === true;
   const filled = override?.filled.includes(node.id) === true;
   const recorded = data.recorded.has(node.id);
   const fixture = data.fixture.has(node.id);
 
   const status = [
-    isActive && 'active',
     requested && 'previewed',
     filled && 'shown in the preview',
     recorded && 'recorded context',
@@ -172,6 +153,7 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
     !recorded && !fixture && 'no recorded or fixture context',
   ].filter(Boolean);
 
+  // The key starts 24px in, where the key of a group starts after its 12px chevron.
   return (
     <li
       role="treeitem"
@@ -179,31 +161,17 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
       aria-selected={requested}
       aria-disabled={readOnly || undefined}
       tabIndex={cursor === node.id ? 0 : -1}
-      className="group/leaf flex cursor-pointer min-h-6 items-center gap-1.5 rounded-md py-0.5 pr-1.5 pl-[calc(6px+var(--konat-depth,0)*14px)] focus-visible:outline-offset-[-2px] aria-disabled:cursor-default aria-selected:bg-selected data-filled:bg-filled hover:not-aria-disabled:not-aria-selected:bg-hover"
+      className="group/leaf flex cursor-pointer min-h-6 items-center gap-1.5 rounded-md py-0.5 pr-1.5 pl-[calc(24px+var(--konat-depth,0)*14px)] focus-visible:outline-offset-[-2px] aria-disabled:cursor-default aria-selected:bg-selected data-filled:bg-filled hover:not-aria-disabled:not-aria-selected:bg-hover"
       style={style}
       data-leaf={node.id}
-      data-active={isActive || undefined}
       data-filled={filled || undefined}
-      title={description}
       onClick={() => onSelect(node.id)}
     >
+      <span className="min-w-0 flex-auto truncate font-mono text-base" data-part="key">{node.key}</span>
       <span className="flex flex-none gap-0.5">
         {recorded && <DataMark kind="recorded" />}
         {fixture && <DataMark kind="fixture" />}
         {!recorded && !fixture && <DataMark kind="none" />}
-      </span>
-      <span className="grid min-w-0 flex-auto">
-        <span className="truncate font-mono text-base" data-part="key">{node.key}</span>
-        {description && <span className="truncate text-sm text-muted" data-part="description">{description}</span>}
-      </span>
-      <span className="flex flex-none items-center gap-1">
-        {node.type === 'final' && <span className="text-sm text-muted" data-part="type">final</span>}
-        {tags.map((tag) => (
-          <span key={tag} className={TAG} data-part="tag">
-            {tag}
-          </span>
-        ))}
-        {isActive && <span className="size-1.5 flex-none rounded-[50%] bg-live" title="Live state" aria-hidden="true" />}
       </span>
       <span className="visually-hidden" data-part="leaf-status">, {status.join(', ')}</span>
     </li>

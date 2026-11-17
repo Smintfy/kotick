@@ -3,23 +3,17 @@ import { warnOnce } from '../core/warn-once';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { useLatest } from '../hooks/use-latest';
 import { useRegistrySnapshot } from '../hooks/use-registry-snapshot';
-import type { KonatProps, Registry, Theme } from '../types';
+import type { KonatProps, Registry } from '../types';
 import type { OverlayHost } from '../utils/host';
 import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../utils/model';
 import { isPosition, readSettings, resolvePosition, writeSettings, type Settings } from '../utils/settings';
-import { eventOrigin, isShortcutText, isTyping, matchesShortcut, parseShortcut } from '../utils/shortcut';
+import { eventOrigin, formatShortcut, isShortcutText, isTyping, matchesShortcut, parseShortcut } from '../utils/shortcut';
 import { CHIP } from './classes';
 import { HexagonIcon } from './icons';
 import { MachineList, PathChip } from './machine-list';
 import { MachinePage } from './machine-page';
 import { Panel } from './panel';
 import { SettingsPage } from './settings-page';
-
-const THEMES: readonly Theme[] = ['system', 'light', 'dark'];
-
-function isTheme(value: unknown): value is Theme {
-  return THEMES.some((theme) => theme === value);
-}
 
 interface OverlayProps extends KonatProps {
   registry: Registry;
@@ -29,7 +23,6 @@ interface OverlayProps extends KonatProps {
 export function Overlay(props: OverlayProps) {
   const { registry, host } = props;
   const defaultPosition = isPosition(props.position) ? props.position : 'bottom-right';
-  const theme = isTheme(props.theme) ? props.theme : 'system';
   const shortcut = useShortcut(props.shortcut);
   const snapshot = useRegistrySnapshot(registry);
   const panelId = React.useId();
@@ -186,13 +179,12 @@ export function Overlay(props: OverlayProps) {
     // "all" on the host leaves direction alone, so the root sets it, or the page's would be inherited.
     <div
       className="pointer-events-none absolute inset-0 text-left font-sans text-base leading-normal font-normal text-fg [direction:ltr] [-webkit-font-smoothing:antialiased]"
-      data-theme={theme}
       data-position={position}
     >
       <button
         ref={bubbleRef}
         type="button"
-        className="pointer-events-auto absolute grid size-8 cursor-pointer place-items-center rounded-lg border border-transparent bg-bubble p-0 text-white [box-shadow:var(--konat-shadow)] [transition:background-color_120ms_ease] hover:bg-bubble-hover in-data-[position$=left]:left-4 in-data-[position$=right]:right-4 in-data-[position^=bottom]:bottom-4 in-data-[position^=top]:top-4 motion-reduce:[transition:none] dark:border-bubble-edge"
+        className="pointer-events-auto absolute grid size-8 cursor-pointer place-items-center rounded-lg border border-bubble-edge bg-bubble p-0 text-white [transition:background-color_120ms_ease] hover:bg-bubble-hover in-data-[position$=left]:left-4 in-data-[position$=right]:right-4 in-data-[position^=bottom]:bottom-4 in-data-[position^=top]:top-4 motion-reduce:[transition:none]"
         aria-label={bubbleLabel}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
@@ -355,11 +347,6 @@ function useShortcut(value: string | false | undefined) {
       return undefined;
     }
 
-    const label = source
-      .split('+')
-      .map((part) => (part.length === 1 ? part.toUpperCase() : part.charAt(0).toUpperCase() + part.slice(1)))
-      .join('+');
-
-    return { parsed, label };
+    return { parsed, label: formatShortcut(parsed) };
   }, [source]);
 }
