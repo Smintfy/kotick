@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Pager } from '@/components/pager';
 import { Demo } from '@/demo/Demo';
 import { costs } from '@/content/costs';
-import { checkedHref, demoHref, type LandingId, landingHeadings, pitch } from '@/site';
+import { checkedHref, demoHref, type LandingId, landingHeadings } from '@/site';
 
 const features: ReadonlyArray<{ title: string; body: ReactNode }> = [
   {
@@ -60,12 +60,18 @@ export default function Home() {
 
   return (
     <>
-      <h1 className="sr-only">{pitch}</h1>
       {landingHeadings.map(({ id, text }, index) => (
         <section key={id} className="@container" aria-labelledby={id}>
-          <h2 id={id} className={index === 0 ? 'mt-0' : 'mt-18'}>
-            {text}
-          </h2>
+          {/* The first section is the title of the page. */}
+          {index === 0 ? (
+            <h1 id={id} className="m-0 mb-3">
+              {text}
+            </h1>
+          ) : (
+            <h2 id={id} className="mt-18">
+              {text}
+            </h2>
+          )}
           {bodies[id]}
         </section>
       ))}

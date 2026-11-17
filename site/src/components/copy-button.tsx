@@ -10,7 +10,8 @@ type CopyProps = {
   read: (button: HTMLButtonElement) => string;
 };
 
-function Copy({ className, label, read }: CopyProps) {
+/** `copied` is true for 1.5 seconds after `copy` writes the text to the clipboard. */
+export function useCopy() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -20,6 +21,14 @@ function Copy({ className, label, read }: CopyProps) {
     return () => clearTimeout(timer);
   }, [copied]);
 
+  const copy = (text: string) => void navigator.clipboard.writeText(text).then(() => setCopied(true));
+
+  return { copied, copy };
+}
+
+function Copy({ className, label, read }: CopyProps) {
+  const { copied, copy } = useCopy();
+
   return (
     <Button
       variant="ghost"
@@ -27,7 +36,7 @@ function Copy({ className, label, read }: CopyProps) {
       className={`text-muted-on-surface ${className}`}
       aria-label={copied ? 'Copied' : label}
       aria-live="polite"
-      onClick={(event) => void navigator.clipboard.writeText(read(event.currentTarget)).then(() => setCopied(true))}
+      onClick={(event) => copy(read(event.currentTarget))}
     >
       {copied ? <Check className="size-4" /> : <CopyIcon className="size-4" />}
     </Button>

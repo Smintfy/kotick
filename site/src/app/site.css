@@ -16,6 +16,7 @@
   --color-surface: oklch(0 0 0 / 0.025);
   --color-selected: oklch(0 0 0 / 0.07);
   --color-line: oklch(0 0 0 / 0.06);
+  --color-hairline: oklch(0 0 0 / 0.08);
   --color-heading: #171717;
   --color-fg: #474747;
   --color-faint: oklch(0.715 0 0);
@@ -27,13 +28,16 @@
   --color-fixture-soft: rgba(217, 119, 6, 0.14);
   --color-chip: oklch(0 0 0 / 0.06);
   --color-muted-on-surface: #777777;
-  /* A 1px ring in place of a border, and a soft drop shadow. A border under a shadow looks muddy. */
+  /* A 1px ring in place of a border. The outline buttons and the button groups use it alone. */
+  --shadow-hairline: 0 0 0 1px var(--color-hairline);
+  /* The hairline and a soft drop shadow. A border under a shadow looks muddy. */
   --shadow-code:
-    0 0 0 1px oklch(0 0 0 / 0.08),
+    var(--shadow-hairline),
     0 1px 2px oklch(0 0 0 / 0.05);
   --text-*: initial;
   --text-sm: 14px;
   --text-base: 16px;
+  --text-2xl: 24px;
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     sans-serif;
@@ -42,7 +46,7 @@
   /* The site has two weights. Thus, the weight classes other than font-normal and font-medium make no CSS. */
   --font-weight-*: initial;
   --font-weight-normal: 400;
-  --font-weight-medium: 450;
+  --font-weight-medium: 500;
 }
 
 /*
@@ -144,6 +148,10 @@
     color: var(--color-heading);
   }
 
+  h1 {
+    font-size: var(--text-2xl);
+  }
+
   h2 {
     margin: 48px 0 12px;
   }
@@ -160,6 +168,7 @@
   b,
   strong {
     font-weight: var(--font-weight-medium);
+    color: var(--color-heading);
   }
 
   :where(h1, h2, h3, [data-slot="accordion-item"])[id] {
