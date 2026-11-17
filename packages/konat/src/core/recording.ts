@@ -143,7 +143,7 @@ function isActorRef(value: unknown): value is ActorRefLike {
   );
 }
 
-function defaultStorage(): Storage | null {
+export function defaultStorage(): Storage | null {
   try {
     // Throws a SecurityError in sandboxed frames and when site data is blocked.
     return typeof sessionStorage === 'undefined' ? null : sessionStorage;
@@ -227,8 +227,11 @@ function otherRecordingsSize(storage: Storage, ownKey: string): number {
 
 const EMPTY_PAYLOAD = '{"v":1,"entries":[]}';
 
-export function createRecordingStore(onAvailabilityChange: (machineId: string) => void): RecordingStore {
-  const storage = defaultStorage();
+/** With no storage, the recordings stay in memory, and the store reads and writes nothing. */
+export function createRecordingStore(
+  onAvailabilityChange: (machineId: string) => void,
+  storage: Storage | null,
+): RecordingStore {
   const machines = new Map<string, MachineRecordings>();
   // Persisted form of each entry, or null when its context stays in memory. Entries are never mutated.
   const serialized = new WeakMap<RecordedEntry, string | null>();
