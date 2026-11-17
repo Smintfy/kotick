@@ -355,7 +355,8 @@ export async function machines(): Promise<string[]> {
 
 /**
  * The instances that the shown machine page names, or [] on another page.
- * With more than one, they are the Instance options, with ` ●` after a previewed one.
+ * With more than one, they are the Instance options. The picker shows a dot while the selected one is previewed, so
+ * ` ●` follows that option.
  * With one, the page has no picker, and it is the name of the instance.
  */
 export function instances(): string[] {
@@ -363,8 +364,14 @@ export function instances(): string[] {
 		'select[aria-label="Instance"]',
 	);
 
-	if (picker)
-		return [...picker.options].map((option) => option.textContent ?? "");
+	if (picker) {
+		const dot = picker.parentElement?.querySelector('[data-part="dot"]') ?? null;
+
+		return [...picker.options].map((option) =>
+			option.selected && dot ? `${option.textContent} ●` : (option.textContent ?? ""),
+		);
+	}
+
 	const name = shownName();
 
 	return name === undefined ? [] : [name];
