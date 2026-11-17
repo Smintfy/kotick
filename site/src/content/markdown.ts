@@ -53,6 +53,7 @@ const jsx: Record<string, (element: JsxElement) => string> = {
     return `\`\`\`bash\n${commands}\n\`\`\``;
   },
   Kbd: (element) => `\`${toString(element)}\``,
+  PanelFigure: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
   Shortcut: (element) =>
     `\`${stringArrayAttribute(element, 'other').join('+')}\` (\`${stringAttribute(element, 'mac')}\` on macOS)`,
 };
