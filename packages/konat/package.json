@@ -54,7 +54,8 @@
   "exports": {
     ".": "./src/index.tsx",
     "./xstate": "./src/xstate.ts",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./figure": "./src/figure.tsx"
   },
   "publishConfig": {
     "exports": {

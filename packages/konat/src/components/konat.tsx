@@ -17,7 +17,7 @@ export function Konat(props: KonatProps): React.ReactNode {
   return host && createPortal(<Overlay {...props} registry={registry} host={host} settings={storedSettings} />, host.container);
 }
 
-function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
+export function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   const [host, setHost] = React.useState<OverlayHost | null>(null);
   useIsomorphicLayoutEffect(() => {
     const created = createHost(target ?? document.body ?? document.documentElement);

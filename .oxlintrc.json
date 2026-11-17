@@ -78,7 +78,7 @@
                 "regex": "^(react|react-dom|xstate|@xstate/react)(/|$)",
                 "message": "The core is in both bundles, so it imports no React and no XState."
               },
-              { "regex": "^\\.{1,2}/(components|hooks|utils|xstate|index|styles\\.generated)(/|$)", "message": "The core imports no other layer." }
+              { "regex": "^\\.{1,2}/(components|hooks|utils|xstate|index|figure|styles\\.generated)(/|$)", "message": "The core imports no other layer." }
             ]
           }
         ]
@@ -89,7 +89,7 @@
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
-          { "regex": "^\\.{1,2}/(\\.\\./)*xstate(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." }
+          { "regex": "^\\.{1,2}/(\\.\\./)*(xstate|figure)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." }
         ] }]
       }
     },
@@ -99,7 +99,7 @@
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
-          { "regex": "^\\.{1,2}/(\\.\\./)*xstate(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
+          { "regex": "^\\.{1,2}/(\\.\\./)*(xstate|figure)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
           { "regex": "^\\.\\./components(/|$)", "message": "Components import hooks and utils, not the reverse." }
         ] }]
       }
@@ -113,7 +113,7 @@
             "patterns": [
               { "regex": "^react-dom(/|$)", "message": "The adapter renders nothing. The overlay owns the DOM." },
               {
-                "regex": "^(\\.\\./)+((components|hooks|utils)(/|$)|(index|styles\\.generated)$)",
+                "regex": "^(\\.\\./)+((components|hooks|utils)(/|$)|(index|figure|styles\\.generated)$)",
                 "message": "The adapter never imports the overlay. They meet only in the core."
               }
             ]
