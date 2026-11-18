@@ -58,8 +58,8 @@ export function PanelFigure(props: PanelFigureProps) {
   const visible = height - dockTop;
 
   return (
-    <figure className="mx-auto mb-6 max-w-[480px]">
-      <div className="relative overflow-hidden rounded-2xl bg-muted shadow-code" style={{ height }}>
+    <figure className="mb-6">
+      <div className="relative overflow-hidden rounded-2xl bg-background shadow-code" style={{ height }}>
         {/*
          * The dock is taller than the frame, so the maximum height of the panel does not come from the frame.
          * A tall panel goes past the bottom of the frame, and the frame cuts it.
@@ -87,7 +87,7 @@ export function PanelFigure(props: PanelFigureProps) {
           )}
         </div>
       </div>
-      <figcaption className="mt-3 text-center text-[13px] text-muted-foreground">{props.caption}</figcaption>
+      <figcaption className="mt-3 text-center text-xs text-muted-foreground">{props.caption}</figcaption>
     </figure>
   );
 }

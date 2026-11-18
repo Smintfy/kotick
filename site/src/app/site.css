@@ -35,6 +35,7 @@
     var(--shadow-hairline),
     0 1px 2px oklch(0 0 0 / 0.05);
   --text-*: initial;
+  --text-xs: 12px;
   --text-sm: 14px;
   --text-base: 16px;
   --text-2xl: 24px;
