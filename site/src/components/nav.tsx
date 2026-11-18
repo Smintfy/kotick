@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Logo } from '@/components/logo';
+import { Badge } from '@/components/ui/badge';
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -15,13 +18,21 @@ import {
 } from '@/components/ui/sidebar';
 import type { NavSection } from '@/site';
 
-export function Nav({ sections }: { sections: readonly NavSection[] }) {
+export function Nav({ sections, version }: { sections: readonly NavSection[]; version: string }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">
-      <SidebarContent role="navigation" aria-label="Docs" className="gap-6 px-2 py-10">
+      <SidebarHeader className="mt-8 ml-5 flex-row items-center gap-2">
+        <Link href="/" aria-label="konat home" className="w-fit rounded-sm" onClick={() => setOpenMobile(false)}>
+          <Logo className="size-5" />
+        </Link>
+        <Badge variant="outline" className="text-[11px] text-muted-foreground">
+          v{version}
+        </Badge>
+      </SidebarHeader>
+      <SidebarContent role="navigation" aria-label="Docs" className="gap-6 px-2 pt-4 pb-10">
         {sections.map((section) => (
           <SidebarGroup key={section.title} className="py-0">
             <SidebarGroupLabel className="mb-1 h-auto px-3 text-[13px] font-normal text-muted-foreground">
@@ -29,19 +40,21 @@ export function Nav({ sections }: { sections: readonly NavSection[] }) {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {section.items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      size="sm"
-                      isActive={item.href === pathname}
-                      render={<Link href={item.href} aria-current={item.href === pathname ? 'page' : undefined} />}
-                      className="h-7.5 px-3 text-[13px] data-active:font-normal transition-[background-color] duration-120 ease-[ease] hover:bg-surface active:bg-surface data-active:hover:bg-selected motion-reduce:transition-none"
-                      onClick={() => setOpenMobile(false)}
-                    >
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {section.items.map((item) => {
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        size="sm"
+                        isActive={item.href === pathname}
+                        render={<Link href={item.href} aria-current={item.href === pathname ? 'page' : undefined} />}
+                        className="h-7.5 px-3 text-[13px] font-medium text-secondary-foreground transition-[background-color] duration-120 ease-[ease] hover:bg-muted active:bg-muted data-active:hover:bg-accent motion-reduce:transition-none"
+                        onClick={() => setOpenMobile(false)}
+                      >
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

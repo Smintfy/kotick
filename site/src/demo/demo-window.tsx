@@ -5,6 +5,7 @@ import { type ReactNode, useState } from 'react';
 import { type FixturesInput, Konat } from 'konat';
 import { useIsApple } from '@/components/shortcut';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
  * A frame for a demo app, with the real overlay docked in it. Reset mounts the app again.
@@ -16,24 +17,33 @@ export function DemoWindow({ fixtures, href, children }: { fixtures: FixturesInp
   const toggleKeys = useIsApple() ? '⌥S' : 'Alt+S';
 
   return (
-    <figure className="relative mb-6 rounded-2xl shadow-code">
+    <figure className="not-prose relative mb-6 rounded-2xl shadow-code">
       <div className="absolute top-3 right-3 z-10 flex gap-1 text-muted-foreground">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Open in a new tab"
-          title="Open in a new tab"
-          nativeButton={false}
-          render={<a href={href} target="_blank" rel="noreferrer" />}
-        >
-          <SquareArrowOutUpRight />
-        </Button>
-        <Button variant="ghost" size="icon" aria-label="Reset" title="Reset" onClick={() => setRun(run + 1)}>
-          <RotateCcw />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Open in a new tab"
+                nativeButton={false}
+                render={<a href={href} target="_blank" rel="noreferrer" />}
+              />
+            }
+          >
+            <SquareArrowOutUpRight />
+          </TooltipTrigger>
+          <TooltipContent>Open in a new tab</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger render={<Button variant="ghost" size="icon" aria-label="Reset" onClick={() => setRun(run + 1)} />}>
+            <RotateCcw />
+          </TooltipTrigger>
+          <TooltipContent>Reset</TooltipContent>
+        </Tooltip>
       </div>
-      <div className="min-h-[520px] px-6 pt-14 pb-20">
-        <div key={run} className="mx-auto max-w-[360px]">
+      <div className="flex min-h-[520px] flex-col px-6 pt-14 pb-20">
+        <div key={run} className="mx-auto flex w-full max-w-[360px] flex-1 flex-col">
           {children}
         </div>
       </div>

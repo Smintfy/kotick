@@ -1,3 +1,6 @@
+import Link from 'next/link';
+import { version } from 'konat/package.json';
+import { Logo } from '@/components/logo';
 import { Nav } from '@/components/nav';
 import { Toc } from '@/components/toc';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -5,21 +8,24 @@ import { nav, navSections } from '@/site';
 
 /**
  * The sidebar on the left, the content, and the TOC on the right. Only wide screens show the TOC.
- * The full-window demos in src/app/(full-window) do not use this layout.
+ * The full-window demos in src/app/(new-tab) do not use this layout.
  */
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <a
-        className="absolute -top-[100px] left-4 z-20 rounded-lg bg-fg px-3 py-2 text-bg focus:top-4"
+        className="absolute -top-[100px] left-4 z-20 rounded-lg bg-foreground px-3 py-2 text-background focus:top-4"
         href="#content"
       >
         Skip to content
       </a>
-      <SidebarProvider style={{ '--sidebar-width': '240px' } as React.CSSProperties}>
-        <Nav sections={navSections} />
+      <SidebarProvider style={{ '--sidebar-width': '240px' }}>
+        <Nav sections={navSections} version={version} />
         <SidebarInset className="h-svh">
-          <header className="flex h-bar shrink-0 items-center justify-end border-b border-line bg-bg px-4 md:hidden">
+          <header className="flex h-bar shrink-0 items-center justify-between border-b bg-background px-4 md:hidden">
+            <Link href="/" aria-label="konat home" className="rounded-sm">
+              <Logo className="size-5" />
+            </Link>
             <SidebarTrigger className="-mr-1.5" />
           </header>
           {/*

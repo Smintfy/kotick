@@ -53,13 +53,13 @@ export function Toc({ items }: { items: readonly NavItem[] }) {
           <h2 id="toc-title" className="m-0 mb-3 text-[13px]">
             On this page
           </h2>
-          <ul className="border-l border-line text-[13px]">
+          <ul className="border-l text-[13px]">
             {headings.map((heading) => (
               <li key={heading.id}>
                 <a
                   href={`#${heading.id}`}
                   data-active={heading.id === active || undefined}
-                  className={`-ml-px block border-l border-transparent py-1 text-muted-foreground no-underline hover:text-fg data-active:border-heading data-active:text-heading ${heading.depth === 3 ? 'pl-7' : 'pl-4'}`}
+                  className={`-ml-px block border-l border-transparent py-1 text-muted-foreground no-underline hover:text-foreground data-active:border-primary data-active:text-foreground ${heading.depth === 3 ? 'pl-7' : 'pl-4'}`}
                 >
                   {heading.text}
                 </a>

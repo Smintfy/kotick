@@ -7,6 +7,7 @@ import * as fixtures from '@/content/docs/fixtures.mdx';
 import * as install from '@/content/docs/install.mdx';
 import * as limitations from '@/content/docs/limitations.mdx';
 import * as nextjs from '@/content/docs/nextjs.mdx';
+import * as overview from '@/content/docs/overview.mdx';
 import * as panel from '@/content/docs/panel.mdx';
 import * as production from '@/content/docs/production.mdx';
 
@@ -22,7 +23,7 @@ export type DocsPage = NavItem & {
   Content: MDXContent;
 };
 
-/** The docs pages. Each file is in src/content/docs. navSections sets the sequence in the nav. */
+/** The docs pages at /docs/<slug>. Each file is in src/content/docs. navSections sets the sequence in the nav. */
 const docs = [
   ['install', install],
   ['concepts', concepts],
@@ -39,16 +40,6 @@ type DocsSlug = (typeof docs)[number][0];
 
 /** These pages have no Markdown copy and no "Copy page" button. */
 const withoutMarkdown: ReadonlySet<DocsSlug> = new Set(['faq', 'limitations']);
-
-export const pitch = 'See every state of every state machine on the page, and preview any of them in place.';
-
-export const landingHeadings = [
-  { id: 'konat', text: 'Konat', depth: 2 },
-  { id: 'how-it-works', text: 'How it works', depth: 2 },
-  { id: 'why', text: 'Why konat', depth: 2 },
-] as const satisfies readonly Heading[];
-
-export type LandingId = (typeof landingHeadings)[number]['id'];
 
 export const examplesHeadings = [
   { id: 'onboarding', text: 'Onboarding', depth: 2 },
@@ -77,21 +68,27 @@ export type DemoId = (typeof demos)[number]['id'];
 
 export const demoHref = (id: DemoId) => `/docs/examples/${id}`;
 
-export const pages: readonly DocsPage[] = docs.map(([slug, { metadata, headings, default: Content }]) => {
+function docsPage(
+  slug: string,
+  { metadata, headings, default: Content }: typeof overview,
+  href: string,
+  markdownHref: string | undefined,
+): DocsPage {
   if (!metadata?.title || !metadata.description) {
     throw new Error(`src/content/docs/${slug}.mdx must export metadata with a title and a description.`);
   }
 
-  return {
-    slug,
-    href: `/docs/${slug}`,
-    title: metadata.title,
-    description: metadata.description,
-    markdownHref: withoutMarkdown.has(slug) ? undefined : `/docs/${slug}.md`,
-    headings,
-    Content,
-  };
-});
+  return { slug, href, title: metadata.title, description: metadata.description, markdownHref, headings, Content };
+}
+
+/** The landing page. Its route is src/app/(docs)/page.tsx. next.config.ts rewrites /index.md to src/app/(docs)/md. */
+export const overviewPage = docsPage('overview', overview, '/', '/index.md');
+
+export const pitch = overviewPage.description;
+
+export const pages: readonly DocsPage[] = docs.map(([slug, module]) =>
+  docsPage(slug, module, `/docs/${slug}`, withoutMarkdown.has(slug) ? undefined : `/docs/${slug}.md`),
+);
 
 export function findPage(slug: string): DocsPage | undefined {
   return pages.find((page) => page.slug === slug);
@@ -112,7 +109,7 @@ export const navSections: readonly NavSection[] = [
   {
     title: 'Introduction',
     items: [
-      { href: '/', title: 'Overview', headings: landingHeadings },
+      { href: overviewPage.href, title: 'Overview', headings: overviewPage.headings },
       docsItem('install'),
       examplesPage,
     ],
@@ -142,7 +139,7 @@ function brokenLink(href: string): string | undefined {
   return undefined;
 }
 
-const problems = docs.flatMap(([slug, { links }]) =>
+const problems = [['overview', overview] as const, ...docs].flatMap(([slug, { links }]) =>
   links.flatMap((href) => {
     const problem = brokenLink(href);
 

@@ -12,10 +12,10 @@ export function InstallTabs({ commands }: { commands: readonly InstallCommand[] 
 
   return (
     <Tabs value={selected} onValueChange={setSelected} className="mb-6 gap-0 rounded-xl shadow-code">
-      <div className="flex items-center gap-2 border-b border-chip p-2">
+      <div className="flex items-center gap-2 border-b border-input p-2">
         <TabsList aria-label="Package manager" activateOnFocus className="gap-px bg-transparent p-0">
           {commands.map(({ manager }) => (
-            <TabsTrigger key={manager} value={manager} className="h-7 flex-none px-[7px] text-[13px] font-normal transition-[background-color,color] duration-120 ease-[ease] not-data-active:hover:bg-surface data-active:bg-selected data-active:text-heading data-active:shadow-none! motion-reduce:transition-none">
+            <TabsTrigger key={manager} value={manager} className="h-7 flex-none px-[7px] text-[13px] font-normal transition-[background-color,color] duration-120 ease-[ease] not-data-active:hover:bg-muted data-active:bg-accent data-active:text-foreground data-active:shadow-none! motion-reduce:transition-none">
               {manager}
             </TabsTrigger>
           ))}

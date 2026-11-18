@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Pager } from '@/components/pager';
-import { OnboardingExample } from '@/demo/onboarding-example';
+import { OnboardingExample } from '@/demo/onboarding/example';
 import { demoHref, type ExampleId, examplesPage } from '@/site';
 
 export const metadata: Metadata = { title: examplesPage.title, description: examplesPage.description };

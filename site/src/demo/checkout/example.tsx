@@ -18,7 +18,7 @@ import {
   fixturesInEveryBuild,
   maxQty,
   subtotalOf,
-} from '@/demo/checkout';
+} from '@/demo/checkout/machine';
 import { DemoWindow } from '@/demo/demo-window';
 
 const shippingOptions = [
@@ -67,16 +67,16 @@ export function Checkout() {
   const failed = snapshot.matches({ payment: 'error' });
   const editing = snapshot.matches({ payment: 'editing' });
   const expiryError = expiryProblem(card.expiry);
-  const hintIsError = failed || expiryError !== undefined;
+  const cardError = failed ? `${error ?? 'Payment failed'}.` : expiryError ? `${expiryError}.` : undefined;
 
   /** On the payment step, the cart is not on the page, so the breakdown lists the items too. */
   const summary = (withItems: boolean) => (
     <Accordion className="border-t pt-2">
       <AccordionItem>
-        <AccordionTrigger className="items-center gap-2 font-normal hover:no-underline">
+        <AccordionTrigger className="items-center gap-2 hover:no-underline">
           <span className="flex flex-1 justify-between gap-4">
             <span>Total</span>
-            <span className="font-medium text-heading tabular-nums">{grandTotal}</span>
+            <span className="text-foreground tabular-nums">{grandTotal}</span>
           </span>
         </AccordionTrigger>
         <AccordionContent className="pr-6">
@@ -98,20 +98,20 @@ export function Checkout() {
     inputMode: 'numeric' as const,
     autoComplete: 'off',
     disabled: !editing,
-    'aria-describedby': 'card-hint',
+    'aria-describedby': cardError ? 'card-error' : undefined,
     onChange: (event: ChangeEvent<HTMLInputElement>) =>
       send({ type: 'UPDATE_CARD', field, value: cardFormats[field](event.target.value) }),
   });
 
   if (snapshot.matches({ payment: 'success' })) {
     return (
-      <div role="status" className="grid gap-6 text-sm">
-        <span className="grid size-11 place-items-center rounded-full bg-selected text-heading">
+      <div role="status" className="grid gap-6 text-sm font-medium">
+        <span className="grid size-11 place-items-center rounded-full bg-accent text-foreground">
           <Check className="size-5" />
         </span>
         <div className="grid gap-1">
-          <h3 className="m-0">Payment complete</h3>
-          <p className="m-0 text-muted-foreground">
+          <h3 className="m-0 font-semibold">Payment complete</h3>
+          <p className="m-0 font-normal text-muted-foreground">
             Your receipt is <code>{receiptId}</code>.
           </p>
         </div>
@@ -133,18 +133,18 @@ export function Checkout() {
   if (snapshot.matches({ payment: 'idle' })) {
     const header = (
       <div className="grid gap-1">
-        <h3 className="m-0">Checkout</h3>
-        <p className="m-0 text-muted-foreground">Check the cart, then select the shipping.</p>
+        <h3 className="m-0 font-semibold">Checkout</h3>
+        <p className="m-0 font-normal text-muted-foreground">Check the cart, then select the shipping.</p>
       </div>
     );
 
     if (snapshot.matches({ cart: 'empty' })) {
       return (
-        <div className="grid gap-6 text-sm">
+        <div className="grid gap-6 text-sm font-medium">
           {header}
-          <div className="grid justify-items-center gap-3 rounded-lg border border-dashed border-input px-4 py-10 text-center">
+          <div className="grid justify-items-center gap-3 rounded-lg px-4 py-10 shadow-code text-center">
             <ShoppingBag className="size-5 text-muted-foreground" />
-            <p className="m-0 text-muted-foreground">Your cart is empty.</p>
+            <p className="m-0 font-normal text-muted-foreground">Your cart is empty.</p>
             <Button variant="outline" onClick={() => send({ type: 'RESTORE_ITEMS' })}>
               Add the items again
             </Button>
@@ -154,22 +154,20 @@ export function Checkout() {
     }
 
     return (
-      <div className="grid gap-6 text-sm">
+      <div className="grid gap-6 text-sm font-medium">
         {header}
 
         <ul aria-label="Cart" className="grid gap-3">
           {items.map((item) => {
             const less: CheckoutEvent =
               item.qty > 1 ? { type: 'SET_QTY', id: item.id, qty: item.qty - 1 } : { type: 'REMOVE_ITEM', id: item.id };
+
             const more: CheckoutEvent = { type: 'SET_QTY', id: item.id, qty: item.qty + 1 };
 
             return (
               <li key={item.id} className="flex items-center gap-3">
-                <div className="grid min-w-0 flex-1">
-                  <span className="truncate text-heading">{item.name}</span>
-                  <span className="text-[13px] text-muted-foreground">{formatPrice(item.price)} each</span>
-                </div>
-                <div role="group" aria-label={`Quantity of ${item.name}`} className="flex items-center rounded-lg border border-input">
+                <span className="min-w-0 flex-1 truncate text-foreground">{item.name}</span>
+                <div role="group" aria-label={`Quantity of ${item.name}`} className="flex items-center rounded-lg shadow-code">
                   {/* At a quantity of 1, the minus button removes the item. */}
                   <Button
                     variant="ghost"
@@ -202,7 +200,7 @@ export function Checkout() {
         </ul>
 
         <fieldset className="min-w-0">
-          <legend className="mb-2 font-medium">Shipping</legend>
+          <legend className="mb-2">Shipping</legend>
           <RadioGroup
             value={shipping.key}
             onValueChange={(key) => {
@@ -214,11 +212,11 @@ export function Checkout() {
             {shippingOptions.map((option) => (
               <Label
                 key={option.key}
-                className="relative h-9 cursor-pointer gap-2.5 rounded-lg border border-input px-2.5 leading-normal font-normal transition-colors hover:bg-surface has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-data-checked:border-fg has-data-checked:font-medium has-data-checked:text-heading has-data-disabled:pointer-events-none has-data-disabled:opacity-50"
+                className="relative h-9 cursor-pointer gap-2.5 rounded-lg px-2.5 leading-normal shadow-code transition-[background-color,box-shadow] hover:bg-muted has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-data-checked:shadow-[0_0_0_1px_var(--foreground),0_1px_2px_oklch(0_0_0/0.05)] has-data-checked:text-foreground has-data-disabled:pointer-events-none has-data-disabled:opacity-50"
               >
                 <option.Icon className="size-4 shrink-0 text-muted-foreground" />
                 {option.label}
-                <span className="ml-auto font-normal text-muted-foreground">{feeOf(option)}</span>
+                <span className="ml-auto text-muted-foreground">{feeOf(option)}</span>
                 {/* The card shows the selection and the focus. The radio stays for the keyboard and for screen readers. */}
                 <RadioGroupItem value={option.key} className="absolute opacity-0" disabled={!snapshot.can(option.event)} />
               </Label>
@@ -238,7 +236,7 @@ export function Checkout() {
 
   return (
     <form
-      className="grid gap-6 text-sm"
+      className="grid gap-6 text-sm font-medium"
       onSubmit={(event) => {
         event.preventDefault();
         send({ type: 'PAY' });
@@ -257,8 +255,8 @@ export function Checkout() {
           Cart
         </Button>
         <div className="grid gap-1">
-          <h3 className="m-0">Payment</h3>
-          <p className="m-0 text-muted-foreground">Enter the card details.</p>
+          <h3 className="m-0 font-semibold">Payment</h3>
+          <p className="m-0 font-normal text-muted-foreground">Enter the card details.</p>
         </div>
       </div>
 
@@ -267,7 +265,7 @@ export function Checkout() {
           <Label htmlFor="card-number">Card number</Label>
           <Input
             id="card-number"
-            className="h-9 font-mono"
+            className="h-9 border-transparent font-mono shadow-code"
             placeholder="4242 4242 4242 4242"
             aria-invalid={failed || undefined}
             {...cardInput('number')}
@@ -278,7 +276,7 @@ export function Checkout() {
             <Label htmlFor="card-expiry">Expiry date</Label>
             <Input
               id="card-expiry"
-              className="h-9 font-mono"
+              className="h-9 border-transparent font-mono shadow-code"
               placeholder="MM/YY"
               aria-invalid={expiryError !== undefined || undefined}
               {...cardInput('expiry')}
@@ -286,20 +284,14 @@ export function Checkout() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="card-cvc">CVC</Label>
-            <Input id="card-cvc" className="h-9 font-mono" placeholder="123" {...cardInput('cvc')} />
+            <Input id="card-cvc" className="h-9 border-transparent font-mono shadow-code" placeholder="123" {...cardInput('cvc')} />
           </div>
         </div>
-        <p
-          id="card-hint"
-          role={hintIsError ? 'alert' : undefined}
-          className={`m-0 text-[13px] ${hintIsError ? 'text-destructive' : 'text-muted-foreground'}`}
-        >
-          {failed
-            ? `${error ?? 'Payment failed'}.`
-            : expiryError
-              ? `${expiryError}.`
-              : 'Any card number with a future date pays. Cards that end in 0002 are declined.'}
-        </p>
+        {cardError && (
+          <p id="card-error" role="alert" className="m-0 text-[13px] text-destructive">
+            {cardError}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4">
@@ -309,7 +301,7 @@ export function Checkout() {
             <Button type="button" size="lg" className="w-full" onClick={() => send({ type: 'RETRY' })}>
               Retry
             </Button>
-            <Button type="button" variant="ghost" size="lg" className="justify-self-center" onClick={() => send({ type: 'EDIT_CARD' })}>
+            <Button type="button" variant="ghost" size="lg" className="w-full" onClick={() => send({ type: 'EDIT_CARD' })}>
               Edit card
             </Button>
           </div>
@@ -323,7 +315,7 @@ export function Checkout() {
   );
 }
 
-export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHref: string }) {
+export function CheckoutExample({ fixturesHref, pageHref }: { fixturesHref: string; pageHref: string }) {
   return (
     <>
       <p>
@@ -361,9 +353,7 @@ export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHre
             <TableRow>
               <TableCell>Recorded</TableCell>
               <TableCell>
-                <span className="inline-grid size-4 place-items-center rounded-[3px] text-[13px] leading-none font-medium bg-recorded-soft text-recorded">
-                  R
-                </span>
+                <code>R</code>
               </TableCell>
               <TableCell>
                 The last context that the real actor had in this state. It stays in <code>sessionStorage</code>, so it
@@ -373,9 +363,7 @@ export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHre
             <TableRow>
               <TableCell>Fixture</TableCell>
               <TableCell>
-                <span className="inline-grid size-4 place-items-center rounded-[3px] text-[13px] leading-none font-medium bg-fixture-soft text-fixture">
-                  F
-                </span>
+                <code>F</code>
               </TableCell>
               <TableCell>
                 Context that you wrote with <code>defineFixtures()</code>.
@@ -384,9 +372,7 @@ export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHre
             <TableRow>
               <TableCell>None</TableCell>
               <TableCell>
-                <span className="inline-grid size-4 place-items-center rounded-[3px] text-[13px] leading-none font-medium border border-dashed border-chip text-muted-foreground">
-                  –
-                </span>
+                <code>–</code>
               </TableCell>
               <TableCell>
                 The preview uses the live context of the real actor, and logs a warning, because the live context often
@@ -398,7 +384,7 @@ export function Demo({ fixturesHref, pageHref }: { fixturesHref: string; pageHre
         <p>
           This demo has a <Link href={fixturesHref}>fixture</Link> for each state, so no preview uses the live context.
         </p>
-        <p className="border-l-2 border-callout px-4 py-3 text-[13px] text-muted-foreground">
+        <p className="border-l-2 border-muted-foreground/30 px-4 py-3 text-[13px] text-muted-foreground">
           This site builds konat in development mode for the demo. In your production build,{' '}
           <code>&lt;Konat /&gt;</code> renders nothing.
         </p>

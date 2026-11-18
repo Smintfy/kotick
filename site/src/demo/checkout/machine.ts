@@ -60,6 +60,7 @@ export function expiryProblem(expiry: string, now = new Date()): string | undefi
   const year = 2000 + Number(digits.slice(2, 4));
 
   if (month < 1 || month > 12) return 'The expiry month must be 01 to 12';
+
   // The card is good until the last day of its expiry month.
   if (new Date(year, month) <= now) return 'The card has expired';
 

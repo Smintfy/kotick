@@ -12,7 +12,10 @@ const keepOverlayInProduction = {
 const config: NextConfig = {
   transpilePackages: ['konat'],
   async rewrites() {
-    return [{ source: '/docs/:slug([a-z-]+)\\.md', destination: '/docs/:slug/md' }];
+    return [
+      { source: '/index.md', destination: '/md' },
+      { source: '/docs/:slug([a-z-]+)\\.md', destination: '/docs/:slug/md' },
+    ];
   },
   experimental: {
     agentUpgrade: 'security',

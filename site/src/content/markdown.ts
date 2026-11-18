@@ -10,6 +10,7 @@ import remarkParse from 'remark-parse';
 import { unified } from 'unified';
 import { costs } from '@/content/costs';
 import { packageManagers } from '@/content/package-managers';
+import { demoHref } from '@/site';
 
 type JsxElement = MdxJsxFlowElement | MdxJsxTextElement;
 
@@ -20,10 +21,15 @@ const expressions: ReadonlyMap<string, string> = new Map(
   Object.entries(costs).map(([key, value]) => [`costs.${key}`, value]),
 );
 
+/** The MDX AST types attribute values and literals as unions. This guard is the parser of a string in them. */
+function isString<T>(value: T): value is T & string {
+  return typeof value === 'string';
+}
+
 function stringAttribute(element: JsxElement, name: string): string {
   const value = element.attributes.find((attribute) => 'name' in attribute && attribute.name === name)?.value;
 
-  if (typeof value !== 'string') throw new Error(`<${element.name}> needs the string attribute ${name}.`);
+  if (!isString(value)) throw new Error(`<${element.name}> needs the string attribute ${name}.`);
 
   return value;
 }
@@ -31,11 +37,11 @@ function stringAttribute(element: JsxElement, name: string): string {
 /** Reads an attribute such as `other={['Alt', 'S']}`. Only an array of string literals is accepted. */
 function stringArrayAttribute(element: JsxElement, name: string): string[] {
   const value = element.attributes.find((attribute) => 'name' in attribute && attribute.name === name)?.value;
-  const program = typeof value === 'object' ? value?.data?.estree : undefined;
+  const program = isString(value) ? undefined : value?.data?.estree;
   const statement = program?.body[0];
   const array = statement?.type === 'ExpressionStatement' ? statement.expression : undefined;
   const items = array?.type === 'ArrayExpression' ? array.elements : [];
-  const strings = items.flatMap((item) => (item?.type === 'Literal' && typeof item.value === 'string' ? [item.value] : []));
+  const strings = items.flatMap((item) => (item?.type === 'Literal' && isString(item.value) ? [item.value] : []));
 
   if (strings.length === 0 || strings.length !== items.length) {
     throw new Error(`<${element.name}> needs ${name} to be an array of strings.`);
@@ -45,17 +51,23 @@ function stringArrayAttribute(element: JsxElement, name: string): string[] {
 }
 
 /** The Markdown for each component that a page with a Markdown copy can use. */
-const jsx: Record<string, (element: JsxElement) => string> = {
+const jsx = {
   InstallTabs: (element) => {
     const name = stringAttribute(element, 'name');
     const commands = packageManagers.map(({ add }) => `${add} ${name}`).join('\n');
 
     return `\`\`\`bash\n${commands}\n\`\`\``;
   },
+  // The demo has no text, so the copy links to the full-window demo.
+  CheckoutDemo: () => `The [checkout demo](${demoHref('checkout')}) runs the real overlay beside a checkout app.`,
   Kbd: (element) => `\`${toString(element)}\``,
   Shortcut: (element) =>
     `\`${stringArrayAttribute(element, 'other').join('+')}\` (\`${stringAttribute(element, 'mac')}\` on macOS)`,
-};
+} satisfies Record<string, (element: JsxElement) => string>;
+
+function hasMarkdown(name: string): name is keyof typeof jsx {
+  return Object.hasOwn(jsx, name);
+}
 
 function expression(value: string): string {
   const trimmed = value.trim();
@@ -79,12 +91,13 @@ function replacement(node: Nodes): string | undefined {
       return expression(node.value);
     case 'mdxJsxFlowElement':
     case 'mdxJsxTextElement': {
-      const render = node.name ? jsx[node.name] : undefined;
+      const render = node.name && hasMarkdown(node.name) ? jsx[node.name] : undefined;
 
       if (!render) throw new Error(`The Markdown copy has no text for <${node.name ?? ''}>.`);
 
       return render(node);
     }
+
     default:
       return undefined;
   }

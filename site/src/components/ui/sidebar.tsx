@@ -44,8 +44,21 @@ type SidebarContextProps = {
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
 
+type OpenUpdater = (open: boolean) => boolean
+
+function isUpdater(value: boolean | OpenUpdater): value is OpenUpdater {
+  return typeof value === "function"
+}
+
+type TooltipProp = string | React.ComponentProps<typeof TooltipContent>
+
+function isText(tooltip: TooltipProp): tooltip is string {
+  return typeof tooltip === "string"
+}
+
 function useSidebar() {
   const context = React.useContext(SidebarContext)
+
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.")
   }
@@ -73,9 +86,11 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
+
   const setOpen = React.useCallback(
-    (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value
+    (value: boolean | OpenUpdater) => {
+      const openState = isUpdater(value) ? value(open) : value
+
       if (setOpenProp) {
         setOpenProp(openState)
       } else {
@@ -106,6 +121,7 @@ function SidebarProvider({
     }
 
     window.addEventListener("keydown", handleKeyDown)
+
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [toggleSidebar])
 
@@ -130,13 +146,11 @@ function SidebarProvider({
     <SidebarContext.Provider value={contextValue}>
       <div
         data-slot="sidebar-wrapper"
-        style={
-          {
-            "--sidebar-width": SIDEBAR_WIDTH,
-            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-            ...style,
-          } as React.CSSProperties
-        }
+        style={{
+          "--sidebar-width": SIDEBAR_WIDTH,
+          "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+          ...style,
+        }}
         className={cn(
           "group/sidebar-wrapper flex min-h-svh w-full has-data-[variant=inset]:bg-sidebar",
           className
@@ -188,11 +202,9 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+          style={{
+            "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+          }}
           side={side}
         >
           <SheetHeader className="sr-only">
@@ -507,9 +519,10 @@ function SidebarMenuButton({
 }: useRender.ComponentProps<"button"> &
   React.ComponentProps<"button"> & {
     isActive?: boolean
-    tooltip?: string | React.ComponentProps<typeof TooltipContent>
+    tooltip?: TooltipProp
   } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const { isMobile, state } = useSidebar()
+
   const comp = useRender({
     defaultTagName: "button",
     props: mergeProps<"button">(
@@ -531,7 +544,7 @@ function SidebarMenuButton({
     return comp
   }
 
-  if (typeof tooltip === "string") {
+  if (isText(tooltip)) {
     tooltip = {
       children: tooltip,
     }
@@ -625,11 +638,9 @@ function SidebarMenuSkeleton({
       <Skeleton
         className="h-4 max-w-(--skeleton-width) flex-1"
         data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
+        style={{
+          "--skeleton-width": width,
+        }}
       />
     </div>
   )

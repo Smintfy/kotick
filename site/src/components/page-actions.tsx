@@ -27,12 +27,12 @@ export function PageActions({ markdown, markdownHref }: { markdown: string; mark
 
   return (
     // One hairline around the group. A hairline on each button doubles where the two hairlines touch.
-    <ButtonGroup className="shrink-0 rounded-lg shadow-hairline *:shadow-none">
-      <Button variant="outline" size="sm" className="text-[13px] font-normal" onClick={() => copy(markdown)} aria-live="polite">
+    <ButtonGroup className="shrink-0 rounded-lg shadow-code *:shadow-none">
+      <Button variant="outline" size="sm" className="gap-1.5 text-[13px] font-normal" onClick={() => copy(markdown)} aria-live="polite">
         {copied ? <Check /> : <Copy />}
         {copied ? 'Copied' : 'Copy page'}
       </Button>
-      <ButtonGroupSeparator className="bg-hairline data-vertical:my-0" />
+      <ButtonGroupSeparator className="bg-input data-vertical:my-0" />
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button variant="outline" size="icon-sm" aria-label="More ways to use this page" />}>
           <ChevronDown className="size-3.5" />
