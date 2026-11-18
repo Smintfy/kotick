@@ -1,14 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { cn } from 'cn';
 import type { FixtureSet } from 'konat';
 import { type FigurePage, KonatFigure } from 'konat/figure';
 import { checkoutMachine, fixturesInEveryBuild } from '@/demo/checkout';
 import { onboardingFixtures, onboardingMachine } from '@/demo/onboarding';
 
-/** `cropped` fades out the bottom of a panel that is taller than the frame. */
-type PanelFigureProps = { caption: string; height?: number; cropped?: boolean } & (
+type PanelFigureProps = { caption: string; height?: number } & (
   | { page: 'machines' | 'settings' }
   | { page: 'machine'; machine: string; preview?: string }
 );
@@ -58,30 +56,27 @@ export function PanelFigure(props: PanelFigureProps) {
   return (
     <figure className="mb-6">
       <div className="relative overflow-hidden rounded-2xl bg-background shadow-code" style={{ height }}>
-        {/* The mask is on a layer the size of the frame, so its stops line up with the frame and not with the tall dock. */}
-        <div className={cn('absolute inset-0', props.cropped && 'mask-b-from-65%')}>
-          {/*
-           * The dock is taller than the frame, so the maximum height of the panel does not come from the frame.
-           * A tall panel goes past the bottom of the frame, and the frame cuts it.
-           * With contain: layout, the dock is the containing block of the fixed-position host, so the overlay stays in it.
-           */}
-          <div
-            ref={setDock}
-            inert
-            className="absolute left-1/2 h-[800px] -translate-x-1/2 [contain:layout]"
-            style={{ top: dockTop, width: dockWidth }}
-          >
-            {dock && (
-              <KonatFigure
-                key={JSON.stringify(page)}
-                machines={machines}
-                fixtures={fixtures}
-                page={page}
-                position="top-left"
-                portalTarget={dock}
-              />
-            )}
-          </div>
+        {/*
+         * The dock is taller than the frame, so the maximum height of the panel does not come from the frame.
+         * A tall panel goes past the bottom of the frame, and the frame cuts it.
+         * With contain: layout, the dock is the containing block of the fixed-position host, so the overlay stays in it.
+         */}
+        <div
+          ref={setDock}
+          inert
+          className="absolute left-1/2 h-[800px] -translate-x-1/2 [contain:layout]"
+          style={{ top: dockTop, width: dockWidth }}
+        >
+          {dock && (
+            <KonatFigure
+              key={JSON.stringify(page)}
+              machines={machines}
+              fixtures={fixtures}
+              page={page}
+              position="top-left"
+              portalTarget={dock}
+            />
+          )}
         </div>
       </div>
       <figcaption className="mt-3 text-center text-xs text-muted-foreground">{props.caption}</figcaption>
