@@ -5,6 +5,7 @@ import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect
 import { overlayStyles } from '../styles.generated';
 import type { KonatProps } from '../types';
 import { createHost, type OverlayHost } from '../utils/host';
+import { storedSettings } from '../utils/settings';
 import { Overlay } from './overlay';
 
 export function Konat(props: KonatProps): React.ReactNode {
@@ -13,10 +14,10 @@ export function Konat(props: KonatProps): React.ReactNode {
   React.useEffect(() => (fixtures === undefined ? undefined : registry.loadFixtures(fixtures)), [registry, fixtures]);
   const host = useHost(props.portalTarget);
 
-  return host && createPortal(<Overlay {...props} registry={registry} host={host} />, host.container);
+  return host && createPortal(<Overlay {...props} registry={registry} host={host} settings={storedSettings} />, host.container);
 }
 
-function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
+export function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
   const [host, setHost] = React.useState<OverlayHost | null>(null);
   useIsomorphicLayoutEffect(() => {
     const created = createHost(target ?? document.body ?? document.documentElement);

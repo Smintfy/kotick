@@ -61,6 +61,7 @@ const jsx = {
   // The demo has no text, so the copy links to the full-window demo.
   CheckoutDemo: () => `The [checkout demo](${demoHref('checkout')}) runs the real overlay beside a checkout app.`,
   Kbd: (element) => `\`${toString(element)}\``,
+  PanelFigure: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
   Shortcut: (element) =>
     `\`${stringArrayAttribute(element, 'other').join('+')}\` (\`${stringAttribute(element, 'mac')}\` on macOS)`,
 } satisfies Record<string, (element: JsxElement) => string>;

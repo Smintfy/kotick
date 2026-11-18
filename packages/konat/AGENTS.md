@@ -8,6 +8,7 @@ A development overlay for React apps that use XState v5. The README says what it
 |---|---|
 | `src/index.tsx` | The `konat` entry: `<Konat />` and its types |
 | `src/xstate.ts` | The `konat/xstate` entry: the hooks, `connect()`, `defineFixtures()` and their types |
+| `src/figure.tsx` | The `konat/figure` entry of the workspace: `<KonatFigure />`, the real panel open on one page, for the docs site. It is no build entry, so no package has it |
 | `src/types.ts` | The types that the core, the overlay and the adapter share, and the props of `<Konat />` |
 | `src/core/` | The registry, one per page, and the stores it composes |
 | `src/components/` | The overlay: the React components in the shadow root. `konat.tsx` mounts it. They use Tailwind utilities. `classes.ts` holds the class lists that more than one component uses |

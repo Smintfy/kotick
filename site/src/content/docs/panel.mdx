@@ -1,3 +1,5 @@
+import { PanelFigure } from '@/components/panel-figure';
+
 export const metadata = {
   title: 'The panel',
   description: 'The machine list, the machine pages, Settings, and the keyboard shortcuts.',
@@ -6,6 +8,8 @@ export const metadata = {
 ## Machine list
 
 The bubble opens the panel on the machine list. The header shows the path of the page and the number of machines. Each row shows the number of states of its machine. A row also shows `child` when all the instances of the machine are child actors, the number of instances when there is more than one, and a dot while an instance is previewed. While a preview is on, **Release all** at the bottom of the list releases every preview.
+
+<PanelFigure page="machines" height={264} caption="The machine list with the checkout and onboarding machines of the demos." />
 
 ## Machine page
 
@@ -19,9 +23,19 @@ Select a machine to open its page. During a preview, the header shows the number
 
 **Back** goes to the machine list again.
 
+<PanelFigure
+  page="machine"
+  machine="checkout"
+  preview="payment.error"
+  height={400}
+  caption="The checkout page during a preview of payment.error. The header shows 1 previewed state. The leaves show the R, F and – marks."
+/>
+
 ## Settings
 
 **Settings**, at the bottom of the list, moves the bubble and the panel to another corner, and lists the keyboard shortcuts.
+
+<PanelFigure page="settings" height={424} caption="The Settings page shows the corners and the keyboard shortcuts." />
 
 ## Keyboard
 

@@ -14,7 +14,7 @@ import type {
 import { createEventLog } from './event-log';
 import { createFixtureStore, readFixtures } from './fixtures';
 import { isId, isLeafId } from './ids';
-import { createRecordingStore } from './recording';
+import { createRecordingStore, defaultStorage } from './recording';
 import { VERSION } from './version';
 import { warnOnce } from './warn-once';
 
@@ -55,7 +55,17 @@ export function leavesOf(nodes: readonly StateNodeInfo[], into: string[] = []): 
   return into;
 }
 
-function createRegistry(): Registry {
+export interface RegistryOptions {
+  /**
+   * `session` keeps the recordings in sessionStorage, so they last across reloads.
+   * `memory` keeps them in the registry only, so the registry reads and writes no storage.
+   */
+  recordings: 'session' | 'memory';
+  /** Sets that the registry has from the start, so a preview can use them at once. loadFixtures() adds sets later. */
+  fixtures?: readonly FixtureSet[];
+}
+
+export function createRegistry(options: RegistryOptions): Registry {
   const registrations = new Map<InstanceKey, Registration>();
   // Keys unregistered since the last flush. Fast Refresh, StrictMode and actor swaps run an effect's cleanup and
   // then its setup in the same tick, so the registration stays in place until the flush, and a key that registers
@@ -74,7 +84,8 @@ function createRegistry(): Registry {
   const leafSets = new WeakMap<MachineHandle, ReadonlySet<string>>();
   const eventLog = createEventLog();
   const fixtures = createFixtureStore();
-  const recording = createRecordingStore(() => markDirty('data'));
+  const storage = options.recordings === 'session' ? defaultStorage() : null;
+  const recording = createRecordingStore(() => markDirty('data'), storage);
 
   const dirty: Record<SnapshotPart, boolean> = { machines: false, overrides: false, log: false, data: false };
 
@@ -576,7 +587,9 @@ function createRegistry(): Registry {
     };
   }
 
-  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  if (options.fixtures) registerFixtures(options.fixtures);
+
+  if (storage) {
     window.addEventListener('pagehide', () => recording.flush());
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') recording.flush();
@@ -663,7 +676,7 @@ export function getPageRegistry(): Registry {
     return existing;
   }
 
-  const registry = createRegistry();
+  const registry = createRegistry({ recordings: 'session' });
   scope[REGISTRY_KEY] = registry;
 
   return registry;

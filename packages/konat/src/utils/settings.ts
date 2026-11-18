@@ -45,7 +45,7 @@ function defaultStorage(): Storage | null {
   }
 }
 
-export function readSettings(): Settings {
+function readSettings(): Settings {
   const storage = defaultStorage();
 
   if (!storage) return {};
@@ -76,7 +76,7 @@ export function readSettings(): Settings {
   return settings;
 }
 
-export function writeSettings(settings: Settings): void {
+function writeSettings(settings: Settings): void {
   const storage = defaultStorage();
 
   if (!storage) return;
@@ -87,6 +87,15 @@ export function writeSettings(settings: Settings): void {
     // Full or blocked storage; the app's own data matters more.
   }
 }
+
+/** Where the overlay reads its settings when it mounts, and writes them when the user changes something. */
+export interface SettingsStore {
+  read(): Settings;
+  write(settings: Settings): void;
+}
+
+/** The settings in localStorage `konat:ui`, which last across reloads. */
+export const storedSettings: SettingsStore = { read: readSettings, write: writeSettings };
 
 /** The corner to use: the stored one while the app's default is still the one it was chosen over. */
 export function resolvePosition(settings: Settings, fallback: Position): Position {

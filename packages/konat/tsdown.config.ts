@@ -3,7 +3,12 @@ import { defineConfig, type UserConfig } from 'tsdown';
 const common: UserConfig = {
   platform: 'neutral',
   dts: true,
-  exports: { devExports: true },
+  exports: {
+    devExports: true,
+    // The docs site and the tests import konat/figure from the workspace. It is no entry, so no build or publish has it.
+    // Each build writes the exports of package.json again, and without this function it removes the figure.
+    customExports: (exports, { isPublish }) => (isPublish ? exports : { ...exports, './figure': './src/figure.tsx' }),
+  },
   // Both entries start with 'use client', and rolldown keeps it at the top of their output files.
   checks: { moduleLevelDirective: false },
 };
