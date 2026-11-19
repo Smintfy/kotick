@@ -11,6 +11,14 @@ export const metadata = {
 - **Functions in context are not recorded across reloads.** After a reload, a recorded preview does not have them.
 - **Around a preview, observers can get a snapshot one more or one less time than with `@xstate/react`.** Without a preview, an observer given to a hook gets the same calls as with `@xstate/react`. A few rare sequences around a preview, such as a Fast Refresh edit or an `<Activity>` that hides the component, can give it one more, one less or a later snapshot. The number of `complete` and `error` calls stays the same. An observer also gets the preview again each time the preview is built again. That happens when its live children change, when fixtures load, or when an edit adds a region.
 
+## Recordings
+
+konat records context to show it in [previews](/docs/concepts#context-for-a-preview). It keeps the recordings in memory, and writes a copy to `sessionStorage`, so that they are still there after a reload. These limits apply:
+
+- **50 sets of leaves for each machine.** When a machine gets to a 51st set of leaves, konat removes the oldest recording of that machine.
+- **100,000 characters for each context.** konat keeps a larger context in memory only, so it is not there after a reload.
+- **1,000,000 characters in `sessionStorage` for all machines.** Over this limit, konat writes only the newest recordings. It keeps the others in memory until the page reloads, and shows a [warning](/docs/troubleshooting#console-warnings) one time for each machine.
+
 ## The panel
 
 - **Only actors from `konat/xstate` or `connect()` are listed.** An actor from `createActor()` that you do not give to `connect()` is not in the panel.

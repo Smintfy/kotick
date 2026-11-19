@@ -46,11 +46,10 @@ const startItems: LineItem[] = [
 
 const emptyCard: Card = { number: '', expiry: '', cvc: '' };
 
-const digitsOf = (value: string) => value.replace(/\D/g, '');
+export const digitsOf = (value: string) => value.replace(/\D/g, '');
 
 export const subtotalOf = (items: LineItem[]): Cents => items.reduce((sum, item) => sum + item.price * item.qty, 0);
 
-/** The problem with a full expiry date, or undefined if the date is good or is not full yet. */
 export function expiryProblem(expiry: string, now = new Date()): string | undefined {
   const digits = digitsOf(expiry);
 
@@ -61,8 +60,9 @@ export function expiryProblem(expiry: string, now = new Date()): string | undefi
 
   if (month < 1 || month > 12) return 'The expiry month must be 01 to 12';
 
-  // The card is good until the last day of its expiry month.
-  if (new Date(year, month) <= now) return 'The card has expired';
+  const firstDayAfterExpiryMonth = new Date(year, month);
+
+  if (firstDayAfterExpiryMonth <= now) return 'The card has expired';
 
   return undefined;
 }
@@ -72,6 +72,9 @@ const isCardComplete = (card: Card) =>
   digitsOf(card.expiry).length === 4 &&
   expiryProblem(card.expiry) === undefined &&
   /^\d{3,4}$/.test(card.cvc);
+
+const cardAfterUpdate = (card: Card, event: CheckoutEvent): Card =>
+  event.type === 'UPDATE_CARD' ? { ...card, [event.field]: event.value } : card;
 
 const charge = fromPromise<{ receiptId: string }, { card: Card }>(async ({ input }) => {
   await new Promise((resolve) => setTimeout(resolve, 800));
@@ -90,19 +93,15 @@ export const checkoutMachine = setup({
   actors: { charge },
   actions: {
     updateCard: assign({
-      card: ({ context, event }) =>
-        event.type === 'UPDATE_CARD' ? { ...context.card, [event.field]: event.value } : context.card,
+      card: ({ context, event }) => cardAfterUpdate(context.card, event),
     }),
   },
   guards: {
-    // The cart and the shipping can change only on the first step, before the payment starts.
-    orderOpen: stateIn('#checkout.payment.idle'),
+    beforePayment: stateIn('#checkout.payment.idle'),
     hasItems: stateIn('#checkout.cart.filled'),
     removesLastItem: ({ context, event }) =>
       event.type === 'REMOVE_ITEM' && context.items.every((item) => item.id === event.id),
-    // The guard runs before the update, so it checks the card with the new value in it.
-    cardComplete: ({ context, event }) =>
-      isCardComplete(event.type === 'UPDATE_CARD' ? { ...context.card, [event.field]: event.value } : context.card),
+    cardComplete: ({ context, event }) => isCardComplete(cardAfterUpdate(context.card, event)),
   },
 }).createMachine({
   id: 'checkout',
@@ -115,7 +114,7 @@ export const checkoutMachine = setup({
         filled: {
           on: {
             SET_QTY: {
-              guard: 'orderOpen',
+              guard: 'beforePayment',
               actions: assign({
                 items: ({ context, event }) =>
                   context.items.map((item) =>
@@ -125,12 +124,12 @@ export const checkoutMachine = setup({
             },
             REMOVE_ITEM: [
               {
-                guard: and(['orderOpen', 'removesLastItem']),
+                guard: and(['beforePayment', 'removesLastItem']),
                 target: 'empty',
                 actions: assign({ items: [] }),
               },
               {
-                guard: 'orderOpen',
+                guard: 'beforePayment',
                 actions: assign({ items: ({ context, event }) => context.items.filter((item) => item.id !== event.id) }),
               },
             ],
@@ -144,9 +143,9 @@ export const checkoutMachine = setup({
     shipping: {
       initial: 'standard',
       on: {
-        SHIP_STANDARD: { guard: 'orderOpen', target: '.standard' },
-        SHIP_EXPRESS: { guard: 'orderOpen', target: '.express' },
-        SHIP_PICKUP: { guard: 'orderOpen', target: '.pickup' },
+        SHIP_STANDARD: { guard: 'beforePayment', target: '.standard' },
+        SHIP_EXPRESS: { guard: 'beforePayment', target: '.express' },
+        SHIP_PICKUP: { guard: 'beforePayment', target: '.pickup' },
       },
       states: {
         standard: {},

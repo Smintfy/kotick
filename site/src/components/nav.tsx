@@ -41,12 +41,14 @@ export function Nav({ sections, version }: { sections: readonly NavSection[]; ve
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
                 {section.items.map((item) => {
+                  const current = item.href === pathname;
+
                   return (
                     <SidebarMenuItem key={item.href}>
                       <SidebarMenuButton
                         size="sm"
-                        isActive={item.href === pathname}
-                        render={<Link href={item.href} aria-current={item.href === pathname ? 'page' : undefined} />}
+                        isActive={current}
+                        render={<Link href={item.href} aria-current={current ? 'page' : undefined} />}
                         className="h-7.5 px-3 text-[13px] font-medium text-secondary-foreground transition-[background-color] duration-120 ease-[ease] hover:bg-muted active:bg-muted data-active:hover:bg-accent motion-reduce:transition-none"
                         onClick={() => setOpenMobile(false)}
                       >

@@ -1,20 +1,32 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Pager } from '@/components/pager';
-import { OnboardingExample } from '@/demo/onboarding/example';
-import { demoHref, type ExampleId, examplesPage } from '@/site';
+import { CheckoutWindow } from '@/demo/checkout/example';
+import { OnboardingWindow } from '@/demo/onboarding/example';
+import { demoSource } from '@/demo/source';
+import { checkedHref, demoHref, type ExampleId, examplesPage } from '@/site';
 
 export const metadata: Metadata = { title: examplesPage.title, description: examplesPage.description };
 
 export default function ExamplesPage() {
   const bodies: Record<ExampleId, ReactNode> = {
+    checkout: (
+      <>
+        <p>
+          A checkout page. The machine has parallel regions for the cart, the shipping and the payment. The payment
+          sends a request that can fail.
+        </p>
+        <CheckoutWindow href={demoHref('checkout')} source={demoSource('checkout')} />
+      </>
+    ),
     onboarding: (
       <>
         <p>
           An onboarding flow in four steps. Each step is a state of the onboarding machine. Step 3 sends a request
           that can fail.
         </p>
-        <OnboardingExample href={demoHref('onboarding')} />
+        <OnboardingWindow href={demoHref('onboarding')} source={demoSource('onboarding')} />
       </>
     ),
   };
@@ -24,6 +36,12 @@ export default function ExamplesPage() {
       <header className="mb-8">
         <h1>{examplesPage.title}</h1>
         <p className="mt-2 mb-4 text-muted-foreground">{examplesPage.description}</p>
+        <p>
+          The Code tab of each demo shows its machine and its fixtures. The demos give the fixtures to{' '}
+          <code>&lt;Konat /&gt;</code> as an array, so the fixtures are in each build of this site. In your app, use a
+          loader with a development condition. Refer to{' '}
+          <Link href={checkedHref('/docs/fixtures#define-fixtures')}>Define fixtures</Link>.
+        </p>
       </header>
       {examplesPage.headings.map(({ id, text }, index) => (
         <section key={id} className="@container" aria-labelledby={id}>

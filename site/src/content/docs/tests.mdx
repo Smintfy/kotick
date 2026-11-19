@@ -1,0 +1,40 @@
+export const metadata = {
+  title: 'Tests',
+  description: 'What konat does in a test runner, and how to turn it off there.',
+};
+
+konat turns off only when `process.env.NODE_ENV` is `"production"`. Test runners such as Vitest and Jest set it to `"test"`. Thus, in your tests, konat works as it does in development.
+
+## What konat does in a test
+
+What konat does depends on the test environment:
+
+| Environment | What konat does |
+|---|---|
+| A DOM, such as `jsdom` | The hooks and `connect()` register each actor in a registry on `globalThis`. konat records the context of each actor in `sessionStorage`, under keys that start with `konat:recorded:`. If the test renders `<Konat />`, konat adds a `<div data-konat-root>` to `document.body`. |
+| `node`, with no DOM | Nothing. konat does nothing when `window` or `document` is missing, as on the server. |
+
+Without a preview, the hooks behave as the hooks of `@xstate/react`. Thus, your tests do not have to change. konat writes nothing to the console when it has no problem.
+
+A test that reads `sessionStorage` also sees the keys of konat. konat writes them 500 ms after a transition, so a write can occur during the next test.
+
+## Turn konat off in tests
+
+Mock the two entries of konat in a setup file. This example is for Vitest:
+
+```ts
+// vitest.setup.ts
+import { vi } from 'vitest';
+
+vi.mock('konat', () => ({ Konat: () => null }));
+
+vi.mock('konat/xstate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('konat/xstate')>()),
+  ...(await vi.importActual<typeof import('@xstate/react')>('@xstate/react')),
+  connect: <TActor>(actor: TActor) => actor,
+}));
+```
+
+Add the file to `test.setupFiles` in the Vitest config. Then, in each test, the hooks are the hooks of `@xstate/react`, `connect()` returns the actor that you give it, and `<Konat />` renders nothing. `defineFixtures()` does not change.
+
+Other test runners have a function that does the same thing, for example `jest.mock()` in Jest.

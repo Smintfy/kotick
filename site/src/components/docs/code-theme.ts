@@ -9,7 +9,6 @@ const fn = '#286cb7';
 const constant = '#c46524';
 const tag = '#ba4162';
 
-/** The syntax palette of agentation.com, from its prism-react-renderer theme, in the Zed syntax names of Highlights. */
 export const codeTheme = {
   name: 'konat light',
   appearance: 'light',

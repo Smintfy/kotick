@@ -8,18 +8,21 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { RadioGroup } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   type Card,
   type CheckoutEvent,
   checkoutMachine,
+  digitsOf,
   expiryProblem,
   fixturesInEveryBuild,
   maxQty,
   subtotalOf,
 } from '@/demo/checkout/machine';
 import { DemoWindow } from '@/demo/demo-window';
+import { RadioCard } from '@/demo/radio-card';
+import type { DemoSource } from '@/demo/source';
 
 const shippingOptions = [
   { key: 'standard', label: 'Standard', fee: 0, Icon: Truck, event: { type: 'SHIP_STANDARD' } },
@@ -31,9 +34,6 @@ const formatPrice = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 const feeOf = (option: { fee: number }) => (option.fee ? formatPrice(option.fee) : 'Free');
 
-const digitsOf = (value: string) => value.replace(/\D/g, '');
-
-/** Each formatter keeps only the digits that the field accepts, and adds the separators. */
 const cardFormats: Record<keyof Card, (value: string) => string> = {
   number: (value) =>
     digitsOf(value)
@@ -69,7 +69,6 @@ export function Checkout() {
   const expiryError = expiryProblem(card.expiry);
   const cardError = failed ? `${error ?? 'Payment failed'}.` : expiryError ? `${expiryError}.` : undefined;
 
-  /** On the payment step, the cart is not on the page, so the breakdown lists the items too. */
   const summary = (withItems: boolean) => (
     <Accordion className="border-t pt-2">
       <AccordionItem>
@@ -168,7 +167,6 @@ export function Checkout() {
               <li key={item.id} className="flex items-center gap-3">
                 <span className="min-w-0 flex-1 truncate text-foreground">{item.name}</span>
                 <div role="group" aria-label={`Quantity of ${item.name}`} className="flex items-center rounded-lg shadow-code">
-                  {/* At a quantity of 1, the minus button removes the item. */}
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -210,16 +208,10 @@ export function Checkout() {
             }}
           >
             {shippingOptions.map((option) => (
-              <Label
-                key={option.key}
-                className="relative h-9 cursor-pointer gap-2.5 rounded-lg px-2.5 leading-normal shadow-code transition-[background-color,box-shadow] hover:bg-muted has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-data-checked:shadow-[0_0_0_1px_var(--foreground),0_1px_2px_oklch(0_0_0/0.05)] has-data-checked:text-foreground has-data-disabled:pointer-events-none has-data-disabled:opacity-50"
-              >
-                <option.Icon className="size-4 shrink-0 text-muted-foreground" />
+              <RadioCard key={option.key} value={option.key} icon={option.Icon} disabled={!snapshot.can(option.event)}>
                 {option.label}
                 <span className="ml-auto text-muted-foreground">{feeOf(option)}</span>
-                {/* The card shows the selection and the focus. The radio stays for the keyboard and for screen readers. */}
-                <RadioGroupItem value={option.key} className="absolute opacity-0" disabled={!snapshot.can(option.event)} />
-              </Label>
+              </RadioCard>
             ))}
           </RadioGroup>
         </fieldset>
@@ -315,16 +307,24 @@ export function Checkout() {
   );
 }
 
-export function CheckoutExample({ fixturesHref, pageHref }: { fixturesHref: string; pageHref: string }) {
+export function CheckoutWindow({ href, source }: { href: string; source: DemoSource }) {
+  return (
+    <DemoWindow fixtures={fixturesInEveryBuild} href={href} source={source}>
+      <Checkout />
+    </DemoWindow>
+  );
+}
+
+type CheckoutExampleProps = { fixturesHref: string; pageHref: string; source: DemoSource };
+
+export function CheckoutExample({ fixturesHref, pageHref, source }: CheckoutExampleProps) {
   return (
     <>
       <p>
         A checkout page with the real overlay docked beside it. The panel lists the checkout machine and all of its
         states, also the states that the page has not gone to.
       </p>
-      <DemoWindow fixtures={fixturesInEveryBuild} href={pageHref}>
-        <Checkout />
-      </DemoWindow>
+      <CheckoutWindow href={pageHref} source={source} />
       <div className="prose">
         <ol>
           <li>

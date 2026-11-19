@@ -5,7 +5,7 @@ export const metadata = {
   description: 'What production builds keep, and what the adapter costs in development.',
 };
 
-In production builds, `<Konat />` renders nothing, the hooks are the hooks of `@xstate/react`, and the registry, the overlay and the adapter are removed from the bundle. You do not have to remove the overlay or change the imports before a release.
+In production builds, `<Konat />` renders nothing, the hooks are the hooks of `@xstate/react`, and the registry, the overlay and the adapter are removed from the bundle. You do not have to remove the overlay or change the imports before a release. In a test runner, `NODE_ENV` is `"test"`, so konat stays on. Refer to [Tests](/docs/tests).
 
 This needs a bundler that replaces `process.env.NODE_ENV` with `"production"`. Vite, Next.js (webpack and Turbopack) and React Router do this. With esbuild, add `--define:process.env.NODE_ENV='"production"'`. The package sets `"sideEffects": false`, so the bundler can remove the modules that nothing uses.
 

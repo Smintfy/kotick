@@ -1,4 +1,3 @@
-/** The install command of each package manager. The install tabs and the Markdown copy of a page show them. */
 export const packageManagers = [
   { manager: 'npm', add: 'npm install' },
   { manager: 'pnpm', add: 'pnpm add' },

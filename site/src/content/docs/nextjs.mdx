@@ -1,14 +1,14 @@
 export const metadata = {
   title: 'Next.js',
-  description: 'Use konat in the App Router, with server components.',
+  description: 'Use konat in the App Router, with server components, and in the Pages Router.',
 };
 
 Both entries start with `'use client'`, so you can import them in the App Router.
 
 ## Server components
 
-- A server component can render `<Konat />`, for example in the root layout.
-- A server component cannot give a function to a client component, so it cannot give the `fixtures` loader. Render `<Konat fixtures={…} />` in a client component, and render that component in the layout:
+- A server component can render `<Konat />`.
+- A server component cannot give a function to a client component, so it cannot give the `fixtures` loader. Render `<Konat fixtures={…} />` in a client component:
 
   ```tsx
   // src/components/dev-tools.tsx
@@ -26,6 +26,46 @@ Both entries start with `'use client'`, so you can import them in the App Router
 - Call the hooks and `createActorContext()` only in client components, as with `@xstate/react`.
 - On the server, konat does nothing: the overlay renders nothing, and nothing registers. The overlay mounts after hydration, so it does not cause hydration errors.
 
-## Monorepos
+## Root layout
 
-In a monorepo that gives the TypeScript source of konat, add it to `transpilePackages`.
+Render the overlay in the root layout, after `{children}`. The root layout stays mounted when the page changes. Thus, the panel stays open while the machines of each page register and unregister.
+
+```tsx
+// src/app/layout.tsx
+import type { ReactNode } from 'react';
+import { DevTools } from '@/components/dev-tools';
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <DevTools />
+      </body>
+    </html>
+  );
+}
+```
+
+## Pages Router
+
+konat also works in the Pages Router. Render `<Konat />` in `pages/_app.tsx`, so that it stays mounted when the page changes:
+
+```tsx
+// src/pages/_app.tsx
+import type { AppProps } from 'next/app';
+import { Konat } from 'konat';
+
+const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
+
+export default function App({ Component, pageProps }: AppProps) {
+  return (
+    <>
+      <Component {...pageProps} />
+      <Konat fixtures={fixtures} />
+    </>
+  );
+}
+```
+
+The Pages Router has no server components. Thus, `_app.tsx` can give the `fixtures` loader, and each page and component can call the hooks. During server rendering, konat does nothing, as in the App Router.

@@ -22,5 +22,5 @@ export default async function FullWindowDemo({ params }: PageProps<'/docs/exampl
 
   if (!demo) notFound();
 
-  return <DemoPage id={demo.id} title={demo.title} backHref={checkedHref(demo.from)} />;
+  return <DemoPage id={demo.id} title={demo.title} backHref={checkedHref(demo.backHref)} />;
 }

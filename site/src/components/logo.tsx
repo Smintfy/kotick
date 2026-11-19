@@ -1,4 +1,3 @@
-/** The konat mark. It uses the text color of its parent. */
 export function Logo({ className }: { className?: string }) {
   return (
     <svg viewBox="12 12 96 96" fill="currentColor" aria-hidden="true" className={className}>

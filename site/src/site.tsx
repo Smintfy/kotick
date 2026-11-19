@@ -10,6 +10,8 @@ import * as nextjs from '@/content/docs/nextjs.mdx';
 import * as overview from '@/content/docs/overview.mdx';
 import * as panel from '@/content/docs/panel.mdx';
 import * as production from '@/content/docs/production.mdx';
+import * as tests from '@/content/docs/tests.mdx';
+import * as troubleshooting from '@/content/docs/troubleshooting.mdx';
 
 export type Heading = { id: string; text: string; depth: 2 | 3 };
 
@@ -18,12 +20,10 @@ export type NavItem = { href: string; title: string; headings: readonly Heading[
 export type DocsPage = NavItem & {
   slug: string;
   description: string;
-  /** The path of the Markdown copy of the page, or `undefined` when the page has none. */
   markdownHref: string | undefined;
   Content: MDXContent;
 };
 
-/** The docs pages at /docs/<slug>. Each file is in src/content/docs. navSections sets the sequence in the nav. */
 const docs = [
   ['install', install],
   ['concepts', concepts],
@@ -32,36 +32,33 @@ const docs = [
   ['api', api],
   ['nextjs', nextjs],
   ['production', production],
+  ['tests', tests],
+  ['troubleshooting', troubleshooting],
   ['limitations', limitations],
   ['faq', faq],
 ] as const;
 
 type DocsSlug = (typeof docs)[number][0];
 
-/** These pages have no Markdown copy and no "Copy page" button. */
 const withoutMarkdown: ReadonlySet<DocsSlug> = new Set(['faq', 'limitations']);
 
-export const examplesHeadings = [
+const examplesHeadings = [
+  { id: 'checkout', text: 'Checkout', depth: 2 },
   { id: 'onboarding', text: 'Onboarding', depth: 2 },
 ] as const satisfies readonly Heading[];
 
 export type ExampleId = (typeof examplesHeadings)[number]['id'];
 
-/** The examples page is TSX, not MDX. Its route is src/app/docs/examples. */
 export const examplesPage = {
   href: '/docs/examples',
   title: 'Examples',
-  description: 'Apps with the real overlay docked beside them. Each example has a fixture for each state.',
+  description: 'Apps with the real overlay docked beside them, and the source of their machines and fixtures.',
   headings: examplesHeadings,
 } as const satisfies NavItem & { description: string };
 
-/**
- * The demo apps. Each demo has a full-window page at /docs/examples/<id>, where the panel has more space.
- * `from` is the docs section that shows the demo in a frame.
- */
 export const demos = [
-  { id: 'checkout', title: 'Checkout', from: '/#how-it-works' },
-  { id: 'onboarding', title: 'Onboarding', from: '/docs/examples#onboarding' },
+  { id: 'checkout', title: 'Checkout', backHref: '/docs/examples#checkout' },
+  { id: 'onboarding', title: 'Onboarding', backHref: '/docs/examples#onboarding' },
 ] as const;
 
 export type DemoId = (typeof demos)[number]['id'];
@@ -81,7 +78,6 @@ function docsPage(
   return { slug, href, title: metadata.title, description: metadata.description, markdownHref, headings, Content };
 }
 
-/** The landing page. Its route is src/app/(docs)/page.tsx. next.config.ts rewrites /index.md to src/app/(docs)/md. */
 export const overviewPage = docsPage('overview', overview, '/', '/index.md');
 
 export const pitch = overviewPage.description;
@@ -104,7 +100,6 @@ function docsItem(slug: DocsSlug): NavItem {
   return { href: page.href, title: page.title, headings: page.headings };
 }
 
-/** The sections of the sidebar. The pager goes through the pages in this sequence. */
 export const navSections: readonly NavSection[] = [
   {
     title: 'Introduction',
@@ -116,11 +111,18 @@ export const navSections: readonly NavSection[] = [
   },
   {
     title: 'Guides',
-    items: [docsItem('concepts'), docsItem('panel'), docsItem('fixtures'), docsItem('nextjs'), docsItem('production')],
+    items: [
+      docsItem('concepts'),
+      docsItem('panel'),
+      docsItem('fixtures'),
+      docsItem('nextjs'),
+      docsItem('production'),
+      docsItem('tests'),
+    ],
   },
   {
     title: 'Reference',
-    items: [docsItem('api'), docsItem('limitations'), docsItem('faq')],
+    items: [docsItem('api'), docsItem('troubleshooting'), docsItem('limitations'), docsItem('faq')],
   },
 ];
 
@@ -149,7 +151,6 @@ const problems = [['overview', overview] as const, ...docs].flatMap(([slug, { li
 
 if (problems.length > 0) throw new Error(`The docs have broken links.\n${problems.map((line) => `- ${line}`).join('\n')}`);
 
-/** Returns `href`. Fails the build when no page or heading has it. */
 export function checkedHref(href: string): string {
   const problem = brokenLink(href);
 

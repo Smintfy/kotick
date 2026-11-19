@@ -12,10 +12,12 @@ See every state of every state machine on the page, and preview any of them in p
 ## Install
 
 ```bash
-npm install konat
+npm install konat xstate @xstate/react
 ```
 
-konat needs `react` 18 or 19, `xstate` 5.28 or later, and `@xstate/react` 6.1 or later.
+konat needs `react` 18 or 19, `xstate` 5.28 or later, and `@xstate/react` 6.1 or later. konat does not install `xstate` and `@xstate/react`. If your app already has them, install only `konat`.
+
+Add konat to `dependencies`, not to `devDependencies`. Your app code imports `konat/xstate`, thus the production build needs the package.
 
 ## Quick start
 

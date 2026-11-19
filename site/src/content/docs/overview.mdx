@@ -11,6 +11,8 @@ export const metadata = {
 
 <CheckoutDemo />
 
+konat gives your components a proxy of each actor. During a preview, the proxy returns a snapshot of the selected state, and the real actor continues to run. For the adapter, the registry and the overlay, see [How konat works](/docs/concepts#how-konat-works).
+
 ## Why konat
 
 Two changes to your app. In development, a transition costs [{costs.transition}](/docs/production#performance-in-development) more than with `@xstate/react`. In production, the startup JavaScript grows by [{costs.startup}](/docs/production) gzip with esbuild and Vite.

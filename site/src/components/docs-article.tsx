@@ -3,7 +3,6 @@ import { Pager } from '@/components/pager';
 import { pageMarkdown } from '@/content/markdown';
 import type { DocsPage } from '@/site';
 
-/** The title, the description, the "Copy page" button, the content, and the pager of a docs page. */
 export async function DocsArticle({ page }: { page: DocsPage }) {
   return (
     <>

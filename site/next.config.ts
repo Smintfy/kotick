@@ -11,6 +11,9 @@ const keepOverlayInProduction = {
 
 const config: NextConfig = {
   transpilePackages: ['konat'],
+  async redirects() {
+    return [{ source: '/docs', destination: '/', permanent: false }];
+  },
   async rewrites() {
     return [
       { source: '/index.md', destination: '/md' },

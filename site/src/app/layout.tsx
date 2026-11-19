@@ -8,16 +8,16 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
 
 export const metadata: Metadata = {
-	title: { default: 'konat', template: '%s — konat' },
-	description: pitch,
+  title: { default: 'konat', template: '%s — konat' },
+  description: pitch,
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
-	return (
-		<html lang="en" className={`antialiased ${inter.variable} ${geistMono.variable}`}>
-			<body>
-				<TooltipProvider>{children}</TooltipProvider>
-			</body>
-		</html>
-	);
+  return (
+    <html lang="en" className={`antialiased ${inter.variable} ${geistMono.variable}`}>
+      <body>
+        <TooltipProvider>{children}</TooltipProvider>
+      </body>
+    </html>
+  );
 }

@@ -1,10 +1,6 @@
 import GithubSlugger from 'github-slugger';
 import { toString } from 'mdast-util-to-string';
 
-/**
- * Gives each heading an id. Exports the H2 and H3 headings as `headings`, for the nav,
- * and the links to site pages as `links`, so that site.tsx can find broken links.
- */
 export default function remarkHeadings() {
   return (tree) => {
     const slugger = new GithubSlugger();

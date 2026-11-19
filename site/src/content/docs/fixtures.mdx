@@ -14,24 +14,48 @@ Put them in a file of their own, and give `<Konat />` a loader for that file:
 import { defineFixtures } from 'konat/xstate';
 import { checkoutMachine } from '@/machines/checkout';
 
-const base = { items: [{ id: 'sku_1', name: 'Linen tote', price: 2400, qty: 2 }], total: 4800, cardNumber: '' };
+const items = [{ id: 'sku_1', name: 'Linen tote', price: 2400, qty: 2 }];
+const card = { number: '4242 4242 4242 4242', expiry: '12/30', cvc: '123' };
 
 export default [
   defineFixtures(checkoutMachine, {
-    'payment.error': { context: { ...base, cardNumber: '4000 0000 0000 0002', error: 'Card declined' } },
-    'payment.success': { context: { ...base, receiptId: 'rcpt_123' } },
+    'payment.error': { context: { items, card: { ...card, number: '4000 0000 0000 0002' }, error: 'Card declined' } },
+    'payment.success': { context: { items, card, receiptId: 'rcpt_123' } },
   }),
 ];
 ```
 
-```tsx
-// The condition removes the fixtures, and the import, from production builds.
-const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
+`checkoutMachine` is the machine of the checkout demo. To see it, open the Code tab of the [checkout example](/docs/examples#checkout).
 
-<Konat fixtures={fixtures} />;
+The loader has a development condition. The condition removes the fixtures, and the import, from production builds. Use the condition of your bundler.
+
+In Vite:
+
+```tsx
+import { Konat } from 'konat';
+
+const fixtures = import.meta.env.DEV ? () => import('@/debug/fixtures') : undefined;
+
+export function DevTools() {
+  return <Konat fixtures={fixtures} />;
+}
 ```
 
-In Vite, you can use `import.meta.env.DEV` as the condition.
+In Next.js and other bundlers:
+
+```tsx
+import { Konat } from 'konat';
+
+const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
+
+export function DevTools() {
+  return <Konat fixtures={fixtures} />;
+}
+```
+
+Do not use `process.env.NODE_ENV` in Vite. A default Vite app does not have the Node.js types, thus TypeScript does not know `process`. In Next.js, put `'use client'` at the top of the file. Refer to [Next.js](/docs/nextjs).
+
+The examples import from `src` through the `@/` alias. Next.js sets this alias, but Vite does not. In Vite, add the alias to `paths` in your TypeScript config and to `resolve.alias` in `vite.config.ts`, or use relative imports.
 
 ## How fixtures apply
 

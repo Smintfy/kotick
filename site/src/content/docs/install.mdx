@@ -3,7 +3,11 @@ export const metadata = {
   description: 'Install the package, mount the overlay, and import the XState hooks from konat/xstate.',
 };
 
-<InstallTabs name="konat" />
+<InstallTabs packages="konat xstate @xstate/react" />
+
+The command also installs `xstate` and `@xstate/react`, because konat does not install them. If your app already has them, install only `konat`.
+
+Add konat to `dependencies`, not to `devDependencies`. Your app code imports `konat/xstate`, thus the production build needs the package.
 
 ## Requirements
 
@@ -58,3 +62,56 @@ export const sessionActor = connect(createActor(sessionMachine).start(), { id: '
 ```
 
 Use the actor that `connect()` returns everywhere in the app, for example with `useSelector(sessionActor, …)`.
+
+## Prevent imports from @xstate/react
+
+A component that imports a hook from `@xstate/react` continues to work, but the panel does not list its machine. To find these imports, add the `no-restricted-imports` rule to your linter. `konat/xstate` exports all the functions of `@xstate/react`, so the rule can block the full package. For ESLint:
+
+```js
+// eslint.config.js
+export default [
+  {
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          name: '@xstate/react',
+          message: 'Import the XState hooks from konat/xstate, so that the panel lists the machine.',
+        },
+      ],
+    },
+  },
+];
+```
+
+Oxlint has the same rule, with the same options.
+
+## Check the install
+
+You can check the install without a screen, for example in a browser test or from an agent. In development, `<Konat />` adds a `<div data-konat-root>` to `document.body`, or to `portalTarget`. The overlay is in the open shadow root of this element.
+
+1. Get the shadow root:
+
+   ```js
+   const shadow = document.querySelector('[data-konat-root]')?.shadowRoot;
+   ```
+
+   If `shadow` is `undefined`, `<Konat />` is not mounted, or the page is from a production build.
+
+2. Open the panel:
+
+   ```js
+   shadow.querySelector('button[aria-label^="Konat"]').click();
+   ```
+
+3. After the panel renders, read the machine ids:
+
+   ```js
+   [...shadow.querySelectorAll('[data-machine]')].map((row) => row.getAttribute('data-machine'));
+   ```
+
+   The result is a list such as `['checkout']`. If a machine is not in the list, refer to the [FAQ](/docs/faq).
+
+The panel keeps its open state and its page from the last visit. Thus, in a browser that used the panel before, step 2 can close the panel, or open the page of one machine. To start with a closed panel, [reset the panel](/docs/troubleshooting#reset-the-panel) before step 1.
+
+konat writes nothing to the console when it starts. A message that starts with `[konat]` tells you about a problem. Refer to [Troubleshooting](/docs/troubleshooting#console-warnings).

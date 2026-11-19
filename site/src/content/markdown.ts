@@ -16,25 +16,59 @@ type JsxElement = MdxJsxFlowElement | MdxJsxTextElement;
 
 const parser = unified().use(remarkParse).use(remarkMdx).use(remarkGfm);
 
-/** The values of the expressions that the docs can use in the text, such as `{costs.startup}`. */
 const expressions: ReadonlyMap<string, string> = new Map(
   Object.entries(costs).map(([key, value]) => [`costs.${key}`, value]),
 );
 
-/** The MDX AST types attribute values and literals as unions. This guard is the parser of a string in them. */
 function isString<T>(value: T): value is T & string {
   return typeof value === 'string';
 }
 
-function stringAttribute(element: JsxElement, name: string): string {
+function optionalStringAttribute(element: JsxElement, name: string): string | undefined {
   const value = element.attributes.find((attribute) => 'name' in attribute && attribute.name === name)?.value;
 
-  if (!isString(value)) throw new Error(`<${element.name}> needs the string attribute ${name}.`);
+  if (value === undefined) return undefined;
+
+  if (!isString(value)) throw new Error(`<${element.name}> needs ${name} to be a string.`);
 
   return value;
 }
 
-/** Reads an attribute such as `other={['Alt', 'S']}`. Only an array of string literals is accepted. */
+function stringAttribute(element: JsxElement, name: string): string {
+  const value = optionalStringAttribute(element, name);
+
+  if (value === undefined) throw new Error(`<${element.name}> needs the string attribute ${name}.`);
+
+  return value;
+}
+
+function childrenMarkdown(element: JsxElement, source: string): string {
+  const start = element.children[0]?.position?.start.offset;
+  const end = element.children.at(-1)?.position?.end.offset;
+
+  if (start === undefined || end === undefined) return '';
+
+  return mdxToMarkdown(source.slice(start, end));
+}
+
+function tableCell(text: string): string {
+  return text.replace(/\s*\n\s*/g, ' ').replaceAll('|', '\\|');
+}
+
+function propsTable(element: JsxElement, source: string): string {
+  const rows = element.children.flatMap((child) => {
+    if (child.type !== 'mdxJsxFlowElement' || child.name !== 'Prop') return [];
+    const name = stringAttribute(child, 'name');
+    const type = optionalStringAttribute(child, 'detailedType') ?? stringAttribute(child, 'type');
+    const value = optionalStringAttribute(child, 'default');
+    const cells = [`\`${name}\``, `\`${type}\``, value === undefined ? 'None' : `\`${value}\``, childrenMarkdown(child, source)];
+
+    return [`| ${cells.map(tableCell).join(' | ')} |`];
+  });
+
+  return ['| Prop | Type | Default | Description |', '|---|---|---|---|', ...rows].join('\n');
+}
+
 function stringArrayAttribute(element: JsxElement, name: string): string[] {
   const value = element.attributes.find((attribute) => 'name' in attribute && attribute.name === name)?.value;
   const program = isString(value) ? undefined : value?.data?.estree;
@@ -50,21 +84,22 @@ function stringArrayAttribute(element: JsxElement, name: string): string[] {
   return strings;
 }
 
-/** The Markdown for each component that a page with a Markdown copy can use. */
 const jsx = {
   InstallTabs: (element) => {
-    const name = stringAttribute(element, 'name');
-    const commands = packageManagers.map(({ add }) => `${add} ${name}`).join('\n');
+    const packages = stringAttribute(element, 'packages');
+    const [first, ...others] = packageManagers.map(({ add }) => `${add} ${packages}`);
+    const alternatives = others.map((command) => `\`${command}\``).join(', ');
 
-    return `\`\`\`bash\n${commands}\n\`\`\``;
+    return `\`\`\`bash\n${first}\n\`\`\`\n\nOther package managers: ${alternatives}.`;
   },
-  // The demo has no text, so the copy links to the full-window demo.
   CheckoutDemo: () => `The [checkout demo](${demoHref('checkout')}) runs the real overlay beside a checkout app.`,
+  ArchitectureDiagram: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
   Kbd: (element) => `\`${toString(element)}\``,
   PanelFigure: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
+  PropsTable: propsTable,
   Shortcut: (element) =>
     `\`${stringArrayAttribute(element, 'other').join('+')}\` (\`${stringAttribute(element, 'mac')}\` on macOS)`,
-} satisfies Record<string, (element: JsxElement) => string>;
+} satisfies Record<string, (element: JsxElement, source: string) => string>;
 
 function hasMarkdown(name: string): name is keyof typeof jsx {
   return Object.hasOwn(jsx, name);
@@ -82,8 +117,7 @@ function expression(value: string): string {
   return result;
 }
 
-/** The Markdown for a node, or `undefined` to keep its source text. */
-function replacement(node: Nodes): string | undefined {
+function replacement(node: Nodes, source: string): string | undefined {
   switch (node.type) {
     case 'mdxjsEsm':
       return '';
@@ -96,7 +130,7 @@ function replacement(node: Nodes): string | undefined {
 
       if (!render) throw new Error(`The Markdown copy has no text for <${node.name ?? ''}>.`);
 
-      return render(node);
+      return render(node, source);
     }
 
     default:
@@ -104,15 +138,11 @@ function replacement(node: Nodes): string | undefined {
   }
 }
 
-/**
- * Turns MDX into Markdown that an LLM or a person can read without the site.
- * The text outside the MDX parts stays the same as in the source. Thus, the code blocks and the tables keep their format.
- */
 export function mdxToMarkdown(source: string): string {
   const edits: Array<{ start: number; end: number; text: string }> = [];
 
   const walk = (node: Nodes) => {
-    const text = replacement(node);
+    const text = replacement(node, source);
 
     if (text !== undefined) {
       const start = node.position?.start.offset;
@@ -133,7 +163,6 @@ export function mdxToMarkdown(source: string): string {
   return edits.reduceRight((text, { start, end, text: value }) => text.slice(0, start) + value + text.slice(end), source).trim();
 }
 
-/** The Markdown copy of a docs page: the title, the description, and the content. */
 export async function pageMarkdown(page: { slug: string; title: string; description: string }): Promise<string> {
   const source = await readFile(path.join(process.cwd(), 'src/content/docs', `${page.slug}.mdx`), 'utf8');
 

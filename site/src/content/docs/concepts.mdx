@@ -1,3 +1,5 @@
+import { ArchitectureDiagram } from '@/components/docs/architecture-diagram';
+
 export const metadata = {
   title: 'Concepts',
   description: 'What a state machine is, why UI code needs one, and the terms that the panel uses.',
@@ -122,3 +124,25 @@ The state tree marks each state with the data it has. In the panel, you can chan
 ## Child actors
 
 Machines that a machine invokes or spawns are listed under their parent. You can see their state, but you cannot preview them in this version.
+
+## How konat works
+
+konat has three parts: the adapter in `konat/xstate`, a registry for the page, and the overlay.
+
+<ArchitectureDiagram caption="A component gets a proxy from useMachine(). The proxy calls the real actor and registers in the registry. The overlay selects a preview in the registry, and the proxy reads it." />
+
+**The adapter gives your components a proxy of each actor.** The hooks call the hooks of `@xstate/react`, and return a proxy of the actor that they make. `connect()` does the same for an actor that you create outside React. The proxy sends each call to the real actor. During a preview, `getSnapshot()`, `subscribe()` and `send()` work differently.
+
+**One registry holds the actors of the page.** Each proxy registers its actor under a machine id and an instance id. The machine id is `machine.id`, or `debug.id` if you set it. The registry is on `globalThis`, so all React roots and all copies of konat on the page use the same registry. On the server, the registry does nothing, because one server process renders the pages of many users.
+
+**The list of states comes from the machine.** konat reads the state nodes of the machine one time and keeps the tree. Thus, the panel can show the states that the app never went to. Each atomic or final state is a leaf that you can preview.
+
+**A preview is a snapshot that XState makes.** When you select a leaf, the registry keeps an override for that instance: the leaves and a context. The proxy gives the leaves and the context to `machine.resolveState()`, and returns that snapshot from `getSnapshot()` and to subscribers. The components render again with a real XState snapshot, so `matches()`, `hasTag()` and `can()` work. In a parallel machine, the regions that you did not select keep their current leaf. The live child actors are copied into the preview. The real actor does not know about the preview, and continues to run.
+
+**Events go to a log during a preview.** `send()` on the proxy, and the internal send that `sendTo()`, `forwardTo()` and delayed events use, look for an override first. If there is one, the event goes to the event log of the panel, not to the actor.
+
+**Context comes from recordings, fixtures or the live actor.** The adapter records the context of each snapshot in memory, under its set of leaves. Each 500 ms, it writes a JSON copy of the recordings to `sessionStorage`. The limits are 50 sets of leaves for each machine, 100,000 characters for each context, and 1,000,000 characters in total. The copy does not have functions. A context that JSON cannot copy correctly, for example one with an actor ref, stays only in memory. A preview uses the recording of the same set of leaves. If there is none, it uses the most recent recording that has a selected leaf. If there is no recording, it uses a [fixture](/docs/fixtures), and then the live context.
+
+**The overlay renders in a shadow root.** `<Konat />` adds a `<div data-konat-root>` to `document.body`, or to `portalTarget`. It attaches a shadow root to the `div`, puts the CSS of the overlay in it, and renders the panel there with a React portal. The CSS of the page and the CSS of the overlay cannot change each other. konat adds the `div` in a layout effect, after hydration. Thus, the server renders nothing.
+
+**Production builds keep none of it.** Each export is `process.env.NODE_ENV !== 'production' ? <konat version> : <@xstate/react version>`. The bundler replaces `process.env.NODE_ENV` with `"production"` and removes the branch that cannot run. The package sets `"sideEffects": false`, so the bundler also removes the modules that nothing imports. `<Konat />` becomes a component that returns `null`. See [Production builds](/docs/production).

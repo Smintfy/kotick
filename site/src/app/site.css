@@ -2,13 +2,53 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* The scroll-fade-x and scroll-fade-y utilities of shadcn set the same mask and animation. Thus, they do not combine. */
+@utility scroll-fade-xy {
+  --_scroll-fade-size-t: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
+  --_scroll-fade-size-b: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
+  --_scroll-fade-size-s: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
+  --_scroll-fade-size-e: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
+  --scroll-fade-xy:
+    var(
+      --scroll-fade-mask,
+      linear-gradient(to right, transparent 0, #000 var(--scroll-fade-s, 0px), #000 calc(100% - var(--scroll-fade-e, 0px)), transparent 100%)
+    ),
+    linear-gradient(to bottom, transparent 0, #000 var(--scroll-fade-t, 0px), #000 calc(100% - var(--scroll-fade-b, 0px)), transparent 100%);
+  -webkit-mask-image: var(--scroll-fade-xy);
+  mask-image: var(--scroll-fade-xy);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+
+  @supports (animation-timeline: scroll()) {
+    animation:
+      scroll-fade-reveal-t 1ms ease-in-out,
+      scroll-fade-reveal-b 1ms ease-in-out,
+      scroll-fade-reveal-s 1ms ease-in-out,
+      scroll-fade-reveal-e 1ms ease-in-out;
+    animation-timeline: scroll(self y), scroll(self y), scroll(self inline), scroll(self inline);
+    animation-range:
+      0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
+      calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%,
+      0 var(--scroll-fade-reveal, calc(var(--spacing) * 24)),
+      calc(100% - var(--scroll-fade-reveal, calc(var(--spacing) * 24))) 100%;
+    animation-fill-mode: both;
+  }
+
+  @supports not (animation-timeline: scroll()) {
+    --scroll-fade-t: var(--_scroll-fade-size-t);
+    --scroll-fade-b: var(--_scroll-fade-size-b);
+    --scroll-fade-s: var(--_scroll-fade-size-s);
+    --scroll-fade-e: var(--_scroll-fade-size-e);
+  }
+}
+
 /* The site has no dark theme. Thus, the dark: classes in the shadcn components must not follow the system setting. */
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  /* A 1px ring in place of a border. */
   --shadow-hairline: 0 0 0 1px var(--input);
-  /* The hairline and a soft drop shadow. A border under a shadow looks muddy. */
   --shadow-code:
     var(--shadow-hairline),
     0 1px 2px oklch(0 0 0 / 0.05);
@@ -19,12 +59,6 @@
   --spacing-bar: 52px;
 }
 
-/*
- * The shadcn tokens. The components that "shadcn add" writes use these names, also as var(--name) in classes.
- * The site uses these colors too. The Tailwind palette, such as blue-600, is also available.
- * Most values come from packages/konat/styles.css. Thus, the site and the panel look like one product.
- * The text colors are different: the site has its own foreground, secondary-foreground, and muted-foreground colors.
- */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -32,12 +66,10 @@
   --card-foreground: var(--foreground);
   --popover: var(--background);
   --popover-foreground: var(--foreground);
-  /* The brand color. It is for fills and markers, not for text. The headings and the strong text use the foreground color. */
   --primary: #171717;
   --primary-foreground: var(--background);
   --secondary: var(--accent);
   --secondary-foreground: #3f3f3f;
-  /* The hover color. It is lighter than the accent, which is the color of the selected item. */
   --muted: oklch(0 0 0 / 0.025);
   --muted-foreground: #737373;
   --link: --theme(--color-blue-600);
@@ -45,7 +77,7 @@
   --accent-foreground: var(--foreground);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0 0 0 / 0.06);
-  --input: oklch(0 0 0 / 0.08);
+  --input: oklch(0 0 0 / 0.1);
   --ring: #2563eb;
   --radius: 0.375rem;
   --sidebar: var(--background);
@@ -85,7 +117,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  /* The shadcn radius scale. Each rounded-* class follows --radius. */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -104,7 +135,6 @@
   :root {
     color-scheme: light;
     font: 16px/1.6 var(--font-sans);
-    /* The body text. The headings, the strong text, and the links use the foreground color. */
     @apply bg-background text-secondary-foreground;
   }
 
@@ -140,11 +170,6 @@
     margin: 32px 0 8px;
   }
 
-  /* Base UI puts each FAQ question in an h3. The trigger in the h3 sets the spacing. */
-  [data-slot="accordion-item"] h3 {
-    margin: 0;
-  }
-
   b,
   strong {
     font-weight: var(--font-weight-medium);
@@ -159,16 +184,16 @@
     margin: 0 0 16px;
   }
 
-  /* Only the links in the text of a page have the link color. Other links, such as the nav, inherit the color. */
   main :where(p, li, td) a {
     color: var(--link);
-    /* The underline has no color of its own. Thus, it changes with the text color on hover. */
     text-decoration-line: underline;
+    text-decoration-color: color-mix(in oklab, var(--link) 40%, transparent);
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
 
     &:hover {
       color: var(--foreground);
+      text-decoration-color: currentColor;
     }
   }
 
@@ -187,19 +212,10 @@
   }
 }
 
-/* The Markdown renderer makes these elements, so they cannot get utility classes. */
 @layer components {
-  /*
-   * The numbers are not in the text of the block. Thus, Copy and a text selection do not include them.
-   * A block without a language, such as a state tree, is not code. Thus, it has no numbers.
-   */
-  pre:not([data-language="plain"]):has(.line ~ .line) {
+  pre[data-line-numbers] {
     counter-reset: line;
 
-    /*
-     * The numbers stay at the left edge on a horizontal scroll.
-     * Each number covers the left padding of the block. Thus, the code goes under the numbers.
-     */
     & .line::before {
       counter-increment: line;
       content: counter(line);
@@ -207,8 +223,8 @@
       left: 0;
       display: inline-block;
       width: var(--code-gutter);
-      margin-left: -16px;
-      padding: 0 16px;
+      margin-left: calc(-1 * var(--code-padding));
+      padding: 0 var(--code-padding);
       text-align: right;
       @apply text-muted-foreground/70;
       background: var(--background);
@@ -216,8 +232,7 @@
     }
   }
 
-  /* The left fade of scroll-fade-x starts after the numbers, so the numbers do not fade. */
-  [data-slot="scroll-area-viewport"]:has(> pre:not([data-language="plain"]) .line ~ .line) {
+  [data-slot="scroll-area-viewport"]:has(> pre[data-line-numbers]) {
     --scroll-fade-mask: linear-gradient(
       to right,
       #000 var(--code-gutter),
@@ -229,11 +244,11 @@
   }
 
   :root {
-    /* The left padding of a code block, the width of a line number, and the gap after it. */
-    --code-gutter: 48px;
+    --code-padding: calc(var(--spacing) * 4);
+    --line-number-width: 16px;
+    --code-gutter: calc(var(--line-number-width) + 2 * var(--code-padding));
   }
 
-  /* An element with the not-prose class, such as a demo window, keeps its own list styles. */
   .prose {
     & > :first-child {
       margin-top: 0;

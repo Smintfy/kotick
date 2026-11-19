@@ -1,14 +1,16 @@
 import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
-import { CodeBlock, HighlightedCode } from '@/components/code-block';
-import { InstallTabs } from '@/components/install-tabs';
+import { CodeBlock, HighlightedCode } from '@/components/docs/code-block';
+import { InstallTabs } from '@/components/docs/install-tabs';
+import { Prop, PropsTable } from '@/components/docs/props-table';
+import { Shortcut } from '@/components/docs/shortcut';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Shortcut } from '@/components/shortcut';
-import { packageManagers } from '@/content/package-managers';
 import { Kbd } from '@/components/ui/kbd';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { packageManagers } from '@/content/package-managers';
 import { CheckoutExample } from '@/demo/checkout/example';
+import { demoSource } from '@/demo/source';
 import { checkedHref, demoHref } from '@/site';
 
 function DocLink({ href = '', children }: ComponentProps<'a'>) {
@@ -41,10 +43,9 @@ function FaqItem({ id, children }: { id: string; children: ReactNode }) {
   );
 }
 
-/** The install command of each package manager. The server colors the commands, so the client gets no highlighter. */
-function Install({ name }: { name: string }) {
+function Install({ packages }: { packages: string }) {
   const commands = packageManagers.map(({ manager, add }) => {
-    const text = `${add} ${name}`;
+    const text = `${add} ${packages}`;
 
     return { manager, text, code: <HighlightedCode text={text} lang="bash" /> };
   });
@@ -52,9 +53,10 @@ function Install({ name }: { name: string }) {
   return <InstallTabs commands={commands} />;
 }
 
-/** The checkout demo on the landing page. */
 function CheckoutDemo() {
-  return <CheckoutExample fixturesHref={checkedHref('/docs/fixtures')} pageHref={demoHref('checkout')} />;
+  return (
+    <CheckoutExample fixturesHref={checkedHref('/docs/fixtures')} pageHref={demoHref('checkout')} source={demoSource('checkout')} />
+  );
 }
 
 const components = {
@@ -72,6 +74,8 @@ const components = {
   Shortcut,
   InstallTabs: Install,
   CheckoutDemo,
+  PropsTable,
+  Prop,
   Faq,
   FaqItem,
   FaqQuestion: AccordionTrigger,

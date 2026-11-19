@@ -6,10 +6,10 @@ import { type ComponentType, useState } from 'react';
 import { type FixturesInput, Konat } from 'konat';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { fixturesInEveryBuild } from '@/demo/checkout/machine';
 import { Checkout } from '@/demo/checkout/example';
-import { onboardingFixtures } from '@/demo/onboarding/machine';
+import { fixturesInEveryBuild } from '@/demo/checkout/machine';
 import { Onboarding } from '@/demo/onboarding/example';
+import { onboardingFixtures } from '@/demo/onboarding/machine';
 import type { DemoId } from '@/site';
 
 const apps = {
@@ -17,7 +17,6 @@ const apps = {
   onboarding: { App: Onboarding, fixtures: onboardingFixtures },
 } as const satisfies Record<DemoId, { App: ComponentType; fixtures: FixturesInput }>;
 
-/** A demo app in the full window. The overlay is not docked, so the panel can use all of the window. */
 export function DemoPage({ id, title, backHref }: { id: DemoId; title: string; backHref: string }) {
   const { App, fixtures } = apps[id];
   const [run, setRun] = useState(0);

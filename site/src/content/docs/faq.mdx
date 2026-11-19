@@ -7,7 +7,7 @@ export const metadata = {
   <FaqItem id="machine-not-in-panel">
     <FaqQuestion>My machine is not in the panel. Why?</FaqQuestion>
     <FaqAnswer>
-      Make sure that the component imports the hook from `konat/xstate`, not from `@xstate/react`, and that `<Konat />` is mounted. An actor that you create with `createActor()` must go through `connect()`. An actor with `debug: { disabled: true }` is not listed.
+      Make sure that the component imports the hook from `konat/xstate`, not from `@xstate/react`, and that `<Konat />` is mounted. An actor that you create with `createActor()` must go through `connect()`. An actor with `debug: { disabled: true }` is not listed. To find imports from `@xstate/react`, add a [lint rule](/docs/install#prevent-imports-from-xstatereact).
     </FaqAnswer>
   </FaqItem>
 

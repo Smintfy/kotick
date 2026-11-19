@@ -6,9 +6,11 @@ import type { SnapshotFrom } from 'xstate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { RadioGroup } from '@/components/ui/radio-group';
 import { DemoWindow } from '@/demo/demo-window';
 import { type OnboardingEvent, onboardingFixtures, onboardingMachine, type Role, takenWorkspace } from '@/demo/onboarding/machine';
+import { RadioCard } from '@/demo/radio-card';
+import type { DemoSource } from '@/demo/source';
 
 type StepProps = {
   snapshot: SnapshotFrom<typeof onboardingMachine>;
@@ -88,15 +90,9 @@ function RoleStep({ snapshot, send }: StepProps) {
         }}
       >
         {roles.map((role) => (
-          <Label
-            key={role.key}
-            className="relative h-9 cursor-pointer gap-2.5 rounded-lg px-2.5 leading-normal shadow-code transition-[background-color,box-shadow] hover:bg-muted has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-data-checked:shadow-[0_0_0_1px_var(--foreground),0_1px_2px_oklch(0_0_0/0.05)] has-data-checked:text-foreground"
-          >
-            <role.Icon className="size-4 shrink-0 text-muted-foreground" />
+          <RadioCard key={role.key} value={role.key} icon={role.Icon}>
             {role.label}
-            {/* The card shows the selection and the focus. The radio stays for the keyboard and for screen readers. */}
-            <RadioGroupItem value={role.key} className="absolute opacity-0" />
-          </Label>
+          </RadioCard>
         ))}
       </RadioGroup>
     </fieldset>
@@ -279,7 +275,6 @@ export function Onboarding() {
   return (
     <div className="flex flex-1 flex-col gap-6 text-sm font-medium">
       <div className="grid gap-1">
-        {/* The progress bar gives the same text to a screen reader. */}
         <p aria-hidden className="m-0 mb-2 text-[13px] font-normal text-muted-foreground">
           Step {index + 1} of {steps.length}
         </p>
@@ -287,7 +282,6 @@ export function Onboarding() {
         <p className="m-0 font-normal text-muted-foreground">{step.lead}</p>
       </div>
       <step.Body snapshot={snapshot} send={send} />
-      {/* In the demo window, mt-auto pins the footer to the bottom. Thus, the footer stays at the same position on each step. */}
       <div className="mt-auto flex items-center gap-2 pt-6">
         <div
           role="progressbar"
@@ -320,9 +314,9 @@ export function Onboarding() {
   );
 }
 
-export function OnboardingExample({ href }: { href: string }) {
+export function OnboardingWindow({ href, source }: { href: string; source: DemoSource }) {
   return (
-    <DemoWindow fixtures={onboardingFixtures} href={href}>
+    <DemoWindow fixtures={onboardingFixtures} href={href} source={source}>
       <Onboarding />
     </DemoWindow>
   );

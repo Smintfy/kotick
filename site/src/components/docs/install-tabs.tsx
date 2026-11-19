@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState } from 'react';
 import { CopyButton } from '@/components/copy-button';
+import { barTab } from '@/components/docs/bar-tab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type InstallCommand = { manager: string; text: string; code: ReactNode };
@@ -15,7 +16,7 @@ export function InstallTabs({ commands }: { commands: readonly InstallCommand[] 
       <div className="flex items-center gap-2 border-b border-input p-2">
         <TabsList aria-label="Package manager" activateOnFocus className="gap-px bg-transparent p-0">
           {commands.map(({ manager }) => (
-            <TabsTrigger key={manager} value={manager} className="h-7 flex-none px-[7px] text-[13px] font-normal transition-[background-color,color] duration-120 ease-[ease] not-data-active:hover:bg-muted data-active:bg-accent data-active:text-foreground data-active:shadow-none! motion-reduce:transition-none">
+            <TabsTrigger key={manager} value={manager} className={barTab}>
               {manager}
             </TabsTrigger>
           ))}

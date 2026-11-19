@@ -21,12 +21,10 @@ function MarkdownIcon({ className }: { className?: string }) {
   );
 }
 
-/** The "Copy page" button beside the title of a docs page. The menu also opens the Markdown copy of the page. */
 export function PageActions({ markdown, markdownHref }: { markdown: string; markdownHref: string }) {
   const { copied, copy } = useCopy();
 
   return (
-    // One hairline around the group. A hairline on each button doubles where the two hairlines touch.
     <ButtonGroup className="shrink-0 rounded-lg shadow-code *:shadow-none">
       <Button variant="outline" size="sm" className="gap-1.5 text-[13px] font-normal" onClick={() => copy(markdown)} aria-live="polite">
         {copied ? <Check /> : <Copy />}
