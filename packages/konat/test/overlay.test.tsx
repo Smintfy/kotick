@@ -536,8 +536,8 @@ describe('the state tree', () => {
     expect({ machines: await machines(), body: overlay().querySelector('[data-part="empty"]')?.textContent }).toEqual({
       machines: [],
       body:
-        'No machines yet. Hooks from konat/xstate register their actors as they mount, and connect() ' +
-        'registers actors created outside React.',
+        'No machines yet. Hooks from konat/xstate and konat/reducer register their machines as they mount, and ' +
+        'connect() registers XState actors created outside React.',
     });
   });
 });

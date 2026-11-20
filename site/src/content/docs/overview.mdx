@@ -5,19 +5,29 @@ export const metadata = {
   description: 'See every state of every state machine on the page, and preview any of them in place.',
 };
 
-`<Konat />` is a development overlay for React apps that use state machines. It lists each machine that runs on the page and all of its states, also the states the UI never went to. Click a state to show it in the real app, with real layout and data. You do not have to click through the flow, slow down the network, or force an API error to get there. This version supports XState v5.
+`<Konat />` is a development overlay for React apps that use state machines. It lists each machine that runs on the page and all of its states, also the states the UI never went to. Click a state to show it in the real app, with real layout and data. You do not have to click through the flow, slow down the network, or force an API error to get there. konat supports XState v5 machines through `konat/xstate`, and `useReducer` machines through `konat/reducer`.
 
 ## How it works
 
 <CheckoutDemo />
 
-konat gives your components a proxy of each actor. During a preview, the proxy returns a snapshot of the selected state, and the real actor continues to run. For the adapter, the registry and the overlay, see [How konat works](/docs/concepts#how-konat-works).
+During a preview, your components get the selected state in place of the real one, and the real machine continues to run. With `konat/xstate`, they read the state from a proxy of the actor. With `konat/reducer`, `useMachineReducer` returns it. For the adapters, the registry and the overlay, see [How konat works](/docs/concepts#how-konat-works).
 
 ## Why konat
 
-Two changes to your app. In development, a transition costs [{costs.transition}](/docs/production#performance-in-development) more than with `@xstate/react`. In production, the startup JavaScript grows by [{costs.startup}](/docs/production) gzip with esbuild and Vite.
-
 - **Every state, in context.** Previews render in the running app, not in a separate story or sandbox.
-- **Safe.** A preview changes only what components see. The real actor keeps running, and events that the UI sends during a preview are blocked and logged.
+- **Safe.** A preview changes only what components see. The real machine keeps running, and events that the UI sends during a preview are blocked and logged.
 - **Realistic data.** Previews use context recorded from earlier visits, context you write as fixtures, or the live context. The panel shows which one it uses.
-- **Gone in production.** Production builds keep a component that renders nothing and re-exports of `@xstate/react`.
+- **No panel in production.** `<Konat />` renders nothing in a production build, and the registry and the panel are removed from the bundle.
+
+## Adapters
+
+konat has an adapter for each kind of machine, and neither is the default. An app can use one of them or both. Each adapter keeps a different part of itself in production.
+
+### XState machines
+
+The adapter needs two changes to your app. Mount `<Konat />`, and import the hooks from `konat/xstate` instead of `@xstate/react`. Production builds keep re-exports of `@xstate/react`, and the startup JavaScript grows by [{costs.startup}](/docs/production) gzip with esbuild and Vite. In development, a transition costs [{costs.transition}](/docs/production#performance-in-development) more than with `@xstate/react`.
+
+### Reducer machines
+
+If a component keeps a union of states in `useReducer`, declare the reducer as a machine with `defineReducerMachine`, and call `useMachineReducer` instead of `useReducer`. The app does not need XState. Production builds keep a small runtime that runs your transitions and effects. With esbuild and Vite, the startup JavaScript is [{costs.reducerStartup}](/docs/reducer#production-builds) gzip larger than the same app written with `useReducer`, a `switch` and `useEffect`. Refer to [Reducer machines](/docs/reducer).

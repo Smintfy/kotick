@@ -1,6 +1,7 @@
 import type { MDXComponents } from 'mdx/types';
 import Link from 'next/link';
 import type { ComponentProps, ReactNode } from 'react';
+import { AdapterTab, AdapterTabs } from '@/components/docs/adapter-tabs';
 import { CodeBlock, HighlightedCode } from '@/components/docs/code-block';
 import { InstallTabs } from '@/components/docs/install-tabs';
 import { Prop, PropsTable } from '@/components/docs/props-table';
@@ -73,6 +74,8 @@ const components = {
   Kbd,
   Shortcut,
   InstallTabs: Install,
+  AdapterTabs,
+  AdapterTab,
   CheckoutDemo,
   PropsTable,
   Prop,

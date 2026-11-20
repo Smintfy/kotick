@@ -1,29 +1,39 @@
 export const metadata = {
   title: 'Installation',
-  description: 'Install the package, mount the overlay, and import the XState hooks from konat/xstate.',
+  description: 'Install the package, mount the overlay, and connect your machines through konat/xstate or konat/reducer.',
 };
 
-<InstallTabs packages="konat xstate @xstate/react" />
+konat has an adapter for each kind of machine. `konat/xstate` is for XState v5 machines, and `konat/reducer` is for `useReducer` machines. Neither is the default. Select the adapter that your app uses:
 
-The command also installs `xstate` and `@xstate/react`, because konat does not install them. If your app already has them, install only `konat`.
+<AdapterTabs>
+  <AdapterTab adapter="xstate">
+    <InstallTabs packages="konat xstate @xstate/react" />
 
-Add konat to `dependencies`, not to `devDependencies`. Your app code imports `konat/xstate`, thus the production build needs the package.
+    The command also installs `xstate` and `@xstate/react`, because konat does not install them. If your app already has them, install only `konat`. An app can use both adapters, and this command installs all that both need.
+  </AdapterTab>
+
+  <AdapterTab adapter="reducer">
+    <InstallTabs packages="konat" />
+
+    `konat/reducer` needs only React. Your app does not need `xstate` or `@xstate/react`.
+  </AdapterTab>
+</AdapterTabs>
+
+Add konat to `dependencies`, not to `devDependencies`. Your app code imports `konat/xstate` or `konat/reducer`, thus the production build needs the package.
 
 ## Requirements
 
 konat uses the versions of these packages that your app has:
 
-| Package | Versions |
-|---|---|
-| `react`, `react-dom` | 18 or 19 |
-| `xstate` | 5.28 or later |
-| `@xstate/react` | 6.1 or later |
+| Package | Versions | Needed for |
+|---|---|---|
+| `react`, `react-dom` | 18 or 19 | Both adapters |
+| `xstate` | 5.28 or later | `konat/xstate` only |
+| `@xstate/react` | 6.1 or later | `konat/xstate` only |
 
 ## Quick start
 
-There are two changes.
-
-1. Mount the overlay once, near the root of the app:
+1. Mount the overlay once, near the root of the app. Both adapters use the same overlay:
 
    ```tsx
    import { Konat } from 'konat';
@@ -38,20 +48,37 @@ There are two changes.
    }
    ```
 
-2. Import the XState hooks from `konat/xstate` instead of `@xstate/react`:
+2. Connect your machines through the adapter:
 
-   ```diff
-   - import { useMachine, useSelector, createActorContext } from '@xstate/react';
-   + import { useMachine, useSelector, createActorContext } from 'konat/xstate';
-   ```
+   <AdapterTabs>
+     <AdapterTab adapter="xstate">
+       Import the XState hooks from `konat/xstate` instead of `@xstate/react`:
 
-   The hooks have the same names and signatures as in `@xstate/react`.
+       ```diff
+       - import { useMachine, useSelector, createActorContext } from '@xstate/react';
+       + import { useMachine, useSelector, createActorContext } from 'konat/xstate';
+       ```
 
-Start the dev server and click the bubble in the bottom-right corner, or press <Shortcut mac="⌥S" other={['Alt', 'S']} />. The panel lists each machine that a hook started. Select a machine to see its states. Select a state to preview it, and select it again to release it.
+       The hooks have the same names and signatures as in `@xstate/react`.
+     </AdapterTab>
+
+     <AdapterTab adapter="reducer">
+       Declare the reducer as a machine with `defineReducerMachine`. Then call `useMachineReducer` instead of `useReducer`:
+
+       ```diff
+       - const [state, dispatch] = useReducer(reducer, { status: 'idle' });
+       + const [state, dispatch] = useMachineReducer(searchMachine, { status: 'idle' });
+       ```
+
+       [From a switch reducer](/docs/reducer#from-a-switch-reducer) shows how to change a reducer into a machine.
+     </AdapterTab>
+   </AdapterTabs>
+
+Start the dev server and click the bubble in the bottom-right corner, or press <Shortcut mac="⌥S" other={['Alt', 'S']} />. The panel lists each machine that runs on the page. Select a machine to see its states. Select a state to preview it, and select it again to release it.
 
 ## Actors outside React
 
-Actors that you create outside React, for example in a module, need one more step. Wrap them with `connect()`:
+With `konat/xstate`, actors that you create outside React, for example in a module, need one more step. Wrap them with `connect()`:
 
 ```ts
 import { createActor } from 'xstate';

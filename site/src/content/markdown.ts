@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
+import { adapters } from '@/content/adapters';
 import { costs } from '@/content/costs';
 import { packageManagers } from '@/content/package-managers';
 import { demoHref } from '@/site';
@@ -43,12 +44,21 @@ function stringAttribute(element: JsxElement, name: string): string {
 }
 
 function childrenMarkdown(element: JsxElement, source: string): string {
-  const start = element.children[0]?.position?.start.offset;
+  const first = element.children[0]?.position?.start;
   const end = element.children.at(-1)?.position?.end.offset;
 
-  if (start === undefined || end === undefined) return '';
+  if (first?.offset === undefined || end === undefined) return '';
+  // The slice starts at the first child. The lines after it keep the indentation of the JSX, which Markdown reads as code.
+  const indentation = new RegExp(`^ {0,${first.column - 1}}`, 'gm');
 
-  return mdxToMarkdown(source.slice(start, end));
+  return mdxToMarkdown(source.slice(first.offset, end).replace(indentation, ''));
+}
+
+// A replacement starts at the column of its element. Its next lines need the same indentation, for example in a list item.
+function atColumn(text: string, node: Nodes): string {
+  const column = node.position?.start.column ?? 1;
+
+  return text.replace(/\n(?=.)/g, `\n${' '.repeat(column - 1)}`);
 }
 
 function tableCell(text: string): string {
@@ -84,7 +94,22 @@ function stringArrayAttribute(element: JsxElement, name: string): string[] {
   return strings;
 }
 
+function adapterTabs(element: JsxElement, source: string): string {
+  return element.children
+    .flatMap((child) => {
+      if (child.type !== 'mdxJsxFlowElement' || child.name !== 'AdapterTab') return [];
+      const id = stringAttribute(child, 'adapter');
+      const adapter = adapters.find((candidate) => candidate.id === id);
+
+      if (!adapter) throw new Error(`<AdapterTab> has the adapter "${id}", which is not in src/content/adapters.ts.`);
+
+      return [`With \`${adapter.entry}\`:\n\n${childrenMarkdown(child, source)}`];
+    })
+    .join('\n\n');
+}
+
 const jsx = {
+  AdapterTabs: adapterTabs,
   InstallTabs: (element) => {
     const packages = stringAttribute(element, 'packages');
     const [first, ...others] = packageManagers.map(({ add }) => `${add} ${packages}`);
@@ -130,7 +155,7 @@ function replacement(node: Nodes, source: string): string | undefined {
 
       if (!render) throw new Error(`The Markdown copy has no text for <${node.name ?? ''}>.`);
 
-      return render(node, source);
+      return atColumn(render(node, source), node);
     }
 
     default:
