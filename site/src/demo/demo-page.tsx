@@ -6,10 +6,10 @@ import { type ComponentType, useState } from 'react';
 import { type FixturesInput, Konat } from 'konat';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Checkout } from '@/demo/checkout/example';
-import { fixturesInEveryBuild } from '@/demo/checkout/machine';
-import { Onboarding } from '@/demo/onboarding/example';
-import { onboardingFixtures } from '@/demo/onboarding/machine';
+import { Checkout } from '@/demo/checkout/checkout';
+import { fixturesInEveryBuild } from '@/demo/checkout/fixtures';
+import { onboardingFixtures } from '@/demo/onboarding/fixtures';
+import { Onboarding } from '@/demo/onboarding/onboarding';
 import type { DemoId } from '@/site';
 
 const apps = {

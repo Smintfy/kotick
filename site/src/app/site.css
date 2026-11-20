@@ -4,22 +4,13 @@
 
 /* The scroll-fade-x and scroll-fade-y utilities of shadcn set the same mask and animation. Thus, they do not combine. */
 @utility scroll-fade-xy {
-  --_scroll-fade-size-t: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
-  --_scroll-fade-size-b: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
-  --_scroll-fade-size-s: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
-  --_scroll-fade-size-e: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
-  --scroll-fade-xy:
+  mask-image:
     var(
       --scroll-fade-mask,
       linear-gradient(to right, transparent 0, #000 var(--scroll-fade-s, 0px), #000 calc(100% - var(--scroll-fade-e, 0px)), transparent 100%)
     ),
     linear-gradient(to bottom, transparent 0, #000 var(--scroll-fade-t, 0px), #000 calc(100% - var(--scroll-fade-b, 0px)), transparent 100%);
-  -webkit-mask-image: var(--scroll-fade-xy);
-  mask-image: var(--scroll-fade-xy);
-  -webkit-mask-composite: source-in;
   mask-composite: intersect;
-  -webkit-mask-repeat: no-repeat;
-  mask-repeat: no-repeat;
 
   @supports (animation-timeline: scroll()) {
     animation:
@@ -37,21 +28,21 @@
   }
 
   @supports not (animation-timeline: scroll()) {
-    --scroll-fade-t: var(--_scroll-fade-size-t);
-    --scroll-fade-b: var(--_scroll-fade-size-b);
-    --scroll-fade-s: var(--_scroll-fade-size-s);
-    --scroll-fade-e: var(--_scroll-fade-size-e);
+    --scroll-fade-t: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
+    --scroll-fade-b: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
+    --scroll-fade-s: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
+    --scroll-fade-e: var(--scroll-fade-size, min(12%, calc(var(--spacing) * 10)));
   }
 }
 
-/* The site has no dark theme. Thus, the dark: classes in the shadcn components must not follow the system setting. */
+/* next-themes puts the dark class on <html>. Thus, the dark: classes follow the theme switcher, not only the system setting. */
 @custom-variant dark (&:is(.dark *));
 
 @theme {
   --shadow-hairline: 0 0 0 1px var(--input);
-  --shadow-code:
+  --shadow-edge:
     var(--shadow-hairline),
-    0 1px 2px oklch(0 0 0 / 0.05);
+    0 1px 2px var(--shadow-drop);
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     sans-serif;
@@ -60,25 +51,25 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.205 0 0);
   --card: var(--background);
   --card-foreground: var(--foreground);
   --popover: var(--background);
   --popover-foreground: var(--foreground);
-  --primary: #171717;
+  --primary: oklch(0.205 0 0);
   --primary-foreground: var(--background);
   --secondary: var(--accent);
-  --secondary-foreground: #3f3f3f;
+  --secondary-foreground: oklch(0.368 0 0);
   --muted: oklch(0 0 0 / 0.025);
-  --muted-foreground: #737373;
+  --muted-foreground: oklch(0.556 0 0);
   --link: --theme(--color-blue-600);
   --accent: oklch(0 0 0 / 0.07);
   --accent-foreground: var(--foreground);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0 0 0 / 0.06);
   --input: oklch(0 0 0 / 0.1);
-  --ring: #2563eb;
+  --ring: oklch(0.546 0.215 262.881);
   --radius: 0.375rem;
   --sidebar: var(--background);
   --sidebar-foreground: var(--foreground);
@@ -88,6 +79,48 @@
   --sidebar-accent-foreground: var(--foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
+  --chip: oklch(0.985 0 0);
+  --hover: oklch(0 0 0 / 0.04);
+  --overlay: oklch(0 0 0 / 0.1);
+  --shadow-drop: oklch(0 0 0 / 0.05);
+  --code-foreground: oklch(0.337 0.016 270.896);
+  --code-comment: oklch(0.622 0.015 262.356);
+  --code-punctuation: oklch(0.569 0.021 265.87);
+  --code-keyword: oklch(0.53 0.189 308.576);
+  --code-string: oklch(0.541 0.097 174.378);
+  --code-function: oklch(0.528 0.136 253.646);
+  --code-constant: oklch(0.609 0.1423 50.463);
+  --code-tag: oklch(0.553 0.157 7.226);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.946 0 0);
+  --card: oklch(0.191 0 0);
+  --popover: var(--card);
+  --primary: oklch(0.946 0 0);
+  --secondary-foreground: oklch(0.814 0 0);
+  --muted: oklch(1 0 0 / 0.04);
+  --muted-foreground: oklch(0.65 0 0);
+  --link: --theme(--color-blue-400);
+  --accent: oklch(1 0 0 / 0.09);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.13);
+  --ring: oklch(0.623 0.188 259.815);
+  --chip: oklch(0.2 0 0);
+  --hover: oklch(1 0 0 / 0.06);
+  --overlay: oklch(0 0 0 / 0.6);
+  --shadow-drop: oklch(0 0 0 / 0.5);
+  --code-foreground: oklch(0.876 0.008 271.318);
+  --code-comment: oklch(0.602 0.016 264.445);
+  --code-punctuation: oklch(0.663 0.02 265.914);
+  --code-keyword: oklch(0.756 0.128 305.992);
+  --code-string: oklch(0.764 0.11 172.65);
+  --code-function: oklch(0.745 0.114 251.029);
+  --code-constant: oklch(0.76 0.12 56.046);
+  --code-tag: oklch(0.728 0.139 3.91);
 }
 
 @theme inline {
@@ -117,6 +150,9 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-chip: var(--chip);
+  --color-hover: var(--hover);
+  --color-overlay: var(--overlay);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -132,8 +168,11 @@
     @apply border-border outline-ring/50;
   }
 
-  :root {
+  :root:not(.dark) {
     color-scheme: light;
+  }
+
+  :root {
     font: 16px/1.6 var(--font-sans);
     @apply bg-background text-secondary-foreground;
   }
@@ -145,29 +184,30 @@
 
   /* Keep 1rem at 16px. A smaller root font also makes the Tailwind spacing smaller. */
   body {
-    font-size: var(--text-sm);
+    font-size: 15px;
   }
 
   h1,
   h2,
   h3 {
-    line-height: 1.3;
+    line-height: 1.2;
     font-size: var(--text-base);
     font-weight: var(--font-weight-medium);
     color: var(--foreground);
   }
 
   h1 {
-    font-size: var(--text-2xl);
+    font-size: var(--text-4xl);
   }
 
   h2 {
-    margin: 40px 0 12px;
-    font-size: var(--text-lg);
+    margin: 56px 0 16px;
+    font-size: var(--text-2xl);
   }
 
   h3 {
-    margin: 32px 0 8px;
+    margin: 40px 0 8px;
+    font-size: var(--text-lg);
   }
 
   b,
@@ -205,8 +245,8 @@
   :not(pre) > code {
     padding: 2px 5px;
     margin-inline: 2px;
-    background: #fafafa;
-    box-shadow: var(--shadow-code);
+    background: var(--chip);
+    box-shadow: var(--shadow-edge);
     border-radius: 5px;
     font-size: 12px;
   }
@@ -280,4 +320,15 @@
       margin-bottom: 8px;
     }
   }
+}
+
+/*
+ * Adjacent vertical margins overlap, and the larger margin sets the gap. Blocks such as code, tables and figures have a 24px margin.
+ * Thus, after a heading or after the text of a list step, the margin of the block replaces the smaller margin of the text.
+ * These rules remove the top margin of the block, so the margin of the text sets the gap.
+ * The rules are not in a layer, because the margin utilities of the blocks are in the utilities layer and override all layered rules.
+ */
+.prose :where(h2, h3) + :not(.not-prose *),
+.prose :where(li > p) + :not(.not-prose *) {
+  margin-top: 0;
 }

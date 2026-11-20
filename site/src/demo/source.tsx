@@ -1,14 +1,28 @@
 import 'server-only';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { ReactNode } from 'react';
 import { HighlightedPre } from '@/components/docs/code-block';
 import type { DemoId } from '@/site';
 
-export type DemoSource = { text: string; pre: ReactNode };
+export type DemoFile = { name: string; text: string; pre: ReactNode };
+
+export type DemoSource = { files: [DemoFile, ...DemoFile[]] };
+
+const paths: Record<DemoId, [string, ...string[]]> = {
+  checkout: ['checkout/checkout.tsx', 'checkout/machine.ts', 'checkout/fixtures.ts', 'radio-card.tsx'],
+  onboarding: ['onboarding/onboarding.tsx', 'onboarding/machine.ts', 'onboarding/fixtures.ts', 'radio-card.tsx'],
+};
+
+function demoFile(path: string): DemoFile {
+  const text = readFileSync(join(process.cwd(), 'src/demo', path), 'utf8').replace(/\n$/, '');
+  const lang = path.endsWith('.tsx') ? 'tsx' : 'ts';
+
+  return { name: basename(path), text, pre: <HighlightedPre text={text} lang={lang} /> };
+}
 
 export function demoSource(id: DemoId): DemoSource {
-  const text = readFileSync(join(process.cwd(), 'src/demo', id, 'machine.ts'), 'utf8').replace(/\n$/, '');
+  const [first, ...rest] = paths[id];
 
-  return { text, pre: <HighlightedPre text={text} lang="ts" /> };
+  return { files: [demoFile(first), ...rest.map(demoFile)] };
 }

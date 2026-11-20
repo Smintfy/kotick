@@ -3,8 +3,10 @@
 import type { FixtureSet } from 'konat';
 import { type FigurePage, KonatFigure } from 'konat/figure';
 import { OverlayDock } from '@/components/overlay-dock';
-import { checkoutMachine, fixturesInEveryBuild } from '@/demo/checkout/machine';
-import { onboardingFixtures, onboardingMachine } from '@/demo/onboarding/machine';
+import { fixturesInEveryBuild } from '@/demo/checkout/fixtures';
+import { checkoutMachine } from '@/demo/checkout/machine';
+import { onboardingFixtures } from '@/demo/onboarding/fixtures';
+import { onboardingMachine } from '@/demo/onboarding/machine';
 
 type PanelFigureProps = { caption: string; height?: number } & (
   | { page: 'machines' | 'settings' }
@@ -50,8 +52,8 @@ export function PanelFigure(props: PanelFigureProps) {
   const height = props.height ?? 400;
 
   return (
-    <figure className="mb-6">
-      <div className="relative overflow-hidden rounded-2xl bg-background shadow-code" style={{ height }}>
+    <figure className="my-6">
+      <div className="relative overflow-hidden rounded-2xl bg-card shadow-edge" style={{ height }}>
         <OverlayDock
           inert
           className="absolute left-1/2 h-[800px] -translate-x-1/2"

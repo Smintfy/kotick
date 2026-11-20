@@ -70,8 +70,8 @@ const middleY = (top + boxHeight + bottom) / 2;
 
 export function ArchitectureDiagram({ caption }: { caption: string }) {
   return (
-    <figure className="mb-6">
-      <div className="overflow-x-auto rounded-2xl bg-background px-4 py-10 shadow-code">
+    <figure className="my-6">
+      <div className="overflow-x-auto rounded-2xl bg-card px-4 py-10 shadow-edge">
         <svg viewBox="0 20 640 200" className="mx-auto block w-full min-w-[440px] max-w-[560px]" aria-hidden>
           <Node {...component} />
           <Node {...proxy} />

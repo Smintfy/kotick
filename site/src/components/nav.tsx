@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/logo';
+import { ThemeSwitcher } from '@/components/theme-switcher';
 import { Badge } from '@/components/ui/badge';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -32,7 +34,7 @@ export function Nav({ sections, version }: { sections: readonly NavSection[]; ve
           v{version}
         </Badge>
       </SidebarHeader>
-      <SidebarContent role="navigation" aria-label="Docs" className="gap-6 px-2 pt-4 pb-10">
+      <SidebarContent role="navigation" aria-label="Docs" className="scroll-fade-y gap-6 px-2 pt-4 pb-10">
         {sections.map((section) => (
           <SidebarGroup key={section.title} className="py-0">
             <SidebarGroupLabel className="mb-1 h-auto px-3 text-[13px] font-normal text-muted-foreground">
@@ -62,6 +64,9 @@ export function Nav({ sections, version }: { sections: readonly NavSection[]; ve
           </SidebarGroup>
         ))}
       </SidebarContent>
+      <SidebarFooter className="px-3.5 pt-2 pb-4">
+        <ThemeSwitcher />
+      </SidebarFooter>
     </Sidebar>
   );
 }

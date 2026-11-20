@@ -8,7 +8,7 @@ export async function DocsArticle({ page }: { page: DocsPage }) {
     <>
       <article className="prose">
         <header className="mb-8">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <h1>{page.title}</h1>
             {page.markdownHref && <PageActions markdown={await pageMarkdown(page)} markdownHref={page.markdownHref} />}
           </div>

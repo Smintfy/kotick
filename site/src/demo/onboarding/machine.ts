@@ -1,4 +1,3 @@
-import { defineFixtures } from 'konat/xstate';
 import { assign, fromPromise, setup } from 'xstate';
 
 export type Role = 'design' | 'engineering' | 'product' | 'other';
@@ -37,7 +36,7 @@ const createWorkspace = fromPromise<void, { workspace: string }>(async ({ input 
   }
 });
 
-const empty: OnboardingContext = { name: '', workspace: '', email: '', invites: [] };
+export const empty: OnboardingContext = { name: '', workspace: '', email: '', invites: [] };
 
 export const onboardingMachine = setup({
   // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
@@ -121,21 +120,3 @@ export const onboardingMachine = setup({
     done: { type: 'final' },
   },
 });
-
-const profile: OnboardingContext = { ...empty, name: 'Ada Lovelace' };
-
-const withRole: OnboardingContext = { ...profile, role: 'engineering' };
-
-const withWorkspace: OnboardingContext = { ...withRole, workspace: 'Analytical Engines' };
-
-export const onboardingFixtures = [
-  defineFixtures(onboardingMachine, {
-    profile: { context: profile },
-    role: { context: withRole },
-    'workspace.editing': { context: withRole },
-    'workspace.creating': { context: withWorkspace },
-    'workspace.error': { context: { ...withRole, workspace: takenWorkspace, error: `The name ${takenWorkspace} is taken` } },
-    invite: { context: { ...withWorkspace, email: 'mary@example.com', invites: ['charles@example.com'] } },
-    done: { context: { ...withWorkspace, invites: ['charles@example.com', 'mary@example.com'] } },
-  }),
-];

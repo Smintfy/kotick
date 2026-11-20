@@ -43,6 +43,14 @@ function FaqItem({ id, children }: { id: string; children: ReactNode }) {
   );
 }
 
+function FaqQuestion({ children }: { children: ReactNode }) {
+  return <AccordionTrigger className="text-[15px]/[1.6]">{children}</AccordionTrigger>;
+}
+
+function FaqAnswer({ children }: { children: ReactNode }) {
+  return <AccordionContent className="text-[15px]/[1.6]">{children}</AccordionContent>;
+}
+
 function Install({ packages }: { packages: string }) {
   const commands = packageManagers.map(({ manager, add }) => {
     const text = `${add} ${packages}`;
@@ -78,8 +86,8 @@ const components = {
   Prop,
   Faq,
   FaqItem,
-  FaqQuestion: AccordionTrigger,
-  FaqAnswer: AccordionContent,
+  FaqQuestion,
+  FaqAnswer,
 } satisfies MDXComponents;
 
 export function useMDXComponents(): MDXComponents {
