@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { getPageRegistry } from '../core/registry';
 import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
@@ -8,17 +8,17 @@ import { createHost, type OverlayHost } from '../utils/host';
 import { storedSettings } from '../utils/settings';
 import { Overlay } from './overlay';
 
-export function Konat(props: KonatProps): React.ReactNode {
+export function Konat(props: KonatProps): ReactNode {
   const registry = getPageRegistry();
   const { fixtures } = props;
-  React.useEffect(() => (fixtures === undefined ? undefined : registry.loadFixtures(fixtures)), [registry, fixtures]);
+  useEffect(() => (fixtures === undefined ? undefined : registry.loadFixtures(fixtures)), [registry, fixtures]);
   const host = useHost(props.portalTarget);
 
   return host && createPortal(<Overlay {...props} registry={registry} host={host} settings={storedSettings} />, host.container);
 }
 
 export function useHost(target: Element | ShadowRoot | undefined): OverlayHost | null {
-  const [host, setHost] = React.useState<OverlayHost | null>(null);
+  const [host, setHost] = useState<OverlayHost | null>(null);
   useIsomorphicLayoutEffect(() => {
     const created = createHost(target ?? document.body ?? document.documentElement);
     setHost(created);

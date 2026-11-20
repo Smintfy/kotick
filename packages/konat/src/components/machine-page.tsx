@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useHandleUpdates } from '../hooks/use-handle-updates';
 import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../types';
 import { copyText } from '../utils/clipboard';
@@ -36,20 +36,20 @@ export function MachinePage(props: MachinePageProps) {
 
   const override = snapshot.overrides[key];
   const canPreview = handle.capabilities?.preview === true;
-  const nodes = React.useMemo(() => attempt(() => handle.describe(), NO_NODES), [handle]);
+  const nodes = useMemo(() => attempt(() => handle.describe(), NO_NODES), [handle]);
   // Collapsed groups belong to one showing of an instance.
   // Another instance, or the same one shown again, starts with every group open.
-  const [collapse, setCollapse] = React.useState({ key, groups: NONE_COLLAPSED });
+  const [collapse, setCollapse] = useState({ key, groups: NONE_COLLAPSED });
 
   if (collapse.key !== key) setCollapse({ key, groups: NONE_COLLAPSED });
   const collapsed = collapse.groups;
-  const leaves = React.useMemo(() => shownLeaves(nodes, collapsed), [nodes, collapsed]);
+  const leaves = useMemo(() => shownLeaves(nodes, collapsed), [nodes, collapsed]);
   // Read on every render: the handle's updates re-render the page, the registry snapshot doesn't change for them.
   const active = new Set<string>(attempt(() => handle.getActiveLeaves(), []));
   const liveContext = attempt(() => handle.getContext(), undefined);
   const data = snapshot.data[handle.machineId] || EMPTY_DATA;
 
-  const [cursorState, setCursor] = React.useState<string>();
+  const [cursorState, setCursor] = useState<string>();
 
   const cursor =
     cursorState !== undefined && leaves.includes(cursorState)
@@ -58,10 +58,10 @@ export function MachinePage(props: MachinePageProps) {
         leaves.find((leaf) => active.has(leaf)) ??
         leaves[0]);
 
-  const previewingId = React.useId();
-  const pageRef = React.useRef<HTMLDivElement>(null);
-  const [copyStatus, setCopyStatus] = React.useState<string>();
-  React.useEffect(() => {
+  const previewingId = useId();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [copyStatus, setCopyStatus] = useState<string>();
+  useEffect(() => {
     if (copyStatus === undefined) return;
     const timer = setTimeout(() => setCopyStatus(undefined), 2000);
 
@@ -103,7 +103,7 @@ export function MachinePage(props: MachinePageProps) {
     }
   }
 
-  function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
+  function onKeyDown(event: KeyboardEvent<HTMLElement>): void {
     if (event.defaultPrevented) return;
     const { target } = event;
 

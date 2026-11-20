@@ -1,4 +1,4 @@
-import type * as React from 'react';
+import type { KeyboardEvent } from 'react';
 import { leavesOf } from '../core/registry';
 import { usePathname } from '../hooks/use-pathname';
 import type { RegistrySnapshot } from '../types';
@@ -18,7 +18,7 @@ interface MachineListProps {
 export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings }: MachineListProps) {
   const previewCount = Object.keys(snapshot.overrides).length;
 
-  function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
+  function onKeyDown(event: KeyboardEvent<HTMLElement>): void {
     if (event.defaultPrevented) return;
     const move = moveOf(event);
 

@@ -65,7 +65,12 @@
   "overrides": [
     {
       "files": ["packages/konat/src/**"],
-      "rules": { "unicorn/filename-case": ["error", { "case": "kebabCase" }] }
+      "rules": {
+        "unicorn/filename-case": ["error", { "case": "kebabCase" }],
+        // A namespace import of React, which is a CommonJS package, keeps an interop helper in the app's bundle.
+        // xstate.ts picks each hook from the namespaces of @xstate/react and ./xstate/hooks, and both are ES modules.
+        "import/no-namespace": ["error", { "ignore": ["@xstate/react", "./xstate/hooks"] }]
+      }
     },
     {
       "files": ["packages/konat/src/core/**", "packages/konat/src/types.ts"],

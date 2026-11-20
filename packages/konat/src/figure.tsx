@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { createActor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { useHost } from './components/konat';
@@ -33,9 +33,9 @@ export interface KonatFigureProps {
  * It reads `machines`, `fixtures` and `page` when it mounts. Give it a new `key` to show others.
  * It does not stop clicks or keys. The page around it must make it read-only, for example with `inert`.
  */
-export function KonatFigure(props: KonatFigureProps): React.ReactNode {
-  const [scene] = React.useState(() => createScene(props));
-  React.useEffect(() => scene.start(), [scene]);
+export function KonatFigure(props: KonatFigureProps): ReactNode {
+  const [scene] = useState(() => createScene(props));
+  useEffect(() => scene.start(), [scene]);
   const host = useHost(props.portalTarget);
 
   return (

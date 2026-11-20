@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useSyncExternalStore } from 'react';
 
 /**
  * The page's path, such as `/checkout`, or '' on the server.
@@ -6,7 +6,7 @@ import * as React from 'react';
  * source where the browser has it. popstate covers Back and Forward in the other browsers.
  */
 export function usePathname(): string {
-  return React.useSyncExternalStore(subscribeToLocation, readPathname, () => '');
+  return useSyncExternalStore(subscribeToLocation, readPathname, () => '');
 }
 
 function readPathname(): string {
