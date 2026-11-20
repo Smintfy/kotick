@@ -2,8 +2,10 @@
 //
 // The fixture app in this directory uses every public export. The script packs konat as npm publishes it,
 // installs the tarball into a copy of the fixture in a temporary directory, and builds the copy for production with
-// esbuild, Vite, Next.js (Turbopack and webpack) and React Router. Then it builds the examples, which use the
-// workspace source. In each output, it looks for strings that only the registry, the overlay and the adapters contain.
+// esbuild, Vite, Next.js (Turbopack and webpack) and React Router. It does the same with tests/no-xstate, an app that
+// installs konat without XState, and runs the builds of tests/no-xstate/check.mjs on it. Then it builds the examples,
+// which use the workspace source.
+// In each output, it looks for strings that only the registry, the overlay and the adapters contain.
 // For esbuild and Vite it also compares the JavaScript loaded at startup of each app in PAIRS with the same app written
 // without konat, and fails when the difference is over the budget of that pair.
 // It starts the Next.js and React Router builds with their production servers, and compares the answers to requests
@@ -12,31 +14,21 @@
 // Usage:
 //   node tests/bundles/check.mjs                    every bundler, then the examples
 //   node tests/bundles/check.mjs --only next        the builds whose name contains "next"
-//   node tests/bundles/check.mjs --skip-examples    the fixture only
-//   --keep                                          keep the temporary directory for inspection
+//   node tests/bundles/check.mjs --only no-xstate   the builds of tests/no-xstate
+//   node tests/bundles/check.mjs --skip-examples    the fixtures only
+//   --keep                                          keep the temporary directories for inspection
 
-import { spawn, spawnSync } from 'node:child_process';
-import {
-  cpSync,
-  existsSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { spawn } from 'node:child_process';
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
 import { MARKERS } from '../../scripts/debug-markers.mjs';
-
-const root = join(import.meta.dirname, '../..');
-const fixtureDir = import.meta.dirname;
+import { noXstate } from '../no-xstate/check.mjs';
+import { buildNext, buildReactRouter, check, env, failures, root, rows, run } from './harness.mjs';
 
 /**
  * Each pair is an app that uses one adapter and the same app without konat, as an esbuild entry and a Vite page.
@@ -67,58 +59,6 @@ const { values } = parseArgs({
     keep: { type: 'boolean', default: false },
   },
 });
-
-// The builds set NODE_ENV themselves, as they do in an app's CI.
-const env = { ...process.env, CI: 'true', NEXT_TELEMETRY_DISABLED: '1' };
-
-delete env.NODE_ENV;
-
-function run(command, args, cwd, extraEnv = {}) {
-  console.log(`\n$ ${command} ${args.join(' ')}   (in ${relative(root, cwd) || '.'})`);
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit', env: { ...env, ...extraEnv } });
-
-  if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed with exit code ${result.status}.`);
-}
-
-function jsFiles(dir) {
-  if (!existsSync(dir)) return [];
-  const files = [];
-
-  for (const entry of readdirSync(dir, { recursive: true })) {
-    const path = join(dir, entry);
-
-    if (/\.(c|m)?js$/.test(entry) && statSync(path).isFile()) files.push(path);
-  }
-
-  return files;
-}
-
-/** The markers each file of `dir` contains, as `{ file, marker }` pairs. */
-function scan(dir) {
-  const hits = [];
-
-  for (const file of jsFiles(dir)) {
-    const code = readFileSync(file, 'utf8');
-
-    for (const marker of Object.keys(MARKERS)) {
-      if (code.includes(marker)) hits.push({ file: relative(dir, file), marker });
-    }
-  }
-
-  return hits;
-}
-
-// Every export of konat that holds code. A server bundle that leaves konat/figure to Node loads konat at runtime too.
-const konatSpecifiers = Object.keys(JSON.parse(readFileSync(join(root, 'packages/konat/package.json'), 'utf8')).exports)
-  .filter((path) => path !== './package.json')
-  .map((path) => path.replace(/^\./, 'konat'));
-
-const konatLoad = new RegExp(`(?:\\bfrom|\\bimport|\\brequire\\()\\s*\\(?\\s*["'](?:${konatSpecifiers.join('|')})["']`);
-
-/** True when a server bundle leaves konat to Node, which reads NODE_ENV when the server starts. */
-function importsAtRuntime(dir) {
-  return jsFiles(dir).some((file) => konatLoad.test(readFileSync(file, 'utf8')));
-}
 
 function sizeOf(files) {
   let raw = 0;
@@ -174,17 +114,6 @@ function viteStartup(outdir) {
 
 const formatBytes = (bytes) => (Math.abs(bytes) < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(2)} kB`);
 const signed = (bytes) => `${bytes >= 0 ? '+' : '-'}${formatBytes(Math.abs(bytes))}`;
-
-/** One row per scanned output. */
-const rows = [];
-const failures = [];
-
-function check(name, output, dir, extra = '') {
-  if (!existsSync(dir)) throw new Error(`${name}: no ${output} output in ${dir}.`);
-  const hits = scan(dir);
-  const runtime = output === 'server' && hits.length === 0 && importsAtRuntime(dir);
-  rows.push({ name, output, hits, note: runtime ? 'imports konat at runtime' : extra });
-}
 
 function compare(name, pair, app, baseline) {
   const a = sizeOf(app);
@@ -296,17 +225,14 @@ async function serve(name, script, args, cwd, extraEnv, requests) {
   }
 }
 
-/** A Next.js build with Turbopack or webpack, each into its own directory, and a run of `next start` on it. */
+/** A Next.js build with Turbopack or webpack, and a run of `next start` on it. */
 function nextBuild(bundler) {
   const name = `next (${bundler})`;
-  const distDir = `.next-${bundler}`;
 
   return {
     name,
     async build(dir) {
-      run('pnpm', ['exec', 'next', 'build', `--${bundler}`], dir, { NEXT_DIST_DIR: distDir });
-      check(name, 'client', join(dir, distDir, 'static'));
-      check(name, 'server', join(dir, distDir, 'server'));
+      const distDir = buildNext(name, dir, bundler);
       const next = join(dir, 'node_modules/next/dist/bin/next');
       await serve(name, next, ['start'], dir, { NEXT_DIST_DIR: distDir }, NEXT_REQUESTS);
     },
@@ -345,9 +271,7 @@ const builds = [
     name: 'react-router',
     async build(dir) {
       const appDir = join(dir, 'react-router');
-      run('pnpm', ['exec', 'react-router', 'build'], appDir);
-      check('react-router', 'client', join(appDir, 'build/client'));
-      check('react-router', 'server', join(appDir, 'build/server'));
+      buildReactRouter('react-router', appDir);
       const serveBin = join(dir, 'node_modules/@react-router/serve/bin.cjs');
       await serve('react-router', serveBin, ['build/server/index.js'], appDir, {}, REACT_ROUTER_REQUESTS);
     },
@@ -368,36 +292,57 @@ const examples = [
   },
 ];
 
-function prepareFixture() {
+/** Each fixture is a directory with a package.json that installs konat from konat.tgz, and the builds to run in it. */
+const fixtures = [{ dir: import.meta.dirname, builds }, noXstate];
+
+/** Builds konat, packs it into `dir` as npm publishes it, and returns the path of the tarball. */
+function packKonat(dir) {
   run('pnpm', ['--filter', 'konat', 'build'], root);
-  const dir = mkdtempSync(join(tmpdir(), 'konat-bundles-'));
-  cpSync(fixtureDir, dir, {
-    recursive: true,
-    filter: (source) => !/(node_modules|\.next[^/]*|\/out|\/build|check\.mjs)$/.test(source),
-  });
   run('pnpm', ['pack', '--pack-destination', dir], join(root, 'packages/konat'));
-  const tarball = readdirSync(dir).find((file) => /^konat-.*\.tgz$/.test(file));
-  renameSync(join(dir, tarball), join(dir, 'konat.tgz'));
+
+  return join(dir, readdirSync(dir).find((file) => /^konat-.*\.tgz$/.test(file)));
+}
+
+/** Copies a fixture into `dir`, and installs it with the tarball as konat. */
+function installFixture(fixture, dir, tarball) {
+  cpSync(fixture, dir, {
+    recursive: true,
+    filter: (source) => !/(node_modules|\.next[^/]*|\/out|\/build|check\.mjs|harness\.mjs)$/.test(source),
+  });
+  cpSync(tarball, join(dir, 'konat.tgz'));
   // pnpm runs no install scripts it wasn't allowed to. esbuild's script puts its binary in place.
   writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'allowBuilds:\n  esbuild: true\n');
   run('pnpm', ['install', '--no-frozen-lockfile', '--reporter=silent'], dir);
-
-  return dir;
 }
 
-const selected = builds.filter((build) => !values.only || build.name.includes(values.only));
-let dir;
+const selected = [];
+
+for (const fixture of fixtures) {
+  const picked = fixture.builds.filter((build) => !values.only || build.name.includes(values.only));
+
+  if (picked.length > 0) selected.push({ dir: fixture.dir, builds: picked });
+}
+
+const temporary = [];
 
 try {
   if (selected.length > 0) {
-    dir = prepareFixture();
-    console.log(`\nFixture: ${dir}`);
+    const packDir = mkdtempSync(join(tmpdir(), 'konat-pack-'));
+    temporary.push(packDir);
+    const tarball = packKonat(packDir);
 
-    for (const build of selected) {
-      try {
-        await build.build(dir);
-      } catch (error) {
-        failures.push(`${build.name}: ${error.message}`);
+    for (const fixture of selected) {
+      const dir = mkdtempSync(join(tmpdir(), `konat-${basename(fixture.dir)}-`));
+      temporary.push(dir);
+      installFixture(fixture.dir, dir, tarball);
+      console.log(`\nFixture: ${dir}`);
+
+      for (const build of fixture.builds) {
+        try {
+          await build.build(dir);
+        } catch (error) {
+          failures.push(`${build.name}: ${error.message}`);
+        }
       }
     }
   }
@@ -416,7 +361,7 @@ try {
     }
   }
 } finally {
-  if (dir && !values.keep) rmSync(dir, { recursive: true, force: true });
+  if (!values.keep) for (const dir of temporary) rmSync(dir, { recursive: true, force: true });
 }
 
 console.log('\n=== Debug code in production builds\n');
@@ -424,14 +369,14 @@ console.log('\n=== Debug code in production builds\n');
 for (const { name, output, hits, note } of rows) {
   const parts = [...new Set(hits.map((hit) => MARKERS[hit.marker]))];
   const result = hits.length === 0 ? 'none' : `FOUND ${parts.join(', ')}`;
-  console.log(`${name.padEnd(22)} ${output.padEnd(7)} ${result.padEnd(6)} ${note}`);
+  console.log(`${name.padEnd(28)} ${output.padEnd(7)} ${result.padEnd(6)} ${note}`);
 
-  for (const hit of hits) console.log(`${''.padEnd(31)}${hit.marker} in ${hit.file}`);
+  for (const hit of hits) console.log(`${''.padEnd(37)}${hit.marker} in ${hit.file}`);
 }
 
 if (answers.length > 0) console.log('\n=== Requests to production servers\n');
 
-for (const { name, path, answer } of answers) console.log(`${name.padEnd(22)} GET ${path.padEnd(13)} ${answer}`);
+for (const { name, path, answer } of answers) console.log(`${name.padEnd(28)} GET ${path.padEnd(13)} ${answer}`);
 
 for (const failure of failures) console.log(`\nFAILED ${failure}`);
 

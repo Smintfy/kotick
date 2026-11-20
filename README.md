@@ -13,6 +13,7 @@ For installation and usage, see the [package README](packages/konat/README.md).
 | `examples/next-app` | The Next.js App Router, with server rendering |
 | `site` | The landing page and the docs, in Next.js. The docs pages are MDX files in `site/src/content/docs` |
 | `tests/bundles` | A fixture app for the production-build check |
+| `tests/no-xstate` | A fixture app with konat and no XState, for the same check |
 | `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` and the site build |
 
 ## Development
@@ -35,7 +36,7 @@ pnpm install
 | `pnpm typecheck` | Checks the types of the package, the examples and the site |
 | `pnpm lint` | Runs oxlint over the repository with the rules in `.oxlintrc.json` |
 | `pnpm test:matrix` | Runs the tests on React 18 and 19, each with the minimum and the latest XState |
-| `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, and looks for debug code |
+| `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, with and without XState, and looks for debug code |
 | `pnpm --filter konat styles` | Writes the overlay's CSS from `styles.css` to `src/styles.generated.ts` |
 | `pnpm --filter konat bench` | Measures the cost of the adapter in development, against `@xstate/react` |
 
