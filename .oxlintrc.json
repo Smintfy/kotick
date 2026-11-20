@@ -144,7 +144,27 @@
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^react-dom(/|$)", "message": "The adapter renders nothing. The overlay owns the DOM." },
-          { "group": ["../**", "!../core/**", "!../types", "!../shared-hooks/**"], "message": "The adapter imports only its own files, the core, types.ts and shared hooks, and never the overlay." }
+          { "group": ["../**", "!../core/**", "!../types", "!../shared-hooks/**"], "message": "The adapter imports only its own files, the core, types.ts and shared hooks, and never the overlay or the other adapter." }
+        ] }]
+      }
+    },
+    {
+      "files": ["packages/konat/src/reducer/**"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^react-dom(/|$)", "message": "The reducer adapter renders nothing. The overlay owns the DOM." },
+          { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The reducer adapter imports no XState." },
+          { "group": ["../**", "!../core/**", "!../types", "!../shared-hooks/**"], "message": "The reducer adapter imports only its own files, the core, types.ts and shared hooks, and never the overlay or the other adapter." }
+        ] }]
+      }
+    },
+    {
+      // Server code imports a machine file, and production builds keep this module.
+      // So it stays free of React, of the core and of the other files of its own directory.
+      "files": ["packages/konat/src/reducer/machine.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": ".", "message": "The definition module imports nothing, so server code can import a machine file." }
         ] }]
       }
     },
@@ -169,12 +189,22 @@
       }
     },
     {
+      "files": ["packages/konat/src/reducer.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^react-dom(/|$)", "message": "The reducer adapter renders nothing. The overlay owns the DOM." },
+          { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The reducer adapter imports no XState." },
+          { "group": ["./**", "../**", "!./reducer/machine", "!./reducer/hook", "!./reducer/define-fixtures"], "message": "konat/reducer exports defineReducerMachine, useMachineReducer, defineFixtures and their types. Test a private function through them." }
+        ] }]
+      }
+    },
+    {
       // konat/figure is an entry of the workspace for the docs site, and no build has it.
       // It runs XState machines in the real overlay, so it may import every library.
       "files": ["packages/konat/src/figure.tsx"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
-          { "group": ["./**", "../**", "!./components/**", "!./core/**", "!./types", "!./utils/**", "!./xstate/**"], "message": "konat/figure imports only the overlay, the core, types.ts, utils and the XState adapter, and never another entry." }
+          { "group": ["./**", "../**", "!./components/**", "!./core/**", "!./types", "!./utils/**", "!./xstate/**"], "message": "konat/figure imports only the overlay, the core, types.ts, utils and the XState adapter, and never the reducer adapter or another entry." }
         ] }]
       }
     },
@@ -187,7 +217,7 @@
           "error",
           {
             "patterns": [
-              { "regex": "(^|/)src(/|$)", "message": "Import konat and konat/xstate by name." }
+              { "regex": "(^|/)src(/|$)", "message": "Import konat, konat/xstate and konat/reducer by name." }
             ]
           }
         ],

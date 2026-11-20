@@ -11,9 +11,9 @@ test file.
 
 ## Rules
 
-1. **Import the package by name.** Import `konat` and `konat/xstate`, the entries an app imports. Never
-   import from `src/`. If a private function seems to need its own test, find what a developer sees through it, and
-   test that.
+1. **Import the package by name.** Import `konat`, `konat/xstate` and `konat/reducer`, the entries an app imports.
+   Never import from `src/`. If a private function seems to need its own test, find what a developer sees through
+   it, and test that.
 2. **Use no mocks.** No `vi.mock`, `vi.fn`, `vi.spyOn`, stubbed globals, fake timers, or hand-built stand-ins for
    XState, React or a browser API. Run the real code.
    - To record the calls of a callback, push each call into an array, then assert the array.

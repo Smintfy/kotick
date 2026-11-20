@@ -53,6 +53,7 @@
   },
   "exports": {
     ".": "./src/index.tsx",
+    "./reducer": "./src/reducer.ts",
     "./xstate": "./src/xstate.ts",
     "./package.json": "./package.json",
     "./figure": "./src/figure.tsx"
@@ -60,6 +61,7 @@
   "publishConfig": {
     "exports": {
       ".": "./dist/index.js",
+      "./reducer": "./dist/reducer.js",
       "./xstate": "./dist/xstate.js",
       "./package.json": "./package.json"
     }
