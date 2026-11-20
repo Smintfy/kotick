@@ -115,7 +115,7 @@
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
-          { "group": ["../**", "!../core/**", "!../types", "!../hooks/**", "!../utils/**", "!../styles.generated"], "message": "Components import only their own files, the core, types.ts, hooks, utils and the styles." }
+          { "group": ["../**", "!../core/**", "!../types", "!../hooks/**", "!../utils/**", "!../shared-hooks/**", "!../styles.generated"], "message": "Components import only their own files, the core, types.ts, hooks, utils, shared hooks and the styles." }
         ] }]
       }
     },
@@ -126,7 +126,16 @@
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
-          { "group": ["../**", "!../core/**", "!../types", "!../hooks/**", "!../utils/**", "!../styles.generated"], "message": "Hooks and utils import only their own files, the core, types.ts, each other and the styles, and never components." }
+          { "group": ["../**", "!../core/**", "!../types", "!../hooks/**", "!../utils/**", "!../shared-hooks/**", "!../styles.generated"], "message": "Hooks and utils import only their own files, the core, types.ts, each other, shared hooks and the styles, and never components." }
+        ] }]
+      }
+    },
+    {
+      "files": ["packages/konat/src/shared-hooks/**"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^(react-dom|xstate|@xstate/react)(/|$)", "message": "Shared hooks serve the overlay and the adapters, so they import no react-dom and no XState." },
+          { "group": ["../**", "!../core/**", "!../types"], "message": "Shared hooks import only their own files, the core and types.ts." }
         ] }]
       }
     },
@@ -135,7 +144,7 @@
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^react-dom(/|$)", "message": "The adapter renders nothing. The overlay owns the DOM." },
-          { "group": ["../**", "!../core/**", "!../types"], "message": "The adapter imports only its own files, the core and types.ts, and never the overlay." }
+          { "group": ["../**", "!../core/**", "!../types", "!../shared-hooks/**"], "message": "The adapter imports only its own files, the core, types.ts and shared hooks, and never the overlay." }
         ] }]
       }
     },

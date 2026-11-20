@@ -4,9 +4,7 @@ import {
   createElement,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useReducer,
   useState,
   useSyncExternalStore,
   type ReactElement,
@@ -27,16 +25,16 @@ import {
   type SnapshotFrom,
   type StateFrom,
 } from 'xstate';
+import { nextInstanceId } from '../core/instance-id';
+import { useIsomorphicLayoutEffect } from '../shared-hooks/use-isomorphic-layout-effect';
+import { useSnapshotCheck } from '../shared-hooks/use-snapshot-check';
 import { isMachineActor } from './actor';
-import { nextInstanceId, resolveMachineId } from './identity';
+import { resolveMachineId } from './identity';
 import type { HookActorOptions, WithDebug } from './options';
 import { findBinding, getBinding, isProxy, type Binding, type Registration } from './proxy';
 import { createView, createViewMemory, type View, type ViewLifetime, type ViewMemory } from './view';
 
 type ObserverOrListener<T> = Observer<T> | ((value: T) => void);
-
-// Layout effects run before the passive effects of @xstate/react. On the server, neither runs.
-const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 interface Connection<T> {
   key: T;
@@ -253,20 +251,6 @@ function createStore() {
       };
     },
   };
-}
-
-/**
- * In a passive effect, useSyncExternalStore subscribes and checks the snapshot that it rendered.
- * A passive effect runs after the paint, unless the commit was synchronous.
- * A hidden Activity unregisters the hooks in it, and the registry then ends their previews.
- * The Activity can show a component again without a new render, so the last render can still show that preview.
- * This layout effect re-renders it synchronously, so the first paint shows the real snapshot.
- */
-function useSnapshotCheck<T>(read: () => T, rendered: T): void {
-  const [, rerender] = useReducer((count: number) => count + 1, 0);
-  useIsomorphicLayoutEffect(() => {
-    if (!Object.is(read(), rendered)) rerender();
-  });
 }
 
 export function useSelector<TActor extends Pick<AnyActorRef, 'subscribe' | 'getSnapshot'> | undefined, T>(

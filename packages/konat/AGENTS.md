@@ -13,6 +13,7 @@ A development overlay for React apps that use XState v5. The README says what it
 | `src/core/` | The registry, one per page, and the stores it composes |
 | `src/components/` | The overlay: the React components in the shadow root. `konat.tsx` mounts it. They use Tailwind utilities. `classes.ts` holds the class lists that more than one component uses |
 | `src/hooks/` | The overlay's React hooks, one hook per file |
+| `src/shared-hooks/` | The React hooks that the overlay and the adapter share, one hook per file. They import only React and the core |
 | `src/utils/` | The overlay's modules that are not React: settings, shortcuts, formatting, the shadow host |
 | `src/styles.generated.ts` | Generated from `styles.css`. Do not edit it |
 | `styles.css` | The overlay's CSS: the Tailwind theme with only our tokens, in px, and the rules that utilities can't express |

@@ -12,7 +12,6 @@ export interface Identity {
 /** The id XState gives a machine created without one. */
 const DEFAULT_MACHINE_ID = '(machine)';
 
-const COUNTER_KEY = '__KONAT_LAST_INSTANCE__';
 const fallbackIds = new WeakMap<AnyStateMachine, string>();
 
 export function resolveMachineId(machine: AnyStateMachine, debugId?: string): string {
@@ -54,20 +53,6 @@ export function warnFallbackId(id: string): void {
     `[konat] A machine has no id, so it's listed as "${id}". ` +
       `Give it one with createMachine({ id }) or with the debug option: { debug: { id } }.`,
   );
-}
-
-/**
- * The counter lives on globalThis, so every React root and every copy of the package draw from one sequence.
- * React's useId isn't enough, because separately hydrated roots each start from the same tree-position ids.
- * So two islands that render one machine would share a key.
- */
-export function nextInstanceId(): string {
-  // SAFETY: The counter is a property this package adds to globalThis, under a key that nothing else uses.
-  const scope = globalThis as typeof globalThis & { [COUNTER_KEY]?: number };
-  const next = (scope[COUNTER_KEY] ?? 0) + 1;
-  scope[COUNTER_KEY] = next;
-
-  return String(next);
 }
 
 /** Children are sorted by key, as context keys are, so moving a state up or down doesn't change the machine. */

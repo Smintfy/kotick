@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { getPageRegistry } from '../core/registry';
-import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
+import { useIsomorphicLayoutEffect } from '../shared-hooks/use-isomorphic-layout-effect';
 import { overlayStyles } from '../styles.generated';
 import type { KonatProps } from '../types';
 import { createHost, type OverlayHost } from '../utils/host';

@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { warnOnce } from '../core/warn-once';
-import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { useLatest } from '../hooks/use-latest';
 import { useRegistrySnapshot } from '../hooks/use-registry-snapshot';
+import { useIsomorphicLayoutEffect } from '../shared-hooks/use-isomorphic-layout-effect';
 import type { KonatProps, Registry } from '../types';
 import type { OverlayHost } from '../utils/host';
 import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../utils/model';

@@ -1,7 +1,8 @@
 import type { AnyActorRef } from 'xstate';
+import { nextInstanceId } from '../core/instance-id';
 import { warnOnce } from '../core/warn-once';
 import { isMachineActor } from './actor';
-import { nextInstanceId, resolveMachineId } from './identity';
+import { resolveMachineId } from './identity';
 import type { DebugOptions } from './options';
 import { findBinding, getBinding, isProxy } from './proxy';
 
