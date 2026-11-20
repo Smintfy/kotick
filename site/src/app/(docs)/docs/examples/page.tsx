@@ -34,30 +34,33 @@ export default function ExamplesPage() {
 
   return (
     <>
-      <header className="mb-8">
-        <h1>{examplesPage.title}</h1>
-        <p className="mt-2 mb-4 text-muted-foreground">{examplesPage.description}</p>
+      <article className="prose">
+        <header className="mb-8">
+          <h1>{examplesPage.title}</h1>
+          <p className="mt-2 mb-4 text-muted-foreground">{examplesPage.description}</p>
+        </header>
         <p>
           Each demo is one app with a version for each adapter. Select <strong>XState</strong> or{' '}
-          <strong>Reducer</strong> in its bar to change the version. The panel then lists the machine of that version.
+          <strong>Reducer</strong> above it to change the version. The panel then lists the machine of that version.
         </p>
         <p>
-          The Code tab of each demo shows its machine and its fixtures. The demos give the fixtures to{' '}
+          The Code tab of each demo shows its component, its machine and its fixtures, each in a file. The demos
+          give the fixtures to{' '}
           <code>&lt;Konat /&gt;</code> as an array, so the fixtures are in each build of this site. In your app, use a
           loader with a development condition. Refer to{' '}
           <Link href={checkedHref('/docs/fixtures#define-fixtures')}>Define fixtures</Link>.
         </p>
-      </header>
-      {examplesPage.headings.map(({ id, text }, index) => (
-        <section key={id} className="@container" aria-labelledby={id}>
-          <h2 id={id} className={index === 0 ? 'mt-0' : 'mt-18'}>
-            <a href={`#${id}`} className="text-inherit no-underline hover:underline">
-              {text}
-            </a>
-          </h2>
-          {bodies[id]}
-        </section>
-      ))}
+        {examplesPage.headings.map(({ id, text }) => (
+          <section key={id} aria-labelledby={id}>
+            <h2 id={id}>
+              <a href={`#${id}`} className="text-inherit no-underline hover:underline">
+                {text}
+              </a>
+            </h2>
+            {bodies[id]}
+          </section>
+        ))}
+      </article>
       <Pager href={examplesPage.href} />
     </>
   );

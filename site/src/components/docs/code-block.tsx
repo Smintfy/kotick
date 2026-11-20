@@ -58,10 +58,10 @@ export function CodeBlock({ children }: ComponentProps<'pre'>) {
   const { lang, text } = readCode(children);
 
   return (
-    <figure className="group relative mb-4">
+    <figure className="group relative my-6">
       <ScrollArea
         scrollbars="horizontal"
-        className="overflow-clip rounded-xl shadow-code"
+        className="overflow-clip rounded-xl shadow-edge"
         viewportClassName="scroll-fade-x overflow-y-hidden! overscroll-x-none focus-visible:ring-inset"
       >
         <HighlightedPre text={text} lang={lang} className="[@media(hover:none)]:pt-10" />

@@ -1,5 +1,5 @@
-import { type CompleteFixtures, defineFixtures, defineReducerMachine } from 'konat/reducer';
-import { type Account, canInvite, emptyAccount, type OnboardingEvent, saveWorkspace, takenWorkspace } from '@/demo/onboarding/account';
+import { defineReducerMachine } from 'konat/reducer';
+import { type Account, canInvite, emptyAccount, type OnboardingEvent, saveWorkspace } from '@/demo/onboarding/account';
 
 export type OnboardingState =
   | { step: 'profile'; account: Account }
@@ -80,19 +80,3 @@ export const onboardingReducerMachine = defineReducerMachine<OnboardingState, On
     done: {},
   },
 });
-
-const profile: Account = { ...emptyAccount, name: 'Ada Lovelace' };
-
-const withRole: Account = { ...profile, role: 'engineering' };
-
-const withWorkspace: Account = { ...withRole, workspace: 'Analytical Engines' };
-
-export const onboardingReducerFixtures = defineFixtures(onboardingReducerMachine, {
-  profile: { step: 'profile', account: profile },
-  role: { step: 'role', account: withRole },
-  workspace: { step: 'workspace', account: withRole },
-  creating: { step: 'creating', account: withWorkspace },
-  error: { step: 'error', account: { ...withRole, workspace: takenWorkspace }, error: `The name ${takenWorkspace} is taken` },
-  invite: { step: 'invite', account: { ...withWorkspace, email: 'mary@example.com', invites: ['charles@example.com'] } },
-  done: { step: 'done', account: { ...withWorkspace, invites: ['charles@example.com', 'mary@example.com'] } },
-} satisfies CompleteFixtures<typeof onboardingReducerMachine>);

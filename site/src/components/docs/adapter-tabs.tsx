@@ -50,11 +50,11 @@ export function useAdapter(): [Adapter, (adapter: Adapter) => void] {
   return [useSyncExternalStore(subscribe, current, first), choose];
 }
 
-function AdapterList() {
+function AdapterList({ tabClassName = barTab }: { tabClassName?: string }) {
   return (
     <TabsList aria-label="Adapter" activateOnFocus className="gap-px bg-transparent p-0">
       {adapters.map(({ id, label }) => (
-        <TabsTrigger key={id} value={id} className={barTab}>
+        <TabsTrigger key={id} value={id} className={tabClassName}>
           {label}
         </TabsTrigger>
       ))}
@@ -62,13 +62,13 @@ function AdapterList() {
   );
 }
 
-/** The tabs alone, for a bar whose content changes with the adapter. */
-export function AdapterSwitch() {
+/** The tabs alone, for a box whose content changes with the adapter. */
+export function AdapterSwitch({ tabClassName }: { tabClassName?: string }) {
   const [adapter, setAdapter] = useAdapter();
 
   return (
     <Tabs value={adapter} onValueChange={setAdapter}>
-      <AdapterList />
+      <AdapterList tabClassName={tabClassName} />
     </Tabs>
   );
 }

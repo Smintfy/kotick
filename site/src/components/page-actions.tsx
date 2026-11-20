@@ -25,7 +25,7 @@ export function PageActions({ markdown, markdownHref }: { markdown: string; mark
   const { copied, copy } = useCopy();
 
   return (
-    <ButtonGroup className="shrink-0 rounded-lg shadow-code *:shadow-none">
+    <ButtonGroup className="shrink-0 rounded-lg shadow-edge *:shadow-none">
       <Button variant="outline" size="sm" className="gap-1.5 text-[13px] font-normal" onClick={() => copy(markdown)} aria-live="polite">
         {copied ? <Check /> : <Copy />}
         {copied ? 'Copied' : 'Copy page'}

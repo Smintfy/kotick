@@ -5,12 +5,11 @@ import { type ComponentProps, type ReactNode, useState } from 'react';
 import { type FixturesInput, Konat } from 'konat';
 import { CopyButton } from '@/components/copy-button';
 import { AdapterSwitch, useAdapter } from '@/components/docs/adapter-tabs';
-import { barTab } from '@/components/docs/bar-tab';
+import { barTab, outerTab } from '@/components/docs/bar-tab';
 import { useIsApple } from '@/components/docs/shortcut';
 import { OverlayDock } from '@/components/overlay-dock';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Adapter } from '@/content/adapters';
@@ -25,25 +24,28 @@ export function DemoWindow({ apps, fixtures, href, sources }: DemoWindowProps) {
   const source = sources[adapter];
   const [run, setRun] = useState(0);
   const [view, setView] = useState<'preview' | 'code'>('preview');
+  const [fileName, setFileName] = useState(source.files[0].name);
+  const file = source.files.find(({ name }) => name === fileName) ?? source.files[0];
   const toggleKeys = useIsApple() ? '⌥S' : 'Alt+S';
 
   return (
-    <Tabs value={view} onValueChange={setView} render={<figure />} className="not-prose mb-6 gap-0 rounded-2xl shadow-code">
-      <div className="flex items-center gap-2 border-b border-input p-2">
+    <Tabs value={view} onValueChange={setView} render={<figure />} className="not-prose my-6 gap-2">
+      <div className="flex items-center gap-2">
         <TabsList aria-label="View" activateOnFocus className="gap-px bg-transparent p-0">
-          <TabsTrigger value="preview" className={barTab}>
+          <TabsTrigger value="preview" className={outerTab}>
             Preview
           </TabsTrigger>
-          <TabsTrigger value="code" className={barTab}>
+          <TabsTrigger value="code" className={outerTab}>
             Code
           </TabsTrigger>
         </TabsList>
-        <Separator orientation="vertical" className="my-1.5" />
-        <AdapterSwitch />
-        {view === 'code' ? (
-          <CopyButton text={source.text} label="Copy code" className="ml-auto" />
-        ) : (
-          <div className="ml-auto flex gap-1 text-muted-foreground">
+        <div className="ml-auto">
+          <AdapterSwitch tabClassName={outerTab} />
+        </div>
+      </div>
+      <div className="relative rounded-2xl shadow-edge">
+        {view === 'preview' && (
+          <div className="absolute top-2 right-2 z-10 flex gap-1 text-muted-foreground">
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -68,8 +70,6 @@ export function DemoWindow({ apps, fixtures, href, sources }: DemoWindowProps) {
             </Tooltip>
           </div>
         )}
-      </div>
-      <div className="relative">
         <TabsContent
           value="preview"
           keepMounted
@@ -83,15 +83,35 @@ export function DemoWindow({ apps, fixtures, href, sources }: DemoWindowProps) {
             <p className="absolute right-16 bottom-8 m-0 translate-y-1/2 text-[13px] text-muted-foreground">Click the bubble, or press {toggleKeys}.</p>
           </OverlayDock>
         </TabsContent>
-        {/* The viewport, not the panel, is the stop for the Tab key. It scrolls with the arrow keys. */}
         <TabsContent value="code" tabIndex={-1} className="absolute inset-0">
-          <ScrollArea
-            scrollbars="both"
-            className="size-full overflow-clip rounded-b-2xl"
-            viewportClassName="scroll-fade-xy overscroll-none focus-visible:ring-inset"
-          >
-            {source.pre}
-          </ScrollArea>
+          <Tabs value={fileName} onValueChange={setFileName} className="size-full gap-0">
+            <div className="flex items-center gap-2 border-b border-input p-2">
+              <TabsList
+                aria-label="File"
+                activateOnFocus
+                className="scroll-fade-x min-w-0 justify-start gap-px overflow-x-auto bg-transparent p-0 [scrollbar-width:none]"
+              >
+                {source.files.map(({ name }) => (
+                  <TabsTrigger key={name} value={name} className={barTab}>
+                    {name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              <CopyButton text={file.text} label={`Copy ${file.name}`} className="ml-auto" />
+            </div>
+            {source.files.map(({ name, pre }) => (
+              // The viewport, not the panel, is the stop for the Tab key. It scrolls with the arrow keys.
+              <TabsContent key={name} value={name} tabIndex={-1} className="min-h-0">
+                <ScrollArea
+                  scrollbars="both"
+                  className="size-full overflow-clip rounded-b-2xl"
+                  viewportClassName="scroll-fade-xy overscroll-none focus-visible:ring-inset"
+                >
+                  {pre}
+                </ScrollArea>
+              </TabsContent>
+            ))}
+          </Tabs>
         </TabsContent>
       </div>
     </Tabs>

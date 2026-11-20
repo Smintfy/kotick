@@ -31,7 +31,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             className="grid min-h-0 flex-1 items-start overflow-y-auto [scrollbar-gutter:stable] scroll-pt-10 max-md:scroll-pt-6 xl:grid-cols-[minmax(0,1fr)_240px]"
           >
             <div className="min-w-0 px-12 pt-10 pb-16 max-lg:px-8 max-md:px-4 max-md:pt-6 max-md:pb-12">
-              <div className="mx-auto max-w-[680px]">{children}</div>
+              <div className="mx-auto max-w-3xl">{children}</div>
             </div>
             <Toc items={nav} scrollRootId={contentId} />
           </div>

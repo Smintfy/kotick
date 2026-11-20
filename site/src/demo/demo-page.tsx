@@ -8,8 +8,10 @@ import { AdapterSwitch, useAdapter } from '@/components/docs/adapter-tabs';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Adapter } from '@/content/adapters';
-import { checkoutDemoFixtures, ReducerCheckout, XStateCheckout } from '@/demo/checkout/example';
-import { onboardingDemoFixtures, ReducerOnboarding, XStateOnboarding } from '@/demo/onboarding/example';
+import { ReducerCheckout, XStateCheckout } from '@/demo/checkout/checkout';
+import { checkoutDemoFixtures } from '@/demo/checkout/example';
+import { onboardingDemoFixtures } from '@/demo/onboarding/example';
+import { ReducerOnboarding, XStateOnboarding } from '@/demo/onboarding/onboarding';
 import type { DemoId } from '@/site';
 
 const demos = {

@@ -1,21 +1,51 @@
 import 'server-only';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import type { ReactNode } from 'react';
 import { HighlightedPre } from '@/components/docs/code-block';
 import type { Adapter } from '@/content/adapters';
 import type { DemoId } from '@/site';
 
-export type DemoSource = { text: string; pre: ReactNode };
+export type DemoFile = { name: string; text: string; pre: ReactNode };
+
+export type DemoSource = { files: [DemoFile, ...DemoFile[]] };
 
 export type DemoSources = Record<Adapter, DemoSource>;
 
-function demoSource(id: DemoId, file: string): DemoSource {
-  const text = readFileSync(join(process.cwd(), 'src/demo', id, file), 'utf8').replace(/\n$/, '');
+const paths: Record<DemoId, Record<Adapter, [string, ...string[]]>> = {
+  checkout: {
+    xstate: ['checkout/checkout.tsx', 'checkout/xstate-machine.ts', 'checkout/xstate-fixtures.ts', 'checkout/order.ts', 'radio-card.tsx'],
+    reducer: ['checkout/checkout.tsx', 'checkout/reducer-machine.ts', 'checkout/reducer-fixtures.ts', 'checkout/order.ts', 'radio-card.tsx'],
+  },
+  onboarding: {
+    xstate: [
+      'onboarding/onboarding.tsx',
+      'onboarding/xstate-machine.ts',
+      'onboarding/xstate-fixtures.ts',
+      'onboarding/account.ts',
+      'radio-card.tsx',
+    ],
+    reducer: [
+      'onboarding/onboarding.tsx',
+      'onboarding/reducer-machine.ts',
+      'onboarding/reducer-fixtures.ts',
+      'onboarding/account.ts',
+      'radio-card.tsx',
+    ],
+  },
+};
 
-  return { text, pre: <HighlightedPre text={text} lang="ts" /> };
+function demoFile(path: string): DemoFile {
+  const text = readFileSync(join(process.cwd(), 'src/demo', path), 'utf8').replace(/\n$/, '');
+  const lang = path.endsWith('.tsx') ? 'tsx' : 'ts';
+
+  return { name: basename(path), text, pre: <HighlightedPre text={text} lang={lang} /> };
+}
+
+function demoSource([first, ...rest]: [string, ...string[]]): DemoSource {
+  return { files: [demoFile(first), ...rest.map(demoFile)] };
 }
 
 export function demoSources(id: DemoId): DemoSources {
-  return { xstate: demoSource(id, 'xstate-machine.ts'), reducer: demoSource(id, 'reducer-machine.ts') };
+  return { xstate: demoSource(paths[id].xstate), reducer: demoSource(paths[id].reducer) };
 }

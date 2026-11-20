@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist_Mono, Inter } from 'next/font/google';
+import { ThemeProvider } from 'next-themes';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { pitch } from '@/site';
 import '@/app/site.css';
@@ -14,9 +15,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="en" className={`antialiased ${inter.variable} ${geistMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`antialiased ${inter.variable} ${geistMono.variable}`}>
       <body>
-        <TooltipProvider>{children}</TooltipProvider>
+        <ThemeProvider attribute="class" disableTransitionOnChange>
+          <TooltipProvider>{children}</TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
