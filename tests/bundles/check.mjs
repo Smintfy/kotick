@@ -3,9 +3,9 @@
 // The fixture app in this directory uses every public export. The script packs konat as npm publishes it,
 // installs the tarball into a copy of the fixture in a temporary directory, and builds the copy for production with
 // esbuild, Vite, Next.js (Turbopack and webpack) and React Router. Then it builds the examples, which use the
-// workspace source. In each output, it looks for strings that only the registry, the overlay and the adapter contain.
-// For esbuild and Vite it also compares the JavaScript loaded at startup with the same app written against
-// @xstate/react (src/baseline.tsx), and fails when the difference is over STARTUP_GROWTH_BUDGET_GZIP_BYTES.
+// workspace source. In each output, it looks for strings that only the registry, the overlay and the adapters contain.
+// For esbuild and Vite it also compares the JavaScript loaded at startup of each app in PAIRS with the same app written
+// without konat, and fails when the difference is over the budget of that pair.
 //
 // Usage:
 //   node tests/bundles/check.mjs                    every bundler, then the examples
@@ -34,7 +34,27 @@ import { MARKERS } from '../../scripts/debug-markers.mjs';
 const root = join(import.meta.dirname, '../..');
 const fixtureDir = import.meta.dirname;
 
-const STARTUP_GROWTH_BUDGET_GZIP_BYTES = 512;
+/**
+ * Each pair is an app that uses one adapter and the same app without konat, as an esbuild entry and a Vite page.
+ * Each pair has its own budget, so one adapter can't use the headroom of the other.
+ * The output then names the adapter that grew.
+ */
+const PAIRS = [
+  {
+    name: 'xstate',
+    without: '@xstate/react',
+    budget: 512,
+    app: { entry: 'src/main.tsx', page: 'index.html' },
+    baseline: { entry: 'src/main-baseline.tsx', page: 'baseline.html' },
+  },
+  {
+    name: 'reducer',
+    without: 'useReducer',
+    budget: 640,
+    app: { entry: 'src/main-reducer.tsx', page: 'reducer.html' },
+    baseline: { entry: 'src/main-reducer-baseline.tsx', page: 'reducer-baseline.html' },
+  },
+];
 
 const { values } = parseArgs({
   options: {
@@ -84,11 +104,16 @@ function scan(dir) {
   return hits;
 }
 
+// Every export of konat that holds code. A server bundle that leaves konat/figure to Node loads konat at runtime too.
+const konatSpecifiers = Object.keys(JSON.parse(readFileSync(join(root, 'packages/konat/package.json'), 'utf8')).exports)
+  .filter((path) => path !== './package.json')
+  .map((path) => path.replace(/^\./, 'konat'));
+
+const konatLoad = new RegExp(`(?:\\bfrom|\\bimport|\\brequire\\()\\s*\\(?\\s*["'](?:${konatSpecifiers.join('|')})["']`);
+
 /** True when a server bundle leaves konat to Node, which reads NODE_ENV when the server starts. */
 function importsAtRuntime(dir) {
-  const load = /(?:\bfrom|\bimport|\brequire\()\s*\(?\s*["']konat(?:\/xstate)?["']/;
-
-  return jsFiles(dir).some((file) => load.test(readFileSync(file, 'utf8')));
+  return jsFiles(dir).some((file) => konatLoad.test(readFileSync(file, 'utf8')));
 }
 
 function sizeOf(files) {
@@ -106,7 +131,7 @@ function sizeOf(files) {
 
 /** The JavaScript an esbuild entry loads at startup: the entry and its static imports, not import() chunks. */
 function esbuildStartup(dir, outdir) {
-  const meta = JSON.parse(readFileSync(join(dir, outdir, 'meta.json'), 'utf8'));
+  const meta = JSON.parse(readFileSync(join(outdir, 'meta.json'), 'utf8'));
   const outputs = meta.outputs;
   const entry = Object.keys(outputs).find((path) => outputs[path].entryPoint);
   const seen = new Set();
@@ -157,53 +182,58 @@ function check(name, output, dir, extra = '') {
   rows.push({ name, output, hits, note: runtime ? 'imports konat at runtime' : extra });
 }
 
-function compare(name, app, baseline) {
+function compare(name, pair, app, baseline) {
   const a = sizeOf(app);
   const b = sizeOf(baseline);
   const growth = a.gzip - b.gzip;
 
-  if (growth > STARTUP_GROWTH_BUDGET_GZIP_BYTES) {
-    const over = `over the budget of ${formatBytes(STARTUP_GROWTH_BUDGET_GZIP_BYTES)}`;
-    failures.push(`${name}: startup JS is ${formatBytes(growth)} gzip larger than with @xstate/react, ${over}.`);
+  if (growth > pair.budget) {
+    const over = `over the budget of ${formatBytes(pair.budget)}`;
+    failures.push(`${name}: startup JS is ${formatBytes(growth)} gzip larger than with ${pair.without}, ${over}.`);
   }
 
-  return `startup JS ${formatBytes(a.gzip)} gzip, ${signed(growth)} vs @xstate/react (${signed(a.raw - b.raw)} raw)`;
+  return `startup JS ${formatBytes(a.gzip)} gzip, ${signed(growth)} vs ${pair.without} (${signed(a.raw - b.raw)} raw)`;
+}
+
+/**
+ * Builds both apps of each pair with `buildApp(side, outdir)`, and compares the files that `startup(outdir)` lists.
+ * Only the app of a pair has konat, so only its output gets a row.
+ */
+function measurePairs(bundler, dir, buildApp, startup) {
+  for (const pair of PAIRS) {
+    const name = `${bundler} ${pair.name}`;
+    const app = join(dir, 'out', bundler, pair.name, 'app');
+    const baseline = join(dir, 'out', bundler, pair.name, 'baseline');
+    buildApp(pair.app, app);
+    buildApp(pair.baseline, baseline);
+    check(name, 'client', app, compare(name, pair, startup(app), startup(baseline)));
+  }
 }
 
 const builds = [
   {
     name: 'esbuild',
     build(dir) {
-      run('node', ['esbuild.mjs', 'src/main.tsx', 'out/esbuild/app'], dir);
-      run('node', ['esbuild.mjs', 'src/main-baseline.tsx', 'out/esbuild/baseline'], dir);
-
-      const sizes = compare(
+      measurePairs(
         'esbuild',
-        esbuildStartup(dir, 'out/esbuild/app'),
-        esbuildStartup(dir, 'out/esbuild/baseline'),
+        dir,
+        (side, outdir) => run('node', ['esbuild.mjs', side.entry, outdir], dir),
+        (outdir) => esbuildStartup(dir, outdir),
       );
-
-      check('esbuild', 'client', join(dir, 'out/esbuild/app'), sizes);
     },
   },
   {
     name: 'vite',
     build(dir) {
-      const viteDir = join(dir, 'vite');
-      run('pnpm', ['exec', 'vite', 'build', '--outDir', '../out/vite/app', '--emptyOutDir'], viteDir, {
-        ENTRY: 'index.html',
-      });
-      run('pnpm', ['exec', 'vite', 'build', '--outDir', '../out/vite/baseline', '--emptyOutDir'], viteDir, {
-        ENTRY: 'baseline.html',
-      });
-
-      const sizes = compare(
+      measurePairs(
         'vite',
-        viteStartup(join(dir, 'out/vite/app')),
-        viteStartup(join(dir, 'out/vite/baseline')),
+        dir,
+        (side, outdir) =>
+          run('pnpm', ['exec', 'vite', 'build', '--outDir', outdir, '--emptyOutDir'], join(dir, 'vite'), {
+            ENTRY: side.page,
+          }),
+        viteStartup,
       );
-
-      check('vite', 'client', join(dir, 'out/vite/app'), sizes);
     },
   },
   {
