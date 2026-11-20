@@ -20,6 +20,7 @@ import {
   marks,
   overlay,
   panel,
+  pickSource,
   preview,
   release,
   show,
@@ -132,6 +133,77 @@ test('an event that an effect sends during a preview reaches the real machine, a
   });
 });
 
+describe('a state with no data that fits it', () => {
+  function refusal(state: string): string {
+    return (
+      `[konat] Can't preview "${state}" on "${shownKey()}": it has no recorded or fixture context, and the live ` +
+      'context belongs to another state. Visit the state in the app, or add it to defineFixtures().'
+    );
+  }
+
+  test('a state with no recording and no fixture is refused with a warning, and nothing is previewed or blocked', async () => {
+    const output = watchConsole();
+    const machine = createOrderMachine(createBank());
+    await mount(<Order machine={machine} />);
+    await show(machine.id);
+    await clearBlockedEvents();
+    await clickLeaf('success');
+    const clicked = { shown: shownOrder(), panel: previewed() };
+    await press('order: submit');
+
+    expect({ clicked, submitted: { shown: shownOrder(), rows: blockedEvents() }, output }).toEqual({
+      clicked: { shown: { status: 'idle' }, panel: { previewed: [], source: 'none', badge: '' } },
+      submitted: { shown: { status: 'loading', orderId: 'o1' }, rows: [] },
+      output: { warn: [refusal('success')], error: [] },
+    });
+  });
+
+  test('a refusal keeps the preview that the instance has, and renders nothing', async () => {
+    const output = watchConsole();
+    const machine = createOrderMachine(createBank());
+    let commits = 0;
+    await mount(
+      <Order
+        machine={machine}
+        onCommit={() => {
+          commits += 1;
+        }}
+      />,
+    );
+    // The machine is in idle, so the live context fits it.
+    await preview(machine.id, ['idle'], { source: 'live' });
+    const before = { panel: previewed(), commits };
+    await clickLeaf('error');
+
+    expect({ before: before.panel, after: previewed(), commits: commits - before.commits, output }).toEqual({
+      before: { previewed: ['idle'], source: 'live', badge: '1' },
+      after: { previewed: ['idle'], source: 'live', badge: '1' },
+      commits: 0,
+      output: { warn: [refusal('error')], error: [] },
+    });
+  });
+
+  test('Live for another state is refused, also when that state has a recording', async () => {
+    const output = watchConsole();
+    const bank = createBank();
+    const machine = createOrderMachine(bank);
+    await mount(<Order machine={machine} />);
+    await press('order: submit');
+    await answer(bank, 'resolve');
+    await preview(machine.id, ['loading']);
+    await pickSource('live');
+
+    expect({ shown: shownOrder(), panel: previewed(), output }).toEqual({
+      shown: { status: 'loading', orderId: 'o1' },
+      panel: { previewed: ['loading'], source: 'recorded', badge: '1' },
+      output: {
+        warn: [`[konat] Can't preview "loading" on "${shownKey()}" with the live context, because it belongs to another state.`],
+        error: [],
+      },
+    });
+  });
+});
+
 describe('an override that the app can’t show', () => {
   const WRONG: OrderState = { status: 'error', orderId: 'o9', message: 'a fixture of another state' };
 
@@ -146,39 +218,6 @@ describe('an override that the app can’t show', () => {
       `"success" state. An older copy of konat on the page, or a fixture set that defineFixtures() didn't make, can cause this.`
     );
   }
-
-  test('a preview of a state with no data shows the real state, ends with one warning, and blocks no event', async () => {
-    const output = watchConsole();
-    const machine = createOrderMachine(createBank());
-    await mount(<Order machine={machine} />);
-    await show(machine.id);
-    await clearBlockedEvents();
-    await clickLeaf('success');
-    const clicked = { shown: shownOrder(), panel: previewed(), warnings: [...output.warn] };
-    await press('order: submit');
-
-    expect({ clicked, submitted: { shown: shownOrder(), rows: blockedEvents(), output } }).toEqual({
-      clicked: {
-        shown: { status: 'idle' },
-        panel: { previewed: [], source: 'none', badge: '' },
-        warnings: [
-          `[konat] No recorded or fixture context for "success" on "${shownKey()}", so the preview uses the live context.`,
-          ended('live'),
-        ],
-      },
-      submitted: {
-        shown: { status: 'loading', orderId: 'o1' },
-        rows: [],
-        output: {
-          warn: [
-            `[konat] No recorded or fixture context for "success" on "${shownKey()}", so the preview uses the live context.`,
-            ended('live'),
-          ],
-          error: [],
-        },
-      },
-    });
-  });
 
   test('a fixture of another state, from a set that defineFixtures() didn’t make, shows the real state, ends with one warning, and blocks no event', async () => {
     const output = watchConsole();

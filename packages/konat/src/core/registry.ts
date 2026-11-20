@@ -14,6 +14,7 @@ import type {
 import { createEventLog } from './event-log';
 import { createFixtureStore, readFixtures } from './fixtures';
 import { isId, isLeafId } from './ids';
+import { liveContextOf } from './live-context';
 import { createRecordingStore, defaultStorage } from './recording';
 import { VERSION } from './version';
 import { warnOnce } from './warn-once';
@@ -338,11 +339,17 @@ export function createRegistry(options: RegistryOptions): Registry {
     }
   }
 
+  /**
+   * The context for a preview of `leaves`, or undefined when no source fits them.
+   * The live context of a handle without shared context fits only the state that the machine is in.
+   * So an explicit `live` for another state gets undefined, also when a recording or a fixture exists.
+   * The registry must not show a source that the user didn't choose.
+   */
   function resolveContext(
     handle: MachineHandle,
     explicit: DataSource | undefined,
     leaves: PreviewLeaves,
-  ): ResolvedContext {
+  ): ResolvedContext | undefined {
     if (explicit !== 'live') {
       const order =
         explicit === undefined ? STORED_SOURCES : [explicit, ...STORED_SOURCES.filter((source) => source !== explicit)];
@@ -354,7 +361,7 @@ export function createRegistry(options: RegistryOptions): Registry {
       }
     }
 
-    return { source: 'live', context: handle.getContext() };
+    return liveContextOf(handle, leaves);
   }
 
   function applyPreview(instanceKey: string, target: PreviewTarget): void {
@@ -438,7 +445,7 @@ export function createRegistry(options: RegistryOptions): Registry {
     }
 
     const explicit = target.source;
-    let resolved: ResolvedContext;
+    let resolved: ResolvedContext | undefined;
 
     try {
       resolved = resolveContext(handle, explicit, leaves);
@@ -448,8 +455,16 @@ export function createRegistry(options: RegistryOptions): Registry {
       return;
     }
 
-    const { source } = resolved;
     const shown = `"${leaves.requested.join(', ')}" on "${instanceKey}"`;
+
+    // A refusal makes no override, keeps the override that the key has, and calls no listener.
+    if (resolved === undefined) {
+      console.warn(refusal(shown, explicit));
+
+      return;
+    }
+
+    const { source } = resolved;
     let held: string | undefined;
 
     if (source === 'live' && explicit !== 'live') {
@@ -490,7 +505,7 @@ export function createRegistry(options: RegistryOptions): Registry {
 
       if (!resolved && override.source === 'fixture') {
         try {
-          resolved = { source: 'live', context: handle.getContext() };
+          resolved = liveContextOf(handle, override);
         } catch {
           continue;
         }
@@ -680,6 +695,21 @@ export function getPageRegistry(): Registry {
   scope[REGISTRY_KEY] = registry;
 
   return registry;
+}
+
+/**
+ * The warning for a preview that has no context.
+ * It names what the user asked for, because an explicit Live can fail when a recording exists.
+ */
+function refusal(shown: string, explicit: DataSource | undefined): string {
+  if (explicit === 'live') {
+    return `[konat] Can't preview ${shown} with the live context, because it belongs to another state.`;
+  }
+
+  return (
+    `[konat] Can't preview ${shown}: it has no recorded or fixture context, and the live context belongs to another ` +
+    'state. Visit the state in the app, or add it to defineFixtures().'
+  );
 }
 
 function toOverride(instanceKey: string, { requested, filled }: PreviewLeaves, resolved: ResolvedContext): Override {
