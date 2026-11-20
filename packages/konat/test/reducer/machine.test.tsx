@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { useReducer } from 'react';
+import { lazy, startTransition, Suspense, useReducer, useState } from 'react';
 import { defineReducerMachine, useMachineReducer, type ReducerMachine } from 'konat/reducer';
 import { describe, expect, test } from 'vitest';
 import { press } from '../support/app';
@@ -281,6 +281,240 @@ describe('the effect of a state', () => {
     await respond(server.requests[0]);
 
     expect(server.log).toEqual(['start a with t1', 'respond to a with t3', 'cleanup a']);
+  });
+});
+
+describe('a transition update that React applies again from an older state', () => {
+  type FetchState =
+    | { status: 'idle' }
+    | { status: 'loading'; query: string }
+    | { status: 'ready'; query: string; result: string }
+    | { status: 'error'; message: string };
+
+  type FetchEvent =
+    | { type: 'SEARCH'; query: string }
+    | { type: 'RESOLVE'; result: string }
+    | { type: 'FAIL'; message: string };
+
+  // `loading` ignores SEARCH and FAIL, so the update that React applies again decides the state of the last commit.
+  function createFetchMachine({ log, requests }: Server) {
+    return defineReducerMachine<FetchState, FetchEvent>()({
+      id: freshId('fetch'),
+      discriminant: 'status',
+      states: {
+        idle: {
+          on: {
+            SEARCH: (_state, event) => ({ status: 'loading', query: event.query }),
+            FAIL: (_state, event) => ({ status: 'error', message: event.message }),
+          },
+        },
+        loading: {
+          on: { RESOLVE: (state, event) => ({ status: 'ready', query: state.query, result: event.result }) },
+          effect: (state, send) => {
+            log.push(`start ${state.query}`);
+            requests.push({
+              query: state.query,
+              respond: () => send({ type: 'RESOLVE', result: `result for ${state.query}` }),
+            });
+
+            return () => {
+              log.push(`cleanup ${state.query}`);
+            };
+          },
+        },
+        ready: {},
+        error: {
+          effect: (state) => {
+            log.push(`start error ${state.message}`);
+
+            return () => {
+              log.push(`cleanup error ${state.message}`);
+            };
+          },
+        },
+      },
+    });
+  }
+
+  function Fetch({ machine, urgent }: { machine: ReturnType<typeof createFetchMachine>; urgent: FetchEvent }) {
+    const [state, dispatch] = useMachineReducer(machine, { status: 'idle' });
+
+    return (
+      <>
+        <output aria-label="search">{JSON.stringify(state)}</output>
+        <button
+          type="button"
+          onClick={() => {
+            startTransition(() => dispatch({ type: 'SEARCH', query: 'a' }));
+            dispatch(urgent);
+          }}
+        >
+          search a in a transition
+        </button>
+      </>
+    );
+  }
+
+  test('the effect of the state that the urgent update entered stops, and the effect of the committed state starts', async () => {
+    const server = createServer();
+    render(<Fetch machine={createFetchMachine(server)} urgent={{ type: 'FAIL', message: 'm' }} />);
+    await press('search a in a transition');
+
+    expect({ shown: shown(), log: server.log }).toEqual({
+      shown: { status: 'loading', query: 'a' },
+      log: ['start error m', 'cleanup error m', 'start a'],
+    });
+  });
+
+  test('the effect starts again with the committed state when both updates enter the same state', async () => {
+    const server = createServer();
+    render(<Fetch machine={createFetchMachine(server)} urgent={{ type: 'SEARCH', query: 'b' }} />);
+    await press('search a in a transition');
+    const entered = [...server.log];
+    await respond(server.requests.at(-1));
+
+    expect({ entered, shown: shown() }).toEqual({
+      entered: ['start b', 'cleanup b', 'start a'],
+      shown: { status: 'ready', query: 'a', result: 'result for a' },
+    });
+  });
+
+  type DraftState = { status: 'idle'; draft: string } | { status: 'loading'; query: string };
+
+  type DraftEvent = { type: 'TYPE'; draft: string } | { type: 'SUBMIT' };
+
+  function Draft({ log }: { log: string[] }) {
+    const [machine] = useState(() =>
+      defineReducerMachine<DraftState, DraftEvent>()({
+        id: freshId('draft'),
+        discriminant: 'status',
+        states: {
+          idle: {
+            on: {
+              TYPE: (state, event) => ({ ...state, draft: event.draft }),
+              SUBMIT: (state) => ({ status: 'loading', query: state.draft }),
+            },
+          },
+          loading: {
+            effect: (state) => {
+              log.push(`start ${state.query}`);
+
+              return () => {
+                log.push(`cleanup ${state.query}`);
+              };
+            },
+          },
+        },
+      }),
+    );
+
+    const [state, dispatch] = useMachineReducer(machine, { status: 'idle', draft: 'b' });
+
+    return (
+      <>
+        <output aria-label="search">{JSON.stringify(state)}</output>
+        <button
+          type="button"
+          onClick={() => {
+            startTransition(() => dispatch({ type: 'TYPE', draft: 'a' }));
+            dispatch({ type: 'SUBMIT' });
+          }}
+        >
+          type a in a transition and submit
+        </button>
+      </>
+    );
+  }
+
+  test('the effect starts again when the same event enters the state again from another payload', async () => {
+    const log: string[] = [];
+    render(<Draft log={log} />);
+    await press('type a in a transition and submit');
+
+    expect({ shown: shown(), log }).toEqual({
+      shown: { status: 'loading', query: 'a' },
+      log: ['start b', 'cleanup b', 'start a'],
+    });
+  });
+});
+
+describe('a transition update that stays pending before an entry', () => {
+  const Never = lazy(() => new Promise<never>(() => {}));
+
+  /** A search with transitions that suspend and never commit, so React computes each later update again on each render. */
+  function Held({ machine }: { machine: SearchMachine }) {
+    const [state, dispatch] = useMachineReducer(machine, IDLE, { input: { tag: 't1' } });
+    const [suspended, setSuspended] = useState(false);
+    const [, setRenders] = useState(0);
+
+    function hold(event: SearchEvent): void {
+      startTransition(() => {
+        setSuspended(true);
+        dispatch(event);
+      });
+    }
+
+    return (
+      <>
+        <output aria-label="search">{JSON.stringify(state)}</output>
+        <Suspense>{suspended ? <Never /> : null}</Suspense>
+        <button type="button" onClick={() => hold({ type: 'SEARCH', query: 'a' })}>
+          hold search a
+        </button>
+        <button type="button" onClick={() => hold({ type: 'PROGRESS', progress: 10 })}>
+          hold progress
+        </button>
+        <button type="button" onClick={() => dispatch({ type: 'SEARCH', query: 'b' })}>
+          search b
+        </button>
+        <button type="button" onClick={() => dispatch({ type: 'PROGRESS', progress: 50 })}>
+          progress
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            dispatch({ type: 'CANCEL' });
+            dispatch({ type: 'SEARCH', query: 'c' });
+          }}
+        >
+          cancel and search c
+        </button>
+        <button type="button" onClick={() => setRenders((renders) => renders + 1)}>
+          render
+        </button>
+      </>
+    );
+  }
+
+  test('the effect keeps running through renders and through an event that keeps the state name', async () => {
+    const server = createServer();
+    render(<Held machine={createSearchMachine(server)} />);
+    await press('hold search a');
+    await press('search b');
+    await press('render');
+    await press('render');
+    await press('progress');
+
+    expect({ shown: shown(), log: server.log }).toEqual({
+      shown: { status: 'loading', query: 'b', progress: 50 },
+      log: ['start b with t1'],
+    });
+  });
+
+  test('the effect of a state that is entered after an event that keeps the state name keeps running', async () => {
+    const server = createServer();
+    render(<Held machine={createSearchMachine(server)} />);
+    await press('search b');
+    await press('hold progress');
+    await press('progress');
+    await press('cancel and search c');
+    await press('render');
+    await press('render');
+
+    expect({ shown: shown(), log: server.log }).toEqual({
+      shown: { status: 'loading', query: 'c', progress: 0 },
+      log: ['start b with t1', 'cleanup b', 'start c with t1'],
+    });
   });
 });
 
