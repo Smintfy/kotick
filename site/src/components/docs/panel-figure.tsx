@@ -3,8 +3,8 @@
 import type { FixtureSet } from 'konat';
 import { type FigurePage, KonatFigure } from 'konat/figure';
 import { OverlayDock } from '@/components/overlay-dock';
-import { checkoutMachine, fixturesInEveryBuild } from '@/demo/checkout/machine';
-import { onboardingFixtures, onboardingMachine } from '@/demo/onboarding/machine';
+import { checkoutMachine, fixturesInEveryBuild } from '@/demo/checkout/xstate-machine';
+import { onboardingFixtures, onboardingMachine } from '@/demo/onboarding/xstate-machine';
 
 type PanelFigureProps = { caption: string; height?: number } & (
   | { page: 'machines' | 'settings' }

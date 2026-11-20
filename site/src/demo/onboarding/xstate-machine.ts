@@ -1,43 +1,10 @@
 import { defineFixtures } from 'konat/xstate';
 import { assign, fromPromise, setup } from 'xstate';
+import { type Account, canInvite, emptyAccount, type OnboardingEvent, saveWorkspace, takenWorkspace } from '@/demo/onboarding/account';
 
-export type Role = 'design' | 'engineering' | 'product' | 'other';
+export type OnboardingContext = Account & { error?: string };
 
-export type OnboardingContext = {
-  name: string;
-  role?: Role;
-  workspace: string;
-  email: string;
-  invites: string[];
-  error?: string;
-};
-
-export type OnboardingEvent =
-  | { type: 'UPDATE_NAME'; name: string }
-  | { type: 'SELECT_ROLE'; role: Role }
-  | { type: 'UPDATE_WORKSPACE'; workspace: string }
-  | { type: 'CREATE_WORKSPACE' }
-  | { type: 'UPDATE_EMAIL'; email: string }
-  | { type: 'ADD_INVITE' }
-  | { type: 'REMOVE_INVITE'; email: string }
-  | { type: 'SEND_INVITES' }
-  | { type: 'SKIP' }
-  | { type: 'NEXT' }
-  | { type: 'BACK' };
-
-export const takenWorkspace = 'Acme';
-
-const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-
-const createWorkspace = fromPromise<void, { workspace: string }>(async ({ input }) => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
-
-  if (input.workspace.trim().toLowerCase() === takenWorkspace.toLowerCase()) {
-    throw new Error(`The name ${input.workspace.trim()} is taken`);
-  }
-});
-
-const empty: OnboardingContext = { name: '', workspace: '', email: '', invites: [] };
+const createWorkspace = fromPromise<void, { workspace: string }>(({ input }) => saveWorkspace(input.workspace));
 
 export const onboardingMachine = setup({
   // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
@@ -50,13 +17,13 @@ export const onboardingMachine = setup({
     hasName: ({ context }) => context.name.trim() !== '',
     hasRole: ({ context }) => context.role !== undefined,
     hasWorkspace: ({ context }) => context.workspace.trim() !== '',
-    canInvite: ({ context }) => isEmail(context.email) && !context.invites.includes(context.email.trim()),
+    canInvite: ({ context }) => canInvite(context),
     hasInvites: ({ context }) => context.invites.length > 0,
   },
 }).createMachine({
   id: 'onboarding',
   initial: 'profile',
-  context: empty,
+  context: emptyAccount,
   states: {
     profile: {
       on: {
@@ -122,7 +89,7 @@ export const onboardingMachine = setup({
   },
 });
 
-const profile: OnboardingContext = { ...empty, name: 'Ada Lovelace' };
+const profile: OnboardingContext = { ...emptyAccount, name: 'Ada Lovelace' };
 
 const withRole: OnboardingContext = { ...profile, role: 'engineering' };
 

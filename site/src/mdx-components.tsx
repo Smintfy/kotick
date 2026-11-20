@@ -11,7 +11,7 @@ import { Kbd } from '@/components/ui/kbd';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { packageManagers } from '@/content/package-managers';
 import { CheckoutExample } from '@/demo/checkout/example';
-import { demoSource } from '@/demo/source';
+import { demoSources } from '@/demo/source';
 import { checkedHref, demoHref } from '@/site';
 
 function DocLink({ href = '', children }: ComponentProps<'a'>) {
@@ -56,7 +56,7 @@ function Install({ packages }: { packages: string }) {
 
 function CheckoutDemo() {
   return (
-    <CheckoutExample fixturesHref={checkedHref('/docs/fixtures')} pageHref={demoHref('checkout')} source={demoSource('checkout')} />
+    <CheckoutExample fixturesHref={checkedHref('/docs/fixtures')} pageHref={demoHref('checkout')} sources={demoSources('checkout')} />
   );
 }
 

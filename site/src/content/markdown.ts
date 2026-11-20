@@ -117,7 +117,8 @@ const jsx = {
 
     return `\`\`\`bash\n${first}\n\`\`\`\n\nOther package managers: ${alternatives}.`;
   },
-  CheckoutDemo: () => `The [checkout demo](${demoHref('checkout')}) runs the real overlay beside a checkout app.`,
+  CheckoutDemo: () =>
+    `The [checkout demo](${demoHref('checkout')}) runs the real overlay beside a checkout app, with a version for each adapter.`,
   ArchitectureDiagram: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
   Kbd: (element) => `\`${toString(element)}\``,
   PanelFigure: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,

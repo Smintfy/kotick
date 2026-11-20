@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Pager } from '@/components/pager';
 import { CheckoutWindow } from '@/demo/checkout/example';
 import { OnboardingWindow } from '@/demo/onboarding/example';
-import { demoSource } from '@/demo/source';
+import { demoSources } from '@/demo/source';
 import { checkedHref, demoHref, type ExampleId, examplesPage } from '@/site';
 
 export const metadata: Metadata = { title: examplesPage.title, description: examplesPage.description };
@@ -14,19 +14,20 @@ export default function ExamplesPage() {
     checkout: (
       <>
         <p>
-          A checkout page. The machine has parallel regions for the cart, the shipping and the payment. The payment
-          sends a request that can fail.
+          A checkout page. The XState machine has parallel regions for the cart, the shipping and the payment. The
+          reducer machine has one state for each step of the page. The payment sends a request that can fail.
         </p>
-        <CheckoutWindow href={demoHref('checkout')} source={demoSource('checkout')} />
+        <CheckoutWindow href={demoHref('checkout')} sources={demoSources('checkout')} />
       </>
     ),
     onboarding: (
       <>
         <p>
           An onboarding flow in four steps. Each step is a state of the onboarding machine. Step 3 sends a request
-          that can fail.
+          that can fail. The XState machine keeps the states of the request under <code>workspace</code>, and the
+          reducer machine has a state of its own for each of them.
         </p>
-        <OnboardingWindow href={demoHref('onboarding')} source={demoSource('onboarding')} />
+        <OnboardingWindow href={demoHref('onboarding')} sources={demoSources('onboarding')} />
       </>
     ),
   };
@@ -36,6 +37,10 @@ export default function ExamplesPage() {
       <header className="mb-8">
         <h1>{examplesPage.title}</h1>
         <p className="mt-2 mb-4 text-muted-foreground">{examplesPage.description}</p>
+        <p>
+          Each demo is one app with a version for each adapter. Select <strong>XState</strong> or{' '}
+          <strong>Reducer</strong> in its bar to change the version. The panel then lists the machine of that version.
+        </p>
         <p>
           The Code tab of each demo shows its machine and its fixtures. The demos give the fixtures to{' '}
           <code>&lt;Konat /&gt;</code> as an array, so the fixtures are in each build of this site. In your app, use a

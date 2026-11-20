@@ -1,6 +1,7 @@
 'use client';
 
 import { Box, Check, CodeXml, type LucideIcon, PenTool, Plus, Puzzle, UserRound, X } from 'lucide-react';
+import { useMachineReducer } from 'konat/reducer';
 import { useMachine } from 'konat/xstate';
 import type { SnapshotFrom } from 'xstate';
 import { Button } from '@/components/ui/button';
@@ -8,12 +9,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup } from '@/components/ui/radio-group';
 import { DemoWindow } from '@/demo/demo-window';
-import { type OnboardingEvent, onboardingFixtures, onboardingMachine, type Role, takenWorkspace } from '@/demo/onboarding/machine';
+import { type Account, type OnboardingEvent, type Role, takenWorkspace } from '@/demo/onboarding/account';
+import {
+  initialOnboarding,
+  type OnboardingState,
+  onboardingReducerFixtures,
+  onboardingReducerMachine,
+} from '@/demo/onboarding/reducer-machine';
+import { onboardingFixtures, onboardingMachine } from '@/demo/onboarding/xstate-machine';
 import { RadioCard } from '@/demo/radio-card';
-import type { DemoSource } from '@/demo/source';
+import type { DemoSources } from '@/demo/source';
+
+/** What the onboarding shows. Each adapter makes it from the state of its machine. */
+type OnboardingView = {
+  step: OnboardingState['step'];
+  account: Account;
+  error?: string;
+  can(event: OnboardingEvent): boolean;
+};
 
 type StepProps = {
-  snapshot: SnapshotFrom<typeof onboardingMachine>;
+  view: OnboardingView;
   send: (event: OnboardingEvent) => void;
 };
 
@@ -39,8 +55,8 @@ const initialsOf = (name: string) =>
 const profileForm = 'onboarding-profile-form';
 const workspaceForm = 'onboarding-workspace-form';
 
-function ProfileStep({ snapshot, send }: StepProps) {
-  const { name } = snapshot.context;
+function ProfileStep({ view, send }: StepProps) {
+  const { name } = view.account;
 
   return (
     <form
@@ -69,20 +85,20 @@ function ProfileStep({ snapshot, send }: StepProps) {
   );
 }
 
-function ProfileActions({ snapshot }: StepProps) {
+function ProfileActions({ view }: StepProps) {
   return (
-    <Button type="submit" form={profileForm} size="lg" disabled={!snapshot.can({ type: 'NEXT' })}>
+    <Button type="submit" form={profileForm} size="lg" disabled={!view.can({ type: 'NEXT' })}>
       Continue
     </Button>
   );
 }
 
-function RoleStep({ snapshot, send }: StepProps) {
+function RoleStep({ view, send }: StepProps) {
   return (
     <fieldset className="min-w-0">
       <legend className="mb-2">Select one</legend>
       <RadioGroup
-        value={snapshot.context.role ?? null}
+        value={view.account.role ?? null}
         onValueChange={(key) => {
           const role = roles.find((candidate) => candidate.key === key);
 
@@ -99,18 +115,18 @@ function RoleStep({ snapshot, send }: StepProps) {
   );
 }
 
-function RoleActions({ snapshot, send }: StepProps) {
+function RoleActions({ view, send }: StepProps) {
   return (
-    <Button size="lg" disabled={!snapshot.can({ type: 'NEXT' })} onClick={() => send({ type: 'NEXT' })}>
+    <Button size="lg" disabled={!view.can({ type: 'NEXT' })} onClick={() => send({ type: 'NEXT' })}>
       Continue
     </Button>
   );
 }
 
-function WorkspaceStep({ snapshot, send }: StepProps) {
-  const { workspace, error } = snapshot.context;
-  const busy = snapshot.hasTag('busy');
-  const failed = snapshot.matches({ workspace: 'error' });
+function WorkspaceStep({ view, send }: StepProps) {
+  const { workspace } = view.account;
+  const busy = view.step === 'creating';
+  const failed = view.step === 'error';
 
   return (
     <form
@@ -134,22 +150,22 @@ function WorkspaceStep({ snapshot, send }: StepProps) {
         onChange={(event) => send({ type: 'UPDATE_WORKSPACE', workspace: event.target.value })}
       />
       <p id="onboarding-workspace-hint" className={`m-0 text-[13px] font-normal ${failed ? 'text-destructive' : 'text-muted-foreground'}`}>
-        {failed ? `${error ?? 'Could not create the workspace'}.` : `Any name works. The name ${takenWorkspace} is taken.`}
+        {failed ? `${view.error ?? 'Could not create the workspace'}.` : `Any name works. The name ${takenWorkspace} is taken.`}
       </p>
     </form>
   );
 }
 
-function WorkspaceActions({ snapshot }: StepProps) {
+function WorkspaceActions({ view }: StepProps) {
   return (
-    <Button type="submit" form={workspaceForm} size="lg" disabled={!snapshot.can({ type: 'CREATE_WORKSPACE' })}>
-      {snapshot.hasTag('busy') ? 'Creating…' : 'Create workspace'}
+    <Button type="submit" form={workspaceForm} size="lg" disabled={!view.can({ type: 'CREATE_WORKSPACE' })}>
+      {view.step === 'creating' ? 'Creating…' : 'Create workspace'}
     </Button>
   );
 }
 
-function InviteStep({ snapshot, send }: StepProps) {
-  const { email, invites } = snapshot.context;
+function InviteStep({ view, send }: StepProps) {
+  const { email, invites } = view.account;
 
   return (
     <form
@@ -187,7 +203,7 @@ function InviteStep({ snapshot, send }: StepProps) {
         placeholder="grace@example.com"
         onChange={(event) => send({ type: 'UPDATE_EMAIL', email: event.target.value })}
       />
-      <Button type="submit" variant="ghost" className="justify-self-start" disabled={!snapshot.can({ type: 'ADD_INVITE' })}>
+      <Button type="submit" variant="ghost" className="justify-self-start" disabled={!view.can({ type: 'ADD_INVITE' })}>
         <Plus />
         Add
       </Button>
@@ -195,23 +211,23 @@ function InviteStep({ snapshot, send }: StepProps) {
   );
 }
 
-function InviteActions({ snapshot, send }: StepProps) {
-  const { invites } = snapshot.context;
+function InviteActions({ view, send }: StepProps) {
+  const { invites } = view.account;
 
   return (
     <>
       <Button variant="ghost" size="lg" onClick={() => send({ type: 'SKIP' })}>
         Skip
       </Button>
-      <Button size="lg" disabled={!snapshot.can({ type: 'SEND_INVITES' })} onClick={() => send({ type: 'SEND_INVITES' })}>
+      <Button size="lg" disabled={!view.can({ type: 'SEND_INVITES' })} onClick={() => send({ type: 'SEND_INVITES' })}>
         {invites.length > 1 ? `Send ${invites.length} invites` : 'Send invite'}
       </Button>
     </>
   );
 }
 
-function Done({ snapshot }: StepProps) {
-  const { name, workspace, invites } = snapshot.context;
+function Done({ view }: StepProps) {
+  const { name, workspace, invites } = view.account;
   const firstName = name.trim().split(/\s+/)[0];
   const sent = invites.length === 0 ? 'You can invite teammates later.' : `We sent ${invites.length === 1 ? '1 invite' : `${invites.length} invites`}.`;
 
@@ -265,12 +281,12 @@ const steps = [
   },
 ] as const;
 
-export function Onboarding() {
-  const [snapshot, send] = useMachine(onboardingMachine);
-  const index = steps.findIndex((step) => snapshot.matches(step.state));
+function OnboardingScreen({ view, send }: StepProps) {
+  const page = view.step === 'creating' || view.step === 'error' ? 'workspace' : view.step;
+  const index = steps.findIndex((step) => step.state === page);
   const step = steps[index];
 
-  if (step === undefined) return <Done snapshot={snapshot} send={send} />;
+  if (step === undefined) return <Done view={view} send={send} />;
 
   return (
     <div className="flex flex-1 flex-col gap-6 text-sm font-medium">
@@ -281,7 +297,7 @@ export function Onboarding() {
         <h3 className="m-0 font-semibold">{step.title}</h3>
         <p className="m-0 font-normal text-muted-foreground">{step.lead}</p>
       </div>
-      <step.Body snapshot={snapshot} send={send} />
+      <step.Body view={view} send={send} />
       <div className="mt-auto flex items-center gap-2 pt-6">
         <div
           role="progressbar"
@@ -303,21 +319,57 @@ export function Onboarding() {
         </div>
         <div className="ml-auto flex gap-2">
           {step.back && (
-            <Button variant="ghost" size="lg" disabled={!snapshot.can({ type: 'BACK' })} onClick={() => send({ type: 'BACK' })}>
+            <Button variant="ghost" size="lg" disabled={!view.can({ type: 'BACK' })} onClick={() => send({ type: 'BACK' })}>
               Back
             </Button>
           )}
-          <step.Actions snapshot={snapshot} send={send} />
+          <step.Actions view={view} send={send} />
         </div>
       </div>
     </div>
   );
 }
 
-export function OnboardingWindow({ href, source }: { href: string; source: DemoSource }) {
-  return (
-    <DemoWindow fixtures={onboardingFixtures} href={href} source={source}>
-      <Onboarding />
-    </DemoWindow>
-  );
+function stepOf(snapshot: SnapshotFrom<typeof onboardingMachine>): OnboardingState['step'] {
+  if (snapshot.matches({ workspace: 'creating' })) return 'creating';
+
+  if (snapshot.matches({ workspace: 'error' })) return 'error';
+  const leaves = ['profile', 'role', 'invite', 'done'] as const;
+
+  return leaves.find((leaf) => snapshot.matches(leaf)) ?? 'workspace';
+}
+
+export function XStateOnboarding() {
+  const [snapshot, send] = useMachine(onboardingMachine);
+
+  const view = {
+    step: stepOf(snapshot),
+    account: snapshot.context,
+    error: snapshot.context.error,
+    can: (event: OnboardingEvent) => snapshot.can(event),
+  };
+
+  return <OnboardingScreen view={view} send={send} />;
+}
+
+export function ReducerOnboarding() {
+  const [state, dispatch] = useMachineReducer(onboardingReducerMachine, initialOnboarding);
+
+  // A handler returns the same state for an event that it ignores, so the reducer tells which events the state accepts.
+  const view = {
+    step: state.step,
+    account: state.account,
+    error: 'error' in state ? state.error : undefined,
+    can: (event: OnboardingEvent) => onboardingReducerMachine.reducer(state, event) !== state,
+  };
+
+  return <OnboardingScreen view={view} send={dispatch} />;
+}
+
+export const onboardingDemoFixtures = [...onboardingFixtures, onboardingReducerFixtures];
+
+const apps = { xstate: <XStateOnboarding />, reducer: <ReducerOnboarding /> };
+
+export function OnboardingWindow({ href, sources }: { href: string; sources: DemoSources }) {
+  return <DemoWindow apps={apps} fixtures={onboardingDemoFixtures} href={href} sources={sources} />;
 }

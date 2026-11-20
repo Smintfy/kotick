@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 const PAGES = [
   { href: '/', title: 'Newsletter' },
   { href: '/preferences', title: 'Preferences' },
+  { href: '/feedback', title: 'Feedback' },
 ];
 
 export function Nav() {

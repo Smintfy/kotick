@@ -5,7 +5,7 @@ import { barTab } from '@/components/docs/bar-tab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type Adapter, adapters } from '@/content/adapters';
 
-// One choice for the whole site, so each tab group shows the adapter that the reader selected last.
+// One choice for the whole site, so each tab group and each demo shows the adapter that the reader selected last.
 const storageKey = 'konat-docs:adapter';
 const listeners = new Set<() => void>();
 let chosen: Adapter | undefined;
@@ -59,6 +59,17 @@ function AdapterList() {
         </TabsTrigger>
       ))}
     </TabsList>
+  );
+}
+
+/** The tabs alone, for a bar whose content changes with the adapter. */
+export function AdapterSwitch() {
+  const [adapter, setAdapter] = useAdapter();
+
+  return (
+    <Tabs value={adapter} onValueChange={setAdapter}>
+      <AdapterList />
+    </Tabs>
   );
 }
 

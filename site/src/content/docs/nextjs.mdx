@@ -26,7 +26,23 @@ export const metadata = {
   ```
 
 - Call the hooks of `konat/xstate` and `createActorContext()` only in client components, as with `@xstate/react`.
-- Call `useMachineReducer` only in client components. A server component can import a machine file of `konat/reducer`, call `machine.reducer`, and give the state that it returns to a client component as a prop.
+- Call `useMachineReducer` only in client components. A server component can import a machine file of `konat/reducer` and call `machine.reducer`, for example to make the initial state from the URL. Give that state to the client component as a prop:
+
+  ```tsx
+  // src/app/feedback/page.tsx
+  import { FeedbackForm } from '@/components/feedback-form';
+  import { type FeedbackState, feedbackMachine, ratingOf } from '@/machines/feedback';
+
+  const start: FeedbackState = { status: 'rating' };
+
+  export default async function FeedbackPage({ searchParams }: PageProps<'/feedback'>) {
+    const rating = ratingOf((await searchParams).rating);
+    const initial = rating ? feedbackMachine.reducer(start, { type: 'RATE', rating }) : start;
+
+    return <FeedbackForm initial={initial} />;
+  }
+  ```
+
 - On the server, konat does nothing: the overlay renders nothing, and nothing registers. The overlay mounts after hydration, so it does not cause hydration errors.
 
 ## Root layout

@@ -4,20 +4,25 @@ import { RotateCcw, SquareArrowOutUpRight } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useState } from 'react';
 import { type FixturesInput, Konat } from 'konat';
 import { CopyButton } from '@/components/copy-button';
+import { AdapterSwitch, useAdapter } from '@/components/docs/adapter-tabs';
 import { barTab } from '@/components/docs/bar-tab';
 import { useIsApple } from '@/components/docs/shortcut';
 import { OverlayDock } from '@/components/overlay-dock';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import type { DemoSource } from '@/demo/source';
+import type { Adapter } from '@/content/adapters';
+import type { DemoSources } from '@/demo/source';
 
 const keepInLayout = (props: ComponentProps<'div'>) => <div {...props} hidden={false} />;
 
-type DemoWindowProps = { fixtures: FixturesInput; href: string; source: DemoSource; children: ReactNode };
+type DemoWindowProps = { apps: Record<Adapter, ReactNode>; fixtures: FixturesInput; href: string; sources: DemoSources };
 
-export function DemoWindow({ fixtures, href, source, children }: DemoWindowProps) {
+export function DemoWindow({ apps, fixtures, href, sources }: DemoWindowProps) {
+  const [adapter] = useAdapter();
+  const source = sources[adapter];
   const [run, setRun] = useState(0);
   const [view, setView] = useState<'preview' | 'code'>('preview');
   const toggleKeys = useIsApple() ? '⌥S' : 'Alt+S';
@@ -33,6 +38,8 @@ export function DemoWindow({ fixtures, href, source, children }: DemoWindowProps
             Code
           </TabsTrigger>
         </TabsList>
+        <Separator orientation="vertical" className="my-1.5" />
+        <AdapterSwitch />
         {view === 'code' ? (
           <CopyButton text={source.text} label="Copy code" className="ml-auto" />
         ) : (
@@ -70,7 +77,7 @@ export function DemoWindow({ fixtures, href, source, children }: DemoWindowProps
           className="relative flex min-h-[480px] flex-col px-6 pt-10 pb-20 data-hidden:opacity-0"
         >
           <div key={run} className="mx-auto flex w-full max-w-[360px] flex-1 flex-col">
-            {children}
+            {apps[adapter]}
           </div>
           <OverlayDock className="pointer-events-none absolute inset-0" overlay={(dock) => <Konat portalTarget={dock} fixtures={fixtures} />}>
             <p className="absolute right-16 bottom-8 m-0 translate-y-1/2 text-[13px] text-muted-foreground">Click the bubble, or press {toggleKeys}.</p>

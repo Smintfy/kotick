@@ -9,8 +9,8 @@ For installation and usage, see the [package README](packages/konat/README.md).
 |---|---|
 | `packages/konat` | The package: the registry and overlay (`konat`), the XState adapter (`konat/xstate`) and the reducer adapter (`konat/reducer`) |
 | `examples/vite-react` | Vite and React Router. One page for each way to read a machine: `useMachine`, `createActorContext`, `useActor`, `connect()` in the header, and `useMachineReducer` on the Search page |
-| `examples/hostile-css` | A page with global styles that try to change the overlay |
-| `examples/next-app` | The Next.js App Router, with server rendering |
+| `examples/hostile-css` | A page with global styles that try to change the overlay, with an XState machine and a reducer machine |
+| `examples/next-app` | The Next.js App Router, with server rendering. The Feedback page is a server component that imports a reducer machine file |
 | `site` | The landing page and the docs, in Next.js. The docs pages are MDX files in `site/src/content/docs` |
 | `tests/bundles` | A fixture app for the production-build check |
 | `tests/no-xstate` | A fixture app with konat and no XState, for the same check |

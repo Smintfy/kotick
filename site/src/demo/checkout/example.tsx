@@ -3,7 +3,10 @@
 import { ArrowLeft, Check, type LucideIcon, Minus, Plus, ShoppingBag, Store, Trash2, Truck, Zap } from 'lucide-react';
 import Link from 'next/link';
 import type { ChangeEvent } from 'react';
+import { useMachineReducer } from 'konat/reducer';
 import { useMachine } from 'konat/xstate';
+import type { SnapshotFrom } from 'xstate';
+import { useAdapter } from '@/components/docs/adapter-tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,16 +16,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import {
   type Card,
   type CheckoutEvent,
-  checkoutMachine,
   digitsOf,
   expiryProblem,
-  fixturesInEveryBuild,
+  type LineItem,
   maxQty,
+  type Shipping,
   subtotalOf,
-} from '@/demo/checkout/machine';
+} from '@/demo/checkout/order';
+import {
+  type CheckoutState,
+  checkoutReducerFixtures,
+  checkoutReducerMachine,
+  initialCheckout,
+} from '@/demo/checkout/reducer-machine';
+import { checkoutMachine, fixturesInEveryBuild } from '@/demo/checkout/xstate-machine';
 import { DemoWindow } from '@/demo/demo-window';
 import { RadioCard } from '@/demo/radio-card';
-import type { DemoSource } from '@/demo/source';
+import type { DemoSources } from '@/demo/source';
 
 const shippingOptions = [
   { key: 'standard', label: 'Standard', fee: 0, Icon: Truck, event: { type: 'SHIP_STANDARD' } },
@@ -56,16 +66,28 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function Checkout() {
-  const [snapshot, send] = useMachine(checkoutMachine);
-  const { items, card, error, receiptId } = snapshot.context;
-  const shipping = shippingOptions.find((option) => snapshot.matches({ shipping: option.key })) ?? shippingOptions[0];
+/** What the checkout shows. Each adapter makes it from the state of its machine. */
+type CheckoutView = {
+  step: CheckoutState['step'];
+  items: LineItem[];
+  shipping: Shipping;
+  card: Card;
+  error?: string;
+  receiptId?: string;
+  can(event: CheckoutEvent): boolean;
+};
+
+type CheckoutProps = { view: CheckoutView; send: (event: CheckoutEvent) => void };
+
+function CheckoutScreen({ view, send }: CheckoutProps) {
+  const { step, items, card, error, receiptId } = view;
+  const shipping = shippingOptions.find((option) => option.key === view.shipping) ?? shippingOptions[0];
   const subtotal = subtotalOf(items);
   const count = items.reduce((sum, item) => sum + item.qty, 0);
   const grandTotal = formatPrice(subtotal + shipping.fee);
-  const busy = snapshot.hasTag('busy');
-  const failed = snapshot.matches({ payment: 'error' });
-  const editing = snapshot.matches({ payment: 'editing' });
+  const busy = step === 'processing';
+  const failed = step === 'error';
+  const editing = step === 'editing';
   const expiryError = expiryProblem(card.expiry);
   const cardError = failed ? `${error ?? 'Payment failed'}.` : expiryError ? `${expiryError}.` : undefined;
 
@@ -102,7 +124,7 @@ export function Checkout() {
       send({ type: 'UPDATE_CARD', field, value: cardFormats[field](event.target.value) }),
   });
 
-  if (snapshot.matches({ payment: 'success' })) {
+  if (step === 'success') {
     return (
       <div role="status" className="grid gap-6 text-sm font-medium">
         <span className="grid size-11 place-items-center rounded-full bg-accent text-foreground">
@@ -129,7 +151,7 @@ export function Checkout() {
     );
   }
 
-  if (snapshot.matches({ payment: 'idle' })) {
+  if (step === 'cart' || step === 'emptyCart') {
     const header = (
       <div className="grid gap-1">
         <h3 className="m-0 font-semibold">Checkout</h3>
@@ -137,7 +159,7 @@ export function Checkout() {
       </div>
     );
 
-    if (snapshot.matches({ cart: 'empty' })) {
+    if (step === 'emptyCart') {
       return (
         <div className="grid gap-6 text-sm font-medium">
           {header}
@@ -172,7 +194,7 @@ export function Checkout() {
                     size="icon-sm"
                     aria-label={item.qty > 1 ? `Remove one ${item.name}` : `Remove ${item.name} from the cart`}
                     title={item.qty > 1 ? 'Remove one' : 'Remove from the cart'}
-                    disabled={!snapshot.can(less)}
+                    disabled={!view.can(less)}
                     onClick={() => send(less)}
                   >
                     {item.qty > 1 ? <Minus /> : <Trash2 />}
@@ -185,7 +207,7 @@ export function Checkout() {
                     size="icon-sm"
                     aria-label={`Add one ${item.name}`}
                     title="Add one"
-                    disabled={item.qty >= maxQty || !snapshot.can(more)}
+                    disabled={item.qty >= maxQty || !view.can(more)}
                     onClick={() => send(more)}
                   >
                     <Plus />
@@ -208,7 +230,7 @@ export function Checkout() {
             }}
           >
             {shippingOptions.map((option) => (
-              <RadioCard key={option.key} value={option.key} icon={option.Icon} disabled={!snapshot.can(option.event)}>
+              <RadioCard key={option.key} value={option.key} icon={option.Icon} disabled={!view.can(option.event)}>
                 {option.label}
                 <span className="ml-auto text-muted-foreground">{feeOf(option)}</span>
               </RadioCard>
@@ -218,7 +240,7 @@ export function Checkout() {
 
         <div className="grid gap-4">
           {summary(false)}
-          <Button size="lg" className="w-full" disabled={!snapshot.can({ type: 'CONTINUE' })} onClick={() => send({ type: 'CONTINUE' })}>
+          <Button size="lg" className="w-full" disabled={!view.can({ type: 'CONTINUE' })} onClick={() => send({ type: 'CONTINUE' })}>
             Continue to payment
           </Button>
         </div>
@@ -240,7 +262,7 @@ export function Checkout() {
           variant="ghost"
           size="sm"
           className="-ml-2 text-muted-foreground"
-          disabled={!snapshot.can({ type: 'BACK' })}
+          disabled={!view.can({ type: 'BACK' })}
           onClick={() => send({ type: 'BACK' })}
         >
           <ArrowLeft />
@@ -298,7 +320,7 @@ export function Checkout() {
             </Button>
           </div>
         ) : (
-          <Button type="submit" size="lg" className="w-full" disabled={!snapshot.can({ type: 'PAY' })}>
+          <Button type="submit" size="lg" className="w-full" disabled={!view.can({ type: 'PAY' })}>
             {busy ? 'Processing…' : `Pay ${grandTotal}`}
           </Button>
         )}
@@ -307,30 +329,78 @@ export function Checkout() {
   );
 }
 
-export function CheckoutWindow({ href, source }: { href: string; source: DemoSource }) {
-  return (
-    <DemoWindow fixtures={fixturesInEveryBuild} href={href} source={source}>
-      <Checkout />
-    </DemoWindow>
-  );
+function stepOf(snapshot: SnapshotFrom<typeof checkoutMachine>): CheckoutState['step'] {
+  if (snapshot.matches({ payment: 'idle' })) return snapshot.matches({ cart: 'empty' }) ? 'emptyCart' : 'cart';
+
+  if (snapshot.matches({ payment: 'editing' })) return 'editing';
+
+  if (snapshot.matches({ payment: 'processing' })) return 'processing';
+
+  return snapshot.matches({ payment: 'error' }) ? 'error' : 'success';
 }
 
-type CheckoutExampleProps = { fixturesHref: string; pageHref: string; source: DemoSource };
+export function XStateCheckout() {
+  const [snapshot, send] = useMachine(checkoutMachine);
 
-export function CheckoutExample({ fixturesHref, pageHref, source }: CheckoutExampleProps) {
+  const view = {
+    ...snapshot.context,
+    step: stepOf(snapshot),
+    shipping: snapshot.value.shipping,
+    can: (event: CheckoutEvent) => snapshot.can(event),
+  };
+
+  return <CheckoutScreen view={view} send={send} />;
+}
+
+export function ReducerCheckout() {
+  const [state, dispatch] = useMachineReducer(checkoutReducerMachine, initialCheckout);
+
+  // A handler returns the same state for an event that it ignores, so the reducer tells which events the state accepts.
+  const view = {
+    ...state.order,
+    step: state.step,
+    error: 'error' in state ? state.error : undefined,
+    receiptId: 'receiptId' in state ? state.receiptId : undefined,
+    can: (event: CheckoutEvent) => checkoutReducerMachine.reducer(state, event) !== state,
+  };
+
+  return <CheckoutScreen view={view} send={dispatch} />;
+}
+
+export const checkoutDemoFixtures = [...fixturesInEveryBuild, checkoutReducerFixtures];
+
+const apps = { xstate: <XStateCheckout />, reducer: <ReducerCheckout /> };
+
+export function CheckoutWindow({ href, sources }: { href: string; sources: DemoSources }) {
+  return <DemoWindow apps={apps} fixtures={checkoutDemoFixtures} href={href} sources={sources} />;
+}
+
+type CheckoutExampleProps = { fixturesHref: string; pageHref: string; sources: DemoSources };
+
+export function CheckoutExample({ fixturesHref, pageHref, sources }: CheckoutExampleProps) {
+  const [adapter] = useAdapter();
+  const xstate = adapter === 'xstate';
+
   return (
     <>
       <p>
         A checkout page with the real overlay docked beside it. The panel lists the checkout machine and all of its
-        states, also the states that the page has not gone to.
+        states, also the states that the page has not gone to. Select <strong>XState</strong> or{' '}
+        <strong>Reducer</strong> to see the same checkout with each adapter.
       </p>
-      <CheckoutWindow href={pageHref} source={source} />
+      <CheckoutWindow href={pageHref} sources={sources} />
       <div className="prose">
         <ol>
           <li>
-            Click the bubble to open the panel. Select <strong>checkout</strong>, then <strong>error</strong> under{' '}
-            <strong>payment</strong>.
-            The checkout shows Card declined. You did not have to type a declined card and pay to get there.
+            Click the bubble to open the panel. Select <strong>{xstate ? 'checkout' : 'checkout-reducer'}</strong>, then{' '}
+            <strong>error</strong>
+            {xstate && (
+              <>
+                {' '}
+                under <strong>payment</strong>
+              </>
+            )}
+            . The checkout shows Card declined. You did not have to type a declined card and pay to get there.
           </li>
           <li>
             Click <strong>Retry</strong>. The machine does not get the event. Scroll down the panel to{' '}
@@ -356,8 +426,8 @@ export function CheckoutExample({ fixturesHref, pageHref, source }: CheckoutExam
                 <code>R</code>
               </TableCell>
               <TableCell>
-                The last context that the real actor had in this state. It stays in <code>sessionStorage</code>, so it
-                is still there after a reload.
+                The last context that the real machine had in this state. It stays in <code>sessionStorage</code>, so
+                it is still there after a reload.
               </TableCell>
             </TableRow>
             <TableRow>
@@ -375,14 +445,16 @@ export function CheckoutExample({ fixturesHref, pageHref, source }: CheckoutExam
                 <code>–</code>
               </TableCell>
               <TableCell>
-                The preview uses the live context of the real actor, and logs a warning, because the live context often
-                does not agree with the state.
+                {xstate
+                  ? 'The preview uses the live context of the real actor, and logs a warning, because the live context often does not agree with the state.'
+                  : 'The state is greyed out, and you cannot preview it, because the live state object fits only the state that the machine is in.'}
               </TableCell>
             </TableRow>
           </TableBody>
         </Table>
         <p>
-          This demo has a <Link href={fixturesHref}>fixture</Link> for each state, so no preview uses the live context.
+          This demo has a <Link href={fixturesHref}>fixture</Link> for each state, so each state has data for a
+          preview.
         </p>
         <p className="border-l-2 border-muted-foreground/30 px-4 py-3 text-[13px] text-muted-foreground">
           This site builds konat in development mode for the demo. In your production build,{' '}
