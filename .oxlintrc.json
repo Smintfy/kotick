@@ -64,91 +64,108 @@
   },
   "overrides": [
     {
+      // Each layer below lists what it may import, so a new layer is banned everywhere until a list names it.
+      // A later override replaces the options of a rule that an earlier one set, so each layer repeats its whole list.
+      // A file that no later override matches keeps this list. So a new directory imports almost nothing.
       "files": ["packages/konat/src/**"],
       "rules": {
         "unicorn/filename-case": ["error", { "case": "kebabCase" }],
         // A namespace import of React, which is a CommonJS package, keeps an interop helper in the app's bundle.
         // xstate.ts picks each hook from the namespaces of @xstate/react and ./xstate/hooks, and both are ES modules.
-        "import/no-namespace": ["error", { "ignore": ["@xstate/react", "./xstate/hooks"] }]
-      }
-    },
-    {
-      "files": ["packages/konat/src/core/**", "packages/konat/src/types.ts"],
-      "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "patterns": [
-              {
-                "regex": "^(react|react-dom|xstate|@xstate/react)(/|$)",
-                "message": "The core is in both bundles, so it imports no React and no XState."
-              },
-              { "regex": "^\\.{1,2}/(components|hooks|utils|xstate|index|figure|styles\\.generated)(/|$)", "message": "The core imports no other layer." }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "files": ["packages/konat/src/components/**", "packages/konat/src/hooks/**", "packages/konat/src/utils/**", "packages/konat/src/index.tsx"],
-      "rules": {
+        "import/no-namespace": ["error", { "ignore": ["@xstate/react", "./xstate/hooks"] }],
         "no-restricted-imports": ["error", { "patterns": [
-          { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
-          { "regex": "^\\.{1,2}/(\\.\\./)*(xstate|figure)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." }
+          { "regex": "^(react|react-dom|xstate|@xstate/react)(/|$)", "message": "A new directory imports no React and no XState until its own override allows them." },
+          { "group": ["../**", "!../core/**", "!../types"], "message": "A new directory imports only its own files, the core and types.ts until its own override names more." }
         ] }]
       }
     },
     {
-      // Overrides replace each other's rules, so this one repeats the overlay's.
+      // A top-level file reaches a layer with "./".
+      // So "./**" can't mean "my own files" here, as it does in a directory.
+      "files": ["packages/konat/src/*.ts", "packages/konat/src/*.tsx"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^(react|react-dom|xstate|@xstate/react)(/|$)", "message": "A new top-level file imports no React and no XState until its own override allows them." },
+          { "group": ["./**", "../**", "!./core/**", "!./types"], "message": "A new top-level file imports only the core and types.ts until its own override names more." }
+        ] }]
+      }
+    },
+    {
+      "files": ["packages/konat/src/core/**"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^(react|react-dom|xstate|@xstate/react)(/|$)", "message": "The core is in both bundles, so it imports no React and no XState." },
+          { "group": ["../**", "!../core/**", "!../types", "!../../package.json"], "message": "The core imports only its own files, types.ts and package.json." }
+        ] }]
+      }
+    },
+    {
+      // types.ts is a top-level file in the row of the core.
+      // So it needs the "./" forms that the override of the core has no use for.
+      "files": ["packages/konat/src/types.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^(react|react-dom|xstate|@xstate/react)(/|$)", "message": "The core is in both bundles, so it imports no React and no XState." },
+          { "group": ["./**", "../**", "!./core/**", "!./types", "!../../package.json"], "message": "The core imports only its own files, types.ts and package.json." }
+        ] }]
+      }
+    },
+    {
+      "files": ["packages/konat/src/components/**"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
+          { "group": ["../**", "!../core/**", "!../types", "!../hooks/**", "!../utils/**", "!../styles.generated"], "message": "Components import only their own files, the core, types.ts, hooks, utils and the styles." }
+        ] }]
+      }
+    },
+    {
+      // The list leaves out components, so it bans them.
+      // A second group pattern for them would report each import twice, and a "!" in this list would silence it.
       "files": ["packages/konat/src/hooks/**", "packages/konat/src/utils/**"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
-          { "regex": "^\\.{1,2}/(\\.\\./)*(xstate|figure)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
-          { "regex": "^\\.\\./components(/|$)", "message": "Components import hooks and utils, not the reverse." }
+          { "group": ["../**", "!../core/**", "!../types", "!../hooks/**", "!../utils/**", "!../styles.generated"], "message": "Hooks and utils import only their own files, the core, types.ts, each other and the styles, and never components." }
         ] }]
       }
     },
     {
-      "files": ["packages/konat/src/xstate/**", "packages/konat/src/xstate.ts"],
+      "files": ["packages/konat/src/xstate/**"],
       "rules": {
-        "no-restricted-imports": [
-          "error",
-          {
-            "patterns": [
-              { "regex": "^react-dom(/|$)", "message": "The adapter renders nothing. The overlay owns the DOM." },
-              {
-                "regex": "^(\\.\\./)+((components|hooks|utils)(/|$)|(index|figure|styles\\.generated)$)",
-                "message": "The adapter never imports the overlay. They meet only in the core."
-              }
-            ]
-          }
-        ]
+        "no-restricted-imports": ["error", { "patterns": [
+          { "regex": "^react-dom(/|$)", "message": "The adapter renders nothing. The overlay owns the DOM." },
+          { "group": ["../**", "!../core/**", "!../types"], "message": "The adapter imports only its own files, the core and types.ts, and never the overlay." }
+        ] }]
       }
     },
     {
-      // Overrides replace each other's rules, so this one repeats the overlay's.
+      // An entry file lists the files that it may import.
+      // "../**" is in the group because "./**" doesn't reach out of src.
       "files": ["packages/konat/src/index.tsx"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^(xstate|@xstate/react)(/|$)", "message": "The overlay reads actors through types.ts. Only the adapter imports XState." },
-          {
-            "group": ["./*", "./**", "!./components/konat", "!./types"],
-            "message": "konat exports <Konat /> and its types. Test a private function through them."
-          }
+          { "group": ["./**", "../**", "!./components/konat", "!./types"], "message": "konat exports <Konat /> and its types. Test a private function through them." }
         ] }]
       }
     },
     {
-      // Overrides replace each other's rules, so this one repeats the adapter's.
       "files": ["packages/konat/src/xstate.ts"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
           { "regex": "^react-dom(/|$)", "message": "The adapter renders nothing. The overlay owns the DOM." },
-          {
-            "group": ["./*", "./**", "!./xstate/connect", "!./xstate/define-fixtures", "!./xstate/hooks", "!./xstate/options"],
-            "message": "konat/xstate exports the hooks, connect(), defineFixtures() and their types. Test a private function through them."
-          }
+          { "group": ["./**", "../**", "!./xstate/connect", "!./xstate/define-fixtures", "!./xstate/hooks", "!./xstate/options"], "message": "konat/xstate exports the hooks, connect(), defineFixtures() and their types. Test a private function through them." }
+        ] }]
+      }
+    },
+    {
+      // konat/figure is an entry of the workspace for the docs site, and no build has it.
+      // It runs XState machines in the real overlay, so it may import every library.
+      "files": ["packages/konat/src/figure.tsx"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [
+          { "group": ["./**", "../**", "!./components/**", "!./core/**", "!./types", "!./utils/**", "!./xstate/**"], "message": "konat/figure imports only the overlay, the core, types.ts, utils and the XState adapter, and never another entry." }
         ] }]
       }
     },
