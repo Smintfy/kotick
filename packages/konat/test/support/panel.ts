@@ -243,16 +243,18 @@ export function blockedEvents(): string[] {
 }
 
 /**
- * Clicks Copy JSON, and returns the text it copied and the status it showed.
+ * Clicks Copy JSON or Copy context, and returns the text it copied and the status it showed.
  * jsdom has no clipboard and no execCommand, so the overlay copies through a textarea in its shadow root and
  * shows "Copy failed". A MutationObserver reads the textarea before the overlay removes it.
  */
-export async function copy(): Promise<{ copied: string[]; status: string }> {
+export async function copy(
+	name: "Copy JSON" | "Copy context" = "Copy JSON",
+): Promise<{ copied: string[]; status: string }> {
 	const found = overlay().querySelector<HTMLButtonElement>(
-		'button[aria-label="Copy JSON"]',
+		`button[aria-label="${name}"]`,
 	);
 
-	if (!found) throw new Error("The panel has no Copy JSON button.");
+	if (!found) throw new Error(`The panel has no ${name} button.`);
 	const copied: string[] = [];
 
 	const read = (records: MutationRecord[]) => {
@@ -269,6 +271,13 @@ export async function copy(): Promise<{ copied: string[]; status: string }> {
 	observer.disconnect();
 
 	return { copied, status: one('[role="status"]').textContent ?? "" };
+}
+
+/** The warnings under States of the shown machine page. */
+export function stateWarnings(): string[] {
+	return all('[data-part="states-warning"]').map(
+		(warning) => warning.textContent ?? "",
+	);
 }
 
 /** The machine whose page the panel shows, as the page's title gives it, or `none` on another page. */

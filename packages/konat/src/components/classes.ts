@@ -29,3 +29,6 @@ export const SECTION_TITLE = 'mr-auto text-base text-muted';
 
 /** A hint right after another hint is 6px below it. */
 export const HINT = 'px-1.5 text-base text-muted [[data-part=hint]+&]:mt-1.5';
+
+/** A warning above the content of its section. */
+export const WARNING = 'mb-1.5 px-1.5 text-base text-warn';

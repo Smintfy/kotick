@@ -631,8 +631,8 @@ describe('Copy JSON', () => {
         status: 'Copy failed',
       },
       // The button shows the status in place of its label for 2 s, and keeps its name.
-      labels: ['Copy JSON: Copy failed'],
-      later: ['Copy JSON: Copy JSON'],
+      labels: ['Copy context: Copy context', 'Copy JSON: Copy failed'],
+      later: ['Copy context: Copy context', 'Copy JSON: Copy JSON'],
     });
   });
 

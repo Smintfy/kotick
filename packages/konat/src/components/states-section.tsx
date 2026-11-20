@@ -1,7 +1,7 @@
 import { useId, type CSSProperties } from 'react';
 import type { DataAvailability, Override, RegistrySnapshot, StateNodeInfo } from '../types';
 import type { InstanceEntry } from '../utils/model';
-import { BUTTON, HINT, SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
+import { BUTTON, HINT, SECTION, SECTION_HEAD, SECTION_TITLE, WARNING } from './classes';
 import { ChevronIcon } from './icons';
 
 interface StatesSectionProps {
@@ -15,6 +15,9 @@ interface StatesSectionProps {
   childInstances: InstanceEntry[];
   snapshot: RegistrySnapshot;
   data: DataAvailability;
+  /** The leaves whose preview can't get data. Their rows are disabled, unless the leaf is previewed. */
+  noData: ReadonlySet<string>;
+  warnings: readonly string[];
   onRelease: (() => void) | undefined;
   onSelectLeaf(leaf: string): void;
   onToggleGroup(id: string): void;
@@ -42,6 +45,11 @@ export function StatesSection(props: StatesSectionProps) {
           {parentLabel ? `Child of ${parentLabel}. ` : ''}Child machines are listed read-only.
         </p>
       )}
+      {props.warnings.map((warning) => (
+        <p key={warning} className={WARNING} data-part="states-warning">
+          {warning}
+        </p>
+      ))}
       {props.nodes.length === 0 ? (
         <p className={HINT} data-part="hint">This machine has no states to list.</p>
       ) : (
@@ -50,6 +58,7 @@ export function StatesSection(props: StatesSectionProps) {
           label={`States of ${instance.label}`}
           override={props.snapshot.overrides[instance.key]}
           data={props.data}
+          noData={props.noData}
           collapsed={props.collapsed}
           cursor={props.cursor}
           readOnly={!canPreview}
@@ -83,6 +92,7 @@ interface StateTreeProps {
   label: string;
   override: Override | undefined;
   data: DataAvailability;
+  noData: ReadonlySet<string>;
   collapsed: ReadonlySet<string>;
   cursor: string | undefined;
   readOnly: boolean;
@@ -144,6 +154,8 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
   const filled = override?.filled.includes(node.id) === true;
   const recorded = data.recorded.has(node.id);
   const fixture = data.fixture.has(node.id);
+  const noData = tree.noData.has(node.id);
+  const unavailable = noData && !requested;
 
   const status = [
     requested && 'previewed',
@@ -151,6 +163,7 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
     recorded && 'recorded context',
     fixture && 'fixture',
     !recorded && !fixture && 'no recorded or fixture context',
+    noData && "can't be previewed",
   ].filter(Boolean);
 
   // The key starts 24px in, where the key of a group starts after its 12px chevron.
@@ -159,19 +172,20 @@ function TreeNode({ node, depth, tree }: { node: StateNodeInfo; depth: number; t
       role="treeitem"
       aria-level={depth + 1}
       aria-selected={requested}
-      aria-disabled={readOnly || undefined}
+      aria-disabled={readOnly || unavailable || undefined}
       tabIndex={cursor === node.id ? 0 : -1}
-      className="group/leaf flex cursor-pointer min-h-6 items-center gap-1.5 rounded-md py-0.5 pr-1.5 pl-[calc(24px+var(--konat-depth,0)*14px)] focus-visible:outline-offset-[-2px] aria-disabled:cursor-default aria-selected:bg-selected data-filled:bg-filled hover:not-aria-disabled:not-aria-selected:bg-hover"
+      className="group/leaf flex cursor-pointer min-h-6 items-center gap-1.5 rounded-md py-0.5 pr-1.5 pl-[calc(24px+var(--konat-depth,0)*14px)] focus-visible:outline-offset-[-2px] aria-disabled:cursor-default aria-selected:bg-selected data-filled:bg-filled data-unavailable:opacity-45 hover:not-aria-disabled:not-aria-selected:bg-hover"
       style={style}
       data-leaf={node.id}
       data-filled={filled || undefined}
+      data-unavailable={unavailable || undefined}
       onClick={() => onSelect(node.id)}
     >
       <span className="min-w-0 flex-auto truncate font-mono text-base" data-part="key">{node.key}</span>
       <span className="flex flex-none gap-0.5">
         {recorded && <DataMark kind="recorded" />}
         {fixture && <DataMark kind="fixture" />}
-        {!recorded && !fixture && <DataMark kind="none" />}
+        {!recorded && !fixture && <DataMark kind="none" title={noData ? NO_DATA_TITLE : undefined} />}
       </span>
       <span className="visually-hidden" data-part="leaf-status">, {status.join(', ')}</span>
     </li>
@@ -200,9 +214,13 @@ const MARKS = {
   },
 } as const;
 
-function DataMark({ kind }: { kind: keyof typeof MARKS }) {
+// The title of the none mark above is true only for a leaf that the live context fits.
+const NO_DATA_TITLE =
+  "No recorded or fixture context, so this state can't be previewed yet. Visit it in the app, or add it to defineFixtures().";
+
+function DataMark({ kind, title = MARKS[kind].title }: { kind: keyof typeof MARKS; title?: string }) {
   return (
-    <span className={MARKS[kind].className} data-kind={kind} title={MARKS[kind].title} aria-hidden="true">
+    <span className={MARKS[kind].className} data-kind={kind} title={title} aria-hidden="true">
       {MARKS[kind].text}
     </span>
   );
