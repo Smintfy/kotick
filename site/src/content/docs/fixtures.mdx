@@ -64,3 +64,29 @@ The examples import from `src` through the `@/` alias. Next.js sets this alias, 
 - The loader runs after the page loads. Previews that started before it finished change to the fixture when it arrives. Such a preview logs the warning about the live context only if the loader gives no fixture for it.
 - In a parallel preview, the first leaf that has a fixture gives the context: the leaves you selected, in sequence, then the leaves of the other regions.
 - You can give an array of sets in place of a loader. Then the sets are in your main bundle, also in production. Use a loader with a development check to keep them out.
+
+## Reducer machines
+
+`defineFixtures` from `konat/reducer` takes a state object for each state that you list. A fixture is a whole state of its own name, so its discriminant is the name of its key:
+
+```ts
+// src/debug/fixtures.ts
+import { defineFixtures, type CompleteFixtures } from 'konat/reducer';
+import { searchMachine } from '@/machines/search';
+
+export default [
+  defineFixtures(searchMachine, {
+    idle: { status: 'idle' },
+    loading: { status: 'loading', query: 'linen' },
+    ready: { status: 'ready', query: 'linen', hits: ['Linen tote'] },
+  } satisfies CompleteFixtures<typeof searchMachine>),
+];
+```
+
+`searchMachine` is the machine of [Reducer machines](/docs/reducer#from-a-switch-reducer). Load the file with the same loader and development condition as above.
+
+- The keys are optional, so a set can start with the one state that the app cannot get to. `satisfies CompleteFixtures<typeof searchMachine>` makes the file fail when the machine has a state without a fixture.
+- TypeScript checks each fixture against the state of its key. Without TypeScript, `defineFixtures` leaves out a fixture of another state and a key that is not a state. In development, it logs a [warning](/docs/troubleshooting#console-warnings) for each.
+- **Copy context** in the panel copies the state object of the shown state as JSON. The JSON is a fixture as it is.
+- A set applies to each instance of its machine. Until the loader finishes, a state without a recording stays greyed out in the panel. Its row enables when the set arrives.
+- `konat/xstate` and `konat/reducer` both export `defineFixtures`. A file with sets for both adapters imports one of them with another name, for example `import { defineFixtures as defineReducerFixtures } from 'konat/reducer'`.

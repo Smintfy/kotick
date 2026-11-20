@@ -7,7 +7,7 @@ export function Home() {
       <header className="page-header">
         <h1>Examples</h1>
         <p className="muted">
-          Each page reads XState state a different way. Open the panel with the bubble or <kbd>Alt</kbd>+<kbd>S</kbd> (<kbd>⌥S</kbd> on macOS){' '}
+          Each page reads its machine a different way. Open the panel with the bubble or <kbd>Alt</kbd>+<kbd>S</kbd> (<kbd>⌥S</kbd> on macOS){' '}
           to preview any state. The counters show mounts and committed renders; a preview should never add a mount.
         </p>
         <p className="muted">

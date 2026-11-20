@@ -10,6 +10,7 @@ import * as nextjs from '@/content/docs/nextjs.mdx';
 import * as overview from '@/content/docs/overview.mdx';
 import * as panel from '@/content/docs/panel.mdx';
 import * as production from '@/content/docs/production.mdx';
+import * as reducer from '@/content/docs/reducer.mdx';
 import * as tests from '@/content/docs/tests.mdx';
 import * as troubleshooting from '@/content/docs/troubleshooting.mdx';
 
@@ -27,6 +28,7 @@ export type DocsPage = NavItem & {
 const docs = [
   ['install', install],
   ['concepts', concepts],
+  ['reducer', reducer],
   ['panel', panel],
   ['fixtures', fixtures],
   ['api', api],
@@ -113,6 +115,7 @@ export const navSections: readonly NavSection[] = [
     title: 'Guides',
     items: [
       docsItem('concepts'),
+      docsItem('reducer'),
       docsItem('panel'),
       docsItem('fixtures'),
       docsItem('nextjs'),

@@ -125,15 +125,26 @@ The state tree marks each state with the data it has. In the panel, you can chan
 
 Machines that a machine invokes or spawns are listed under their parent. You can see their state, but you cannot preview them in this version.
 
+## Reducer machines
+
+A component can also keep a union of states in `useReducer`. With `konat/reducer`, you declare that reducer as a machine that names each state. The panel then lists the states and previews them, as it does for XState machines. Refer to [Reducer machines](/docs/reducer).
+
+- **The states are flat.** Each state is a leaf, and its leaf id is its name, such as `loading`.
+- **The context of a state is the whole state object.** The states of a union do not share context. Thus, the live context fits only the state that the machine is in, and a preview of another state needs a recording or a fixture.
+- **Each component that calls `useMachineReducer` is an instance.** The real state stays in React's `useReducer`.
+- **One registry holds the instances of both adapters.** The machine ids of `konat/xstate` and `konat/reducer` share one namespace. Give each machine an id that no other machine on the page has. Two machines with one id show as one machine in the panel, and they share recordings and fixtures.
+
 ## How konat works
 
-konat has three parts: the adapter in `konat/xstate`, a registry for the page, and the overlay.
+konat has three parts: an adapter for each kind of machine, a registry for the page, and the overlay. The adapters are `konat/xstate` and `konat/reducer`.
 
 <ArchitectureDiagram caption="A component gets a proxy from useMachine(). The proxy calls the real actor and registers in the registry. The overlay selects a preview in the registry, and the proxy reads it." />
 
-**The adapter gives your components a proxy of each actor.** The hooks call the hooks of `@xstate/react`, and return a proxy of the actor that they make. `connect()` does the same for an actor that you create outside React. The proxy sends each call to the real actor. During a preview, `getSnapshot()`, `subscribe()` and `send()` work differently.
+**The XState adapter gives your components a proxy of each actor.** The hooks call the hooks of `@xstate/react`, and return a proxy of the actor that they make. `connect()` does the same for an actor that you create outside React. The proxy sends each call to the real actor. During a preview, `getSnapshot()`, `subscribe()` and `send()` work differently.
 
-**One registry holds the actors of the page.** Each proxy registers its actor under a machine id and an instance id. The machine id is `machine.id`, or `debug.id` if you set it. The registry is on `globalThis`, so all React roots and all copies of konat on the page use the same registry. On the server, the registry does nothing, because one server process renders the pages of many users.
+**The reducer adapter keeps the state in React.** `useMachineReducer` runs the reducer of the machine in React's `useReducer`, and runs the effect of the real state. In development, it also registers the instance, records its state object after each commit, and returns the state object of a preview in place of the real one.
+
+**One registry holds the instances of the page.** Each proxy, and each component that calls `useMachineReducer`, registers under a machine id and an instance id. The machine id is `machine.id`. For an XState machine, `debug.id` replaces it if you set it. The registry is on `globalThis`, so all React roots and all copies of konat on the page use the same registry. On the server, the registry does nothing, because one server process renders the pages of many users.
 
 **The list of states comes from the machine.** konat reads the state nodes of the machine one time and keeps the tree. Thus, the panel can show the states that the app never went to. Each atomic or final state is a leaf that you can preview.
 
@@ -145,4 +156,4 @@ konat has three parts: the adapter in `konat/xstate`, a registry for the page, a
 
 **The overlay renders in a shadow root.** `<Konat />` adds a `<div data-konat-root>` to `document.body`, or to `portalTarget`. It attaches a shadow root to the `div`, puts the CSS of the overlay in it, and renders the panel there with a React portal. The CSS of the page and the CSS of the overlay cannot change each other. konat adds the `div` in a layout effect, after hydration. Thus, the server renders nothing.
 
-**Production builds keep none of it.** Each export is `process.env.NODE_ENV !== 'production' ? <konat version> : <@xstate/react version>`. The bundler replaces `process.env.NODE_ENV` with `"production"` and removes the branch that cannot run. The package sets `"sideEffects": false`, so the bundler also removes the modules that nothing imports. `<Konat />` becomes a component that returns `null`. See [Production builds](/docs/production).
+**Production builds keep none of the debugger.** Each export of `konat/xstate` is `process.env.NODE_ENV !== 'production' ? <konat version> : <@xstate/react version>`. The bundler replaces `process.env.NODE_ENV` with `"production"` and removes the branch that cannot run. The package sets `"sideEffects": false`, so the bundler also removes the modules that nothing imports. `<Konat />` becomes a component that returns `null`. `konat/reducer` keeps a small runtime that runs your transitions and effects, and drops the rest. See [Production builds](/docs/production).

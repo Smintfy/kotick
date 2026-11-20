@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'API',
-  description: 'The props of <Konat />, the exports of konat/xstate, and the exported types.',
+  description: 'The props of <Konat />, the exports of konat/xstate and konat/reducer, and the exported types.',
 };
 
 ## Props
@@ -98,6 +98,51 @@ Give each machine an `id`. A machine without one has the XState default id `(mac
 
 An actor that konat registered before does not register again. This includes an actor from `connect()`, an actor from a hook, and the real actor of either. `connect()` returns the proxy that the actor already has, with its first id and label. If the actor is from a hook and you give `id` or `label`, konat logs a warning.
 
+## Reducer exports
+
+`konat/reducer` has these exports:
+
+| Export | What it is |
+|---|---|
+| `defineReducerMachine<State, Event, Input>()(definition)` | Declares a machine over your union of states and your union of events. Returns the machine. |
+| `useMachineReducer(machine, initial, options?)` | Runs a machine in a component. Returns `[state, dispatch]`, as `useReducer` does. |
+| `defineFixtures(machine, fixtures)` | Makes a fixture set for `<Konat fixtures>`. Each fixture is a state object of the state of its key. Refer to [Fixtures](/docs/fixtures#reducer-machines). |
+
+Refer to [Reducer machines](/docs/reducer) for the rules of a machine.
+
+### defineReducerMachine()
+
+The first call takes three type arguments: the union of states, the union of events, and the type of the input that the effects read, if they read one. The second call takes the definition, and TypeScript infers the discriminant from it. TypeScript cannot take some type arguments of one call from you and infer the others, so there are two calls.
+
+<PropsTable>
+  <Prop name="id" type="string">
+    The machine id on the page. The panel, the recordings and the fixtures find the machine by it. The ids of XState machines and reducer machines share one namespace.
+  </Prop>
+  <Prop name="discriminant" type="keyof State">
+    The key that holds the name of the state. Its value must be a string literal in each member of the union.
+  </Prop>
+  <Prop name="states" type="object" detailedType="{ [name]: { on?: { [type]?: (state, event) => State }; effect?: (state, send, input) => void | (() => void) } }">
+    One entry for each state name, and no other key. The panel lists the states in this sequence. Refer to [Define a machine](/docs/reducer#define-a-machine).
+  </Prop>
+</PropsTable>
+
+The machine is the definition, frozen, with one more property: `reducer(state, event)`, the transitions as a plain reducer. It returns the same object for an event that the state ignores.
+
+### useMachineReducer()
+
+`initial` is the state at mount, or a function that returns it, as for `useReducer`. `dispatch` is the same function for the life of the component, as the `dispatch` of `useReducer` is. During a preview, it logs each event in the panel, and the event does not get to the machine. Call the hook only in client components.
+
+The third argument takes these options:
+
+<PropsTable>
+  <Prop name="input" type="Input">
+    The value that `input()` returns in the effects. The hook requires it when the machine declares an input type. A new value does not restart an effect.
+  </Prop>
+  <Prop name="debug" type="object" detailedType="{ label?: string; disabled?: boolean }">
+    `label` is the name of the instance in the panel. `disabled: true` keeps the instance out of konat. konat reads `debug` in development builds only.
+  </Prop>
+</PropsTable>
+
 ## Types
 
 `konat` exports these types:
@@ -117,3 +162,13 @@ An actor that konat registered before does not register again. This includes an 
 | `DebugOptions` | The `debug` option of the hooks and the second argument of `connect()`. |
 | `FixtureStates<TMachine>` | The second argument of `defineFixtures()`: an optional `{ context }` for each leaf id. `context` has the context type of the machine. |
 | `LeafIdFrom<TMachine>` | The leaf ids of a machine as a union, for example `'cart' \| 'payment.error'`. It is `string` when TypeScript cannot know the states. |
+
+`konat/reducer` exports these types:
+
+| Type | What it is |
+|---|---|
+| `ReducerMachine<State, Event, Key, Input>` | The return value of `defineReducerMachine()`: `id`, `discriminant`, `states` and `reducer`. `Input` is `undefined` when the effects read no input. |
+| `MachineEvent` | `{ readonly type: string }`. Each member of the event union extends it. |
+| `MachineReducerOptions<Input>` | The options of `useMachineReducer()`: `{ input?: Input; debug?: { label?: string; disabled?: boolean } }`. |
+| `ReducerFixtures<State, Key>` | The second argument of `defineFixtures()`: an optional state object for each state name. Each one is a state of its own name. |
+| `CompleteFixtures<Machine>` | The `ReducerFixtures` of a machine, with a state object for every state. Check a set with `satisfies CompleteFixtures<typeof machine>`. |
