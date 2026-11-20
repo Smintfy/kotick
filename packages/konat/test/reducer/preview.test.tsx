@@ -81,29 +81,29 @@ test('the panel lists the states in order with an R mark on each visited state, 
   });
 });
 
-test('an event that the UI sends during a preview is blocked and logged with the state that the UI showed', async () => {
+test('an event that the UI sends during a preview is blocked and logged with the state that the UI showed, and the real machine does not get it', async () => {
   const bank = createBank();
   const machine = createOrderMachine(bank);
   await mount(<Order machine={machine} />);
   await press('order: submit');
+  await answer(bank, 'reject');
   await preview(machine.id, ['idle']);
   await clearBlockedEvents();
-  await press('order: submit');
-  const blocked = { shown: shownOrder(), rows: blockedEvents(), effects: [...bank.log] };
+  await press('order: retry');
+  const blocked = { shown: shownOrder(), rows: blockedEvents() };
   await release(machine.id);
+  const released = { shown: shownOrder(), rows: blockedEvents(), effects: [...bank.log] };
   await press('order: retry');
 
-  expect({ blocked, released: { shown: shownOrder(), rows: blockedEvents() } }).toEqual({
-    blocked: {
-      shown: { status: 'idle' },
-      rows: [`SUBMIT · ${machine.id} · 1 · in idle · {"orderId":"o1"}`],
-      effects: ['start o1'],
-    },
-    // The loading state ignores RETRY, and nothing blocks it after the release.
+  expect({ blocked, released, sentAgain: { shown: shownOrder(), rows: blockedEvents() } }).toEqual({
+    blocked: { shown: { status: 'idle' }, rows: [`RETRY · ${machine.id} · 1 · in idle`] },
+    // The real state handles RETRY, so a blocked RETRY that reached the real machine shows here as `loading`.
     released: {
-      shown: { status: 'loading', orderId: 'o1' },
-      rows: [`SUBMIT · ${machine.id} · 1 · in idle · {"orderId":"o1"}`],
+      shown: { status: 'error', orderId: 'o1', message: 'declined' },
+      rows: [`RETRY · ${machine.id} · 1 · in idle`],
+      effects: ['start o1', 'cleanup o1'],
     },
+    sentAgain: { shown: { status: 'loading', orderId: 'o1' }, rows: [`RETRY · ${machine.id} · 1 · in idle`] },
   });
 });
 
