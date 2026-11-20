@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { Konat, type KonatProps } from 'konat';
+import { Konat, type FixtureSet, type FixturesResult, type KonatProps } from 'konat';
 import { onTestFinished } from 'vitest';
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { flush } from './panel';
@@ -42,4 +42,27 @@ export function systemActor(actor: AnyActorRef, systemId: string): AnyActorRef {
 export async function press(name: string): Promise<void> {
   fireEvent.click(screen.getByRole('button', { name }));
   await flush();
+}
+
+type Settle = { resolve(result: FixturesResult): void; reject(reason: Error): void };
+
+/** A fixtures loader whose import the test resolves or rejects, as `() => import('./fixtures')` does. */
+export function lazyFixtures() {
+  let settle!: Settle;
+
+  const loaded = new Promise<FixturesResult>((resolve, reject) => {
+    settle = { resolve, reject };
+  });
+
+  return {
+    loader: () => loaded,
+    async resolve(sets: FixtureSet[]) {
+      await act(async () => settle.resolve({ default: sets }));
+      await flush();
+    },
+    async reject(reason: Error) {
+      await act(async () => settle.reject(reason));
+      await flush();
+    },
+  };
 }

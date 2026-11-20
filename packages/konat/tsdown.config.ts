@@ -48,6 +48,13 @@ export default defineConfig([
   {
     ...common,
     entry: { reducer: 'src/reducer.ts' },
-    plugins: [otherBuilds({ './reducer/machine': './reducer-machine.js', './reducer/hook': './reducer-hook.js' })],
+    // src/reducer/define-fixtures.ts imports the definition module as ./machine.
+    plugins: [
+      otherBuilds({
+        './reducer/machine': './reducer-machine.js',
+        './machine': './reducer-machine.js',
+        './reducer/hook': './reducer-hook.js',
+      }),
+    ],
   },
 ]);

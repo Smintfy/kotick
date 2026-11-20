@@ -107,7 +107,8 @@ These techniques replace a mock. Each one was tried in this package.
   actor. Send to the real actor instead: give `useMachine` a `systemId` and call `actor.system.get(systemId).send()`,
   or start the actor in the test, show `connect(actor)`, and send to `actor`.
 - **A lazy fixtures loader.** Pass `fixtures={() => loaded}`, where `loaded` is a promise that the test resolves or
-  rejects, as `() => import('./fixtures')` does. Resolve it with `{ default: sets }` inside `act()`.
+  rejects, as `() => import('./fixtures')` does. Resolve it with `{ default: sets }` inside `act()`. `lazyFixtures()`
+  from `test/support/app.tsx` gives such a loader.
 - **A second copy of the package.** `vi.resetModules()` replaces nothing, so it is allowed. Import the entry again.
 - **Production builds.** `test/production.test.tsx` runs in its own Vitest project, `production` in
   `vitest.config.ts`, with `test.env.NODE_ENV` set to `'production'`. Vite's `define` doesn't change `NODE_ENV` in

@@ -280,6 +280,13 @@ export function stateWarnings(): string[] {
 	);
 }
 
+/** The leaves of the shown tree that are disabled, by leaf id. */
+export function disabledLeaves(): string[] {
+	return all('[data-leaf][aria-disabled="true"]').map(
+		(leaf) => leaf.dataset.leaf ?? "",
+	);
+}
+
 /** The machine whose page the panel shows, as the page's title gives it, or `none` on another page. */
 export function shownMachine(): string {
 	return (

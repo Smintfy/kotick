@@ -2,7 +2,8 @@
 // So the tests call the hook outside components.
 // Each @ts-expect-error marks one mistake that the types reject.
 
-import { defineReducerMachine, useMachineReducer } from 'konat/reducer';
+import { Konat } from 'konat';
+import { defineFixtures, defineReducerMachine, useMachineReducer, type CompleteFixtures } from 'konat/reducer';
 import { describe, expectTypeOf, test } from 'vitest';
 
 type UploadState =
@@ -247,5 +248,53 @@ describe('useMachineReducer', () => {
     useMachineReducer(searchMachine, { status: 'idle' }, { input: { search } });
     // @ts-expect-error the upload machine declares no input
     useMachineReducer(uploadMachine, queued, { input: { search, onHits } });
+  });
+});
+
+describe('defineFixtures', () => {
+  const fixtures = {
+    queued: { status: 'queued', fileName: 'a.pdf' },
+    uploading: { status: 'uploading', fileName: 'a.pdf', progress: 1 },
+    failed: { status: 'failed', fileName: 'a.pdf', error: 'e' },
+    done: { status: 'done', fileName: 'a.pdf' },
+  } as const;
+
+  test('a set can list any of the states, CompleteFixtures asks for all of them, and <Konat fixtures> takes the set', () => {
+    Konat({
+      fixtures: [
+        defineFixtures(uploadMachine, { failed: fixtures.failed }),
+        defineFixtures(uploadMachine, fixtures satisfies CompleteFixtures<typeof uploadMachine>),
+      ],
+    });
+    const { done: _done, ...withoutDone } = fixtures;
+
+    // @ts-expect-error the complete type needs every state, and `done` has none
+    defineFixtures(uploadMachine, withoutDone satisfies CompleteFixtures<typeof uploadMachine>);
+  });
+
+  test('a fixture is a whole state of its own name', () => {
+    // @ts-expect-error the fixture of `uploading` must be in the uploading state
+    defineFixtures(uploadMachine, { ...fixtures, uploading: { status: 'done', fileName: 'a.pdf' } });
+    // @ts-expect-error the failed state needs `error`
+    defineFixtures(uploadMachine, { ...fixtures, failed: { status: 'failed', fileName: 'a.pdf' } });
+    // @ts-expect-error the done state has no `progress`
+    defineFixtures(uploadMachine, { ...fixtures, done: { status: 'done', fileName: 'a.pdf', progress: 1 } });
+    // @ts-expect-error `paused` isn't a state
+    defineFixtures(uploadMachine, { ...fixtures, paused: { status: 'queued', fileName: 'a.pdf' } });
+  });
+
+  test('the fixture of a member whose discriminant is a union is in the state of its own name', () => {
+    const draftMachine = defineReducerMachine<DraftState, DraftEvent>()({
+      id: 'draft',
+      discriminant: 'status',
+      states: { editing: {}, saving: {}, deleting: {} },
+    });
+
+    defineFixtures(draftMachine, {
+      editing: { status: 'editing', draft: '' },
+      // @ts-expect-error the member also covers `deleting`, but the fixture of `saving` must be in the saving state
+      saving: { status: 'deleting', draft: '', startedAt: 0 },
+      deleting: { status: 'deleting', draft: '', startedAt: 0 },
+    });
   });
 });

@@ -6,4 +6,8 @@ export { defineReducerMachine } from './reducer/machine';
 
 export type { MachineEvent, MachineReducerOptions, ReducerMachine } from './reducer/machine';
 
+export { defineFixtures } from './reducer/define-fixtures';
+
+export type { CompleteFixtures, ReducerFixtures } from './reducer/define-fixtures';
+
 export { useMachineReducer } from './reducer/hook';
