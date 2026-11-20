@@ -6,6 +6,8 @@
 // workspace source. In each output, it looks for strings that only the registry, the overlay and the adapters contain.
 // For esbuild and Vite it also compares the JavaScript loaded at startup of each app in PAIRS with the same app written
 // without konat, and fails when the difference is over the budget of that pair.
+// It starts the Next.js and React Router builds with their production servers, and compares the answers to requests
+// with literal text. In the Next.js app, a server component and a route handler run the reducer of a machine file.
 //
 // Usage:
 //   node tests/bundles/check.mjs                    every bundler, then the examples
@@ -13,7 +15,7 @@
 //   node tests/bundles/check.mjs --skip-examples    the fixture only
 //   --keep                                          keep the temporary directory for inspection
 
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -25,8 +27,10 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { parseArgs } from 'node:util';
 import { gzipSync } from 'node:zlib';
 import { MARKERS } from '../../scripts/debug-markers.mjs';
@@ -210,6 +214,105 @@ function measurePairs(bundler, dir, buildApp, startup) {
   }
 }
 
+/**
+ * What each production server must answer, as the status and the body.
+ * With `ids`, the text of the elements with those ids takes the place of the body.
+ */
+const NEXT_REQUESTS = [
+  { path: '/', ids: ['reducer-server', 'reducer-demo'], expected: '200 toggle-reducer off,on on 1 | off' },
+  { path: '/api/reducer', expected: '200 {"status":"off","count":1}' },
+];
+
+const REACT_ROUTER_REQUESTS = [{ path: '/', ids: ['reducer-demo'], expected: '200 off' }];
+
+/** One row per request to a production server. */
+const answers = [];
+
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once('error', reject);
+    probe.listen(0, () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
+/** The text of the element with this id, when the element holds only text. */
+function textOf(html, id) {
+  return new RegExp(`<[a-z]+ id="${id}"[^>]*>([^<]*)<`).exec(html)?.[1] ?? '(no element)';
+}
+
+/** Requests `url` until the server listens, for at most 30 seconds and while the server runs. */
+async function request(url, server) {
+  const deadline = Date.now() + 30_000;
+
+  for (;;) {
+    try {
+      return await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    } catch (error) {
+      if (server.exitCode !== null || Date.now() > deadline) throw error;
+      await delay(250);
+    }
+  }
+}
+
+/**
+ * Runs the Node script of a production server on a free port, and compares the answer to each request with its text.
+ * The server stops also when a request fails.
+ */
+async function serve(name, script, args, cwd, extraEnv, requests) {
+  const port = await freePort();
+  console.log(`\n$ node ${relative(cwd, script)} ${args.join(' ')}   (in ${relative(root, cwd) || '.'}, PORT=${port})`);
+
+  const server = spawn(process.execPath, [script, ...args], {
+    cwd,
+    env: { ...env, ...extraEnv, PORT: String(port) },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+
+  const exited = new Promise((resolve) => server.once('exit', resolve));
+  let log = '';
+  server.stdout.on('data', (chunk) => (log += chunk));
+  server.stderr.on('data', (chunk) => (log += chunk));
+
+  try {
+    for (const { path, ids, expected } of requests) {
+      const response = await request(`http://localhost:${port}${path}`, server);
+      const body = await response.text();
+      const answer = `${response.status} ${ids ? ids.map((id) => textOf(body, id)).join(' | ') : body}`;
+      answers.push({ name, path, answer });
+
+      if (answer !== expected) failures.push(`${name}: GET ${path} answered ${answer}, not ${expected}.`);
+    }
+  } catch (error) {
+    failures.push(`${name}: no answer from the server (${error.cause?.code ?? error.message}). It wrote:\n${log}`);
+  } finally {
+    server.kill();
+    const timer = setTimeout(() => server.kill('SIGKILL'), 5000);
+    await exited;
+    clearTimeout(timer);
+  }
+}
+
+/** A Next.js build with Turbopack or webpack, each into its own directory, and a run of `next start` on it. */
+function nextBuild(bundler) {
+  const name = `next (${bundler})`;
+  const distDir = `.next-${bundler}`;
+
+  return {
+    name,
+    async build(dir) {
+      run('pnpm', ['exec', 'next', 'build', `--${bundler}`], dir, { NEXT_DIST_DIR: distDir });
+      check(name, 'client', join(dir, distDir, 'static'));
+      check(name, 'server', join(dir, distDir, 'server'));
+      const next = join(dir, 'node_modules/next/dist/bin/next');
+      await serve(name, next, ['start'], dir, { NEXT_DIST_DIR: distDir }, NEXT_REQUESTS);
+    },
+  };
+}
+
 const builds = [
   {
     name: 'esbuild',
@@ -236,29 +339,17 @@ const builds = [
       );
     },
   },
-  {
-    name: 'next (turbopack)',
-    build(dir) {
-      run('pnpm', ['exec', 'next', 'build', '--turbopack'], dir, { NEXT_DIST_DIR: '.next-turbopack' });
-      check('next (turbopack)', 'client', join(dir, '.next-turbopack/static'));
-      check('next (turbopack)', 'server', join(dir, '.next-turbopack/server'));
-    },
-  },
-  {
-    name: 'next (webpack)',
-    build(dir) {
-      run('pnpm', ['exec', 'next', 'build', '--webpack'], dir, { NEXT_DIST_DIR: '.next-webpack' });
-      check('next (webpack)', 'client', join(dir, '.next-webpack/static'));
-      check('next (webpack)', 'server', join(dir, '.next-webpack/server'));
-    },
-  },
+  nextBuild('turbopack'),
+  nextBuild('webpack'),
   {
     name: 'react-router',
-    build(dir) {
+    async build(dir) {
       const appDir = join(dir, 'react-router');
       run('pnpm', ['exec', 'react-router', 'build'], appDir);
       check('react-router', 'client', join(appDir, 'build/client'));
       check('react-router', 'server', join(appDir, 'build/server'));
+      const serveBin = join(dir, 'node_modules/@react-router/serve/bin.cjs');
+      await serve('react-router', serveBin, ['build/server/index.js'], appDir, {}, REACT_ROUTER_REQUESTS);
     },
   },
 ];
@@ -304,7 +395,7 @@ try {
 
     for (const build of selected) {
       try {
-        build.build(dir);
+        await build.build(dir);
       } catch (error) {
         failures.push(`${build.name}: ${error.message}`);
       }
@@ -337,6 +428,10 @@ for (const { name, output, hits, note } of rows) {
 
   for (const hit of hits) console.log(`${''.padEnd(31)}${hit.marker} in ${hit.file}`);
 }
+
+if (answers.length > 0) console.log('\n=== Requests to production servers\n');
+
+for (const { name, path, answer } of answers) console.log(`${name.padEnd(22)} GET ${path.padEnd(13)} ${answer}`);
 
 for (const failure of failures) console.log(`\nFAILED ${failure}`);
 

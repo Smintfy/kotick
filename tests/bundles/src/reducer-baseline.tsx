@@ -29,7 +29,7 @@ export function ReducerDemo() {
   }, [state.status]);
 
   return (
-    <button type="button" onClick={() => dispatch({ type: 'TOGGLE' })}>
+    <button id="reducer-demo" type="button" onClick={() => dispatch({ type: 'TOGGLE' })}>
       {state.status}
     </button>
   );
