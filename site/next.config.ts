@@ -31,9 +31,10 @@ const config: NextConfig = {
   },
   compiler: {
     async runAfterProductionCompile({ distDir }) {
-      const chunks = path.join(distDir, 'static', 'chunks');
-      const files = (await readdir(chunks, { recursive: true })).filter((file) => file.endsWith('.js'));
-      const code = (await Promise.all(files.map((file) => readFile(path.join(chunks, file), 'utf8')))).join('\n');
+      // On Vercel, the client chunks are in static/immutable/ and not in static/chunks/.
+      const assets = path.join(distDir, 'static');
+      const files = (await readdir(assets, { recursive: true })).filter((file) => file.endsWith('.js'));
+      const code = (await Promise.all(files.map((file) => readFile(path.join(assets, file), 'utf8')))).join('\n');
       const missing = Object.entries(MARKERS).flatMap(([marker, part]) => (code.includes(marker) ? [] : [part]));
 
       if (missing.length > 0) {
