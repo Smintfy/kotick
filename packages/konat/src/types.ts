@@ -11,6 +11,12 @@ export interface StateNodeInfo {
 
 export interface Capabilities {
   preview: boolean;
+  /**
+   * Whether all states of the machine share one context.
+   * It is true for XState, where the live context fits a preview of any state.
+   * It is false for a union of states, where the live context fits only the state that the machine is in.
+   */
+  sharedContext: boolean;
 }
 
 export interface MachineHandle {

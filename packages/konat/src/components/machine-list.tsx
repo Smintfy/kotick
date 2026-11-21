@@ -1,4 +1,4 @@
-import type * as React from 'react';
+import type { KeyboardEvent } from 'react';
 import { leavesOf } from '../core/registry';
 import { usePathname } from '../hooks/use-pathname';
 import type { RegistrySnapshot } from '../types';
@@ -18,7 +18,7 @@ interface MachineListProps {
 export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings }: MachineListProps) {
   const previewCount = Object.keys(snapshot.overrides).length;
 
-  function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
+  function onKeyDown(event: KeyboardEvent<HTMLElement>): void {
     if (event.defaultPrevented) return;
     const move = moveOf(event);
 
@@ -33,8 +33,8 @@ export function MachineList({ groups, snapshot, onOpen, onReleaseAll, onSettings
     <div className="flex min-h-0 flex-col" onKeyDown={onKeyDown}>
       {groups.length === 0 ? (
         <p className="px-3 py-4 text-center leading-relaxed text-muted" data-part="empty">
-          No machines yet. Hooks from <code>konat/xstate</code> register their actors as they mount, and{' '}
-          <code>connect()</code> registers actors created outside React.
+          No machines yet. Hooks from <code>konat/xstate</code> and <code>konat/reducer</code> register their machines
+          as they mount, and <code>connect()</code> registers XState actors created outside React.
         </p>
       ) : (
         <div className="grid gap-0.5 overflow-auto overscroll-contain p-1.5">

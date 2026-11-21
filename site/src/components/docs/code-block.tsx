@@ -45,7 +45,7 @@ export function HighlightedPre({ text, lang, className }: { text: string; lang: 
   return (
     <pre
       data-line-numbers={(lang !== 'plain' && text.includes('\n')) || undefined}
-      className={cn('m-0 w-max min-w-full p-(--code-padding) text-[13px] leading-[1.6]', className)}
+      className={cn('m-0 w-max min-w-full p-(--code-padding) text-[0.8rem] leading-[1.6]', className)}
     >
       <code>
         <HighlightedCode text={text} lang={lang} />

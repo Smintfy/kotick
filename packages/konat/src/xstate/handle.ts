@@ -8,10 +8,12 @@ import { getTree, leavesOfSnapshot } from './tree';
 
 const PREVIEW_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
   preview: true,
+  sharedContext: true,
 });
 
 const READ_ONLY_CAPABILITIES: Capabilities = /* @__PURE__ */ Object.freeze({
   preview: false,
+  sharedContext: true,
 });
 
 interface ObservedHandle {

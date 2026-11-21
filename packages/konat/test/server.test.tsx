@@ -2,6 +2,7 @@
 
 import { renderToString } from 'react-dom/server';
 import { Konat } from 'konat';
+import { defineReducerMachine, useMachineReducer } from 'konat/reducer';
 import { connect, createActorContext, useActor, useActorRef, useMachine, useSelector } from 'konat/xstate';
 import { expect, test } from 'vitest';
 import { createActor, setup } from 'xstate';
@@ -20,7 +21,7 @@ const toggleMachine = setup({ types: { events: {} as ToggleEvent } }).createMach
 const globalsAtLoad = Reflect.ownKeys(globalThis);
 
 /**
- * The hooks and connect() count instances in a number on globalThis, also on the server.
+ * The hooks of both adapters and connect() count instances in a number on globalThis, also on the server.
  * A registry is an object, so it shows here.
  */
 function objectsAdded(): PropertyKey[] {
@@ -85,6 +86,45 @@ test('the overlay renders nothing, the hooks and connect() render the state, and
       '<ul><li>useMachine: off</li><li>useActor: off</li><li>useActorRef: off</li><li>connect: on</li>' +
       '<li>createActorContext: off</li></ul>',
     loads: [],
+    added: [],
+    output: { warn: [], error: [] },
+  });
+});
+
+test('a reducer machine renders its initial state, runs no effect, and no registry goes on globalThis', () => {
+  const output = watchConsole();
+  const effects: string[] = [];
+
+  const machine = defineReducerMachine<{ status: 'off' } | { status: 'on' }, ToggleEvent>()({
+    id: 'toggle',
+    discriminant: 'status',
+    states: {
+      off: { on: { TOGGLE: () => ({ status: 'on' }) } },
+      on: {
+        on: { TOGGLE: () => ({ status: 'off' }) },
+        effect: () => {
+          effects.push('start');
+        },
+      },
+    },
+  });
+
+  function Toggle() {
+    const [state] = useMachineReducer(machine, () => ({ status: 'on' }), { debug: { label: 'Server' } });
+
+    return <p>{state.status}</p>;
+  }
+
+  const html = renderToString(
+    <>
+      <Toggle />
+      <Konat defaultOpen />
+    </>,
+  );
+
+  expect({ html, effects, added: objectsAdded(), output }).toEqual({
+    html: '<p>on</p>',
+    effects: [],
     added: [],
     output: { warn: [], error: [] },
   });

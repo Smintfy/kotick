@@ -1,42 +1,9 @@
 import { assign, fromPromise, setup } from 'xstate';
+import { type Account, canInvite, emptyAccount, type OnboardingEvent, saveWorkspace } from '@/demo/onboarding/account';
 
-export type Role = 'design' | 'engineering' | 'product' | 'other';
+export type OnboardingContext = Account & { error?: string };
 
-export type OnboardingContext = {
-  name: string;
-  role?: Role;
-  workspace: string;
-  email: string;
-  invites: string[];
-  error?: string;
-};
-
-export type OnboardingEvent =
-  | { type: 'UPDATE_NAME'; name: string }
-  | { type: 'SELECT_ROLE'; role: Role }
-  | { type: 'UPDATE_WORKSPACE'; workspace: string }
-  | { type: 'CREATE_WORKSPACE' }
-  | { type: 'UPDATE_EMAIL'; email: string }
-  | { type: 'ADD_INVITE' }
-  | { type: 'REMOVE_INVITE'; email: string }
-  | { type: 'SEND_INVITES' }
-  | { type: 'SKIP' }
-  | { type: 'NEXT' }
-  | { type: 'BACK' };
-
-export const takenWorkspace = 'Acme';
-
-const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-
-const createWorkspace = fromPromise<void, { workspace: string }>(async ({ input }) => {
-  await new Promise((resolve) => setTimeout(resolve, 800));
-
-  if (input.workspace.trim().toLowerCase() === takenWorkspace.toLowerCase()) {
-    throw new Error(`The name ${input.workspace.trim()} is taken`);
-  }
-});
-
-export const empty: OnboardingContext = { name: '', workspace: '', email: '', invites: [] };
+const createWorkspace = fromPromise<void, { workspace: string }>(({ input }) => saveWorkspace(input.workspace));
 
 export const onboardingMachine = setup({
   // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.
@@ -49,13 +16,13 @@ export const onboardingMachine = setup({
     hasName: ({ context }) => context.name.trim() !== '',
     hasRole: ({ context }) => context.role !== undefined,
     hasWorkspace: ({ context }) => context.workspace.trim() !== '',
-    canInvite: ({ context }) => isEmail(context.email) && !context.invites.includes(context.email.trim()),
+    canInvite: ({ context }) => canInvite(context),
     hasInvites: ({ context }) => context.invites.length > 0,
   },
 }).createMachine({
-  id: 'onboarding',
+  id: 'onboarding-xstate',
   initial: 'profile',
-  context: empty,
+  context: emptyAccount,
   states: {
     profile: {
       on: {
@@ -77,7 +44,7 @@ export const onboardingMachine = setup({
           on: {
             UPDATE_WORKSPACE: { actions: assign({ workspace: ({ event }) => event.workspace }) },
             CREATE_WORKSPACE: { guard: 'hasWorkspace', target: 'creating' },
-            BACK: '#onboarding.role',
+            BACK: '#onboarding-xstate.role',
           },
         },
         creating: {
@@ -85,7 +52,7 @@ export const onboardingMachine = setup({
           invoke: {
             src: 'createWorkspace',
             input: ({ context }) => ({ workspace: context.workspace }),
-            onDone: '#onboarding.invite',
+            onDone: '#onboarding-xstate.invite',
             onError: {
               target: 'error',
               actions: assign({ error: ({ event }) => (event.error instanceof Error ? event.error.message : 'Could not create the workspace') }),
@@ -98,7 +65,7 @@ export const onboardingMachine = setup({
               target: 'editing',
               actions: assign({ workspace: ({ event }) => event.workspace, error: undefined }),
             },
-            BACK: '#onboarding.role',
+            BACK: '#onboarding-xstate.role',
           },
         },
       },

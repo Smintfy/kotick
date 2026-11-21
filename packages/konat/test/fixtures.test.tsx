@@ -1,9 +1,10 @@
 import { act, render, screen } from '@testing-library/react';
 import * as React from 'react';
-import { Konat, type FixtureSet, type FixturesInput, type FixturesResult } from 'konat';
+import { Konat, type FixturesInput } from 'konat';
 import { defineFixtures, useMachine } from 'konat/xstate';
 import { describe, expect, test } from 'vitest';
 import { assign, createMachine, setup, type AnyActorRef, type AnyStateMachine } from 'xstate';
+import { lazyFixtures } from './support/app';
 import { watchConsole } from './support/console';
 import { flush, freshId, marks, panel, pickSource, preview, show, shownKey } from './support/panel';
 
@@ -129,28 +130,6 @@ async function renderPage(app: React.ReactNode, fixtures?: FixturesInput) {
   return {
     async rerender(nextApp: React.ReactNode, nextFixtures = fixtures) {
       view.rerender(page(nextApp, nextFixtures));
-      await flush();
-    },
-  };
-}
-
-type Settle = { resolve(result: FixturesResult): void; reject(reason: Error): void };
-
-function lazyFixtures() {
-  let settle!: Settle;
-
-  const loaded = new Promise<FixturesResult>((resolve, reject) => {
-    settle = { resolve, reject };
-  });
-
-  return {
-    loader: () => loaded,
-    async resolve(sets: FixtureSet[]) {
-      await act(async () => settle.resolve({ default: sets }));
-      await flush();
-    },
-    async reject(reason: Error) {
-      await act(async () => settle.reject(reason));
       await flush();
     },
   };

@@ -1,8 +1,8 @@
-import * as React from 'react';
-import { useIsomorphicLayoutEffect } from './use-isomorphic-layout-effect';
+import { useRef } from 'react';
+import { useIsomorphicLayoutEffect } from '../shared-hooks/use-isomorphic-layout-effect';
 
 export function useLatest<T>(value: T): { readonly current: T } {
-  const ref = React.useRef(value);
+  const ref = useRef(value);
   useIsomorphicLayoutEffect(() => {
     ref.current = value;
   });

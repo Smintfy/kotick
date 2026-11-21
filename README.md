@@ -1,18 +1,19 @@
 # konat
 
-A development overlay that lists every state of every state machine on the page, and previews any of them in place. It supports XState v5.
+A development overlay that lists every state of every state machine on the page, and previews any of them in place. It has an adapter for XState v5 machines, `konat/xstate`, and one for `useReducer` machines, `konat/reducer`. Neither is the default.
 For installation and usage, see the [package README](packages/konat/README.md).
 
 ## Repository
 
 | Path | Contents |
 |---|---|
-| `packages/konat` | The package: the registry and overlay (`konat`) and the XState adapter (`konat/xstate`) |
-| `examples/vite-react` | Vite and React Router. One page for each way to read a machine: `useMachine`, `createActorContext`, `useActor`, and `connect()` in the header |
-| `examples/hostile-css` | A page with global styles that try to change the overlay |
-| `examples/next-app` | The Next.js App Router, with server rendering |
+| `packages/konat` | The package: the registry and overlay (`konat`), the XState adapter (`konat/xstate`) and the reducer adapter (`konat/reducer`) |
+| `examples/vite-react` | Vite and React Router. One page for each way to read a machine: `useMachine`, `createActorContext`, `useActor`, `connect()` in the header, and `useMachineReducer` on the Search page |
+| `examples/hostile-css` | A page with global styles that try to change the overlay, with an XState machine and a reducer machine |
+| `examples/next-app` | The Next.js App Router, with server rendering. The Feedback page is a server component that imports a reducer machine file |
 | `site` | The landing page and the docs, in Next.js. The docs pages are MDX files in `site/src/content/docs` |
 | `tests/bundles` | A fixture app for the production-build check |
+| `tests/no-xstate` | A fixture app with konat and no XState, for the same check |
 | `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` and the site build |
 
 ## Development
@@ -35,7 +36,7 @@ pnpm install
 | `pnpm typecheck` | Checks the types of the package, the examples and the site |
 | `pnpm lint` | Runs oxlint over the repository with the rules in `.oxlintrc.json` |
 | `pnpm test:matrix` | Runs the tests on React 18 and 19, each with the minimum and the latest XState |
-| `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, and looks for debug code |
+| `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, with and without XState, and looks for debug code |
 | `pnpm --filter konat styles` | Writes the overlay's CSS from `styles.css` to `src/styles.generated.ts` |
 | `pnpm --filter konat bench` | Measures the cost of the adapter in development, against `@xstate/react` |
 

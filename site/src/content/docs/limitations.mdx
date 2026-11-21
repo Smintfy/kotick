@@ -5,10 +5,22 @@ export const metadata = {
 
 ## Previews
 
+These limits apply to both adapters:
+
+- **Releasing shows the real state at that time.** The real machine kept running during the preview.
+- **Functions in context are not recorded across reloads.** After a reload, a recorded preview does not have them.
+
+### Reducer machines
+
+- **A state without a recording or a fixture cannot be previewed.** The live state object fits only the state that the machine is in. The panel greys out the other states until you visit them or write a [fixture](/docs/fixtures#define-fixtures) for them.
+- **Events that the component dispatches during a preview are lost.** konat blocks them, and does not replay them after the release. A click handler or a component `useEffect` that dispatches the result of a request loses that event if a preview is open when the response comes. Send the result from the `effect` of the state instead, as rule 5 in [Define a machine](/docs/reducer#define-a-machine) shows.
+- **The effect of the previewed state does not run.** The effect of the real state continues to run, and its `send` is never blocked.
+- **konat checks only the name of the state.** A recording or a fixture without a field of the state previews, and the component gets the object without that field.
+
+### XState machines
+
 - **Effects in the machine do not run during a preview.** Invoked actors, delayed transitions and entry actions of the previewed state do not start. Effects in components that react to the state, such as a `useEffect` that depends on `snapshot.value`, do run.
 - **Child actors are read-only.** You can see them, but you cannot preview them. A preview keeps the live children in `snapshot.children`, so components that read them continue to work. This part is experimental.
-- **Releasing shows the real state at that time.** The real actor kept running during the preview.
-- **Functions in context are not recorded across reloads.** After a reload, a recorded preview does not have them.
 - **Around a preview, observers can get a snapshot one more or one less time than with `@xstate/react`.** Without a preview, an observer given to a hook gets the same calls as with `@xstate/react`. A few rare sequences around a preview, such as a Fast Refresh edit or an `<Activity>` that hides the component, can give it one more, one less or a later snapshot. The number of `complete` and `error` calls stays the same. An observer also gets the preview again each time the preview is built again. That happens when its live children change, when fixtures load, or when an edit adds a region.
 
 ## Recordings
@@ -21,7 +33,7 @@ konat records context to show it in [previews](/docs/concepts#context-for-a-prev
 
 ## The panel
 
-- **Only actors from `konat/xstate` or `connect()` are listed.** An actor from `createActor()` that you do not give to `connect()` is not in the panel.
+- **Only machines that an adapter registers are listed.** These are the components that call `useMachineReducer`, and the actors of the hooks of `konat/xstate` and of `connect()`. A component that gives `machine.reducer` to `useReducer` is not in the panel. An actor from `createActor()` that you do not give to `connect()` is not in the panel.
 - **History states cannot be selected.**
 - **The arrow keys move through the leaves that show.** Compound and parallel states cannot get focus, so only a click collapses or expands them. The arrow keys skip the leaves of a collapsed state.
 - **The state tree shows the fixtures of the first instance of a machine id.** When `debug.id` gives two different machines the same id, the instance of the second machine can get other fixtures.

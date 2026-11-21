@@ -1,4 +1,4 @@
-import * as React from 'react';
+import { useEffect, useReducer } from 'react';
 import type { MachineHandle } from '../types';
 
 /**
@@ -6,8 +6,8 @@ import type { MachineHandle } from '../types';
  * context. Only the open panel listens, so a closed one costs nothing per transition.
  */
 export function useHandleUpdates(handle: MachineHandle | undefined): void {
-  const [, update] = React.useReducer((count: number) => count + 1, 0);
-  React.useEffect(() => {
+  const [, update] = useReducer((count: number) => count + 1, 0);
+  useEffect(() => {
     if (!handle) return;
     let unsubscribe: (() => void) | undefined;
 

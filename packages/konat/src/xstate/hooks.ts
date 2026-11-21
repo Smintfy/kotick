@@ -1,5 +1,15 @@
 import { useActorRef as useXStateActorRef, useSelector as useXStateSelector } from '@xstate/react';
-import * as React from 'react';
+import {
+  createContext,
+  createElement,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import {
   toObserver,
   type Actor,
@@ -15,16 +25,16 @@ import {
   type SnapshotFrom,
   type StateFrom,
 } from 'xstate';
+import { nextInstanceId } from '../core/instance-id';
+import { useIsomorphicLayoutEffect } from '../shared-hooks/use-isomorphic-layout-effect';
+import { useSnapshotCheck } from '../shared-hooks/use-snapshot-check';
 import { isMachineActor } from './actor';
-import { nextInstanceId, resolveMachineId } from './identity';
+import { resolveMachineId } from './identity';
 import type { HookActorOptions, WithDebug } from './options';
 import { findBinding, getBinding, isProxy, type Binding, type Registration } from './proxy';
 import { createView, createViewMemory, type View, type ViewLifetime, type ViewMemory } from './view';
 
 type ObserverOrListener<T> = Observer<T> | ((value: T) => void);
-
-// Layout effects run before the passive effects of @xstate/react. On the server, neither runs.
-const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect;
 
 interface Connection<T> {
   key: T;
@@ -107,7 +117,7 @@ function useConnection<T extends object>(
   key: T | undefined,
   connect: (key: T) => () => void,
 ): void {
-  React.useEffect(() => {
+  useEffect(() => {
     // Fast Refresh runs every cleanup and setup again, the passive ones after the layout ones.
     ensureConnection(slot, key, connect);
 
@@ -149,10 +159,10 @@ function useProxiedActorRef(
   { observerKey, lifetime = 'ended' }: { observerKey?: unknown; lifetime?: ViewLifetime } = {},
 ): AnyActorRef {
   const { debug, ...actorOptions } = options ?? {};
-  const [hook] = React.useState(createHookState);
+  const [hook] = useState(createHookState);
   const { committed } = hook;
 
-  const observed = React.useMemo(() => {
+  const observed = useMemo(() => {
     if (!observer) return undefined;
     // Each view has its own subscription, so a render that React throws away can't move the committed one.
     const subscription: ObserverSubscription = {};
@@ -174,7 +184,7 @@ function useProxiedActorRef(
   const view = observed?.view;
   // Runs right before @xstate/react's effect that subscribes the observer, whenever that one runs, and reads the actor
   // that one's closure holds: the one committed last. @xstate/react resets the status when it restarts a stopped actor.
-  React.useEffect(() => {
+  useEffect(() => {
     if (!observed) return;
     const actor = committed.actor;
     observed.subscription.actor = actor;
@@ -184,7 +194,7 @@ function useProxiedActorRef(
   const actor: AnyActorRef = useXStateActorRef(logic, actorOptions, view?.observer);
   // This cleanup runs after the cleanup of @xstate/react, which stops the actor and drops its observers.
   // @xstate/react does not tell the observers, so the subscriptions made through the proxy also end here.
-  React.useEffect(() => () => findBinding(actor)?.dropObservers(), [actor]);
+  useEffect(() => () => findBinding(actor)?.dropObservers(), [actor]);
   let binding: Binding | undefined;
   let registration: Registration | undefined;
 
@@ -198,7 +208,7 @@ function useProxiedActorRef(
     });
   }
 
-  const listening = React.useMemo(() => (binding && view ? { binding, view } : undefined), [binding, view]);
+  const listening = useMemo(() => (binding && view ? { binding, view } : undefined), [binding, view]);
   const connectListening = (key: Listening): (() => void) => listen(committed, key);
   // One layout effect for four steps, which keep this order. A step does nothing while its own values stay the same.
   useIsomorphicLayoutEffect(() => {
@@ -241,20 +251,6 @@ function createStore() {
       };
     },
   };
-}
-
-/**
- * In a passive effect, useSyncExternalStore subscribes and checks the snapshot that it rendered.
- * A passive effect runs after the paint, unless the commit was synchronous.
- * A hidden Activity unregisters the hooks in it, and the registry then ends their previews.
- * The Activity can show a component again without a new render, so the last render can still show that preview.
- * This layout effect re-renders it synchronously, so the first paint shows the real snapshot.
- */
-function useSnapshotCheck<T>(read: () => T, rendered: T): void {
-  const [, rerender] = React.useReducer((count: number) => count + 1, 0);
-  useIsomorphicLayoutEffect(() => {
-    if (!Object.is(read(), rendered)) rerender();
-  });
 }
 
 export function useSelector<TActor extends Pick<AnyActorRef, 'subscribe' | 'getSnapshot'> | undefined, T>(
@@ -300,7 +296,7 @@ export function useActor<TLogic extends AnyActorLogic>(
     );
   }
 
-  const [store] = React.useState(createStore);
+  const [store] = useState(createStore);
 
   // Subscribed again when @xstate/react makes a new actor, which it does when the config changes (Fast Refresh).
   const actorRef = useProxiedActorRef(logic, options, store.observer, {
@@ -309,12 +305,12 @@ export function useActor<TLogic extends AnyActorLogic>(
   });
 
   // A proxy's getSnapshot doesn't use `this`. useSyncExternalStore calls it often, so it skips the proxy's get trap.
-  const getSnapshot = React.useMemo(
+  const getSnapshot = useMemo(
     (): (() => Snapshot<unknown>) => (isProxy(actorRef) ? actorRef.getSnapshot : () => actorRef.getSnapshot()),
     [actorRef],
   );
 
-  const snapshot = React.useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
+  const snapshot = useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
   useSnapshotCheck(getSnapshot, snapshot);
 
   if (snapshot.status === 'error') throw snapshot.error;
@@ -350,14 +346,14 @@ export function createActorContext<TLogic extends AnyActorLogic>(
   useSelector: <T>(selector: (snapshot: SnapshotFrom<TLogic>) => T, compare?: (a: T, b: T) => boolean) => T;
   useActorRef: () => Actor<TLogic>;
   Provider: (props: {
-    children: React.ReactNode;
+    children: ReactNode;
     options?: ActorOptions<TLogic> & WithDebug;
     /** @deprecated Use `logic` instead. */
     machine?: never;
     logic?: TLogic;
-  }) => React.ReactElement<any, any>;
+  }) => ReactElement<any, any>;
 } {
-  const ReactContext = React.createContext<Actor<TLogic> | null>(null);
+  const ReactContext = createContext<Actor<TLogic> | null>(null);
   const OriginalProvider = ReactContext.Provider;
 
   function Provider({
@@ -366,7 +362,7 @@ export function createActorContext<TLogic extends AnyActorLogic>(
     machine,
     options: providedOptions,
   }: {
-    children: React.ReactNode;
+    children: ReactNode;
     options?: ActorOptions<TLogic> & WithDebug;
     machine?: never;
     logic?: TLogic;
@@ -378,13 +374,13 @@ export function createActorContext<TLogic extends AnyActorLogic>(
     // SAFETY: The proxy stands in for the actor @xstate/react made from the logic, so it has the logic's types.
     const actor = useProxiedActorRef(providedLogic, { ...actorOptions, ...providedOptions }) as Actor<TLogic>;
 
-    return React.createElement(OriginalProvider, { value: actor, children });
+    return createElement(OriginalProvider, { value: actor, children });
   }
 
   Provider.displayName = `ActorProvider`;
 
-  function useContext() {
-    const actor = React.useContext(ReactContext);
+  function useContextActorRef() {
+    const actor = useContext(ReactContext);
 
     if (!actor) {
       throw new Error(
@@ -396,7 +392,7 @@ export function createActorContext<TLogic extends AnyActorLogic>(
   }
 
   function useContextSelector<T>(selector: (snapshot: SnapshotFrom<TLogic>) => T, compare?: (a: T, b: T) => boolean) {
-    const actor = useContext();
+    const actor = useContextActorRef();
 
     return useSelector(actor, selector, compare);
   }
@@ -404,7 +400,7 @@ export function createActorContext<TLogic extends AnyActorLogic>(
   // oxlint-disable-next-line anti-slop/no-known-value-widening -- The return type is public, as @xstate/react has it.
   return {
     Provider,
-    useActorRef: useContext,
+    useActorRef: useContextActorRef,
     useSelector: useContextSelector,
   };
 }

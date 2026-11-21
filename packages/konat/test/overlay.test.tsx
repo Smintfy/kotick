@@ -536,8 +536,8 @@ describe('the state tree', () => {
     expect({ machines: await machines(), body: overlay().querySelector('[data-part="empty"]')?.textContent }).toEqual({
       machines: [],
       body:
-        'No machines yet. Hooks from konat/xstate register their actors as they mount, and connect() ' +
-        'registers actors created outside React.',
+        'No machines yet. Hooks from konat/xstate and konat/reducer register their machines as they mount, and ' +
+        'connect() registers XState actors created outside React.',
     });
   });
 });
@@ -631,8 +631,8 @@ describe('Copy JSON', () => {
         status: 'Copy failed',
       },
       // The button shows the status in place of its label for 2 s, and keeps its name.
-      labels: ['Copy JSON: Copy failed'],
-      later: ['Copy JSON: Copy JSON'],
+      labels: ['Copy context: Copy context', 'Copy JSON: Copy failed'],
+      later: ['Copy context: Copy context', 'Copy JSON: Copy JSON'],
     });
   });
 

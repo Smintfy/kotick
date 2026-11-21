@@ -1,9 +1,19 @@
-import * as React from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { liveContextFits } from '../core/live-context';
 import { useHandleUpdates } from '../hooks/use-handle-updates';
 import type { DataAvailability, DataSource, Registry, RegistrySnapshot, StateNodeInfo } from '../types';
 import { copyText } from '../utils/clipboard';
 import { toJson } from '../utils/format';
-import { attempt, findInstance, shownLeaves, toggleLeaf, type InstanceEntry, type MachineGroup } from '../utils/model';
+import {
+  attempt,
+  canPreviewLeaf,
+  findInstance,
+  panelWarnings,
+  shownLeaves,
+  toggleLeaf,
+  type InstanceEntry,
+  type MachineGroup,
+} from '../utils/model';
 import { isElement, isTyping, moveIndex, moveOf, type Move } from '../utils/shortcut';
 import { ACTION, BODY, FOOTER } from './classes';
 import { ContextView } from './context-view';
@@ -12,6 +22,17 @@ import { CopyIcon } from './icons';
 import { StatesSection } from './states-section';
 
 const EMPTY_DATA: DataAvailability = { recorded: new Set(), fixture: new Set() };
+
+/**
+ * Copy JSON copies the shown instance, which is no fixture.
+ * Copy context copies the shown context alone, so a fixture file can take it as it is.
+ */
+const COPY_ACTIONS = {
+  context: { name: 'Copy context', copied: 'Context copied' },
+  json: { name: 'Copy JSON', copied: 'JSON copied' },
+} as const;
+
+type CopyAction = keyof typeof COPY_ACTIONS;
 
 const NO_NODES: StateNodeInfo[] = [];
 const NONE_COLLAPSED: ReadonlySet<string> = new Set();
@@ -36,20 +57,22 @@ export function MachinePage(props: MachinePageProps) {
 
   const override = snapshot.overrides[key];
   const canPreview = handle.capabilities?.preview === true;
-  const nodes = React.useMemo(() => attempt(() => handle.describe(), NO_NODES), [handle]);
+  const nodes = useMemo(() => attempt(() => handle.describe(), NO_NODES), [handle]);
   // Collapsed groups belong to one showing of an instance.
   // Another instance, or the same one shown again, starts with every group open.
-  const [collapse, setCollapse] = React.useState({ key, groups: NONE_COLLAPSED });
+  const [collapse, setCollapse] = useState({ key, groups: NONE_COLLAPSED });
 
   if (collapse.key !== key) setCollapse({ key, groups: NONE_COLLAPSED });
   const collapsed = collapse.groups;
-  const leaves = React.useMemo(() => shownLeaves(nodes, collapsed), [nodes, collapsed]);
+  const leaves = useMemo(() => shownLeaves(nodes, collapsed), [nodes, collapsed]);
   // Read on every render: the handle's updates re-render the page, the registry snapshot doesn't change for them.
   const active = new Set<string>(attempt(() => handle.getActiveLeaves(), []));
   const liveContext = attempt(() => handle.getContext(), undefined);
   const data = snapshot.data[handle.machineId] || EMPTY_DATA;
+  const context = override ? override.context : liveContext;
+  const noData = new Set(leaves.filter((leaf) => !canPreviewLeaf(handle, data, leaf)));
 
-  const [cursorState, setCursor] = React.useState<string>();
+  const [cursorState, setCursor] = useState<string>();
 
   const cursor =
     cursorState !== undefined && leaves.includes(cursorState)
@@ -58,10 +81,10 @@ export function MachinePage(props: MachinePageProps) {
         leaves.find((leaf) => active.has(leaf)) ??
         leaves[0]);
 
-  const previewingId = React.useId();
-  const pageRef = React.useRef<HTMLDivElement>(null);
-  const [copyStatus, setCopyStatus] = React.useState<string>();
-  React.useEffect(() => {
+  const previewingId = useId();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const [copyStatus, setCopyStatus] = useState<{ action: CopyAction; text: string }>();
+  useEffect(() => {
     if (copyStatus === undefined) return;
     const timer = setTimeout(() => setCopyStatus(undefined), 2000);
 
@@ -70,6 +93,10 @@ export function MachinePage(props: MachinePageProps) {
 
   function preview(leaf: string): void {
     if (!canPreview) return;
+
+    // The registry refuses a leaf that can't get data, so a click and Enter on its row do nothing.
+    // A click on the previewed leaf still releases it.
+    if (override?.requested.includes(leaf) !== true && !canPreviewLeaf(handle, data, leaf)) return;
     const toggle = toggleLeaf(override?.requested, leaf);
 
     if (toggle.action === 'release') registry.release(key);
@@ -103,7 +130,7 @@ export function MachinePage(props: MachinePageProps) {
     }
   }
 
-  function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
+  function onKeyDown(event: KeyboardEvent<HTMLElement>): void {
     if (event.defaultPrevented) return;
     const { target } = event;
 
@@ -143,22 +170,26 @@ export function MachinePage(props: MachinePageProps) {
 
   const labelOf = (instanceKey: string) => findInstance(groups, instanceKey)?.label ?? instanceKey;
 
-  async function copyJson(): Promise<void> {
-    const json = toJson({
-      machine: handle.machineId,
-      instance: instance.label,
-      leaves: override ? override.leaves : [...active],
-      preview: override ? { requested: override.requested, source: override.source } : null,
-      context: override ? override.context : liveContext,
-    });
+  async function copy(action: CopyAction): Promise<void> {
+    const json =
+      action === 'context'
+        ? toJson(context)
+        : toJson({
+            machine: handle.machineId,
+            instance: instance.label,
+            leaves: override ? override.leaves : [...active],
+            preview: override ? { requested: override.requested, source: override.source } : null,
+            context,
+          });
 
-    setCopyStatus((await copyText(json, pageRef.current ?? document.body)) ? 'JSON copied' : 'Copy failed');
+    const copied = await copyText(json, pageRef.current ?? document.body);
+    setCopyStatus({ action, text: copied ? COPY_ACTIONS[action].copied : 'Copy failed' });
   }
 
   const available: Record<DataSource, boolean> = {
     recorded: override?.requested.some((leaf) => data.recorded.has(leaf)) ?? false,
     fixture: override?.leaves.some((leaf) => data.fixture.has(leaf)) ?? false,
-    live: true,
+    live: override !== undefined && liveContextFits(handle, override),
   };
 
   const parent = handle.parentKey === undefined ? undefined : findInstance(groups, handle.parentKey);
@@ -218,9 +249,11 @@ export function MachinePage(props: MachinePageProps) {
           onSelectInstance={props.onOpenInstance}
           snapshot={snapshot}
           data={data}
+          noData={noData}
+          warnings={panelWarnings(handle, nodes, data)}
         />
         <ContextView
-          context={override ? override.context : liveContext}
+          context={context}
           override={override}
           available={available}
           onSource={(source) => {
@@ -231,18 +264,23 @@ export function MachinePage(props: MachinePageProps) {
       </div>
 
       <footer className={FOOTER}>
-        {/* The name stays the same while the label shows the status, so voice control and tests still find it. */}
-        <button
-          type="button"
-          className={ACTION}
-          onClick={copyJson}
-          aria-label="Copy JSON"
-        >
-          <span className="overflow-hidden text-ellipsis">{copyStatus ?? 'Copy JSON'}</span>
-          <CopyIcon />
-        </button>
+        {(['context', 'json'] as const).map((action) => (
+          // The name stays the same while the label shows the status, so voice control and tests still find it.
+          <button
+            key={action}
+            type="button"
+            className={ACTION}
+            onClick={() => copy(action)}
+            aria-label={COPY_ACTIONS[action].name}
+          >
+            <span className="overflow-hidden text-ellipsis">
+              {copyStatus?.action === action ? copyStatus.text : COPY_ACTIONS[action].name}
+            </span>
+            <CopyIcon />
+          </button>
+        ))}
         <span className="visually-hidden" role="status">
-          {copyStatus}
+          {copyStatus?.text}
         </span>
       </footer>
     </div>

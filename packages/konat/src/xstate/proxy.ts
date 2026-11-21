@@ -6,8 +6,9 @@ import {
   type Observer,
   type Snapshot,
 } from 'xstate';
+import { blockIfPreviewing } from '../core/blocking';
 import { callLoggingErrors, getPageRegistry, toInstanceKey } from '../core/registry';
-import type { EventLogEntry, MachineHandle, Override } from '../types';
+import type { MachineHandle, Override } from '../types';
 import { EMPTY_CHILDREN, liveChildren, type ChildActors, type MachineActor } from './actor';
 import { createHandle, inspect } from './handle';
 import { isFallbackId, warnFallbackId, type Identity } from './identity';
@@ -242,22 +243,6 @@ function createBinding(actor: MachineActor): Binding {
     };
   }
 
-  function blockIfPreviewing(event: AnyEventObject): boolean {
-    const override = currentOverride();
-
-    if (!override) return false;
-
-    if (!isEventObject(event)) {
-      console.warn(`[konat] Dropped an event without a string type sent to "${key}" during a preview.`, event);
-
-      return true;
-    }
-
-    registry.logEvent({ instanceKey: override.instanceKey, event, leaves: override.leaves, at: Date.now() });
-
-    return true;
-  }
-
   // Actor.select, reading through the proxy so the selection follows the preview.
   function select<T>(selector: (snapshot: Snapshot<unknown>) => T, equalityFn: (a: T, b: T) => boolean = Object.is) {
     return {
@@ -285,12 +270,12 @@ function createBinding(actor: MachineActor): Binding {
     subscribe,
     // XState rejects string events itself, before anything is delivered.
     send: (event: AnyEventObject): void => {
-      if (isStringEvent(event) || !blockIfPreviewing(event)) actor.send(event);
+      if (isStringEvent(event) || !blockIfPreviewing(registry, currentOverride(), event)) actor.send(event);
     },
     // XState's sendTo, forwardTo and delayed sends call this on their target.
     // So sends through the proxy are blocked too.
     _send: (event: AnyEventObject): void => {
-      if (!blockIfPreviewing(event)) actor._send(event);
+      if (!blockIfPreviewing(registry, currentOverride(), event)) actor._send(event);
     },
     select,
     // These return the actor itself, which has to stay the proxy: `connect(createActor(m)).start()`.
@@ -456,9 +441,4 @@ function isActorMethod(value: unknown): value is ActorMethod {
 
 function isStringEvent(event: AnyEventObject | string): event is string {
   return typeof event === 'string';
-}
-
-/** A caller without types can send any value. The registry logs only events with a string type. */
-function isEventObject(event: AnyEventObject): event is EventLogEntry['event'] {
-  return typeof event === 'object' && event !== null && 'type' in event && typeof event.type === 'string';
 }

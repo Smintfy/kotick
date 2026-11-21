@@ -1,5 +1,6 @@
 import { defineFixtures } from 'konat/xstate';
-import { type CheckoutContext, checkoutMachine, emptyCard, startItems } from '@/demo/checkout/machine';
+import { emptyCard, startItems } from '@/demo/checkout/order';
+import { type CheckoutContext, checkoutMachine } from '@/demo/checkout/xstate/machine';
 
 const base: CheckoutContext = { items: startItems, card: emptyCard };
 

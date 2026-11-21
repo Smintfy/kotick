@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
+import { adapters } from '@/content/adapters';
 import { costs } from '@/content/costs';
 import { packageManagers } from '@/content/package-managers';
 import { demoHref } from '@/site';
@@ -43,12 +44,21 @@ function stringAttribute(element: JsxElement, name: string): string {
 }
 
 function childrenMarkdown(element: JsxElement, source: string): string {
-  const start = element.children[0]?.position?.start.offset;
+  const first = element.children[0]?.position?.start;
   const end = element.children.at(-1)?.position?.end.offset;
 
-  if (start === undefined || end === undefined) return '';
+  if (first?.offset === undefined || end === undefined) return '';
+  // The slice starts at the first child. The lines after it keep the indentation of the JSX, which Markdown reads as code.
+  const indentation = new RegExp(`^ {0,${first.column - 1}}`, 'gm');
 
-  return mdxToMarkdown(source.slice(start, end));
+  return mdxToMarkdown(source.slice(first.offset, end).replace(indentation, ''));
+}
+
+// A replacement starts at the column of its element. Its next lines need the same indentation, for example in a list item.
+function atColumn(text: string, node: Nodes): string {
+  const column = node.position?.start.column ?? 1;
+
+  return text.replace(/\n(?=.)/g, `\n${' '.repeat(column - 1)}`);
 }
 
 function tableCell(text: string): string {
@@ -84,18 +94,70 @@ function stringArrayAttribute(element: JsxElement, name: string): string[] {
   return strings;
 }
 
-const jsx = {
-  InstallTabs: (element) => {
-    const packages = stringAttribute(element, 'packages');
-    const [first, ...others] = packageManagers.map(({ add }) => `${add} ${packages}`);
-    const alternatives = others.map((command) => `\`${command}\``).join(', ');
+/** The Markdown of each `<AdapterTab>` child, by adapter. */
+function adapterTabMarkdown(element: JsxElement, source: string): Map<string, string> {
+  const tabs = new Map<string, string>();
 
-    return `\`\`\`bash\n${first}\n\`\`\`\n\nOther package managers: ${alternatives}.`;
+  for (const child of element.children) {
+    if (child.type !== 'mdxJsxFlowElement' || child.name !== 'AdapterTab') continue;
+    const id = stringAttribute(child, 'adapter');
+
+    if (!adapters.some((adapter) => adapter.id === id)) {
+      throw new Error(`<AdapterTab> has the adapter "${id}", which is not in src/content/adapters.ts.`);
+    }
+
+    tabs.set(id, childrenMarkdown(child, source));
+  }
+
+  return tabs;
+}
+
+function adapterTabs(element: JsxElement, source: string): string {
+  const tabs = adapterTabMarkdown(element, source);
+
+  return adapters
+    .flatMap(({ id, entry }) => (tabs.has(id) ? [`With \`${entry}\`:\n\n${tabs.get(id)}`] : []))
+    .join('\n\n');
+}
+
+function installMarkdown(packages: string): string {
+  const [first, ...others] = packageManagers.map(({ add }) => `${add} ${packages}`);
+  const alternatives = others.map((command) => `\`${command}\``).join(', ');
+
+  return `\`\`\`bash\n${first}\n\`\`\`\n\nOther package managers: ${alternatives}.`;
+}
+
+const jsx = {
+  AdapterTabs: adapterTabs,
+  InstallTabs: (element, source) => {
+    const packages = optionalStringAttribute(element, 'packages');
+
+    if (packages !== undefined) return installMarkdown(packages);
+
+    const notes = adapterTabMarkdown(element, source);
+
+    return adapters
+      .map(({ id, entry }) =>
+        [`With \`${entry}\`:`, installMarkdown(stringAttribute(element, id)), notes.get(id)]
+          .filter((part) => part !== undefined)
+          .join('\n\n'),
+      )
+      .join('\n\n');
   },
-  CheckoutDemo: () => `The [checkout demo](${demoHref('checkout')}) runs the real overlay beside a checkout app.`,
+  CheckoutDemo: () =>
+    `The [checkout demo](${demoHref('checkout')}) runs the real overlay beside a checkout app, with a version for each adapter.`,
   ArchitectureDiagram: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
   Kbd: (element) => `\`${toString(element)}\``,
-  PanelFigure: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
+  PanelFigure: (element) => {
+    const caption = optionalStringAttribute(element, 'caption');
+
+    if (caption !== undefined) return `*Figure: ${caption}*`;
+
+    return adapters
+      .map(({ id, entry }) => `With \`${entry}\`:\n\n*Figure: ${stringAttribute(element, `${id}Caption`)}*`)
+      .join('\n\n');
+  },
+  PageAdapterTabs: () => '',
   PropsTable: propsTable,
   Shortcut: (element) =>
     `\`${stringArrayAttribute(element, 'other').join('+')}\` (\`${stringAttribute(element, 'mac')}\` on macOS)`,
@@ -130,7 +192,7 @@ function replacement(node: Nodes, source: string): string | undefined {
 
       if (!render) throw new Error(`The Markdown copy has no text for <${node.name ?? ''}>.`);
 
-      return render(node, source);
+      return atColumn(render(node, source), node);
     }
 
     default:
@@ -150,7 +212,11 @@ export function mdxToMarkdown(source: string): string {
 
       if (start === undefined || end === undefined) throw new Error(`The ${node.type} node has no position.`);
 
-      edits.push({ start, end, text });
+      // A block without text also takes the blank lines after it, so the copy has no gap.
+      const block = node.type === 'mdxJsxFlowElement' || node.type === 'mdxFlowExpression' || node.type === 'mdxjsEsm';
+      const gap = block && text === '' ? (/^\n*/.exec(source.slice(end))?.[0].length ?? 0) : 0;
+
+      edits.push({ start, end: end + gap, text });
 
       return;
     }

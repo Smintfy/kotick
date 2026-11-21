@@ -11,7 +11,7 @@ function PagerLink({ item, direction }: { item: NavItem; direction: 'previous' |
       rel={next ? 'next' : 'prev'}
       className={`grid gap-1 rounded-xl shadow-edge px-5 py-4 text-inherit no-underline transition-[background-color] duration-120 ease-[ease] hover:bg-muted motion-reduce:transition-none ${next ? 'col-start-2 justify-items-end text-right' : ''}`}
     >
-      <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
+      <span className="flex items-center gap-1 text-[0.8rem] text-muted-foreground">
         {!next && <ChevronLeft className="size-3.5" />}
         {next ? 'Next' : 'Previous'}
         {next && <ChevronRight className="size-3.5" />}

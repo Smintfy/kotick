@@ -1,13 +1,13 @@
 import { useId, useState } from 'react';
 import type { DataSource, Override } from '../types';
 import { inspect } from '../utils/format';
-import { SECTION, SECTION_HEAD, SECTION_TITLE } from './classes';
+import { SECTION, SECTION_HEAD, SECTION_TITLE, WARNING } from './classes';
 import { ChevronIcon } from './icons';
 
 const SOURCES: readonly { source: DataSource; label: string; missing: string }[] = [
   { source: 'recorded', label: 'Recorded', missing: 'Nothing recorded for this state yet' },
   { source: 'fixture', label: 'Fixture', missing: 'No fixture for this state' },
-  { source: 'live', label: 'Live', missing: '' },
+  { source: 'live', label: 'Live', missing: 'The live context belongs to another state' },
 ];
 
 interface ContextViewProps {
@@ -56,7 +56,7 @@ export function ContextView({ context, override, available, onSource }: ContextV
         )}
       </div>
       {fellBack && (
-        <p className="mb-1.5 px-1.5 text-base text-warn" data-part="warning">No recording or fixture for this state, so the preview uses live context.</p>
+        <p className={WARNING} data-part="warning">No recording or fixture for this state, so the preview uses live context.</p>
       )}
       <JsonView value={context} />
     </section>

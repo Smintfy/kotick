@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'API',
-  description: 'The props of <Konat />, the exports of konat/xstate, and the exported types.',
+  description: 'The props of <Konat />, the exports of konat/reducer and konat/xstate, and the exported types.',
 };
 
 ## Props
@@ -50,7 +50,52 @@ The key is a value of `KeyboardEvent.key`, for example `s`, `f2` or `escape`. Th
 - The shortcut does nothing while the focus is in a text field.
 - konat ignores a shortcut that it cannot read, and logs a warning: `[konat] Ignoring the shortcut "…": expected something like "alt+s".`
 
-## Exports
+## Reducer exports
+
+`konat/reducer` has these exports:
+
+| Export | What it is |
+|---|---|
+| `defineReducerMachine<State, Event, Input>()(definition)` | Declares a machine over your union of states and your union of events. Returns the machine. |
+| `useMachineReducer(machine, initial, options?)` | Runs a machine in a component. Returns `[state, dispatch]`, as `useReducer` does. |
+| `defineFixtures(machine, fixtures)` | Makes a fixture set for `<Konat fixtures>`. Each fixture is a state object of the state of its key. Refer to [Fixtures](/docs/fixtures#define-fixtures). |
+
+Refer to [Define a machine](/docs/reducer#define-a-machine) for the rules of a machine, and to [useReducer](/docs/reducer) for a guide.
+
+### defineReducerMachine()
+
+The first call takes three type arguments: the union of states, the union of events, and the type of the input that the effects read, if they read one. The second call takes the definition, and TypeScript infers the discriminant from it. TypeScript cannot take some type arguments of one call from you and infer the others, so there are two calls.
+
+<PropsTable>
+  <Prop name="id" type="string">
+    The machine id on the page. The panel, the recordings and the fixtures find the machine by it. The ids of reducer machines and XState machines share one namespace.
+  </Prop>
+  <Prop name="discriminant" type="keyof State">
+    The key that holds the name of the state. Its value must be a string literal in each member of the union.
+  </Prop>
+  <Prop name="states" type="object" detailedType="{ [name]: { on?: { [type]?: (state, event) => State }; effect?: (state, send, input) => void | (() => void) } }">
+    One entry for each state name, and no other key. The panel lists the states in this sequence. Refer to [Define a machine](/docs/reducer#define-a-machine).
+  </Prop>
+</PropsTable>
+
+The machine is the definition, frozen, with one more property: `reducer(state, event)`, the transitions as a plain reducer. It returns the same object for an event that the state ignores.
+
+### useMachineReducer()
+
+`initial` is the state at mount, or a function that returns it, as for `useReducer`. `dispatch` is the same function for the life of the component, as the `dispatch` of `useReducer` is. During a preview, it logs each event in the panel, and the event does not get to the machine. Call the hook only in client components.
+
+The third argument takes these options:
+
+<PropsTable>
+  <Prop name="input" type="Input">
+    The value that `input()` returns in the effects. The hook requires it when the machine declares an input type. A new value does not restart an effect.
+  </Prop>
+  <Prop name="debug" type="object" detailedType="{ label?: string; disabled?: boolean }">
+    `label` is the name of the instance in the panel. `disabled: true` keeps the instance out of konat. konat reads `debug` in development builds only.
+  </Prop>
+</PropsTable>
+
+## XState exports
 
 `konat/xstate` has these exports:
 
@@ -65,7 +110,7 @@ The key is a value of `KeyboardEvent.key`, for example `s`, `f2` or `escape`. Th
 | `connect(actor, debug?)` | Registers an actor that you created outside React. Returns the actor to use in the app. |
 | `defineFixtures(machine, states)` | Makes a fixture set for `<Konat fixtures>`. |
 
-The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed.
+The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed. Refer to [XState](/docs/xstate) for a guide.
 
 ### The debug option
 
@@ -87,7 +132,7 @@ Give each machine an `id`. A machine without one has the XState default id `(mac
 
 ### connect()
 
-`connect()` registers the actor immediately, and unregisters it when the actor is done, fails or stops. Use the actor that `connect()` returns everywhere in the app. Refer to [Actors outside React](/docs/install#actors-outside-react).
+`connect()` registers the actor immediately, and unregisters it when the actor is done, fails or stops. Use the actor that `connect()` returns everywhere in the app. Refer to [Actors outside React](/docs/xstate#actors-outside-react).
 
 `connect()` returns the actor unchanged, and does not register it, when:
 
@@ -109,6 +154,16 @@ An actor that konat registered before does not register again. This includes an 
 | `FixtureSet` | The return value of `defineFixtures()`: `{ machineId: string; states: Record<string, { context: unknown }> }`. |
 | `FixturesResult` | `readonly FixtureSet[]`, or a module whose default export is `readonly FixtureSet[]`, as `import()` gives it. |
 | `FixturesInput` | `readonly FixtureSet[]`, or a function that returns a `FixturesResult` or a promise of one. |
+
+`konat/reducer` exports these types:
+
+| Type | What it is |
+|---|---|
+| `ReducerMachine<State, Event, Key, Input>` | The return value of `defineReducerMachine()`: `id`, `discriminant`, `states` and `reducer`. `Input` is `undefined` when the effects read no input. |
+| `MachineEvent` | `{ readonly type: string }`. Each member of the event union extends it. |
+| `MachineReducerOptions<Input>` | The options of `useMachineReducer()`: `{ input?: Input; debug?: { label?: string; disabled?: boolean } }`. |
+| `ReducerFixtures<State, Key>` | The second argument of `defineFixtures()`: an optional state object for each state name. Each one is a state of its own name. |
+| `CompleteFixtures<Machine>` | The `ReducerFixtures` of a machine, with a state object for every state. Check a set with `satisfies CompleteFixtures<typeof machine>`. |
 
 `konat/xstate` exports these types:
 

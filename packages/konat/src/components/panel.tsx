@@ -1,23 +1,23 @@
-import type * as React from 'react';
+import type { KeyboardEvent, ReactNode, Ref } from 'react';
 import type { PanelPage } from '../utils/model';
 import { isTyping } from '../utils/shortcut';
 import { BackIcon, CloseIcon } from './icons';
 
 interface PanelProps {
   id: string;
-  panelRef: React.Ref<HTMLElement>;
+  panelRef: Ref<HTMLElement>;
   page: PanelPage['kind'];
   title: string;
-  chips?: React.ReactNode;
+  chips?: ReactNode;
   onBack: (() => void) | undefined;
   shortcutLabel: string | undefined;
   onClose(): void;
   onReleaseAll(): void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function Panel(props: PanelProps) {
-  function onKeyDown(event: React.KeyboardEvent<HTMLElement>): void {
+  function onKeyDown(event: KeyboardEvent<HTMLElement>): void {
     if (event.key !== 'Escape' || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
 
     if (isTyping(event.target)) return;

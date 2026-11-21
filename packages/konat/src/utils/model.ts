@@ -1,5 +1,6 @@
+import { liveContextFits } from '../core/live-context';
 import { toInstanceKey } from '../core/registry';
-import type { MachineHandle, StateNodeInfo } from '../types';
+import type { DataAvailability, MachineHandle, StateNodeInfo } from '../types';
 
 export interface InstanceEntry {
   key: string;
@@ -82,6 +83,47 @@ export function shownLeaves(
   }
 
   return into;
+}
+
+/**
+ * Whether a preview of the leaf can get data: a recording, a fixture, or a live context that fits the leaf.
+ * The registry refuses a preview of any other leaf, so the panel disables its row.
+ */
+export function canPreviewLeaf(
+  handle: Pick<MachineHandle, 'capabilities' | 'getActiveLeaves'>,
+  data: DataAvailability,
+  leaf: string,
+): boolean {
+  return (
+    data.recorded.has(leaf) || data.fixture.has(leaf) || liveContextFits(handle, { requested: [leaf], filled: [] })
+  );
+}
+
+const NONE_COLLAPSED: ReadonlySet<string> = new Set();
+
+/**
+ * The warnings under States, from data that the panel has already, so the protocol gets no method for them.
+ * Only a machine whose states share no context gets them, so an XState machine never shows one.
+ */
+export function panelWarnings(
+  handle: Pick<MachineHandle, 'capabilities' | 'getActiveLeaves'>,
+  nodes: readonly StateNodeInfo[],
+  data: DataAvailability,
+): string[] {
+  if (handle.capabilities?.sharedContext !== false || nodes.length === 0) return [];
+  const warnings: string[] = [];
+
+  if (attempt(() => handle.getActiveLeaves(), []).length === 0) {
+    warnings.push("The machine is in a state that its definition doesn't declare. The console names the state.");
+  }
+
+  const noData = shownLeaves(nodes, NONE_COLLAPSED).filter((leaf) => !canPreviewLeaf(handle, data, leaf));
+
+  if (noData.length > 0) {
+    warnings.push(`No data to preview ${noData.join(', ')}. Visit them in the app, or add them to defineFixtures().`);
+  }
+
+  return warnings;
 }
 
 /** The adapter can throw, and the panel must keep rendering. */

@@ -5,6 +5,7 @@
 import * as xstateReact from '@xstate/react';
 import { createRoot } from 'react-dom/client';
 import { Konat } from 'konat';
+import { defineReducerMachine, useMachineReducer } from 'konat/reducer';
 import {
   connect,
   createActorContext,
@@ -90,6 +91,76 @@ test('an app runs on @xstate/react alone: no overlay, shortcut, fixtures or stor
     loaded: '<div><button type="button">off</button></div>',
     used: '<div><button type="button">on</button></div>',
     loads: [],
+    sessionStorage: {},
+    localStorage: {},
+    added: [],
+  });
+});
+
+test('a reducer machine runs its transitions and effects: no overlay, globals or storage', async () => {
+  const globals = Reflect.ownKeys(globalThis);
+  const effects: string[] = [];
+
+  const machine = defineReducerMachine<{ status: 'off' } | { status: 'on' }, ToggleEvent>()({
+    id: freshId('toggle'),
+    discriminant: 'status',
+    states: {
+      off: { on: { TOGGLE: () => ({ status: 'on' }) } },
+      on: {
+        on: { TOGGLE: () => ({ status: 'off' }) },
+        effect: () => {
+          effects.push('start');
+
+          return () => {
+            effects.push('cleanup');
+          };
+        },
+      },
+    },
+  });
+
+  function Toggle() {
+    const [state, dispatch] = useMachineReducer(machine, { status: 'off' }, { debug: { label: 'Toggle' } });
+
+    return (
+      <button type="button" onClick={() => dispatch({ type: 'TOGGLE' })}>
+        {state.status}
+      </button>
+    );
+  }
+
+  const container = document.body.appendChild(document.createElement('div'));
+  const root = createRoot(container);
+  onTestFinished(() => {
+    root.unmount();
+    container.remove();
+  });
+  root.render(
+    <>
+      <Toggle />
+      <Konat defaultOpen />
+    </>,
+  );
+  await settle();
+  const loaded = document.body.innerHTML;
+  container.querySelector('button')?.click();
+  await settle();
+  const entered = { shown: document.body.innerHTML, effects: [...effects] };
+  container.querySelector('button')?.click();
+  await settle();
+  window.dispatchEvent(new Event('pagehide'));
+
+  expect({
+    loaded,
+    entered,
+    left: { shown: document.body.innerHTML, effects },
+    sessionStorage: { ...sessionStorage },
+    localStorage: { ...localStorage },
+    added: Reflect.ownKeys(globalThis).filter((key) => !globals.includes(key)),
+  }).toEqual({
+    loaded: '<div><button type="button">off</button></div>',
+    entered: { shown: '<div><button type="button">on</button></div>', effects: ['start'] },
+    left: { shown: '<div><button type="button">off</button></div>', effects: ['start', 'cleanup'] },
     sessionStorage: {},
     localStorage: {},
     added: [],

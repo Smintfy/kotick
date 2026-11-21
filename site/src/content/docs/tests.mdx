@@ -5,36 +5,56 @@ export const metadata = {
 
 konat turns off only when `process.env.NODE_ENV` is `"production"`. Test runners such as Vitest and Jest set it to `"test"`. Thus, in your tests, konat works as it does in development.
 
+<PageAdapterTabs />
+
 ## What konat does in a test
 
 What konat does depends on the test environment:
 
 | Environment | What konat does |
 |---|---|
-| A DOM, such as `jsdom` | The hooks and `connect()` register each actor in a registry on `globalThis`. konat records the context of each actor in `sessionStorage`, under keys that start with `konat:recorded:`. If the test renders `<Konat />`, konat adds a `<div data-konat-root>` to `document.body`. |
+| A DOM, such as `jsdom` | `useMachineReducer`, the hooks of `konat/xstate` and `connect()` register each instance in a registry on `globalThis`. konat records the context of each instance in `sessionStorage`, under keys that start with `konat:recorded:`. If the test renders `<Konat />`, konat adds a `<div data-konat-root>` to `document.body`. |
 | `node`, with no DOM | Nothing. konat does nothing when `window` or `document` is missing, as on the server. |
 
-Without a preview, the hooks behave as the hooks of `@xstate/react`. Thus, your tests do not have to change. konat writes nothing to the console when it has no problem.
+Without a preview, `useMachineReducer` behaves as it does in production, and the hooks of `konat/xstate` behave as the hooks of `@xstate/react`. Thus, your tests do not have to change. konat writes nothing to the console when it has no problem.
 
 A test that reads `sessionStorage` also sees the keys of konat. konat writes them 500 ms after a transition, so a write can occur during the next test.
 
 ## Turn konat off in tests
 
-Mock the two entries of konat in a setup file. This example is for Vitest:
+Mock `konat` in a setup file, so that `<Konat />` renders nothing. This example is for Vitest:
 
 ```ts
 // vitest.setup.ts
 import { vi } from 'vitest';
 
 vi.mock('konat', () => ({ Konat: () => null }));
-
-vi.mock('konat/xstate', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('konat/xstate')>()),
-  ...(await vi.importActual<typeof import('@xstate/react')>('@xstate/react')),
-  connect: <TActor>(actor: TActor) => actor,
-}));
 ```
 
-Add the file to `test.setupFiles` in the Vitest config. Then, in each test, the hooks are the hooks of `@xstate/react`, `connect()` returns the actor that you give it, and `<Konat />` renders nothing. `defineFixtures()` does not change.
+Add the file to `test.setupFiles` in the Vitest config. Other test runners have a function that does the same thing, for example `jest.mock()` in Jest.
 
-Other test runners have a function that does the same thing, for example `jest.mock()` in Jest.
+The next step depends on the adapter:
+
+<AdapterTabs>
+  <AdapterTab adapter="reducer">
+    Do not mock `konat/reducer`. Its hook runs your transitions and effects, so a mock must keep them. Without a preview, the hook gives the state and the effects of its production version, because it calls that version. It also registers each instance and writes `konat:recorded:` keys, as the XState hooks do.
+  </AdapterTab>
+
+  <AdapterTab adapter="xstate">
+    Also mock `konat/xstate` in the setup file:
+
+    ```ts
+    vi.mock('konat/xstate', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('konat/xstate')>()),
+      ...(await vi.importActual<typeof import('@xstate/react')>('@xstate/react')),
+      connect: <TActor>(actor: TActor) => actor,
+    }));
+    ```
+
+    Then, in each test, the hooks are the hooks of `@xstate/react`, and `connect()` returns the actor that you give it. `defineFixtures()` does not change.
+  </AdapterTab>
+</AdapterTabs>
+
+## Test a reducer machine
+
+`machine.reducer` is the plain reducer of a [reducer machine](/docs/reducer), so a test of its transitions needs no React. For the search machine, `searchMachine.reducer({ status: 'idle' }, { type: 'SEARCH', query: 'linen' })` returns `{ status: 'loading', query: 'linen' }`. A state that does not list an event returns the same object, so `toBe(state)` checks that the state ignores the event.

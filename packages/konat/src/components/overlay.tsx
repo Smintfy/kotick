@@ -1,8 +1,8 @@
-import * as React from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { warnOnce } from '../core/warn-once';
-import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { useLatest } from '../hooks/use-latest';
 import { useRegistrySnapshot } from '../hooks/use-registry-snapshot';
+import { useIsomorphicLayoutEffect } from '../shared-hooks/use-isomorphic-layout-effect';
 import type { KonatProps, Registry } from '../types';
 import type { OverlayHost } from '../utils/host';
 import { findInstance, groupMachines, type MachineGroup, type PanelPage } from '../utils/model';
@@ -28,15 +28,15 @@ export function Overlay(props: OverlayProps) {
   const defaultPosition = isPosition(props.position) ? props.position : 'bottom-right';
   const shortcut = useShortcut(props.shortcut);
   const snapshot = useRegistrySnapshot(registry);
-  const panelId = React.useId();
+  const panelId = useId();
 
   const [settings, update] = useStoredSettings(props.settings);
   const open = settings.open ?? props.defaultOpen === true;
   const position = resolvePosition(settings, defaultPosition);
 
-  const groups = React.useMemo(() => groupMachines(snapshot.machines), [snapshot.machines]);
-  const [subpage, setSubpage] = React.useState(props.defaultSubpage);
-  const [instanceKey, setInstanceKey] = React.useState<string>();
+  const groups = useMemo(() => groupMachines(snapshot.machines), [snapshot.machines]);
+  const [subpage, setSubpage] = useState(props.defaultSubpage);
+  const [instanceKey, setInstanceKey] = useState<string>();
   const page = pageToShow(subpage, groups, settings.machine, instanceKey);
 
   const { panelRef, bubbleRef, onToggle, focusWithPage } = usePanelFocus(open, host, page);
@@ -88,7 +88,7 @@ export function Overlay(props: OverlayProps) {
   }
 
   const toggle = useLatest(() => setOpen(!open, 'shortcut'));
-  React.useEffect(() => {
+  useEffect(() => {
     if (!shortcut) return;
 
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -226,9 +226,9 @@ export function Overlay(props: OverlayProps) {
 
 interface PageView {
   title: string;
-  chips?: React.ReactNode;
+  chips?: ReactNode;
   onBack?: () => void;
-  body: React.ReactNode;
+  body: ReactNode;
 }
 
 function pageToShow(
@@ -248,9 +248,9 @@ function pageToShow(
 
 /** The panel settings. They are read once, and written only when the user changes something. */
 function useStoredSettings(store: SettingsStore) {
-  const [settings, setSettings] = React.useState(() => store.read());
-  const initialSettings = React.useRef(settings);
-  React.useEffect(() => {
+  const [settings, setSettings] = useState(() => store.read());
+  const initialSettings = useRef(settings);
+  useEffect(() => {
     if (settings !== initialSettings.current) store.write(settings);
   }, [settings, store]);
   const update = (patch: Settings) => setSettings((current) => ({ ...current, ...patch }));
@@ -267,11 +267,11 @@ type ToggleOrigin = 'bubble' | 'shortcut' | 'close';
  * Call onToggle() before the panel opens or closes, and focusWithPage() before the page changes.
  */
 function usePanelFocus(open: boolean, host: OverlayHost, page: PanelPage) {
-  const panelRef = React.useRef<HTMLElement>(null);
-  const bubbleRef = React.useRef<HTMLButtonElement>(null);
-  const returnFocus = React.useRef<HTMLElement | null>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const bubbleRef = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef<HTMLElement | null>(null);
   // Set until the next commit, which shows the new page. `from` is the page before it, or undefined on open.
-  const moveFocus = React.useRef<{ from: PanelPage | undefined } | null>(null);
+  const moveFocus = useRef<{ from: PanelPage | undefined } | null>(null);
 
   useIsomorphicLayoutEffect(() => {
     const request = moveFocus.current;
@@ -337,7 +337,7 @@ function focusTarget(panel: HTMLElement, page: PanelPage, from: PanelPage | unde
 function useShortcut(value: string | false | undefined) {
   const source = value === undefined ? 'alt+s' : value;
 
-  return React.useMemo(() => {
+  return useMemo(() => {
     if (source === false) return undefined;
     const parsed = isShortcutText(source) ? parseShortcut(source) : undefined;
 

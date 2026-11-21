@@ -1,14 +1,16 @@
 'use client';
 
-import { DemoWindow } from '@/demo/demo-window';
-import { onboardingFixtures } from '@/demo/onboarding/fixtures';
-import { Onboarding } from '@/demo/onboarding/onboarding';
-import type { DemoSource } from '@/demo/source';
+import { DemoWindow } from '@/components/demo/demo-window';
+import { onboardingReducerFixtures } from '@/demo/onboarding/reducer/fixtures';
+import { Onboarding as ReducerOnboarding } from '@/demo/onboarding/reducer/onboarding';
+import { onboardingFixtures } from '@/demo/onboarding/xstate/fixtures';
+import { Onboarding as XStateOnboarding } from '@/demo/onboarding/xstate/onboarding';
+import type { DemoSources } from '@/components/demo/source';
 
-export function OnboardingWindow({ href, source }: { href: string; source: DemoSource }) {
-  return (
-    <DemoWindow fixtures={onboardingFixtures} href={href} source={source}>
-      <Onboarding />
-    </DemoWindow>
-  );
+export const onboardingDemoFixtures = [...onboardingFixtures, onboardingReducerFixtures];
+
+const apps = { xstate: <XStateOnboarding />, reducer: <ReducerOnboarding /> };
+
+export function OnboardingWindow({ href, sources }: { href: string; sources: DemoSources }) {
+  return <DemoWindow apps={apps} fixtures={onboardingDemoFixtures} href={href} sources={sources} />;
 }
