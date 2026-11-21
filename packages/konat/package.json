@@ -1,9 +1,16 @@
 {
   "name": "konat",
   "version": "0.1.0",
-  "private": true,
   "description": "Preview every state of every state machine on the page, in place. Supports XState v5 and useReducer machines.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Smintfy/konat.git",
+    "directory": "packages/konat"
+  },
+  "homepage": "https://github.com/Smintfy/konat#readme",
+  "bugs": "https://github.com/Smintfy/konat/issues",
+  "keywords": ["react", "xstate", "usereducer", "state-machine", "devtools", "debugger"],
   "type": "module",
   "sideEffects": false,
   "files": [

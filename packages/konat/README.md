@@ -96,7 +96,7 @@ component ── useMachine() ──▶ proxy ──▶ real actor
 
 ## Documentation
 
-The docs site explains the concepts, reducer machines, the panel, fixtures, the API, Next.js and the limitations. Its pages are in [`site/src/content/docs`](../../site/src/content/docs).
+The docs site explains the concepts, reducer machines, the panel, fixtures, the API, Next.js and the limitations. Its pages are in [`site/src/content/docs`](https://github.com/Smintfy/konat/tree/main/site/src/content/docs).
 
 ## License
 
