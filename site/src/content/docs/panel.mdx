@@ -1,27 +1,46 @@
+import { PanelFigure } from '@/components/docs/panel-figure';
+
 export const metadata = {
-  title: 'The panel',
+  title: 'Panel',
   description: 'The machine list, the machine pages, Settings, and the keyboard shortcuts.',
 };
+
+<PageAdapterTabs />
 
 ## Machine list
 
 The bubble opens the panel on the machine list. The header shows the path of the page and the number of machines. Each row shows the number of states of its machine. A row also shows `child` when all the instances of the machine are child actors, the number of instances when there is more than one, and a dot while an instance is previewed. While a preview is on, **Release all** at the bottom of the list releases every preview.
+
+<PanelFigure page="machines" height={264} caption="The machine list with the checkout and onboarding machines of the demos." />
 
 ## Machine page
 
 Select a machine to open its page. During a preview, the header shows the number of previewed states.
 
 - **Instance** is a picker under the header, for a machine with more than one instance. A blue dot shows in the picker while the selected instance is previewed. For a machine with one instance, the `debug.label` of the instance shows in the same place, if it has one.
-- **States** shows the state tree. Select a compound or parallel state to collapse or expand it. The marks after a leaf show the context that a preview of it uses: **R** is recorded context, **F** is a fixture, and **–** is none. During a preview, **Release** releases it. A child machine shows the name of its parent, and you cannot preview its states. A machine with child actors shows a **Children** row. Select a child to open its page.
-- **Context** shows the context of the instance. During a preview, select its source: **Recorded**, **Fixture** or **Live**.
+- **States** shows the state tree. Select a compound or parallel state to collapse or expand it. The marks after a leaf show the context that a preview of it uses: **R** is recorded context, **F** is a fixture, and **–** is none. During a preview, **Release** releases it. A child machine shows the name of its parent, and you cannot preview its states. A machine with child actors shows a **Children** row. Select a child to open its page. For a [reducer machine](/docs/reducer), a state with no recording and no fixture is greyed out, and you cannot select it, because the live context belongs to another state. A note above the tree names these states. Another note shows when the machine is in a state that its definition does not declare.
+- **Context** shows the context of the instance. During a preview, select its source: **Recorded**, **Fixture** or **Live**. For a reducer machine, **Live** is available only for the state that the machine is in.
 - **Blocked events** lists the events that the UI sent during a preview, for all the instances on the page. An event from a different instance shows the name of that instance. The same event sent again right after shows once, with a count. Select an event to see the state, the instance, the times and the payload. **Clear** removes all the events from the list.
+- **Copy context** copies the context that the page shows, as JSON. For a reducer machine, that is the state object, which `defineFixtures` takes as a fixture. For an XState machine, it is the value of `context` in a fixture.
 - **Copy JSON** copies the state of the instance.
 
 **Back** goes to the machine list again.
 
+<PanelFigure
+  page="machine"
+  demo="checkout"
+  reducerPreview="error"
+  xstatePreview="payment.error"
+  height={400}
+  reducerCaption="The checkout page during a preview of error. The header shows 1 previewed state. The leaves show the Recorded, Fixture, and None marks. The success state has no recording and no fixture, so it is greyed out. A note above the tree names it."
+  xstateCaption="The checkout page during a preview of payment.error. The header shows 1 previewed state. The leaves show the Recorded, Fixture, and None marks."
+/>
+
 ## Settings
 
 **Settings**, at the bottom of the list, moves the bubble and the panel to another corner, and lists the keyboard shortcuts.
+
+<PanelFigure page="settings" height={424} caption="The Settings page shows the corners and the keyboard shortcuts." />
 
 ## Keyboard
 

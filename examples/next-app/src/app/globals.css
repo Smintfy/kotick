@@ -42,7 +42,8 @@ button:disabled {
   opacity: 0.5;
 }
 
-input[type='email'] {
+input[type='email'],
+textarea {
   font: inherit;
   padding: 6px 8px;
   border: 1px solid var(--border);

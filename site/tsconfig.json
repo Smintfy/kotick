@@ -22,7 +22,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["next-env.d.ts", "next.config.ts", "src", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
-  // With app/icon.svg, next dev 16.4 writes this file with unused imports, and noUnusedLocals rejects them.
-  // The .next/types/validator.ts file that next typegen and next build write checks the same pages.
-  "exclude": ["node_modules", ".next/dev/types/validator.ts"]
+  "exclude": ["node_modules"]
 }

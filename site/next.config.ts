@@ -5,14 +5,20 @@ import type { NextConfig } from 'next';
 import { MARKERS } from '../scripts/debug-markers.mjs';
 
 const keepOverlayInProduction = {
-  condition: { path: /packages\/konat\/src\// },
-  loaders: [path.join(import.meta.dirname, 'konat-dev-loader.cjs')],
+  condition: { path: /packages\/shiru\/src\// },
+  loaders: [path.join(import.meta.dirname, 'shiru-dev-loader.cjs')],
 };
 
 const config: NextConfig = {
-  transpilePackages: ['konat'],
+  transpilePackages: ['shiru'],
+  async redirects() {
+    return [{ source: '/docs', destination: '/', permanent: false }];
+  },
   async rewrites() {
-    return [{ source: '/docs/:slug([a-z-]+)\\.md', destination: '/docs/:slug/md' }];
+    return [
+      { source: '/index.md', destination: '/md' },
+      { source: '/docs/:slug([a-z-]+)\\.md', destination: '/docs/:slug/md' },
+    ];
   },
   experimental: {
     agentUpgrade: 'security',
@@ -32,12 +38,12 @@ const config: NextConfig = {
 
       if (missing.length > 0) {
         throw new Error(
-          `The client chunks do not have these parts of konat: ${missing.join(', ')}. ` +
+          `The client chunks do not have these parts of shiru: ${missing.join(', ')}. ` +
             'The demo needs them. Check the *.ts and *.tsx rules in site/next.config.ts.',
         );
       }
 
-      console.log(`✓ The client chunks have all ${Object.keys(MARKERS).length} parts of the konat debug code`);
+      console.log(`✓ The client chunks have all ${Object.keys(MARKERS).length} parts of the shiru debug code`);
     },
   },
 };

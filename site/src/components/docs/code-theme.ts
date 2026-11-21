@@ -1,0 +1,41 @@
+import type { Theme } from '@pierre/highlights';
+
+// Each color is the suffix of a --code- variable in site.css. Thus, the light and dark themes share the same tokens.
+export const codeTheme = {
+  name: 'shiru',
+  appearance: 'light',
+  cssVariables: { prefix: '--code-' },
+  style: {
+    'editor.foreground': 'foreground',
+    syntax: {
+      comment: 'comment',
+      punctuation: 'punctuation',
+      'punctuation.bracket': 'punctuation',
+      'punctuation.delimiter': 'punctuation',
+      'punctuation.special': 'punctuation',
+      operator: 'punctuation',
+      keyword: 'keyword',
+      'keyword.operator': 'keyword',
+      preproc: 'keyword',
+      string: 'string',
+      'string.escape': 'string',
+      'string.regex': 'string',
+      'string.special': 'string',
+      'text.literal': 'string',
+      function: 'function',
+      attribute: 'function',
+      number: 'constant',
+      boolean: 'constant',
+      constant: 'constant',
+      tag: 'tag',
+      type: 'tag',
+      'type.builtin': 'tag',
+      constructor: 'tag',
+      enum: 'tag',
+      'diff.minus': 'tag',
+      'diff.plus': 'string',
+      emphasis: { font_style: 'italic' },
+      'emphasis.strong': { font_weight: 700 },
+    },
+  },
+} satisfies Theme;

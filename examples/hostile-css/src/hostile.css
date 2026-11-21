@@ -9,10 +9,10 @@
   color-scheme: dark !important;
   font-size: 24px !important;
   /* Shadow roots inherit custom properties. */
-  --konat-bg: hotpink;
-  --konat-fg: lime;
-  --konat-accent: orange;
-  --konat-border: red;
+  --shiru-bg: hotpink;
+  --shiru-fg: lime;
+  --shiru-accent: orange;
+  --shiru-border: red;
 }
 
 html,
@@ -82,7 +82,7 @@ svg {
 }
 
 /* These rules select the overlay host directly. */
-div[data-konat-root],
+div[data-shiru-root],
 body > div:last-child {
   display: none !important;
   position: static !important;

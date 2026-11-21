@@ -1,7 +1,7 @@
 export type Example = {
   path: string;
   title: string;
-  /** The konat/xstate API that the page uses to read its machine. */
+  /** The shiru API that the page uses to read its machine. */
   api: string;
   summary: string;
 };
@@ -25,5 +25,11 @@ export const examples = {
     title: 'Uploads',
     api: 'useActor',
     summary: 'One machine per row, so the panel lists an instance for each file.',
+  },
+  search: {
+    path: '/search',
+    title: 'Search',
+    api: 'useMachineReducer',
+    summary: 'A useReducer union declared as a machine, with a fixture for each state. The search runs in the effect of its loading state.',
   },
 } satisfies Record<string, Example>;

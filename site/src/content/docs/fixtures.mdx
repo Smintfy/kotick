@@ -5,38 +5,110 @@ export const metadata = {
 
 Fixtures give context to states that you have not recorded yet, such as an error after a slow request.
 
+<PageAdapterTabs />
+
 ## Define fixtures
 
-Put them in a file of their own, and give `<Konat />` a loader for that file:
+Put them in a file of their own, and give `<Shiru />` a loader for that file. Each adapter exports its own `defineFixtures`:
 
-```ts
-// src/debug/fixtures.ts
-import { defineFixtures } from 'konat/xstate';
-import { checkoutMachine } from '@/machines/checkout';
+<AdapterTabs>
+  <AdapterTab adapter="reducer">
+    `defineFixtures` from `shiru/reducer` takes a state object for each state that you list. A fixture is a whole state of its own name, so its discriminant is the name of its key:
 
-const base = { items: [{ id: 'sku_1', name: 'Linen tote', price: 2400, qty: 2 }], total: 4800, cardNumber: '' };
+    ```ts
+    // src/debug/fixtures.ts
+    import { defineFixtures, type CompleteFixtures } from 'shiru/reducer';
+    import { searchMachine } from '@/machines/search';
 
-export default [
-  defineFixtures(checkoutMachine, {
-    'payment.error': { context: { ...base, cardNumber: '4000 0000 0000 0002', error: 'Card declined' } },
-    'payment.success': { context: { ...base, receiptId: 'rcpt_123' } },
-  }),
-];
-```
+    export default [
+      defineFixtures(searchMachine, {
+        idle: { status: 'idle' },
+        loading: { status: 'loading', query: 'linen' },
+        ready: { status: 'ready', query: 'linen', hits: ['Linen tote'] },
+      } satisfies CompleteFixtures<typeof searchMachine>),
+    ];
+    ```
+
+    `searchMachine` is the machine of [From a switch reducer](/docs/reducer#from-a-switch-reducer).
+  </AdapterTab>
+
+  <AdapterTab adapter="xstate">
+    `defineFixtures` from `shiru/xstate` takes a `context` for each leaf that you list:
+
+    ```ts
+    // src/debug/fixtures.ts
+    import { defineFixtures } from 'shiru/xstate';
+    import { checkoutMachine } from '@/machines/checkout';
+
+    const items = [{ id: 'sku_1', name: 'Linen tote', price: 2400, qty: 2 }];
+    const card = { number: '4242 4242 4242 4242', expiry: '12/30', cvc: '123' };
+
+    export default [
+      defineFixtures(checkoutMachine, {
+        'payment.error': { context: { items, card: { ...card, number: '4000 0000 0000 0002' }, error: 'Card declined' } },
+        'payment.success': { context: { items, card, receiptId: 'rcpt_123' } },
+      }),
+    ];
+    ```
+
+    `checkoutMachine` is the machine of the checkout demo. To see it, open `machine.ts` in the Code tab of the [checkout example](/docs/examples#checkout).
+  </AdapterTab>
+</AdapterTabs>
+
+The loader has a development condition. The condition removes the fixtures, and the import, from production builds. Use the condition of your bundler.
+
+In Vite:
 
 ```tsx
-// The condition removes the fixtures, and the import, from production builds.
-const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
+import { Shiru } from 'shiru';
 
-<Konat fixtures={fixtures} />;
+const fixtures = import.meta.env.DEV ? () => import('@/debug/fixtures') : undefined;
+
+export function DevTools() {
+  return <Shiru fixtures={fixtures} />;
+}
 ```
 
-In Vite, you can use `import.meta.env.DEV` as the condition.
+In Next.js and other bundlers:
+
+```tsx
+import { Shiru } from 'shiru';
+
+const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
+
+export function DevTools() {
+  return <Shiru fixtures={fixtures} />;
+}
+```
+
+Do not use `process.env.NODE_ENV` in Vite. A default Vite app does not have the Node.js types, thus TypeScript does not know `process`. In Next.js, put `'use client'` at the top of the file. Refer to [Next.js](/docs/nextjs).
+
+The examples import from `src` through the `@/` alias. Next.js sets this alias, but Vite does not. In Vite, add the alias to `paths` in your TypeScript config and to `resolve.alias` in `vite.config.ts`, or use relative imports.
 
 ## How fixtures apply
 
-- The keys are leaf ids. TypeScript checks them against the states of the machine, and `context` against the context type of the machine.
-- A fixture set applies to each instance of its machine, also to copies from `machine.provide()`, and to machines that `debug.id` renames.
-- The loader runs after the page loads. Previews that started before it finished change to the fixture when it arrives. Such a preview logs the warning about the live context only if the loader gives no fixture for it.
-- In a parallel preview, the first leaf that has a fixture gives the context: the leaves you selected, in sequence, then the leaves of the other regions.
+These rules apply to both adapters:
+
+- A fixture set applies to each instance of its machine.
+- The loader runs after the page loads.
 - You can give an array of sets in place of a loader. Then the sets are in your main bundle, also in production. Use a loader with a development check to keep them out.
+- `shiru/reducer` and `shiru/xstate` both export `defineFixtures`. A file with sets for both adapters imports one of them with another name, for example `import { defineFixtures as defineReducerFixtures } from 'shiru/reducer'`.
+
+Each adapter adds rules of its own:
+
+<AdapterTabs>
+  <AdapterTab adapter="reducer">
+    - The keys are optional, so a set can start with the one state that the app cannot get to. `satisfies CompleteFixtures<typeof searchMachine>` makes the file fail when the machine has a state without a fixture.
+    - TypeScript checks each fixture against the state of its key. Without TypeScript, `defineFixtures` leaves out a fixture of another state and a key that is not a state. In development, it logs a [warning](/docs/troubleshooting#console-warnings) for each.
+    - **Copy context** in the panel copies the state object of the shown state as JSON. The JSON is a fixture as it is.
+    - Until the loader finishes, a state without a recording stays greyed out in the panel. Its row enables when the set arrives.
+  </AdapterTab>
+
+  <AdapterTab adapter="xstate">
+    - The keys are leaf ids. TypeScript checks them against the states of the machine, and `context` against the context type of the machine.
+    - A fixture set also applies to copies from `machine.provide()`, and to machines that `debug.id` renames.
+    - A preview that started before the loader finished changes to the fixture when it arrives. Such a preview logs the warning about the live context only if the loader gives no fixture for it.
+    - In a parallel preview, the first leaf that has a fixture gives the context: the leaves you selected, in sequence, then the leaves of the other regions.
+    - **Copy context** in the panel copies the context of the shown state as JSON. The JSON is the value of `context` in a fixture.
+  </AdapterTab>
+</AdapterTabs>

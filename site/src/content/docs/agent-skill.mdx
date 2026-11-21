@@ -1,0 +1,336 @@
+export const metadata = {
+  title: 'Skill',
+  description: 'A SKILL.md file that teaches coding agents to set up and use shiru.',
+};
+
+This page is a skill in the [Agent Skills](https://agentskills.io) format. It tells a coding agent how to set up shiru, change a reducer into a machine, write fixtures, and fix the console warnings.
+
+To use it with Claude Code, select **Copy skill**, and save the text as `.claude/skills/shiru/SKILL.md` in your project. Other agents that support Agent Skills read skills from a folder of their own. Refer to the docs of your agent.
+
+{/* SKILL.md */}
+
+shiru is a development overlay for React 18 and 19. It lists each state machine on the page and all of its states, and shows any state in the running app. The package has three entries:
+
+| Entry | Exports |
+|---|---|
+| `shiru` | `<Shiru />`, the overlay. Mount it once. |
+| `shiru/reducer` | `defineReducerMachine`, `useMachineReducer` and `defineFixtures`, for `useReducer` machines. It needs only React. |
+| `shiru/xstate` | The hooks of `@xstate/react` with the same names and signatures, `connect` and `defineFixtures`, for XState v5 machines. |
+
+Neither adapter is the default, and an app can use both. In a production build, `<Shiru />` renders nothing, and the bundler removes the registry and the panel. Do not remove `<Shiru />` or change imports before a release.
+
+Use only the API in this file. Do not guess the API of shiru from XState or other libraries. The examples import from `src` through the `@/` alias. Use the import style of the project.
+
+## Select the adapter
+
+- If the app uses `xstate` 5.28 or later with `@xstate/react` 6.1 or later, use `shiru/xstate`.
+- If a component keeps a union of states in `useReducer`, with one key that holds the name of the state, use `shiru/reducer`.
+- XState v4, Zustand, Redux and other state libraries do not work. shiru needs a machine that declares its states.
+- If the app has no machine, tell the user, and offer to declare one `useReducer` flow as a reducer machine.
+
+## Set up
+
+1. Install `shiru` with the package manager of the project. Put it in `dependencies`, not `devDependencies`, because the production build imports the adapters. For `shiru/xstate`, also install `xstate` and `@xstate/react` if the app does not have them.
+2. Mount `<Shiru />` once, in a component that stays mounted when the page changes. In a Vite or other single-page app, put it in the root component, after the routes. In Next.js, do the steps in [Next.js](#nextjs).
+
+   ```tsx
+   import { Shiru } from 'shiru';
+
+   export function App() {
+     return (
+       <>
+         <Routes />
+         <Shiru />
+       </>
+     );
+   }
+   ```
+
+3. Connect the machines, as the next two sections show.
+4. Do the steps in [Verify](#verify).
+
+## Connect XState machines
+
+1. Change each import from `@xstate/react` to `shiru/xstate`. Search the source for `@xstate/react` to find all of them. A component that keeps the old import works, but the panel does not list its machine.
+
+   ```diff
+   - import { useMachine, useSelector, createActorContext } from '@xstate/react';
+   + import { useMachine, useSelector, createActorContext } from 'shiru/xstate';
+   ```
+
+2. Wrap each actor that the app creates outside React with `connect()`. Use the actor that `connect()` returns everywhere in the app, for example in `useSelector(sessionActor, …)`.
+
+   ```ts
+   import { createActor } from 'xstate';
+   import { connect } from 'shiru/xstate';
+   import { sessionMachine } from '@/machines/session';
+
+   export const sessionActor = connect(createActor(sessionMachine).start(), { id: 'session' });
+   ```
+
+3. Give each machine an `id` in its definition. Without one, shiru makes an id from the states and the context keys, and that id changes when they change.
+4. Add this rule to the ESLint or Oxlint config of the project, so that new imports from `@xstate/react` fail:
+
+   ```js
+   'no-restricted-imports': [
+     'error',
+     { name: '@xstate/react', message: 'Import the XState hooks from shiru/xstate, so that the panel lists the machine.' },
+   ],
+   ```
+
+The hooks and `createActorContext` take one more option, `debug`, and `connect()` takes the same object as its second argument. `debug: { label }` names an instance in the panel. `debug: { id }` replaces the machine id. `debug: { disabled: true }` keeps the actor out of shiru.
+
+## Convert a useReducer reducer
+
+A `switch` reducer has one branch for each event. A machine has one handler for each state and event.
+
+1. Make the state a union with one key that holds the name of the state. That key is the `discriminant`.
+2. For each branch of the `switch`, write a handler under each state in which the event is valid. Leave it out of the other states, and they ignore the event.
+3. Move each `useEffect` that depends on the name of the state to the `effect` of that state. Change `dispatch` to `send`, and read props and hook values through `input()`.
+4. Change `useReducer(reducer, initial)` to `useMachineReducer(machine, initial)`.
+5. Keep the tests of the old reducer, and run them on `machine.reducer`.
+
+`defineReducerMachine` has two calls. The first call takes the type arguments: the union of states, the union of events, and the type of the input that the effects read. The second call takes the definition. This machine of a search box starts the request in the `effect` of `loading`:
+
+```ts
+// src/machines/search.ts
+import { defineReducerMachine } from 'shiru/reducer';
+
+export type SearchState =
+  | { status: 'idle' }
+  | { status: 'loading'; query: string }
+  | { status: 'ready'; query: string; hits: string[] };
+
+export type SearchEvent = { type: 'SEARCH'; query: string } | { type: 'RESOLVE'; hits: string[] } | { type: 'CANCEL' };
+
+export interface SearchInput {
+  search(query: string, signal: AbortSignal): Promise<string[]>;
+  onHits(hits: string[]): void;
+}
+
+export const searchMachine = defineReducerMachine<SearchState, SearchEvent, SearchInput>()({
+  id: 'search',
+  discriminant: 'status',
+  states: {
+    idle: { on: { SEARCH: (_state, event) => ({ status: 'loading', query: event.query }) } },
+    loading: {
+      on: {
+        RESOLVE: (state, event) => ({ status: 'ready', query: state.query, hits: event.hits }),
+        CANCEL: () => ({ status: 'idle' }),
+      },
+      effect: (state, send, input) => {
+        const controller = new AbortController();
+        void input()
+          .search(state.query, controller.signal)
+          .then((hits) => {
+            send({ type: 'RESOLVE', hits });
+            input().onHits(hits);
+          });
+
+        return () => controller.abort();
+      },
+    },
+    ready: { on: { SEARCH: (_state, event) => ({ status: 'loading', query: event.query }) } },
+  },
+});
+```
+
+The component calls `useMachineReducer`, which returns `[state, dispatch]` as `useReducer` does. When the machine declares an input type, the hook requires `input`:
+
+```tsx
+// src/components/search-box.tsx
+import { useMachineReducer } from 'shiru/reducer';
+import { useSearchClient } from '@/lib/search-client';
+import { searchMachine } from '@/machines/search';
+
+export function SearchBox({ onHits }: { onHits(hits: string[]): void }) {
+  const search = useSearchClient();
+  const [state, dispatch] = useMachineReducer(searchMachine, { status: 'idle' }, { input: { search, onHits } });
+
+  return (
+    <input
+      value={state.status === 'idle' ? '' : state.query}
+      onChange={(event) => dispatch({ type: 'SEARCH', query: event.target.value })}
+    />
+  );
+}
+```
+
+Obey these rules:
+
+- `states` has one entry for each state name, and no other key. The discriminant has a string literal value in each member of the union.
+- A handler gets `(state, event)` and returns the next state. It is pure, and it gets no input. A state ignores each event that it does not list, and a handler that returns `state` ignores its event.
+- An `effect` gets `(state, send, input)`, and can return a cleanup. It starts after the commit that enters its state. Its cleanup runs after the commit that leaves the state, and when the component unmounts. After the cleanup, `send` does nothing. StrictMode starts the effect, runs its cleanup, and starts it again, so cancel a request in the cleanup, as the `loading` effect above does with `AbortController`.
+- `input()` returns the newest input that the component gave the hook. A new input does not restart an effect.
+- Send the result of async work with `send` from an `effect`. Do not `await` in an event handler and then `dispatch` the result, and do not `dispatch` it from a component `useEffect`. During a preview, shiru blocks `dispatch` and does not replay the events, so the machine stays in the loading state.
+- Call `useMachineReducer` in place of `useReducer`. Do not give `machine.reducer` to `useReducer`. Then no effect runs, and the panel does not list the component.
+- Call `useMachineReducer` only in client components. Server code can import the machine file and call `machine.reducer`.
+
+## Write fixtures
+
+A fixture gives data to a state that the app did not go to yet, such as an error. Without a recording or a fixture, a reducer machine cannot preview the state, and an XState machine uses the live context and logs a warning.
+
+Put the fixture sets in a file of their own. With `shiru/reducer`, each key is a state name, and each value is a whole state object whose discriminant is that key. The keys are optional. `satisfies CompleteFixtures<typeof machine>` requires a fixture for each state:
+
+```ts
+// src/debug/fixtures.ts
+import { defineFixtures, type CompleteFixtures } from 'shiru/reducer';
+import { searchMachine } from '@/machines/search';
+
+export default [
+  defineFixtures(searchMachine, {
+    idle: { status: 'idle' },
+    loading: { status: 'loading', query: 'linen' },
+    ready: { status: 'ready', query: 'linen', hits: ['Linen tote'] },
+  } satisfies CompleteFixtures<typeof searchMachine>),
+];
+```
+
+With `shiru/xstate`, each key is a leaf id, the dot path to a state without child states, such as `payment.error`. Each value is `{ context }`, with the full context type of the machine:
+
+```ts
+// src/debug/fixtures.ts
+import { defineFixtures } from 'shiru/xstate';
+import { checkoutMachine } from '@/machines/checkout';
+
+const items = [{ id: 'sku_1', name: 'Linen tote', price: 2400, qty: 2 }];
+const card = { number: '4242 4242 4242 4242', expiry: '12/30', cvc: '123' };
+
+export default [
+  defineFixtures(checkoutMachine, {
+    'payment.error': { context: { items, card: { ...card, number: '4000 0000 0000 0002' }, error: 'Card declined' } },
+    'payment.success': { context: { items, card, receiptId: 'rcpt_123' } },
+  }),
+];
+```
+
+Give `<Shiru />` a loader with a development check, so that production builds do not have the fixtures. Put the loader in a `const` at module scope. A function made during render is new on each render, and shiru calls it again each time.
+
+```tsx
+import { Shiru } from 'shiru';
+
+const fixtures = import.meta.env.DEV ? () => import('@/debug/fixtures') : undefined;
+
+export function DevTools() {
+  return <Shiru fixtures={fixtures} />;
+}
+```
+
+That check is for Vite. In Next.js and other bundlers, use `process.env.NODE_ENV !== 'production'`. Do not use `process.env` in Vite, because a default Vite app does not have the Node.js types.
+
+A file with sets for both adapters imports one `defineFixtures` under another name, for example `import { defineFixtures as defineReducerFixtures } from 'shiru/reducer'`. In the panel, **Copy context** copies the shown state as JSON. For a reducer machine, the JSON is a fixture. For an XState machine, it is the value of `context`.
+
+## Next.js
+
+`shiru` and `shiru/xstate` start with `'use client'`. `shiru/reducer` has no directive, so a server component or a route handler can import a machine file and call `machine.reducer`.
+
+In the App Router, render the overlay in the root layout, after `{children}`. A server component cannot give a function to a client component, so render `<Shiru fixtures={…} />` in a client component:
+
+```tsx
+// src/components/dev-tools.tsx
+'use client';
+
+import { Shiru } from 'shiru';
+
+const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
+
+export function DevTools() {
+  return <Shiru fixtures={fixtures} />;
+}
+```
+
+```tsx
+// src/app/layout.tsx
+import type { ReactNode } from 'react';
+import { DevTools } from '@/components/dev-tools';
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        <DevTools />
+      </body>
+    </html>
+  );
+}
+```
+
+Call `useMachineReducer`, the hooks of `shiru/xstate` and `createActorContext()` only in client components. In the Pages Router, render `<Shiru />` in `pages/_app.tsx`. On the server, shiru does nothing, and the overlay mounts after hydration.
+
+## Verify
+
+1. Run the type check of the project. It checks the machine definitions, the `input` of the hook, and the keys and values of the fixtures.
+2. If you can control a browser, open the app in development, and run this in the page. The result is the list of machine ids, such as `['search']`. Each machine must be in it.
+
+   ```js
+   const shadow = document.querySelector('[data-shiru-root]')?.shadowRoot;
+   shadow.querySelector('button[aria-label^="Shiru"]').click();
+   [...shadow.querySelectorAll('[data-machine]')].map((row) => row.getAttribute('data-machine'));
+   ```
+
+   If `shadow` is `undefined`, `<Shiru />` is not mounted, or the page is from a production build. The panel keeps its open state in `localStorage` under `shiru:ui`, so the click can close it. To start with a closed panel, remove that key and reload the page.
+3. Read the browser console. shiru writes nothing when it works. Each message that starts with `[shiru]` tells you about a problem.
+
+| Message starts with | Fix |
+|---|---|
+| `A machine has no id` | Add an `id` to the machine, or set `debug: { id }` on the hook or on `connect()`. |
+| `connect() was given an actor that a hook already registers` | Remove the `connect()` call, and set `debug` on the hook. |
+| `No recorded or fixture context for` | Go to the state one time in the app, or write a fixture for it. |
+| `Can't preview "…" on "…": it has no recorded or fixture context` | Go to the state one time in the app, or write a fixture for it. |
+| `Fixtures for "…" name "…", which isn't a leaf state` | Use leaf ids, such as `payment.error`. |
+| `The fixture of "…" on "…" isn't in the "…" state` | Give each fixture the discriminant of its key. |
+| `"…" has no state "…", so the set leaves its fixture out` | Use the state names of the machine as keys. |
+| `"…" is in "…", which its definition doesn't declare` | Add the state to `states`, or correct the handler or the initial state. |
+| `The fixtures loader failed` | Correct the error that follows the message. |
+| `Expected fixtures to be an array` | Export an array from the fixtures file: `export default [defineFixtures(…)]`. |
+| `Dropped an event without a string type` | Send events as objects, such as `send({ type: 'SUBMIT' })`. |
+| `Two versions of shiru are on this page` | Install one version. `npm ls shiru` finds the package that brings in the other one. |
+| Other messages, such as `Can't preview` or `Can't follow` | Reload the page. If the message shows again, tell the user to report it. |
+
+If a machine is not in the panel, examine these causes:
+
+- `<Shiru />` is not mounted.
+- A component imports the hook from `@xstate/react`.
+- An actor from `createActor()` does not go through `connect()`.
+- A component gives `machine.reducer` to `useReducer`.
+- The instance has `debug: { disabled: true }`.
+
+## Tests
+
+Test runners set `NODE_ENV` to `test`, so shiru works in tests as in development. Without a preview, the hooks behave as without shiru, so the tests do not have to change. To turn the overlay off, mock `shiru` in the setup file. For `shiru/xstate`, also mock it as this Vitest example shows:
+
+```ts
+// vitest.setup.ts
+import { vi } from 'vitest';
+
+vi.mock('shiru', () => ({ Shiru: () => null }));
+
+vi.mock('shiru/xstate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('shiru/xstate')>()),
+  ...(await vi.importActual<typeof import('@xstate/react')>('@xstate/react')),
+  connect: <TActor>(actor: TActor) => actor,
+}));
+```
+
+Do not mock `shiru/reducer`, because its hook runs the transitions and effects of the app. To test the transitions of a reducer machine, call `machine.reducer(state, event)` with no React. A state that does not list the event returns the same object, so `toBe(state)` checks that the state ignores the event.
+
+## Props of the overlay
+
+All props of `<Shiru />` are optional.
+
+| Prop | Type | Default | Use |
+|---|---|---|---|
+| `position` | `'top-left' \| 'top-right' \| 'bottom-left' \| 'bottom-right'` | `'bottom-right'` | The corner of the bubble and the panel. |
+| `defaultOpen` | `boolean` | `false` | Opens the panel on the first visit. |
+| `shortcut` | `string \| false` | `'alt+s'` | The keys that open and close the panel, such as `ctrl+shift+d`. `false` turns it off. |
+| `fixtures` | `FixtureSet[]` or a loader | None | The fixture sets, or a function that imports them. |
+| `portalTarget` | `Element \| ShadowRoot` | `document.body` | The element that gets the overlay. Use `document.documentElement` when `body` has a `transform`, a `filter` or `contain`. |
+
+## Limits of a preview
+
+- The real machine continues to run. When the user releases a preview, the app shows the real state at that time.
+- Events that the UI sends during a preview go to the event log of the panel, not to the machine.
+- The machine effects of the previewed state do not run. For XState, these are invoked actors, delayed transitions and entry actions. For a reducer machine, this is the `effect` of the state. Component effects that react to the state do run.
+- Child actors of an XState machine are listed under their parent, but they cannot be previewed. History states cannot be selected.
+- shiru checks only the name of a reducer state. A recording from before you added a field to a state does not have that field.

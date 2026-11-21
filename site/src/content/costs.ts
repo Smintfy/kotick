@@ -1,5 +1,5 @@
-/** The costs that the landing page and the production page show. The numbers come from the benchmarks in bench/. */
 export const costs = {
   transition: 'approximately 8 µs',
-  startup: 'approximately 150 to 160 bytes',
+  startup: 'approximately 120 to 180 bytes',
+  reducerStartup: 'approximately 480 to 550 bytes',
 } as const;

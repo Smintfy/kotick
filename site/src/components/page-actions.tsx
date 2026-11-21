@@ -1,16 +1,10 @@
 'use client';
 
-import { Check, ChevronDown, Copy } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import { useCopy } from '@/components/copy-button';
+import { GitHubLogo } from '@/components/logo/github';
 import { Button } from '@/components/ui/button';
-import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLinkItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 
 function MarkdownIcon({ className }: { className?: string }) {
   return (
@@ -21,33 +15,50 @@ function MarkdownIcon({ className }: { className?: string }) {
   );
 }
 
-/** The "Copy page" button beside the title of a docs page. The menu also opens the Markdown copy of the page. */
-export function PageActions({ markdown, markdownHref }: { markdown: string; markdownHref: string }) {
-  const { copied, copy } = useCopy();
+const action = 'font-normal text-muted-foreground';
+
+export function PageActions({
+  copy,
+  markdownHref,
+  repoHref,
+}: {
+  copy: { label: string; text: string };
+  markdownHref: string;
+  repoHref: string;
+}) {
+  const { copied, copy: copyText } = useCopy();
 
   return (
-    // One hairline around the group. A hairline on each button doubles where the two hairlines touch.
-    <ButtonGroup className="shrink-0 rounded-lg shadow-hairline *:shadow-none">
-      <Button variant="outline" size="sm" className="text-[13px] font-normal" onClick={() => copy(markdown)} aria-live="polite">
+    <div className="-ml-2.5 flex flex-wrap items-center gap-1">
+      <Button variant="ghost" size="sm" className={action} onClick={() => copyText(copy.text)}>
         {copied ? <Check /> : <Copy />}
-        {copied ? 'Copied' : 'Copy page'}
+        {copy.label}
+        <span className="sr-only" aria-live="polite">
+          {copied ? 'Copied' : ''}
+        </span>
       </Button>
-      <ButtonGroupSeparator className="bg-hairline data-vertical:my-0" />
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="outline" size="icon-sm" aria-label="More ways to use this page" />}>
-          <ChevronDown className="size-3.5" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-auto">
-          <DropdownMenuItem onClick={() => copy(markdown)}>
-            <Copy />
-            Copy page
-          </DropdownMenuItem>
-          <DropdownMenuLinkItem href={markdownHref} target="_blank" rel="noopener">
-            <MarkdownIcon />
-            View as Markdown
-          </DropdownMenuLinkItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </ButtonGroup>
+      <Separator orientation="vertical" className="bg-input data-vertical:h-4 data-vertical:self-center" />
+      <Button
+        variant="ghost"
+        size="sm"
+        className={action}
+        nativeButton={false}
+        render={<a href={markdownHref} target="_blank" rel="noopener" />}
+      >
+        <MarkdownIcon />
+        View as Markdown
+      </Button>
+      <Separator orientation="vertical" className="bg-input data-vertical:h-4 data-vertical:self-center" />
+      <Button
+        variant="ghost"
+        size="sm"
+        className={action}
+        nativeButton={false}
+        render={<a href={repoHref} target="_blank" rel="noopener" />}
+      >
+        <GitHubLogo aria-hidden className="size-3.5 text-current" />
+        Star on GitHub
+      </Button>
+    </div>
   );
 }

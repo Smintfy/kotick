@@ -1,29 +1,103 @@
 export const metadata = {
   title: 'API',
-  description: 'The props of <Konat /> and the exports of konat/xstate.',
+  description: 'The props of <Shiru />, the exports of shiru/reducer and shiru/xstate, and the exported types.',
 };
 
 ## Props
 
-`<Konat />` from `konat` takes these props:
+`<Shiru />` from `shiru` takes these props. All props are optional.
 
-```tsx
-<Konat
-  position="bottom-right"    // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-  defaultOpen={false}        // Open the panel on the first visit.
-  shortcut="alt+s"           // For example 'ctrl+shift+d'. 'mod' is ⌘ on macOS and Ctrl elsewhere. false turns it off.
-  fixtures={loader}          // Fixture sets, or a function that loads them.
-  portalTarget={undefined}   // The element that gets the overlay. The default is document.body.
-/>
-```
+<PropsTable>
+  <Prop name="position" type="Position" detailedType="'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'" default="'bottom-right'">
+    The corner of the bubble and the panel.
+  </Prop>
+  <Prop name="defaultOpen" type="boolean" default="false">
+    Opens the panel on the first visit.
+  </Prop>
+  <Prop name="shortcut" type="string | false" default="'alt+s'">
+    The keys that open and close the panel. `false` turns the shortcut off. Refer to [Shortcut](#shortcut).
+  </Prop>
+  <Prop name="fixtures" type="FixturesInput" detailedType="readonly FixtureSet[] | (() => FixturesResult | PromiseLike<FixturesResult>)">
+    Fixture sets, or a function that loads them. Refer to [Fixtures](/docs/fixtures).
+  </Prop>
+  <Prop name="portalTarget" type="Element | ShadowRoot" default="document.body">
+    The element that gets the host element of the overlay.
+  </Prop>
+</PropsTable>
 
-All props are optional. The panel keeps its open state, its corner and the machine whose page it shows in `localStorage`, so `position` and `defaultOpen` apply only until the user changes them. The user changes the corner in **Settings**. After a reload, the panel shows the page of the same machine when that machine registers.
+The panel keeps its open state, its corner and the machine whose page it shows in `localStorage`, so `position` and `defaultOpen` apply only until the user changes them. The user changes the corner in **Settings**. After a reload, the panel shows the page of the same machine when that machine registers.
 
 The overlay renders in a shadow root, so the styles of the page do not change it, and its styles do not change the page. It is dark on every page.
 
-## Exports
+In production builds, `<Shiru />` renders nothing and does not call the fixtures loader.
 
-`konat/xstate` has these exports:
+### Shortcut
+
+Write the parts of a shortcut with `+` between them, for example `ctrl+shift+d`. The last part is the key, and the other parts are modifiers. Uppercase letters and spaces have no effect.
+
+| Modifier | Other names |
+|---|---|
+| `alt` | `option`, `opt` |
+| `ctrl` | `control` |
+| `shift` | |
+| `meta` | `cmd`, `command` |
+| `mod` | ⌘ on macOS, Ctrl on other systems |
+
+The key is a value of `KeyboardEvent.key`, for example `s`, `f2` or `escape`. These names are also accepted: `esc`, `space`, `up`, `down`, `left`, `right`, `return`, `del`, and `plus` for the `+` key.
+
+- The modifiers must agree exactly. `alt+s` does not open the panel when the user also holds Shift.
+- For letters and digits, the physical key also agrees. Thus, `alt+s` works on macOS, where Alt+S types `ß`, and on keyboard layouts that move the letters.
+- The shortcut does nothing while the focus is in a text field.
+- shiru ignores a shortcut that it cannot read, and logs a warning: `[shiru] Ignoring the shortcut "…": expected something like "alt+s".`
+
+## Reducer exports
+
+`shiru/reducer` has these exports:
+
+| Export | What it is |
+|---|---|
+| `defineReducerMachine<State, Event, Input>()(definition)` | Declares a machine over your union of states and your union of events. Returns the machine. |
+| `useMachineReducer(machine, initial, options?)` | Runs a machine in a component. Returns `[state, dispatch]`, as `useReducer` does. |
+| `defineFixtures(machine, fixtures)` | Makes a fixture set for `<Shiru fixtures>`. Each fixture is a state object of the state of its key. Refer to [Fixtures](/docs/fixtures#define-fixtures). |
+
+Refer to [Define a machine](/docs/reducer#define-a-machine) for the rules of a machine, and to [useReducer](/docs/reducer) for a guide.
+
+### defineReducerMachine()
+
+The first call takes three type arguments: the union of states, the union of events, and the type of the input that the effects read, if they read one. The second call takes the definition, and TypeScript infers the discriminant from it. TypeScript cannot take some type arguments of one call from you and infer the others, so there are two calls.
+
+<PropsTable>
+  <Prop name="id" type="string">
+    The machine id on the page. The panel, the recordings and the fixtures find the machine by it. The ids of reducer machines and XState machines share one namespace.
+  </Prop>
+  <Prop name="discriminant" type="keyof State">
+    The key that holds the name of the state. Its value must be a string literal in each member of the union.
+  </Prop>
+  <Prop name="states" type="object" detailedType="{ [name]: { on?: { [type]?: (state, event) => State }; effect?: (state, send, input) => void | (() => void) } }">
+    One entry for each state name, and no other key. The panel lists the states in this sequence. Refer to [Define a machine](/docs/reducer#define-a-machine).
+  </Prop>
+</PropsTable>
+
+The machine is the definition, frozen, with one more property: `reducer(state, event)`, the transitions as a plain reducer. It returns the same object for an event that the state ignores.
+
+### useMachineReducer()
+
+`initial` is the state at mount, or a function that returns it, as for `useReducer`. `dispatch` is the same function for the life of the component, as the `dispatch` of `useReducer` is. During a preview, it logs each event in the panel, and the event does not get to the machine. Call the hook only in client components.
+
+The third argument takes these options:
+
+<PropsTable>
+  <Prop name="input" type="Input">
+    The value that `input()` returns in the effects. The hook requires it when the machine declares an input type. A new value does not restart an effect.
+  </Prop>
+  <Prop name="debug" type="object" detailedType="{ label?: string; disabled?: boolean }">
+    `label` is the name of the instance in the panel. `disabled: true` keeps the instance out of shiru. shiru reads `debug` in development builds only.
+  </Prop>
+</PropsTable>
+
+## XState exports
+
+`shiru/xstate` has these exports:
 
 | Export | What it is |
 |---|---|
@@ -34,20 +108,67 @@ The overlay renders in a shadow root, so the styles of the page do not change it
 | `useSelector(actor, selector, compare?)` | Same as `@xstate/react`. It works with each actor from this package. |
 | `shallowEqual` | A re-export of `@xstate/react`. |
 | `connect(actor, debug?)` | Registers an actor that you created outside React. Returns the actor to use in the app. |
-| `defineFixtures(machine, states)` | Makes a fixture set for `<Konat fixtures>`. |
+| `defineFixtures(machine, states)` | Makes a fixture set for `<Shiru fixtures>`. |
 
-The hooks and `createActorContext` accept one more option, `debug`. konat removes it before the options get to XState. `connect()` takes the same object as its second argument.
+The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed. Refer to [XState](/docs/xstate) for a guide.
+
+### The debug option
+
+The hooks and `createActorContext` accept one more option, `debug`. `connect()` takes the same object as its second argument.
 
 ```ts
 type DebugOptions = {
   id?: string;        // The machine id in the panel. The default is machine.id.
   label?: string;     // The name of the instance in the panel.
-  disabled?: boolean; // Keep this actor out of konat.
+  disabled?: boolean; // Keep this actor out of shiru.
 };
 
 const [snapshot, send] = useMachine(checkoutMachine, { input, debug: { label: 'Checkout (modal)' } });
 ```
 
-Give each machine an `id`. A machine without one has the XState default id `(machine)`. konat then makes an id from the states and context keys of the machine, and logs a warning once. That id changes when you add or remove states or context keys, so the previews and recordings of the machine do not carry over after such a change.
+In development, shiru removes `debug` before the options get to XState. In production builds, the hooks are the hooks of `@xstate/react`, so XState also gets `debug`. XState keeps it in `actor.options` and does nothing with it.
 
-The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed.
+Give each machine an `id`. A machine without one has the XState default id `(machine)`. shiru then makes an id from the states and context keys of the machine, and logs a warning once. That id changes when you add or remove states or context keys, so the previews and recordings of the machine do not carry over after such a change.
+
+### connect()
+
+`connect()` registers the actor immediately, and unregisters it when the actor is done, fails or stops. Use the actor that `connect()` returns everywhere in the app. Refer to [Actors outside React](/docs/xstate#actors-outside-react).
+
+`connect()` returns the actor unchanged, and does not register it, when:
+
+- The actor is not a machine actor, for example a promise actor.
+- The actor is done, failed or stopped.
+- `debug.disabled` is `true`.
+- The build is a production build.
+
+An actor that shiru registered before does not register again. This includes an actor from `connect()`, an actor from a hook, and the real actor of either. `connect()` returns the proxy that the actor already has, with its first id and label. If the actor is from a hook and you give `id` or `label`, shiru logs a warning.
+
+## Types
+
+`shiru` exports these types:
+
+| Type | What it is |
+|---|---|
+| `ShiruProps` | The props of `<Shiru />`. |
+| `Position` | `'top-left' \| 'top-right' \| 'bottom-left' \| 'bottom-right'` |
+| `FixtureSet` | The return value of `defineFixtures()`: `{ machineId: string; states: Record<string, { context: unknown }> }`. |
+| `FixturesResult` | `readonly FixtureSet[]`, or a module whose default export is `readonly FixtureSet[]`, as `import()` gives it. |
+| `FixturesInput` | `readonly FixtureSet[]`, or a function that returns a `FixturesResult` or a promise of one. |
+
+`shiru/reducer` exports these types:
+
+| Type | What it is |
+|---|---|
+| `ReducerMachine<State, Event, Key, Input>` | The return value of `defineReducerMachine()`: `id`, `discriminant`, `states` and `reducer`. `Input` is `undefined` when the effects read no input. |
+| `MachineEvent` | `{ readonly type: string }`. Each member of the event union extends it. |
+| `MachineReducerOptions<Input>` | The options of `useMachineReducer()`: `{ input?: Input; debug?: { label?: string; disabled?: boolean } }`. |
+| `ReducerFixtures<State, Key>` | The second argument of `defineFixtures()`: an optional state object for each state name. Each one is a state of its own name. |
+| `CompleteFixtures<Machine>` | The `ReducerFixtures` of a machine, with a state object for every state. Check a set with `satisfies CompleteFixtures<typeof machine>`. |
+
+`shiru/xstate` exports these types:
+
+| Type | What it is |
+|---|---|
+| `DebugOptions` | The `debug` option of the hooks and the second argument of `connect()`. |
+| `FixtureStates<TMachine>` | The second argument of `defineFixtures()`: an optional `{ context }` for each leaf id. `context` has the context type of the machine. |
+| `LeafIdFrom<TMachine>` | The leaf ids of a machine as a union, for example `'cart' \| 'payment.error'`. It is `string` when TypeScript cannot know the states. |

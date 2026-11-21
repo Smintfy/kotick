@@ -1,60 +1,114 @@
 export const metadata = {
   title: 'Installation',
-  description: 'Install the package, mount the overlay, and import the XState hooks from konat/xstate.',
+  description: 'Install the package, mount the overlay, and connect your machines through shiru/reducer or shiru/xstate.',
 };
 
-<InstallTabs name="konat" />
+shiru has an adapter for each kind of machine. `shiru/reducer` is for `useReducer` machines, and `shiru/xstate` is for XState v5 machines. Neither is the default. Select the adapter that your app uses:
+
+<PageAdapterTabs />
+
+<InstallTabs reducer="shiru" xstate="shiru xstate @xstate/react">
+  <AdapterTab adapter="reducer">
+    `shiru/reducer` needs only React. Your app does not need `xstate` or `@xstate/react`.
+  </AdapterTab>
+
+  <AdapterTab adapter="xstate">
+    The command also installs `xstate` and `@xstate/react`, because shiru does not install them. If your app already has them, install only `shiru`. An app can use both adapters, and this command installs all that both need.
+  </AdapterTab>
+</InstallTabs>
+
+Add shiru to `dependencies`, not to `devDependencies`. Your app code imports `shiru/reducer` or `shiru/xstate`, thus the production build needs the package.
 
 ## Requirements
 
-konat uses the versions of these packages that your app has:
+shiru uses the versions of these packages that your app has:
 
-| Package | Versions |
-|---|---|
-| `react`, `react-dom` | 18 or 19 |
-| `xstate` | 5.28 or later |
-| `@xstate/react` | 6.1 or later |
+| Package | Versions | Needed for |
+|---|---|---|
+| `react`, `react-dom` | 18 or 19 | Both adapters |
+| `xstate` | 5.28 or later | `shiru/xstate` only |
+| `@xstate/react` | 6.1 or later | `shiru/xstate` only |
 
 ## Quick start
 
-There are two changes.
-
-1. Mount the overlay once, near the root of the app:
+1. Mount the overlay once, near the root of the app. Both adapters use the same overlay:
 
    ```tsx
-   import { Konat } from 'konat';
+   import { Shiru } from 'shiru';
 
    export function App() {
      return (
        <>
          <Routes />
-         <Konat />
+         <Shiru />
        </>
      );
    }
    ```
 
-2. Import the XState hooks from `konat/xstate` instead of `@xstate/react`:
+2. Connect your machines through the adapter:
 
-   ```diff
-   - import { useMachine, useSelector, createActorContext } from '@xstate/react';
-   + import { useMachine, useSelector, createActorContext } from 'konat/xstate';
+   <AdapterTabs>
+     <AdapterTab adapter="reducer">
+       Declare the reducer as a machine with `defineReducerMachine`. Then call `useMachineReducer` instead of `useReducer`:
+
+       ```diff
+       - const [state, dispatch] = useReducer(reducer, { status: 'idle' });
+       + const [state, dispatch] = useMachineReducer(searchMachine, { status: 'idle' });
+       ```
+
+       [From a switch reducer](/docs/reducer#from-a-switch-reducer) shows how to change a reducer into a machine.
+     </AdapterTab>
+
+     <AdapterTab adapter="xstate">
+       Import the XState hooks from `shiru/xstate` instead of `@xstate/react`:
+
+       ```diff
+       - import { useMachine, useSelector, createActorContext } from '@xstate/react';
+       + import { useMachine, useSelector, createActorContext } from 'shiru/xstate';
+       ```
+
+       The hooks have the same names and signatures as in `@xstate/react`. Actors that you create outside React need one more step, with `connect()`. Refer to [XState](/docs/xstate#actors-outside-react) for that step, and for a lint rule that finds the imports from `@xstate/react`.
+     </AdapterTab>
+   </AdapterTabs>
+
+Start the dev server and click the bubble in the bottom-right corner, or press <Shortcut mac="⌥S" other={['Alt', 'S']} />. The panel lists each machine that runs on the page. Select a machine to see its states. Select a state to preview it, and select it again to release it.
+
+## Check the install
+
+You can check the install without a screen, for example in a browser test or from an agent. In development, `<Shiru />` adds a `<div data-shiru-root>` to `document.body`, or to `portalTarget`. The overlay is in the open shadow root of this element.
+
+1. Get the shadow root:
+
+   ```js
+   const shadow = document.querySelector('[data-shiru-root]')?.shadowRoot;
    ```
 
-   The hooks have the same names and signatures as in `@xstate/react`.
+   If `shadow` is `undefined`, `<Shiru />` is not mounted, or the page is from a production build.
 
-Start the dev server and click the bubble in the bottom-right corner, or press <Shortcut mac="⌥S" other={['Alt', 'S']} />. The panel lists each machine that a hook started. Select a machine to see its states. Select a state to preview it, and select it again to release it.
+2. Open the panel:
 
-## Actors outside React
+   ```js
+   shadow.querySelector('button[aria-label^="Shiru"]').click();
+   ```
 
-Actors that you create outside React, for example in a module, need one more step. Wrap them with `connect()`:
+3. After the panel renders, read the machine ids:
 
-```ts
-import { createActor } from 'xstate';
-import { connect } from 'konat/xstate';
-import { sessionMachine } from '@/machines/session';
+   ```js
+   [...shadow.querySelectorAll('[data-machine]')].map((row) => row.getAttribute('data-machine'));
+   ```
 
-export const sessionActor = connect(createActor(sessionMachine).start(), { id: 'session' });
-```
+   The result is a list such as `['checkout']`. If a machine is not in the list, refer to the [FAQ](/docs/faq).
 
-Use the actor that `connect()` returns everywhere in the app, for example with `useSelector(sessionActor, …)`.
+The panel keeps its open state and its page from the last visit. Thus, in a browser that used the panel before, step 2 can close the panel, or open the page of one machine. To start with a closed panel, [reset the panel](/docs/troubleshooting#reset-the-panel) before step 1.
+
+shiru writes nothing to the console when it starts. A message that starts with `[shiru]` tells you about a problem. Refer to [Troubleshooting](/docs/troubleshooting#console-warnings).
+
+## Before you release
+
+You do not have to remove `<Shiru />` or change the imports before a release. In a production build, `<Shiru />` renders nothing, and the bundler removes the registry and the panel. Refer to [Choose an adapter](/docs/concepts#choose-an-adapter) for what each adapter keeps, and for its size.
+
+Check two things in your build:
+
+- The bundler must replace `process.env.NODE_ENV` with `"production"`. Vite, Next.js (webpack and Turbopack) and React Router do this. With esbuild, add `--define:process.env.NODE_ENV='"production"'`.
+- The fixtures loader must have a development check, as in the [Fixtures](/docs/fixtures) examples. Without the check, the build makes a fixtures chunk that the app never loads.

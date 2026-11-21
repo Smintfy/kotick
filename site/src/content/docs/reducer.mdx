@@ -1,0 +1,171 @@
+export const metadata = {
+  title: 'useReducer',
+  description: 'Declare a useReducer union as a machine through shiru/reducer, and preview each state in place.',
+};
+
+If a component keeps a union of states in `useReducer`, declare the reducer as a machine with `shiru/reducer`. shiru then lists every state of it and previews any state in place.
+
+```ts
+import { defineFixtures, defineReducerMachine, useMachineReducer } from 'shiru/reducer';
+```
+
+An app that uses only `shiru/reducer` does not need `xstate` or `@xstate/react`. Install `shiru` alone.
+
+## Quick start
+
+1. Declare the reducer as a machine with `defineReducerMachine`. [From a switch reducer](/docs/reducer#from-a-switch-reducer) gives the steps.
+2. In the component, call `useMachineReducer(machine, initial)` in place of `useReducer(reducer, initial)`.
+3. Mount `<Shiru />` once, as [Installation](/docs/install#quick-start) shows.
+4. Use the app until the component is in a second state. The panel lists every state, and an **R** mark shows each state that you visited.
+5. Select a visited state in the panel. The component shows that state in place, with the data of your visit.
+
+A state that you did not visit is greyed out until it has a fixture. To start the fixtures file, select a visited state and use **Copy context**. The JSON is the fixture of that state. For a state that is difficult to get to in the app, write the object by hand. [Previews](/docs/reducer#previews) gives the rule.
+
+## From a switch reducer
+
+A `switch` reducer has one branch for each event. A machine has one handler for each state and event.
+
+1. Make the state a union with one key that holds the name of the state. That key is the `discriminant`.
+2. For each branch of the `switch`, write a handler under each state in which the event is valid. Leave it out of the other states, and they ignore the event.
+3. Move each `useEffect` that depends on the name of the state to the `effect` of that state. Change `dispatch` to `send`, and read props and hook values through `input()`.
+4. Change `useReducer(reducer, initial)` to `useMachineReducer(machine, initial)`.
+5. Keep the tests of the old reducer, and run them on `machine.reducer`.
+
+This reducer of a search box accepts `SEARCH` while it is not loading, and `RESOLVE` and `CANCEL` only while it is loading:
+
+```ts
+type SearchState =
+  | { status: 'idle' }
+  | { status: 'loading'; query: string }
+  | { status: 'ready'; query: string; hits: string[] };
+
+type SearchEvent = { type: 'SEARCH'; query: string } | { type: 'RESOLVE'; hits: string[] } | { type: 'CANCEL' };
+
+function reducer(state: SearchState, event: SearchEvent): SearchState {
+  switch (event.type) {
+    case 'SEARCH':
+      return state.status === 'loading' ? state : { status: 'loading', query: event.query };
+    case 'RESOLVE':
+      return state.status === 'loading' ? { status: 'ready', query: state.query, hits: event.hits } : state;
+    case 'CANCEL':
+      return state.status === 'loading' ? { status: 'idle' } : state;
+  }
+}
+```
+
+As a machine, each state lists the events that it accepts. The search request, which a `useEffect` in the component started, is the `effect` of `loading`:
+
+```ts
+// src/machines/search.ts
+import { defineReducerMachine } from 'shiru/reducer';
+
+export type SearchState =
+  | { status: 'idle' }
+  | { status: 'loading'; query: string }
+  | { status: 'ready'; query: string; hits: string[] };
+
+export type SearchEvent = { type: 'SEARCH'; query: string } | { type: 'RESOLVE'; hits: string[] } | { type: 'CANCEL' };
+
+export interface SearchInput {
+  search(query: string, signal: AbortSignal): Promise<string[]>;
+  onHits(hits: string[]): void;
+}
+
+export const searchMachine = defineReducerMachine<SearchState, SearchEvent, SearchInput>()({
+  id: 'search',
+  discriminant: 'status',
+  states: {
+    idle: { on: { SEARCH: (_state, event) => ({ status: 'loading', query: event.query }) } },
+    loading: {
+      on: {
+        RESOLVE: (state, event) => ({ status: 'ready', query: state.query, hits: event.hits }),
+        CANCEL: () => ({ status: 'idle' }),
+      },
+      effect: (state, send, input) => {
+        const controller = new AbortController();
+        void input()
+          .search(state.query, controller.signal)
+          .then((hits) => {
+            send({ type: 'RESOLVE', hits });
+            input().onHits(hits);
+          });
+
+        return () => controller.abort();
+      },
+    },
+    ready: { on: { SEARCH: (_state, event) => ({ status: 'loading', query: event.query }) } },
+  },
+});
+```
+
+## Define a machine
+
+A machine has five rules. The types check rules 1 and 3, and each fixture of rule 2. The panel shows each state that has no data. Rules 4 and 5 are yours to follow.
+
+1. **One key, the `discriminant`, holds the name of the state.** `states` has one entry for each name. TypeScript checks the entries against your union, so a missing state, an extra state and a misspelled event do not compile.
+2. **A state needs data before it can preview.** A visit in the app records its state object, and `defineFixtures` takes a state object for each state that you list. A fixture is a whole state of its own name. To make the file fail when a state has no fixture, check the set with `satisfies CompleteFixtures<typeof machine>`. Refer to [Fixtures](/docs/fixtures#define-fixtures).
+3. **Transitions are per state and per event.** A handler gets the state object of its state and the event of its type, and returns the next state. A state ignores the events that it does not list, and a handler that returns `state` ignores its event. A handler gets no input, because it must be pure, as a reducer is. `machine.reducer` is the plain reducer, for unit tests.
+4. **Effects are per state.** An `effect` starts after the commit that enters its state. Its cleanup runs after the commit that leaves the state, and when the component unmounts. A transition that keeps the name of the state keeps the effect running. A batch of events that leaves the state and enters it again also runs the cleanup and starts the effect again. After the cleanup, its `send` does nothing. React's rules for effects apply, so StrictMode starts the effect, runs its cleanup and starts it again when the component mounts. An effect gets `(state, send, input)`. `input()` returns the newest input that the component gave the hook, so an effect can call the router, a client from React context or a callback prop.
+5. **Async work is in the machine.** Start a request in the `effect` of a state, and give its result to `send`. During a preview, shiru blocks each event that the component dispatches, and it does not replay the events after the release. So a click handler that does `dispatch({ type: 'SUBMIT' })`, then `await submitOrder()`, then `dispatch({ type: 'RESOLVE' })` loses `RESOLVE` if a preview is open when the response comes. After the release, the real state is `loading`, and it stays in `loading`. A component `useEffect` that sends the result has the same problem, and it also runs for a previewed state. shiru never blocks the `send` of a machine effect, and a previewed state runs no machine effect.
+
+## Use the machine
+
+`useMachineReducer(machine, initial, options?)` returns `[state, dispatch]`, as `useReducer` does. `initial` is the first state, or a function that returns it.
+
+```tsx
+// src/components/search-box.tsx
+import { useMachineReducer } from 'shiru/reducer';
+import { useSearchClient } from '@/lib/search-client';
+import { searchMachine } from '@/machines/search';
+
+export function SearchBox({ onHits }: { onHits(hits: string[]): void }) {
+  const search = useSearchClient();
+  const [state, dispatch] = useMachineReducer(searchMachine, { status: 'idle' }, { input: { search, onHits } });
+
+  return (
+    <input
+      value={state.status === 'idle' ? '' : state.query}
+      onChange={(event) => dispatch({ type: 'SEARCH', query: event.target.value })}
+    />
+  );
+}
+```
+
+`options.input` is the value that `input()` returns in the effects. Declare its type as the third type argument of `defineReducerMachine`, and the hook then requires it. For `searchMachine`, an input without `onHits` does not compile. The object is new on each render, but the search does not restart, because the effect reads the input through `input()` when it needs it. A new input never restarts an effect.
+
+`RESOLVE` comes from `send`, so a preview that is open when the response comes does not block it. The real state goes to `ready`, and the release shows it.
+
+`options.debug` takes `{ label, disabled }`. `label` is the name of the instance in the panel, and `disabled: true` keeps the instance out of shiru. shiru reads `debug` in development builds only.
+
+Each component that calls the hook is one instance. Do not give `machine.reducer` to `useReducer` in a component. The state then changes, but no effect runs, and the panel does not list the component.
+
+## Previews
+
+The rules in [Previews](/docs/concepts#previews) apply. When you select a state, the component gets a state object of that state in place of the real one. It does not mount again.
+
+The state object comes from a recording or a fixture of the selected state. The live state object fits only the state that the machine is in, so **Live** is available only for that state. Thus, you cannot preview another state that has no recording and no fixture yet. The panel greys it out and names it under States.
+
+During a preview, the panel logs the events that the component dispatches, and they do not get to the machine. The effect of the real state continues to run. When you release the preview, the component shows the real state at that time.
+
+shiru checks only the name of the state. A recording from before you added a field to a state does not have that field.
+
+## Production builds
+
+Production builds keep `defineReducerMachine` and `useMachineReducer` as a small runtime around React's `useReducer` and `useEffect`. The runtime runs your transitions and effects. The registry, the panel, the recordings and the fixtures are removed. `defineFixtures` stays only if production code imports it. Refer to [Choose an adapter](/docs/concepts#choose-an-adapter) for the size of the runtime.
+
+- A server component or a route handler can import a machine file and call `machine.reducer`. Only `useMachineReducer` is client code.
+- The runtime calls only built-in functions that every browser that runs React has, such as `Object.freeze` and `Object.is`. Its code uses ES2020 syntax, so a build for an older browser must transpile `shiru`.
+
+### The rules are public API
+
+The rules above are public API. A change to a rule, to the arguments of a handler or an effect, or to the order of start and cleanup is a breaking change. While shiru is 0.x, a breaking change bumps the minor version, and never a patch.
+
+### Remove shiru
+
+To remove shiru, write a reducer that picks the handler by the name of the state and the type of the event, and a `useEffect` that runs the effect of the state. The handlers and the effects are plain functions, so they move as they are.
+
+## How the adapter works
+
+**The adapter keeps the state in React.** `useMachineReducer` runs the reducer of the machine in React's `useReducer`, and runs the effect of the real state. In development, it also registers the instance, records its state object after each commit, and returns the state object of a preview in place of the real one.
+
+**A preview changes only the state object that the hook returns.** The real state stays in `useReducer`, and its effect continues to run. During a preview, `dispatch` logs each event in the panel, and the event does not get to the machine. The `send` of a machine effect goes to the real machine, also during a preview.

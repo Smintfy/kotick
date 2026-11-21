@@ -1,15 +1,12 @@
 import GithubSlugger from 'github-slugger';
 import { toString } from 'mdast-util-to-string';
 
-/**
- * Gives each heading an id. Exports the H2 and H3 headings as `headings`, for the nav,
- * and the links to site pages as `links`, so that site.tsx can find broken links.
- */
 export default function remarkHeadings() {
   return (tree) => {
     const slugger = new GithubSlugger();
     const headings = [];
     const links = [];
+    let adapterTabs = false;
 
     const walk = (node) => {
       if (node.type === 'heading') {
@@ -22,6 +19,8 @@ export default function remarkHeadings() {
 
       if (node.type === 'link' && node.url.startsWith('/')) links.push(node.url);
 
+      if (node.type === 'mdxJsxFlowElement' && node.name === 'PageAdapterTabs') adapterTabs = true;
+
       for (const child of node.children ?? []) walk(child);
     };
 
@@ -29,6 +28,7 @@ export default function remarkHeadings() {
     tree.children.push(
       exportConst('headings', array(headings.map(object))),
       exportConst('links', array(links.map(literal))),
+      exportConst('adapterTabs', literal(adapterTabs)),
     );
   };
 }
