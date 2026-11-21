@@ -63,7 +63,7 @@ export function Prop({ name, type, detailedType = type, default: defaultValue, c
       </TableRow>
       <TableRow className="border-b-0">
         <TableCell colSpan={4} className="h-auto p-0 first:pl-0 last:pr-0">
-          <AccordionContent className="pt-2 pb-4 text-[13px]">
+          <AccordionContent className="pt-2 pb-4 text-sm">
             <dl className="grid grid-cols-[var(--prop-column)_minmax(0,1fr)] items-baseline gap-y-2 [&_dd]:pr-4 [&_dd]:pl-2 [&_dt]:pr-2 [&_dt]:pl-4 [&_dt]:text-muted-foreground [&_p]:m-0">
               <dt>Name</dt>
               <dd>

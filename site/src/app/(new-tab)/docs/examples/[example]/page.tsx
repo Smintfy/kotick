@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { DemoPage } from '@/demo/demo-page';
+import { DemoPage } from '@/components/demo/demo-page';
 import { checkedHref, demos } from '@/site';
 
 export const dynamicParams = false;

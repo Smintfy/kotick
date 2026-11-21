@@ -35,14 +35,14 @@ export const checkoutMachine = setup({
     }),
   },
   guards: {
-    beforePayment: stateIn('#checkout.payment.idle'),
-    hasItems: stateIn('#checkout.cart.filled'),
+    beforePayment: stateIn('#checkout-xstate.payment.idle'),
+    hasItems: stateIn('#checkout-xstate.cart.filled'),
     removesLastItem: ({ context, event }) =>
       event.type === 'REMOVE_ITEM' && context.items.every((item) => item.id === event.id),
     cardComplete: ({ context, event }) => isCardComplete(cardAfterUpdate(context.card, event)),
   },
 }).createMachine({
-  id: 'checkout',
+  id: 'checkout-xstate',
   type: 'parallel',
   context: { items: startItems, card: emptyCard },
   states: {
@@ -108,7 +108,7 @@ export const checkoutMachine = setup({
           },
           states: {
             incomplete: {},
-            complete: { on: { PAY: '#checkout.payment.processing' } },
+            complete: { on: { PAY: '#checkout-xstate.payment.processing' } },
             last: { type: 'history' },
           },
         },

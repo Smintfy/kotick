@@ -20,7 +20,7 @@ export const onboardingMachine = setup({
     hasInvites: ({ context }) => context.invites.length > 0,
   },
 }).createMachine({
-  id: 'onboarding',
+  id: 'onboarding-xstate',
   initial: 'profile',
   context: emptyAccount,
   states: {
@@ -44,7 +44,7 @@ export const onboardingMachine = setup({
           on: {
             UPDATE_WORKSPACE: { actions: assign({ workspace: ({ event }) => event.workspace }) },
             CREATE_WORKSPACE: { guard: 'hasWorkspace', target: 'creating' },
-            BACK: '#onboarding.role',
+            BACK: '#onboarding-xstate.role',
           },
         },
         creating: {
@@ -52,7 +52,7 @@ export const onboardingMachine = setup({
           invoke: {
             src: 'createWorkspace',
             input: ({ context }) => ({ workspace: context.workspace }),
-            onDone: '#onboarding.invite',
+            onDone: '#onboarding-xstate.invite',
             onError: {
               target: 'error',
               actions: assign({ error: ({ event }) => (event.error instanceof Error ? event.error.message : 'Could not create the workspace') }),
@@ -65,7 +65,7 @@ export const onboardingMachine = setup({
               target: 'editing',
               actions: assign({ workspace: ({ event }) => event.workspace, error: undefined }),
             },
-            BACK: '#onboarding.role',
+            BACK: '#onboarding-xstate.role',
           },
         },
       },

@@ -13,6 +13,7 @@ import * as production from '@/content/docs/production.mdx';
 import * as reducer from '@/content/docs/reducer.mdx';
 import * as tests from '@/content/docs/tests.mdx';
 import * as troubleshooting from '@/content/docs/troubleshooting.mdx';
+import * as xstate from '@/content/docs/xstate.mdx';
 
 export type Heading = { id: string; text: string; depth: 2 | 3 };
 
@@ -22,6 +23,7 @@ export type DocsPage = NavItem & {
   slug: string;
   description: string;
   markdownHref: string | undefined;
+  adapterTabs: boolean;
   Content: MDXContent;
 };
 
@@ -29,6 +31,7 @@ const docs = [
   ['install', install],
   ['concepts', concepts],
   ['reducer', reducer],
+  ['xstate', xstate],
   ['panel', panel],
   ['fixtures', fixtures],
   ['api', api],
@@ -69,7 +72,7 @@ export const demoHref = (id: DemoId) => `/docs/examples/${id}`;
 
 function docsPage(
   slug: string,
-  { metadata, headings, default: Content }: typeof overview,
+  { metadata, headings, adapterTabs, default: Content }: typeof overview,
   href: string,
   markdownHref: string | undefined,
 ): DocsPage {
@@ -77,7 +80,7 @@ function docsPage(
     throw new Error(`src/content/docs/${slug}.mdx must export metadata with a title and a description.`);
   }
 
-  return { slug, href, title: metadata.title, description: metadata.description, markdownHref, headings, Content };
+  return { slug, href, title: metadata.title, description: metadata.description, markdownHref, adapterTabs, headings, Content };
 }
 
 export const overviewPage = docsPage('overview', overview, '/', '/index.md');
@@ -116,7 +119,7 @@ export const navSections: readonly NavSection[] = [
     items: [
       docsItem('concepts'),
       docsItem('reducer'),
-      docsItem('panel'),
+      docsItem('xstate'),
       docsItem('fixtures'),
       docsItem('nextjs'),
       docsItem('production'),
@@ -125,7 +128,7 @@ export const navSections: readonly NavSection[] = [
   },
   {
     title: 'Reference',
-    items: [docsItem('api'), docsItem('troubleshooting'), docsItem('limitations'), docsItem('faq')],
+    items: [docsItem('api'), docsItem('panel'), docsItem('troubleshooting'), docsItem('limitations'), docsItem('faq')],
   },
 ];
 

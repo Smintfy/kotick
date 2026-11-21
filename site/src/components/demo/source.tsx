@@ -14,23 +14,31 @@ export type DemoSources = Record<Adapter, DemoSource>;
 
 const paths: Record<DemoId, Record<Adapter, [string, ...string[]]>> = {
   checkout: {
-    xstate: ['checkout/checkout.tsx', 'checkout/xstate-machine.ts', 'checkout/xstate-fixtures.ts', 'checkout/order.ts', 'radio-card.tsx'],
-    reducer: ['checkout/checkout.tsx', 'checkout/reducer-machine.ts', 'checkout/reducer-fixtures.ts', 'checkout/order.ts', 'radio-card.tsx'],
+    xstate: [
+      'checkout/xstate/checkout.tsx',
+      'checkout/xstate/machine.ts',
+      'checkout/xstate/fixtures.ts',
+      'checkout/order.ts',
+    ],
+    reducer: [
+      'checkout/reducer/checkout.tsx',
+      'checkout/reducer/machine.ts',
+      'checkout/reducer/fixtures.ts',
+      'checkout/order.ts',
+    ],
   },
   onboarding: {
     xstate: [
-      'onboarding/onboarding.tsx',
-      'onboarding/xstate-machine.ts',
-      'onboarding/xstate-fixtures.ts',
+      'onboarding/xstate/onboarding.tsx',
+      'onboarding/xstate/machine.ts',
+      'onboarding/xstate/fixtures.ts',
       'onboarding/account.ts',
-      'radio-card.tsx',
     ],
     reducer: [
-      'onboarding/onboarding.tsx',
-      'onboarding/reducer-machine.ts',
-      'onboarding/reducer-fixtures.ts',
+      'onboarding/reducer/onboarding.tsx',
+      'onboarding/reducer/machine.ts',
+      'onboarding/reducer/fixtures.ts',
       'onboarding/account.ts',
-      'radio-card.tsx',
     ],
   },
 };

@@ -1,9 +1,9 @@
 import { fireEvent, render } from '@testing-library/react';
-import type { FixtureSet } from 'konat';
-import { KonatFigure, type FigurePage } from 'konat/figure';
+import { figureReducer, KonatFigure, type FigurePage, type KonatFigureProps } from 'konat/figure';
+import { defineFixtures as defineReducerFixtures, defineReducerMachine } from 'konat/reducer';
 import { defineFixtures, useMachine } from 'konat/xstate';
 import { describe, expect, onTestFinished, test } from 'vitest';
-import { createMachine, type AnyStateMachine } from 'xstate';
+import { createMachine } from 'xstate';
 import { flush, freshId } from './support/panel';
 
 function createCheckoutMachine(id: string) {
@@ -22,12 +22,18 @@ function createToggleMachine(id: string) {
   return createMachine({ id, initial: 'off', states: { off: {}, on: {} } });
 }
 
+type Light = { color: 'red' } | { color: 'green' } | { color: 'broken'; reason: string };
+
+function createLightMachine(id: string) {
+  return defineReducerMachine<Light, { type: 'NEXT' }>()({ id, discriminant: 'color', states: { red: {}, green: {}, broken: {} } });
+}
+
 /** Renders the figure into a frame of its own, and returns the shadow root of its overlay. */
-async function renderFigure(page: FigurePage, machines: AnyStateMachine[], fixtures: FixtureSet[] = []) {
+async function renderFigure(props: Omit<KonatFigureProps, 'position' | 'portalTarget'>) {
   const frame = document.createElement('div');
   document.body.append(frame);
   onTestFinished(() => frame.remove());
-  render(<KonatFigure machines={machines} fixtures={fixtures} page={page} position="top-left" portalTarget={frame} />);
+  render(<KonatFigure {...props} position="top-left" portalTarget={frame} />);
   await flush();
   const root = frame.querySelector('[data-konat-root]')?.shadowRoot;
 
@@ -36,7 +42,7 @@ async function renderFigure(page: FigurePage, machines: AnyStateMachine[], fixtu
   return root;
 }
 
-/** What the open panel shows, read from the header, the machine rows, the leaves and the radio groups. */
+/** What the open panel shows, read from the header, the machine rows, the leaves, the radio groups and the context. */
 function shown(root: ShadowRoot) {
   const panel = root.querySelector<HTMLElement>('section[aria-label="Konat"]');
 
@@ -65,6 +71,7 @@ function shown(root: ShadowRoot) {
         group.querySelector<HTMLInputElement>('input:checked')?.value,
       ]),
     ),
+    context: [...panel.querySelectorAll('[data-part="json-row"]')].map(text),
   };
 }
 
@@ -79,6 +86,7 @@ test.each([
       rows: ['checkout-figure · 4 states', 'toggle-figure · 2 states'],
       leaves: {},
       radios: {},
+      context: [],
     },
   },
   {
@@ -95,6 +103,7 @@ test.each([
         'shipping.express': ['none'],
       },
       radios: { 'Context source': 'fixture' },
+      context: ['error: "Card declined"'],
     },
   },
   {
@@ -106,14 +115,38 @@ test.each([
       rows: [],
       leaves: {},
       radios: { Corner: 'top-left' },
+      context: [],
     },
   },
 ] satisfies { page: FigurePage; expected: ReturnType<typeof shown> }[])('opens the panel on the $page.kind page', async ({ page, expected }) => {
   const checkout = createCheckoutMachine('checkout-figure');
   const fixtures = defineFixtures(checkout, { 'card.error': { context: { error: 'Card declined' } } });
-  const root = await renderFigure(page, [checkout, createToggleMachine('toggle-figure')], [fixtures]);
+  const root = await renderFigure({ page, machines: [checkout, createToggleMachine('toggle-figure')], fixtures: [fixtures] });
 
   expect(shown(root)).toEqual(expected);
+});
+
+describe('with a reducer machine', () => {
+  test('lists its states, marks its state recorded, and previews the fixture of another state', async () => {
+    const light = createLightMachine('light-figure');
+    const fixtures = defineReducerFixtures(light, { broken: { color: 'broken', reason: 'Bulb out' } });
+
+    const root = await renderFigure({
+      page: { kind: 'machine', machineId: 'light-figure', preview: { leaves: ['broken'] } },
+      reducers: [figureReducer(light, { color: 'red' })],
+      fixtures: [fixtures],
+    });
+
+    expect(shown(root)).toEqual({
+      page: 'machine',
+      title: 'light-figure',
+      chips: ['1 previewed state'],
+      rows: [],
+      leaves: { red: ['recorded'], green: ['none'], broken: ['fixture', 'previewed'] },
+      radios: { 'Context source': 'fixture' },
+      context: ['color: "broken"', 'reason: "Bulb out"'],
+    });
+  });
 });
 
 describe('next to the machines of the page', () => {
@@ -130,7 +163,7 @@ describe('next to the machines of the page', () => {
     }
 
     render(<App />);
-    const root = await renderFigure({ kind: 'machines' }, [figureMachine]);
+    const root = await renderFigure({ page: { kind: 'machines' }, machines: [figureMachine] });
     const rows = shown(root).rows;
     const row = root.querySelector(`[data-machine="${figureMachine.id}"]`);
 

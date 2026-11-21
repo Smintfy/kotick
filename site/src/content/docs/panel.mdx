@@ -1,9 +1,11 @@
 import { PanelFigure } from '@/components/docs/panel-figure';
 
 export const metadata = {
-  title: 'The panel',
+  title: 'Panel',
   description: 'The machine list, the machine pages, Settings, and the keyboard shortcuts.',
 };
+
+<PageAdapterTabs />
 
 ## Machine list
 
@@ -26,10 +28,12 @@ Select a machine to open its page. During a preview, the header shows the number
 
 <PanelFigure
   page="machine"
-  machine="checkout"
-  preview="payment.error"
+  demo="checkout"
+  reducerPreview="error"
+  xstatePreview="payment.error"
   height={400}
-  caption="The checkout page during a preview of payment.error. The header shows 1 previewed state. The leaves show the Recorded, Fixture, and None marks."
+  reducerCaption="The checkout page during a preview of error. The header shows 1 previewed state. The leaves show the Recorded, Fixture, and None marks. The success state has no recording and no fixture, so it is greyed out. A note above the tree names it."
+  xstateCaption="The checkout page during a preview of payment.error. The header shows 1 previewed state. The leaves show the Recorded, Fixture, and None marks."
 />
 
 ## Settings

@@ -60,7 +60,7 @@
   --primary: oklch(0.205 0 0);
   --primary-foreground: var(--background);
   --secondary: var(--accent);
-  --secondary-foreground: oklch(0.368 0 0);
+  --secondary-foreground: oklch(0.321 0 0);
   --muted: oklch(0 0 0 / 0.025);
   --muted-foreground: oklch(0.556 0 0);
   --link: --theme(--color-blue-600);
@@ -184,7 +184,7 @@
 
   /* Keep 1rem at 16px. A smaller root font also makes the Tailwind spacing smaller. */
   body {
-    font-size: 15px;
+    font-size: var(--text-sm);
   }
 
   h1,
@@ -245,10 +245,9 @@
   :not(pre) > code {
     padding: 2px 5px;
     margin-inline: 2px;
-    background: var(--chip);
-    box-shadow: var(--shadow-edge);
+    background: var(--accent);
     border-radius: 5px;
-    font-size: 12px;
+    font-size: var(--text-xs);
   }
 }
 

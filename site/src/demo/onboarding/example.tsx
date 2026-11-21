@@ -1,10 +1,11 @@
 'use client';
 
-import { DemoWindow } from '@/demo/demo-window';
-import { ReducerOnboarding, XStateOnboarding } from '@/demo/onboarding/onboarding';
-import { onboardingReducerFixtures } from '@/demo/onboarding/reducer-fixtures';
-import { onboardingFixtures } from '@/demo/onboarding/xstate-fixtures';
-import type { DemoSources } from '@/demo/source';
+import { DemoWindow } from '@/components/demo/demo-window';
+import { onboardingReducerFixtures } from '@/demo/onboarding/reducer/fixtures';
+import { Onboarding as ReducerOnboarding } from '@/demo/onboarding/reducer/onboarding';
+import { onboardingFixtures } from '@/demo/onboarding/xstate/fixtures';
+import { Onboarding as XStateOnboarding } from '@/demo/onboarding/xstate/onboarding';
+import type { DemoSources } from '@/components/demo/source';
 
 export const onboardingDemoFixtures = [...onboardingFixtures, onboardingReducerFixtures];
 

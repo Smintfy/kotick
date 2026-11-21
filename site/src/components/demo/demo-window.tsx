@@ -5,7 +5,7 @@ import { type ComponentProps, type ReactNode, useState } from 'react';
 import { type FixturesInput, Konat } from 'konat';
 import { CopyButton } from '@/components/copy-button';
 import { AdapterSwitch, useAdapter } from '@/components/docs/adapter-tabs';
-import { barTab, outerTab } from '@/components/docs/bar-tab';
+import { barTab } from '@/components/docs/bar-tab';
 import { useIsApple } from '@/components/docs/shortcut';
 import { OverlayDock } from '@/components/overlay-dock';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Adapter } from '@/content/adapters';
-import type { DemoSources } from '@/demo/source';
+import type { DemoSources } from '@/components/demo/source';
 
 const keepInLayout = (props: ComponentProps<'div'>) => <div {...props} hidden={false} />;
 
@@ -31,16 +31,16 @@ export function DemoWindow({ apps, fixtures, href, sources }: DemoWindowProps) {
   return (
     <Tabs value={view} onValueChange={setView} render={<figure />} className="not-prose my-6 gap-2">
       <div className="flex items-center gap-2">
-        <TabsList aria-label="View" activateOnFocus className="gap-px bg-transparent p-0">
-          <TabsTrigger value="preview" className={outerTab}>
+        <TabsList aria-label="View" activateOnFocus>
+          <TabsTrigger value="preview">
             Preview
           </TabsTrigger>
-          <TabsTrigger value="code" className={outerTab}>
+          <TabsTrigger value="code">
             Code
           </TabsTrigger>
         </TabsList>
         <div className="ml-auto">
-          <AdapterSwitch tabClassName={outerTab} />
+          <AdapterSwitch />
         </div>
       </div>
       <div className="relative rounded-2xl shadow-edge">
@@ -79,8 +79,8 @@ export function DemoWindow({ apps, fixtures, href, sources }: DemoWindowProps) {
           <div key={run} className="mx-auto flex w-full max-w-[360px] flex-1 flex-col">
             {apps[adapter]}
           </div>
-          <OverlayDock className="pointer-events-none absolute inset-0" overlay={(dock) => <Konat portalTarget={dock} fixtures={fixtures} />}>
-            <p className="absolute right-16 bottom-8 m-0 translate-y-1/2 text-[13px] text-muted-foreground">Click the bubble, or press {toggleKeys}.</p>
+          <OverlayDock className="pointer-events-none absolute inset-x-0 top-10 bottom-0" overlay={(dock) => <Konat portalTarget={dock} fixtures={fixtures} />}>
+            <p className="absolute right-16 bottom-8 m-0 translate-y-1/2 text-[0.8rem] text-muted-foreground">Click the bubble, or press {toggleKeys}.</p>
           </OverlayDock>
         </TabsContent>
         <TabsContent value="code" tabIndex={-1} className="absolute inset-0">

@@ -37,7 +37,7 @@ function Node({ label, x, y, width }: Box) {
         textAnchor="middle"
         dominantBaseline="central"
         fill="var(--foreground)"
-        className="font-mono text-[13px]"
+        className="font-mono text-[0.8rem]"
       >
         {label}
       </text>

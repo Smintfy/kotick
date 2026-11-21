@@ -8,10 +8,12 @@ import { AdapterSwitch, useAdapter } from '@/components/docs/adapter-tabs';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Adapter } from '@/content/adapters';
-import { ReducerCheckout, XStateCheckout } from '@/demo/checkout/checkout';
 import { checkoutDemoFixtures } from '@/demo/checkout/example';
+import { Checkout as ReducerCheckout } from '@/demo/checkout/reducer/checkout';
+import { Checkout as XStateCheckout } from '@/demo/checkout/xstate/checkout';
 import { onboardingDemoFixtures } from '@/demo/onboarding/example';
-import { ReducerOnboarding, XStateOnboarding } from '@/demo/onboarding/onboarding';
+import { Onboarding as ReducerOnboarding } from '@/demo/onboarding/reducer/onboarding';
+import { Onboarding as XStateOnboarding } from '@/demo/onboarding/xstate/onboarding';
 import type { DemoId } from '@/site';
 
 const demos = {

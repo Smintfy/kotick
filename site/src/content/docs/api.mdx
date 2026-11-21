@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'API',
-  description: 'The props of <Konat />, the exports of konat/xstate and konat/reducer, and the exported types.',
+  description: 'The props of <Konat />, the exports of konat/reducer and konat/xstate, and the exported types.',
 };
 
 ## Props
@@ -50,54 +50,6 @@ The key is a value of `KeyboardEvent.key`, for example `s`, `f2` or `escape`. Th
 - The shortcut does nothing while the focus is in a text field.
 - konat ignores a shortcut that it cannot read, and logs a warning: `[konat] Ignoring the shortcut "…": expected something like "alt+s".`
 
-## Exports
-
-`konat/xstate` has these exports:
-
-| Export | What it is |
-|---|---|
-| `useMachine(machine, options?)` | Same as `@xstate/react`. Returns `[snapshot, send, actorRef]`. |
-| `useActor(logic, options?)` | Same as `@xstate/react`. Returns `[snapshot, send, actorRef]`. |
-| `useActorRef(logic, options?, observer?)` | Same as `@xstate/react`. Returns the actor. |
-| `createActorContext(logic, options?)` | Same as `@xstate/react`. Its `Provider` creates the actor. |
-| `useSelector(actor, selector, compare?)` | Same as `@xstate/react`. It works with each actor from this package. |
-| `shallowEqual` | A re-export of `@xstate/react`. |
-| `connect(actor, debug?)` | Registers an actor that you created outside React. Returns the actor to use in the app. |
-| `defineFixtures(machine, states)` | Makes a fixture set for `<Konat fixtures>`. |
-
-The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed.
-
-### The debug option
-
-The hooks and `createActorContext` accept one more option, `debug`. `connect()` takes the same object as its second argument.
-
-```ts
-type DebugOptions = {
-  id?: string;        // The machine id in the panel. The default is machine.id.
-  label?: string;     // The name of the instance in the panel.
-  disabled?: boolean; // Keep this actor out of konat.
-};
-
-const [snapshot, send] = useMachine(checkoutMachine, { input, debug: { label: 'Checkout (modal)' } });
-```
-
-In development, konat removes `debug` before the options get to XState. In production builds, the hooks are the hooks of `@xstate/react`, so XState also gets `debug`. XState keeps it in `actor.options` and does nothing with it.
-
-Give each machine an `id`. A machine without one has the XState default id `(machine)`. konat then makes an id from the states and context keys of the machine, and logs a warning once. That id changes when you add or remove states or context keys, so the previews and recordings of the machine do not carry over after such a change.
-
-### connect()
-
-`connect()` registers the actor immediately, and unregisters it when the actor is done, fails or stops. Use the actor that `connect()` returns everywhere in the app. Refer to [Actors outside React](/docs/install#actors-outside-react).
-
-`connect()` returns the actor unchanged, and does not register it, when:
-
-- The actor is not a machine actor, for example a promise actor.
-- The actor is done, failed or stopped.
-- `debug.disabled` is `true`.
-- The build is a production build.
-
-An actor that konat registered before does not register again. This includes an actor from `connect()`, an actor from a hook, and the real actor of either. `connect()` returns the proxy that the actor already has, with its first id and label. If the actor is from a hook and you give `id` or `label`, konat logs a warning.
-
 ## Reducer exports
 
 `konat/reducer` has these exports:
@@ -106,9 +58,9 @@ An actor that konat registered before does not register again. This includes an 
 |---|---|
 | `defineReducerMachine<State, Event, Input>()(definition)` | Declares a machine over your union of states and your union of events. Returns the machine. |
 | `useMachineReducer(machine, initial, options?)` | Runs a machine in a component. Returns `[state, dispatch]`, as `useReducer` does. |
-| `defineFixtures(machine, fixtures)` | Makes a fixture set for `<Konat fixtures>`. Each fixture is a state object of the state of its key. Refer to [Fixtures](/docs/fixtures#reducer-machines). |
+| `defineFixtures(machine, fixtures)` | Makes a fixture set for `<Konat fixtures>`. Each fixture is a state object of the state of its key. Refer to [Fixtures](/docs/fixtures#define-fixtures). |
 
-Refer to [Reducer machines](/docs/reducer) for the rules of a machine.
+Refer to [Define a machine](/docs/reducer#define-a-machine) for the rules of a machine, and to [useReducer](/docs/reducer) for a guide.
 
 ### defineReducerMachine()
 
@@ -116,7 +68,7 @@ The first call takes three type arguments: the union of states, the union of eve
 
 <PropsTable>
   <Prop name="id" type="string">
-    The machine id on the page. The panel, the recordings and the fixtures find the machine by it. The ids of XState machines and reducer machines share one namespace.
+    The machine id on the page. The panel, the recordings and the fixtures find the machine by it. The ids of reducer machines and XState machines share one namespace.
   </Prop>
   <Prop name="discriminant" type="keyof State">
     The key that holds the name of the state. Its value must be a string literal in each member of the union.
@@ -143,6 +95,54 @@ The third argument takes these options:
   </Prop>
 </PropsTable>
 
+## XState exports
+
+`konat/xstate` has these exports:
+
+| Export | What it is |
+|---|---|
+| `useMachine(machine, options?)` | Same as `@xstate/react`. Returns `[snapshot, send, actorRef]`. |
+| `useActor(logic, options?)` | Same as `@xstate/react`. Returns `[snapshot, send, actorRef]`. |
+| `useActorRef(logic, options?, observer?)` | Same as `@xstate/react`. Returns the actor. |
+| `createActorContext(logic, options?)` | Same as `@xstate/react`. Its `Provider` creates the actor. |
+| `useSelector(actor, selector, compare?)` | Same as `@xstate/react`. It works with each actor from this package. |
+| `shallowEqual` | A re-export of `@xstate/react`. |
+| `connect(actor, debug?)` | Registers an actor that you created outside React. Returns the actor to use in the app. |
+| `defineFixtures(machine, states)` | Makes a fixture set for `<Konat fixtures>`. |
+
+The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed. Refer to [XState](/docs/xstate) for a guide.
+
+### The debug option
+
+The hooks and `createActorContext` accept one more option, `debug`. `connect()` takes the same object as its second argument.
+
+```ts
+type DebugOptions = {
+  id?: string;        // The machine id in the panel. The default is machine.id.
+  label?: string;     // The name of the instance in the panel.
+  disabled?: boolean; // Keep this actor out of konat.
+};
+
+const [snapshot, send] = useMachine(checkoutMachine, { input, debug: { label: 'Checkout (modal)' } });
+```
+
+In development, konat removes `debug` before the options get to XState. In production builds, the hooks are the hooks of `@xstate/react`, so XState also gets `debug`. XState keeps it in `actor.options` and does nothing with it.
+
+Give each machine an `id`. A machine without one has the XState default id `(machine)`. konat then makes an id from the states and context keys of the machine, and logs a warning once. That id changes when you add or remove states or context keys, so the previews and recordings of the machine do not carry over after such a change.
+
+### connect()
+
+`connect()` registers the actor immediately, and unregisters it when the actor is done, fails or stops. Use the actor that `connect()` returns everywhere in the app. Refer to [Actors outside React](/docs/xstate#actors-outside-react).
+
+`connect()` returns the actor unchanged, and does not register it, when:
+
+- The actor is not a machine actor, for example a promise actor.
+- The actor is done, failed or stopped.
+- `debug.disabled` is `true`.
+- The build is a production build.
+
+An actor that konat registered before does not register again. This includes an actor from `connect()`, an actor from a hook, and the real actor of either. `connect()` returns the proxy that the actor already has, with its first id and label. If the actor is from a hook and you give `id` or `label`, konat logs a warning.
+
 ## Types
 
 `konat` exports these types:
@@ -155,14 +155,6 @@ The third argument takes these options:
 | `FixturesResult` | `readonly FixtureSet[]`, or a module whose default export is `readonly FixtureSet[]`, as `import()` gives it. |
 | `FixturesInput` | `readonly FixtureSet[]`, or a function that returns a `FixturesResult` or a promise of one. |
 
-`konat/xstate` exports these types:
-
-| Type | What it is |
-|---|---|
-| `DebugOptions` | The `debug` option of the hooks and the second argument of `connect()`. |
-| `FixtureStates<TMachine>` | The second argument of `defineFixtures()`: an optional `{ context }` for each leaf id. `context` has the context type of the machine. |
-| `LeafIdFrom<TMachine>` | The leaf ids of a machine as a union, for example `'cart' \| 'payment.error'`. It is `string` when TypeScript cannot know the states. |
-
 `konat/reducer` exports these types:
 
 | Type | What it is |
@@ -172,3 +164,11 @@ The third argument takes these options:
 | `MachineReducerOptions<Input>` | The options of `useMachineReducer()`: `{ input?: Input; debug?: { label?: string; disabled?: boolean } }`. |
 | `ReducerFixtures<State, Key>` | The second argument of `defineFixtures()`: an optional state object for each state name. Each one is a state of its own name. |
 | `CompleteFixtures<Machine>` | The `ReducerFixtures` of a machine, with a state object for every state. Check a set with `satisfies CompleteFixtures<typeof machine>`. |
+
+`konat/xstate` exports these types:
+
+| Type | What it is |
+|---|---|
+| `DebugOptions` | The `debug` option of the hooks and the second argument of `connect()`. |
+| `FixtureStates<TMachine>` | The second argument of `defineFixtures()`: an optional `{ context }` for each leaf id. `context` has the context type of the machine. |
+| `LeafIdFrom<TMachine>` | The leaf ids of a machine as a union, for example `'cart' \| 'payment.error'`. It is `string` when TypeScript cannot know the states. |

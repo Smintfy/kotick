@@ -94,34 +94,70 @@ function stringArrayAttribute(element: JsxElement, name: string): string[] {
   return strings;
 }
 
+/** The Markdown of each `<AdapterTab>` child, by adapter. */
+function adapterTabMarkdown(element: JsxElement, source: string): Map<string, string> {
+  const tabs = new Map<string, string>();
+
+  for (const child of element.children) {
+    if (child.type !== 'mdxJsxFlowElement' || child.name !== 'AdapterTab') continue;
+    const id = stringAttribute(child, 'adapter');
+
+    if (!adapters.some((adapter) => adapter.id === id)) {
+      throw new Error(`<AdapterTab> has the adapter "${id}", which is not in src/content/adapters.ts.`);
+    }
+
+    tabs.set(id, childrenMarkdown(child, source));
+  }
+
+  return tabs;
+}
+
 function adapterTabs(element: JsxElement, source: string): string {
-  return element.children
-    .flatMap((child) => {
-      if (child.type !== 'mdxJsxFlowElement' || child.name !== 'AdapterTab') return [];
-      const id = stringAttribute(child, 'adapter');
-      const adapter = adapters.find((candidate) => candidate.id === id);
+  const tabs = adapterTabMarkdown(element, source);
 
-      if (!adapter) throw new Error(`<AdapterTab> has the adapter "${id}", which is not in src/content/adapters.ts.`);
-
-      return [`With \`${adapter.entry}\`:\n\n${childrenMarkdown(child, source)}`];
-    })
+  return adapters
+    .flatMap(({ id, entry }) => (tabs.has(id) ? [`With \`${entry}\`:\n\n${tabs.get(id)}`] : []))
     .join('\n\n');
+}
+
+function installMarkdown(packages: string): string {
+  const [first, ...others] = packageManagers.map(({ add }) => `${add} ${packages}`);
+  const alternatives = others.map((command) => `\`${command}\``).join(', ');
+
+  return `\`\`\`bash\n${first}\n\`\`\`\n\nOther package managers: ${alternatives}.`;
 }
 
 const jsx = {
   AdapterTabs: adapterTabs,
-  InstallTabs: (element) => {
-    const packages = stringAttribute(element, 'packages');
-    const [first, ...others] = packageManagers.map(({ add }) => `${add} ${packages}`);
-    const alternatives = others.map((command) => `\`${command}\``).join(', ');
+  InstallTabs: (element, source) => {
+    const packages = optionalStringAttribute(element, 'packages');
 
-    return `\`\`\`bash\n${first}\n\`\`\`\n\nOther package managers: ${alternatives}.`;
+    if (packages !== undefined) return installMarkdown(packages);
+
+    const notes = adapterTabMarkdown(element, source);
+
+    return adapters
+      .map(({ id, entry }) =>
+        [`With \`${entry}\`:`, installMarkdown(stringAttribute(element, id)), notes.get(id)]
+          .filter((part) => part !== undefined)
+          .join('\n\n'),
+      )
+      .join('\n\n');
   },
   CheckoutDemo: () =>
     `The [checkout demo](${demoHref('checkout')}) runs the real overlay beside a checkout app, with a version for each adapter.`,
   ArchitectureDiagram: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
   Kbd: (element) => `\`${toString(element)}\``,
-  PanelFigure: (element) => `*Figure: ${stringAttribute(element, 'caption')}*`,
+  PanelFigure: (element) => {
+    const caption = optionalStringAttribute(element, 'caption');
+
+    if (caption !== undefined) return `*Figure: ${caption}*`;
+
+    return adapters
+      .map(({ id, entry }) => `With \`${entry}\`:\n\n*Figure: ${stringAttribute(element, `${id}Caption`)}*`)
+      .join('\n\n');
+  },
+  PageAdapterTabs: () => '',
   PropsTable: propsTable,
   Shortcut: (element) =>
     `\`${stringArrayAttribute(element, 'other').join('+')}\` (\`${stringAttribute(element, 'mac')}\` on macOS)`,
@@ -176,7 +212,11 @@ export function mdxToMarkdown(source: string): string {
 
       if (start === undefined || end === undefined) throw new Error(`The ${node.type} node has no position.`);
 
-      edits.push({ start, end, text });
+      // A block without text also takes the blank lines after it, so the copy has no gap.
+      const block = node.type === 'mdxJsxFlowElement' || node.type === 'mdxFlowExpression' || node.type === 'mdxjsEsm';
+      const gap = block && text === '' ? (/^\n*/.exec(source.slice(end))?.[0].length ?? 0) : 0;
+
+      edits.push({ start, end: end + gap, text });
 
       return;
     }

@@ -1,11 +1,11 @@
 import { costs } from '@/content/costs';
 
 export const metadata = {
-  title: 'Reducer machines',
-  description: 'Preview each state of a useReducer union in place.',
+  title: 'useReducer',
+  description: 'Declare a useReducer union as a machine through konat/reducer, and preview each state in place.',
 };
 
-If a component keeps a union of states in `useReducer`, declare the reducer as a machine. konat then lists every state of it and previews any state in place, as it does for XState machines.
+If a component keeps a union of states in `useReducer`, declare the reducer as a machine with `konat/reducer`. konat then lists every state of it and previews any state in place.
 
 ```ts
 import { defineFixtures, defineReducerMachine, useMachineReducer } from 'konat/reducer';
@@ -105,7 +105,7 @@ export const searchMachine = defineReducerMachine<SearchState, SearchEvent, Sear
 A machine has five rules. The types check rules 1 and 3, and each fixture of rule 2. The panel shows each state that has no data. Rules 4 and 5 are yours to follow.
 
 1. **One key, the `discriminant`, holds the name of the state.** `states` has one entry for each name. TypeScript checks the entries against your union, so a missing state, an extra state and a misspelled event do not compile.
-2. **A state needs data before it can preview.** A visit in the app records its state object, and `defineFixtures` takes a state object for each state that you list. A fixture is a whole state of its own name. To make the file fail when a state has no fixture, check the set with `satisfies CompleteFixtures<typeof machine>`. Refer to [Fixtures](/docs/fixtures#reducer-machines).
+2. **A state needs data before it can preview.** A visit in the app records its state object, and `defineFixtures` takes a state object for each state that you list. A fixture is a whole state of its own name. To make the file fail when a state has no fixture, check the set with `satisfies CompleteFixtures<typeof machine>`. Refer to [Fixtures](/docs/fixtures#define-fixtures).
 3. **Transitions are per state and per event.** A handler gets the state object of its state and the event of its type, and returns the next state. A state ignores the events that it does not list, and a handler that returns `state` ignores its event. A handler gets no input, because it must be pure, as a reducer is. `machine.reducer` is the plain reducer, for unit tests.
 4. **Effects are per state.** An `effect` starts after the commit that enters its state. Its cleanup runs after the commit that leaves the state, and when the component unmounts. A transition that keeps the name of the state keeps the effect running. A batch of events that leaves the state and enters it again also runs the cleanup and starts the effect again. After the cleanup, its `send` does nothing. React's rules for effects apply, so StrictMode starts the effect, runs its cleanup and starts it again when the component mounts. An effect gets `(state, send, input)`. `input()` returns the newest input that the component gave the hook, so an effect can call the router, a client from React context or a callback prop.
 5. **Async work is in the machine.** Start a request in the `effect` of a state, and give its result to `send`. During a preview, konat blocks each event that the component dispatches, and it does not replay the events after the release. So a click handler that does `dispatch({ type: 'SUBMIT' })`, then `await submitOrder()`, then `dispatch({ type: 'RESOLVE' })` loses `RESOLVE` if a preview is open when the response comes. After the release, the real state is `loading`, and it stays in `loading`. A component `useEffect` that sends the result has the same problem, and it also runs for a previewed state. konat never blocks the `send` of a machine effect, and a previewed state runs no machine effect.
@@ -143,7 +143,7 @@ Each component that calls the hook is one instance. Do not give `machine.reducer
 
 ## Previews
 
-When you select a state, the component gets a state object of that state in place of the real one. It does not mount again.
+The rules in [Previews](/docs/concepts#previews) apply. When you select a state, the component gets a state object of that state in place of the real one. It does not mount again.
 
 The state object comes from a recording or a fixture of the selected state. The live state object fits only the state that the machine is in, so **Live** is available only for that state. Thus, you cannot preview another state that has no recording and no fixture yet. The panel greys it out and names it under States.
 
@@ -159,7 +159,7 @@ Production builds keep `defineReducerMachine` and `useMachineReducer` as a small
 - `<Konat />` renders nothing in a production build, so your users never see the panel.
 - The runtime calls only built-in functions that every browser that runs React has, such as `Object.freeze` and `Object.is`. Its code uses ES2020 syntax, so a build for an older browser must transpile `konat`.
 
-Refer to [Production builds](/docs/production) for the bundle check that measures this.
+Refer to [Production](/docs/production) for the bundle check that measures this.
 
 ### The rules are public API
 
@@ -168,3 +168,9 @@ The rules above are public API. A change to a rule, to the arguments of a handle
 ### Remove konat
 
 To remove konat, write a reducer that picks the handler by the name of the state and the type of the event, and a `useEffect` that runs the effect of the state. The handlers and the effects are plain functions, so they move as they are.
+
+## How the adapter works
+
+**The adapter keeps the state in React.** `useMachineReducer` runs the reducer of the machine in React's `useReducer`, and runs the effect of the real state. In development, it also registers the instance, records its state object after each commit, and returns the state object of a preview in place of the real one.
+
+**A preview changes only the state object that the hook returns.** The real state stays in `useReducer`, and its effect continues to run. During a preview, `dispatch` logs each event in the panel, and the event does not get to the machine. The `send` of a machine effect goes to the real machine, also during a preview.

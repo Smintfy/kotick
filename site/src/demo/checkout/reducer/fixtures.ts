@@ -1,5 +1,5 @@
 import { type CompleteFixtures, defineFixtures } from 'konat/reducer';
-import { checkoutReducerMachine, initialCheckout, type Order } from '@/demo/checkout/reducer-machine';
+import { checkoutReducerMachine, initialCheckout, type Order } from '@/demo/checkout/reducer/machine';
 
 const order: Order = initialCheckout.order;
 

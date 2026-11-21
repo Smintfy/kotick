@@ -7,7 +7,7 @@ export const metadata = {
   <FaqItem id="machine-not-in-panel">
     <FaqQuestion>My machine is not in the panel. Why?</FaqQuestion>
     <FaqAnswer>
-      Make sure that `<Konat />` is mounted. For an XState machine, make sure that the component imports the hook from `konat/xstate`, not from `@xstate/react`. An actor that you create with `createActor()` must go through `connect()`. To find imports from `@xstate/react`, add a [lint rule](/docs/install#prevent-imports-from-xstatereact). For a reducer machine, make sure that the component calls `useMachineReducer`. A component that gives `machine.reducer` to `useReducer` is not listed. With either adapter, an instance with `debug: { disabled: true }` is not listed.
+      Make sure that `<Konat />` is mounted. For a reducer machine, make sure that the component calls `useMachineReducer`. A component that gives `machine.reducer` to `useReducer` is not listed. For an XState machine, make sure that the component imports the hook from `konat/xstate`, not from `@xstate/react`. An actor that you create with `createActor()` must go through `connect()`. To find imports from `@xstate/react`, add a [lint rule](/docs/xstate#prevent-imports-from-xstatereact). With either adapter, an instance with `debug: { disabled: true }` is not listed.
     </FaqAnswer>
   </FaqItem>
 
@@ -21,7 +21,7 @@ export const metadata = {
   <FaqItem id="preview-wrong-data">
     <FaqQuestion>Why does a preview show the wrong data?</FaqQuestion>
     <FaqAnswer>
-      The state of an XState machine had no recording and no fixture, so the preview uses the live context. The console shows a warning, and the state tree marks the state. Go to the state once in the real app, or write a [fixture](/docs/fixtures) for it. A reducer machine does not use the live context for another state. The panel greys out such a state until it has a recording or a fixture.
+      A reducer machine does not use the live context for another state. The panel greys out such a state until it has a recording or a fixture. For an XState machine, the state had no recording and no fixture, so the preview uses the live context. The console shows a warning, and the state tree marks the state. Go to the state once in the real app, or write a [fixture](/docs/fixtures) for it.
     </FaqAnswer>
   </FaqItem>
 
@@ -35,14 +35,14 @@ export const metadata = {
   <FaqItem id="use-reducer">
     <FaqQuestion>Does it work with `useReducer`?</FaqQuestion>
     <FaqAnswer>
-      Yes, through `konat/reducer`. Declare the reducer as a machine that names each state, and call `useMachineReducer` instead of `useReducer`. Refer to [Reducer machines](/docs/reducer).
+      Yes, through `konat/reducer`. Declare the reducer as a machine that names each state, and call `useMachineReducer` instead of `useReducer`. Refer to [useReducer](/docs/reducer).
     </FaqAnswer>
   </FaqItem>
 
   <FaqItem id="other-state-libraries">
     <FaqQuestion>Does it work with Zustand or other state libraries?</FaqQuestion>
     <FaqAnswer>
-      Not in this version. konat lists states that the UI never went to, so it needs a machine that declares its states. XState machines and reducer machines do. Support for other libraries is on the roadmap.
+      Not in this version. konat lists states that the UI never went to, so it needs a machine that declares its states. Reducer machines and XState machines do. Support for other libraries is on the roadmap.
     </FaqAnswer>
   </FaqItem>
 

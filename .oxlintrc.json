@@ -200,11 +200,11 @@
     },
     {
       // konat/figure is an entry of the workspace for the docs site, and no build has it.
-      // It runs XState machines in the real overlay, so it may import every library.
+      // It runs XState and reducer machines in the real overlay, so it may import every library and both adapters.
       "files": ["packages/konat/src/figure.tsx"],
       "rules": {
         "no-restricted-imports": ["error", { "patterns": [
-          { "group": ["./**", "../**", "!./components/**", "!./core/**", "!./types", "!./utils/**", "!./xstate/**"], "message": "konat/figure imports only the overlay, the core, types.ts, utils and the XState adapter, and never the reducer adapter or another entry." }
+          { "group": ["./**", "../**", "!./components/**", "!./core/**", "!./types", "!./utils/**", "!./xstate/**", "!./reducer/**"], "message": "konat/figure imports only the overlay, the core, types.ts, utils and the two adapters, and never another entry." }
         ] }]
       }
     },

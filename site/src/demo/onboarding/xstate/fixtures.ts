@@ -1,6 +1,6 @@
 import { defineFixtures } from 'konat/xstate';
 import { emptyAccount, takenWorkspace } from '@/demo/onboarding/account';
-import { type OnboardingContext, onboardingMachine } from '@/demo/onboarding/xstate-machine';
+import { type OnboardingContext, onboardingMachine } from '@/demo/onboarding/xstate/machine';
 
 const profile: OnboardingContext = { ...emptyAccount, name: 'Ada Lovelace' };
 

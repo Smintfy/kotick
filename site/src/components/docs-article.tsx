@@ -1,3 +1,4 @@
+import { PageAdapterTabsProvider } from '@/components/docs/adapter-tabs';
 import { PageActions } from '@/components/page-actions';
 import { Pager } from '@/components/pager';
 import { pageMarkdown } from '@/content/markdown';
@@ -8,13 +9,12 @@ export async function DocsArticle({ page }: { page: DocsPage }) {
     <>
       <article className="prose">
         <header className="mb-8">
-          <div className="flex items-center justify-between gap-4">
-            <h1>{page.title}</h1>
-            {page.markdownHref && <PageActions markdown={await pageMarkdown(page)} markdownHref={page.markdownHref} />}
-          </div>
-          <p className="mt-2 mb-4 text-muted-foreground">{page.description}</p>
+          <h1 className="mb-3">{page.title}</h1>
+          {page.markdownHref && <PageActions markdown={await pageMarkdown(page)} markdownHref={page.markdownHref} />}
         </header>
-        <page.Content />
+        <PageAdapterTabsProvider enabled={page.adapterTabs}>
+          <page.Content />
+        </PageAdapterTabsProvider>
       </article>
       <Pager href={page.href} />
     </>

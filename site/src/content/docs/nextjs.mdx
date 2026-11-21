@@ -25,7 +25,6 @@ export const metadata = {
   }
   ```
 
-- Call the hooks of `konat/xstate` and `createActorContext()` only in client components, as with `@xstate/react`.
 - Call `useMachineReducer` only in client components. A server component can import a machine file of `konat/reducer` and call `machine.reducer`, for example to make the initial state from the URL. Give that state to the client component as a prop:
 
   ```tsx
@@ -43,6 +42,7 @@ export const metadata = {
   }
   ```
 
+- Call the hooks of `konat/xstate` and `createActorContext()` only in client components, as with `@xstate/react`.
 - On the server, konat does nothing: the overlay renders nothing, and nothing registers. The overlay mounts after hydration, so it does not cause hydration errors.
 
 ## Root layout

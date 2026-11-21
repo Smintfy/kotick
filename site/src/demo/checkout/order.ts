@@ -1,5 +1,3 @@
-// The XState machine and the reducer machine use the same data, the same events and the same request.
-
 type Cents = number;
 
 export type LineItem = {

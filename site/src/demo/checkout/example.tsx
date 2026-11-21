@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useAdapter } from '@/components/docs/adapter-tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ReducerCheckout, XStateCheckout } from '@/demo/checkout/checkout';
-import { checkoutReducerFixtures } from '@/demo/checkout/reducer-fixtures';
-import { fixturesInEveryBuild } from '@/demo/checkout/xstate-fixtures';
-import { DemoWindow } from '@/demo/demo-window';
-import type { DemoSources } from '@/demo/source';
+import { Checkout as ReducerCheckout } from '@/demo/checkout/reducer/checkout';
+import { checkoutReducerFixtures } from '@/demo/checkout/reducer/fixtures';
+import { Checkout as XStateCheckout } from '@/demo/checkout/xstate/checkout';
+import { fixturesInEveryBuild } from '@/demo/checkout/xstate/fixtures';
+import { DemoWindow } from '@/components/demo/demo-window';
+import type { DemoSources } from '@/components/demo/source';
 
 export const checkoutDemoFixtures = [...fixturesInEveryBuild, checkoutReducerFixtures];
 
@@ -27,14 +28,14 @@ export function CheckoutExample({ fixturesHref, pageHref, sources }: CheckoutExa
     <>
       <p>
         A checkout page with the real overlay docked beside it. The panel lists the checkout machine and all of its
-        states, also the states that the page has not gone to. Select <strong>XState</strong> or{' '}
-        <strong>Reducer</strong> to see the same checkout with each adapter.
+        states, also the states that the page has not gone to. Select <strong>useReducer</strong> or{' '}
+        <strong>XState</strong> to see the same checkout with each adapter.
       </p>
       <CheckoutWindow href={pageHref} sources={sources} />
       <div className="prose">
         <ol>
           <li>
-            Click the bubble to open the panel. Select <strong>{xstate ? 'checkout' : 'checkout-reducer'}</strong>, then{' '}
+            Click the bubble to open the panel. Select <strong>{xstate ? 'checkout-xstate' : 'checkout-reducer'}</strong>, then{' '}
             <strong>error</strong>
             {xstate && (
               <>
@@ -98,7 +99,7 @@ export function CheckoutExample({ fixturesHref, pageHref, sources }: CheckoutExa
           This demo has a <Link href={fixturesHref}>fixture</Link> for each state, so each state has data for a
           preview.
         </p>
-        <p className="border-l-2 border-muted-foreground/30 px-4 py-3 text-[13px] text-muted-foreground">
+        <p className="border-l-2 border-muted-foreground/30 px-4 py-3 text-sm text-muted-foreground">
           This site builds konat in development mode for the demo. In your production build,{' '}
           <code>&lt;Konat /&gt;</code> renders nothing.
         </p>

@@ -5,8 +5,8 @@ export type OnboardingState =
   | { step: 'profile'; account: Account }
   | { step: 'role'; account: Account }
   | { step: 'workspace'; account: Account }
-  | { step: 'creating'; account: Account }
-  | { step: 'error'; account: Account; error: string }
+  | { step: 'creatingWorkspace'; account: Account }
+  | { step: 'workspaceFailed'; account: Account; error: string }
   | { step: 'invite'; account: Account }
   | { step: 'done'; account: Account };
 
@@ -36,14 +36,14 @@ export const onboardingReducerMachine = defineReducerMachine<OnboardingState, On
       on: {
         UPDATE_WORKSPACE: (state, event) => ({ step: 'workspace', account: { ...state.account, workspace: event.workspace } }),
         CREATE_WORKSPACE: (state) =>
-          state.account.workspace.trim() === '' ? state : { step: 'creating', account: state.account },
+          state.account.workspace.trim() === '' ? state : { step: 'creatingWorkspace', account: state.account },
         BACK: (state) => ({ step: 'role', account: state.account }),
       },
     },
-    creating: {
+    creatingWorkspace: {
       on: {
         CREATED: (state) => ({ step: 'invite', account: state.account }),
-        FAILED: (state, event) => ({ step: 'error', account: state.account, error: event.error }),
+        FAILED: (state, event) => ({ step: 'workspaceFailed', account: state.account, error: event.error }),
       },
       // The request runs in the machine, so a preview never blocks its result.
       effect: (state, send) => {
@@ -53,7 +53,7 @@ export const onboardingReducerMachine = defineReducerMachine<OnboardingState, On
         );
       },
     },
-    error: {
+    workspaceFailed: {
       on: {
         UPDATE_WORKSPACE: (state, event) => ({ step: 'workspace', account: { ...state.account, workspace: event.workspace } }),
         BACK: (state) => ({ step: 'role', account: state.account }),

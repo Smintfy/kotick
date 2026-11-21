@@ -1,40 +1,73 @@
 'use client';
 
 import type { FixtureSet } from 'konat';
-import { type FigurePage, KonatFigure } from 'konat/figure';
+import { type FigurePage, figureReducer, KonatFigure, type KonatFigureProps } from 'konat/figure';
+import { AdapterSwitch, useAdapter, useInlineSwitch } from '@/components/docs/adapter-tabs';
 import { OverlayDock } from '@/components/overlay-dock';
-import { checkoutMachine } from '@/demo/checkout/xstate-machine';
-import { fixturesInEveryBuild } from '@/demo/checkout/xstate-fixtures';
-import { onboardingMachine } from '@/demo/onboarding/xstate-machine';
-import { onboardingFixtures } from '@/demo/onboarding/xstate-fixtures';
+import type { Adapter } from '@/content/adapters';
+import { checkoutReducerFixtures } from '@/demo/checkout/reducer/fixtures';
+import { checkoutReducerMachine, initialCheckout } from '@/demo/checkout/reducer/machine';
+import { fixturesInEveryBuild } from '@/demo/checkout/xstate/fixtures';
+import { checkoutMachine } from '@/demo/checkout/xstate/machine';
+import { onboardingReducerFixtures } from '@/demo/onboarding/reducer/fixtures';
+import { initialOnboarding, onboardingReducerMachine } from '@/demo/onboarding/reducer/machine';
+import { onboardingFixtures } from '@/demo/onboarding/xstate/fixtures';
+import { onboardingMachine } from '@/demo/onboarding/xstate/machine';
 
-type PanelFigureProps = { caption: string; height?: number } & (
-  | { page: 'machines' | 'settings' }
-  | { page: 'machine'; machine: string; preview?: string }
+/** The machine id of each demo, for each adapter. */
+const demos = {
+  checkout: { reducer: checkoutReducerMachine.id, xstate: checkoutMachine.id },
+  onboarding: { reducer: onboardingReducerMachine.id, xstate: onboardingMachine.id },
+} satisfies Record<string, Record<Adapter, string>>;
+
+type PanelFigureProps = { height?: number } & (
+  | { page: 'machines' | 'settings'; caption: string }
+  | ({ page: 'machine'; demo: keyof typeof demos } & Record<`${Adapter}Preview` | `${Adapter}Caption`, string>)
 );
 
-const machines = [checkoutMachine, onboardingMachine];
+type Scene = Pick<KonatFigureProps, 'machines' | 'reducers' | 'fixtures'>;
 
-const leavesWithoutFixtures = new Set(['shipping.express', 'shipping.pickup']);
+/** The set without the fixtures of these leaves, so that the figure shows states with no data. */
+function withoutFixtures(set: FixtureSet, leaves: readonly string[]): FixtureSet {
+  return { ...set, states: Object.fromEntries(Object.entries(set.states).filter(([leaf]) => !leaves.includes(leaf))) };
+}
 
-const fixtures: FixtureSet[] = [
-  ...fixturesInEveryBuild.map((set) => ({
-    ...set,
-    states: Object.fromEntries(Object.entries(set.states).filter(([leaf]) => !leavesWithoutFixtures.has(leaf))),
-  })),
-  ...onboardingFixtures,
-];
+const scenes: Record<Adapter, Scene> = {
+  reducer: {
+    reducers: [figureReducer(checkoutReducerMachine, initialCheckout), figureReducer(onboardingReducerMachine, initialOnboarding)],
+    fixtures: [withoutFixtures(checkoutReducerFixtures, ['success']), onboardingReducerFixtures],
+  },
+  xstate: {
+    machines: [checkoutMachine, onboardingMachine],
+    fixtures: [
+      ...fixturesInEveryBuild.map((set) => withoutFixtures(set, ['shipping.express', 'shipping.pickup'])),
+      ...onboardingFixtures,
+    ],
+  },
+};
 
-function toPage(props: PanelFigureProps): FigurePage {
+/** The page and the caption of the figure, and the machines of the adapter when the page shows machines. */
+interface Figure {
+  page: FigurePage;
+  caption: string;
+  scene?: Scene;
+}
+
+function toFigure(props: PanelFigureProps, adapter: Adapter): Figure {
   switch (props.page) {
-    case 'machines':
     case 'settings':
-      return { kind: props.page };
+      return { page: { kind: 'settings' }, caption: props.caption };
+    case 'machines':
+      return { page: { kind: 'machines' }, caption: props.caption, scene: scenes[adapter] };
     case 'machine':
       return {
-        kind: 'machine',
-        machineId: props.machine,
-        preview: props.preview === undefined ? undefined : { leaves: [props.preview] },
+        page: {
+          kind: 'machine',
+          machineId: demos[props.demo][adapter],
+          preview: { leaves: [props[`${adapter}Preview` as const]] },
+        },
+        caption: props[`${adapter}Caption` as const],
+        scene: scenes[adapter],
       };
   }
 }
@@ -48,11 +81,18 @@ const panelInset = 16;
 const dockWidth = panelWidth + 2 * panelInset;
 
 export function PanelFigure(props: PanelFigureProps) {
-  const page = toPage(props);
+  const [adapter] = useAdapter();
+  const inline = useInlineSwitch();
+  const { page, caption, scene } = toFigure(props, adapter);
   const height = props.height ?? 400;
 
   return (
     <figure className="my-6">
+      {scene && inline && (
+        <div className="mb-2 flex justify-end">
+          <AdapterSwitch />
+        </div>
+      )}
       <div className="relative overflow-hidden rounded-2xl bg-card shadow-edge" style={{ height }}>
         <OverlayDock
           inert
@@ -60,9 +100,8 @@ export function PanelFigure(props: PanelFigureProps) {
           style={{ top: dockTop, width: dockWidth }}
           overlay={(dock) => (
             <KonatFigure
-              key={JSON.stringify(page)}
-              machines={machines}
-              fixtures={fixtures}
+              key={`${scene ? adapter : ''} ${JSON.stringify(page)}`}
+              {...scene}
               page={page}
               position="top-left"
               portalTarget={dock}
@@ -70,7 +109,7 @@ export function PanelFigure(props: PanelFigureProps) {
           )}
         />
       </div>
-      <figcaption className="mt-3 text-center text-xs text-muted-foreground">{props.caption}</figcaption>
+      <figcaption className="mt-3 text-center text-xs text-muted-foreground">{caption}</figcaption>
     </figure>
   );
 }

@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Pager } from '@/components/pager';
 import { CheckoutWindow } from '@/demo/checkout/example';
 import { OnboardingWindow } from '@/demo/onboarding/example';
-import { demoSources } from '@/demo/source';
+import { demoSources } from '@/components/demo/source';
 import { checkedHref, demoHref, type ExampleId, examplesPage } from '@/site';
 
 export const metadata: Metadata = { title: examplesPage.title, description: examplesPage.description };
@@ -14,8 +14,8 @@ export default function ExamplesPage() {
     checkout: (
       <>
         <p>
-          A checkout page. The XState machine has parallel regions for the cart, the shipping and the payment. The
-          reducer machine has one state for each step of the page. The payment sends a request that can fail.
+          A checkout page. The reducer machine has one state for each step of the page. The XState machine has
+          parallel regions for the cart, the shipping and the payment. The payment sends a request that can fail.
         </p>
         <CheckoutWindow href={demoHref('checkout')} sources={demoSources('checkout')} />
       </>
@@ -24,8 +24,8 @@ export default function ExamplesPage() {
       <>
         <p>
           An onboarding flow in four steps. Each step is a state of the onboarding machine. Step 3 sends a request
-          that can fail. The XState machine keeps the states of the request under <code>workspace</code>, and the
-          reducer machine has a state of its own for each of them.
+          that can fail. The reducer machine has a state of its own for each state of the request, and the XState
+          machine keeps them under <code>workspace</code>.
         </p>
         <OnboardingWindow href={demoHref('onboarding')} sources={demoSources('onboarding')} />
       </>
@@ -37,11 +37,10 @@ export default function ExamplesPage() {
       <article className="prose">
         <header className="mb-8">
           <h1>{examplesPage.title}</h1>
-          <p className="mt-2 mb-4 text-muted-foreground">{examplesPage.description}</p>
         </header>
         <p>
-          Each demo is one app with a version for each adapter. Select <strong>XState</strong> or{' '}
-          <strong>Reducer</strong> above it to change the version. The panel then lists the machine of that version.
+          Each demo is one app with a version for each adapter. Select <strong>useReducer</strong> or{' '}
+          <strong>XState</strong> above it to change the version. The panel then lists the machine of that version.
         </p>
         <p>
           The Code tab of each demo shows its component, its machine and its fixtures, each in a file. The demos

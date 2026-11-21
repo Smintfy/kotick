@@ -47,10 +47,10 @@ export function Toc({ items, scrollRootId }: { items: readonly NavItem[]; scroll
     <aside className="sticky top-0 max-h-full overflow-y-auto py-10 pr-8 max-xl:hidden">
       {headings.length > 0 && (
         <nav aria-labelledby="toc-title">
-          <h2 id="toc-title" className="m-0 mb-3 text-[13px]">
+          <h2 id="toc-title" className="m-0 mb-3 text-[0.8rem]">
             On this page
           </h2>
-          <ul className="border-l text-[13px]">
+          <ul className="border-l text-[0.8rem]">
             {headings.map((heading) => (
               <li key={heading.id}>
                 <a

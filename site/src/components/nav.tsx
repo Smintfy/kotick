@@ -37,7 +37,7 @@ export function Nav({ sections, version }: { sections: readonly NavSection[]; ve
       <SidebarContent role="navigation" aria-label="Docs" className="scroll-fade-y gap-6 px-2 pt-4 pb-10">
         {sections.map((section) => (
           <SidebarGroup key={section.title} className="py-0">
-            <SidebarGroupLabel className="mb-1 h-auto px-3 text-[13px] font-normal text-muted-foreground">
+            <SidebarGroupLabel className="mb-1 h-auto px-3 text-[0.8rem] font-normal text-muted-foreground">
               {section.title}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -51,7 +51,7 @@ export function Nav({ sections, version }: { sections: readonly NavSection[]; ve
                         size="sm"
                         isActive={current}
                         render={<Link href={item.href} aria-current={current ? 'page' : undefined} />}
-                        className="h-7.5 px-3 text-[13px] font-medium text-secondary-foreground transition-[background-color] duration-120 ease-[ease] hover:bg-muted active:bg-muted data-active:hover:bg-accent motion-reduce:transition-none"
+                        className="h-7.5 px-3 text-[0.8rem] font-medium text-secondary-foreground transition-[background-color] duration-120 ease-[ease] hover:bg-muted active:bg-muted data-active:hover:bg-accent motion-reduce:transition-none"
                         onClick={() => setOpenMobile(false)}
                       >
                         <span>{item.title}</span>

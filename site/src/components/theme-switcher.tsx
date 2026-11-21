@@ -32,7 +32,7 @@ export function ThemeSwitcher() {
       <DropdownMenuContent side="top" className="w-32">
         <DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
           {themes.map(({ value, label, Icon }) => (
-            <DropdownMenuRadioItem key={value} value={value} closeOnClick className="text-[13px]">
+            <DropdownMenuRadioItem key={value} value={value} closeOnClick>
               <Icon />
               {label}
             </DropdownMenuRadioItem>
