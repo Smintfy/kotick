@@ -202,9 +202,9 @@ importers:
       '@xstate/react':
         specifier: 'catalog:'
         version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.2)
-      shiru:
+      konat:
         specifier: workspace:*
-        version: link:../../packages/shiru
+        version: link:../../packages/konat
       react:
         specifier: 'catalog:'
         version: 19.3.0
@@ -239,9 +239,9 @@ importers:
       '@xstate/react':
         specifier: 'catalog:'
         version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.2)
-      shiru:
+      konat:
         specifier: workspace:*
-        version: link:../../packages/shiru
+        version: link:../../packages/konat
       next:
         specifier: ^16.4.6
         version: 16.4.6(@babel/core@7.29.7)(@types/node@24.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -273,9 +273,9 @@ importers:
       '@xstate/react':
         specifier: 'catalog:'
         version: 6.1.0(@types/react@19.3.0)(react@19.3.0)(xstate@5.33.2)
-      shiru:
+      konat:
         specifier: workspace:*
-        version: link:../../packages/shiru
+        version: link:../../packages/konat
       react:
         specifier: 'catalog:'
         version: 19.3.0
@@ -308,7 +308,7 @@ importers:
         specifier: ^8.3.4
         version: 8.3.4(@types/node@24.19.2)(jiti@2.7.0)
 
-  packages/shiru:
+  packages/konat:
     devDependencies:
       '@tailwindcss/node':
         specifier: ^4.3.3
@@ -388,9 +388,9 @@ importers:
       github-slugger:
         specifier: ^2.0.0
         version: 2.0.0
-      shiru:
+      konat:
         specifier: workspace:*
-        version: link:../packages/shiru
+        version: link:../packages/konat
       lucide-react:
         specifier: ^1.61.0
         version: 1.61.0(@types/react@19.3.0)(react@19.3.0)

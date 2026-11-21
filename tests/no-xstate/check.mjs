@@ -1,7 +1,7 @@
-// The builds of an app that installs shiru without XState.
-// tests/bundles/check.mjs installs a copy of this fixture with the tarball of shiru, and runs each build on it.
+// The builds of an app that installs konat without XState.
+// tests/bundles/check.mjs installs a copy of this fixture with the tarball of konat, and runs each build on it.
 // The other fixture and every combination of the test matrix install xstate and @xstate/react.
-// So only this fixture shows that an app of shiru and shiru/reducer installs, type-checks and builds without them.
+// So only this fixture shows that an app of konat and konat/reducer installs, type-checks and builds without them.
 
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';

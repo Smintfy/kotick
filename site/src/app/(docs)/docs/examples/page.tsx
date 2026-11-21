@@ -45,7 +45,7 @@ export default function ExamplesPage() {
         <p>
           The Code tab of each demo shows its component, its machine and its fixtures, each in a file. The demos
           give the fixtures to{' '}
-          <code>&lt;Shiru /&gt;</code> as an array, so the fixtures are in each build of this site. In your app, use a
+          <code>&lt;Konat /&gt;</code> as an array, so the fixtures are in each build of this site. In your app, use a
           loader with a development condition. Refer to{' '}
           <Link href={checkedHref('/docs/fixtures#define-fixtures')}>Define fixtures</Link>.
         </p>

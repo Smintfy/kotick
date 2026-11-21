@@ -20,7 +20,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         <Nav sections={navSections} />
         <SidebarInset className="h-svh">
           <header className="flex h-bar shrink-0 items-center justify-between border-b bg-background px-4 md:hidden">
-            <Link href="/" aria-label="shiru home" className="rounded-sm">
+            <Link href="/" aria-label="konat home" className="rounded-sm">
               <Logo className="size-5" />
             </Link>
             <SidebarTrigger className="-mr-1.5" />

@@ -1,9 +1,9 @@
 'use client';
 
-// Uses every runtime export of shiru/reducer, with src/reducer-machine.ts, as an app does.
+// Uses every runtime export of konat/reducer, with src/reducer-machine.ts, as an app does.
 // The production build must keep only a small runtime over src/reducer-baseline.tsx.
 
-import { useMachineReducer } from 'shiru/reducer';
+import { useMachineReducer } from 'konat/reducer';
 import { toggleReducerMachine } from './reducer-machine';
 
 export function ReducerDemo() {

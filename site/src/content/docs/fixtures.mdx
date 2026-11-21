@@ -9,15 +9,15 @@ Fixtures give context to states that you have not recorded yet, such as an error
 
 ## Define fixtures
 
-Put them in a file of their own, and give `<Shiru />` a loader for that file. Each adapter exports its own `defineFixtures`:
+Put them in a file of their own, and give `<Konat />` a loader for that file. Each adapter exports its own `defineFixtures`:
 
 <AdapterTabs>
   <AdapterTab adapter="reducer">
-    `defineFixtures` from `shiru/reducer` takes a state object for each state that you list. A fixture is a whole state of its own name, so its discriminant is the name of its key:
+    `defineFixtures` from `konat/reducer` takes a state object for each state that you list. A fixture is a whole state of its own name, so its discriminant is the name of its key:
 
     ```ts
     // src/debug/fixtures.ts
-    import { defineFixtures, type CompleteFixtures } from 'shiru/reducer';
+    import { defineFixtures, type CompleteFixtures } from 'konat/reducer';
     import { searchMachine } from '@/machines/search';
 
     export default [
@@ -33,11 +33,11 @@ Put them in a file of their own, and give `<Shiru />` a loader for that file. Ea
   </AdapterTab>
 
   <AdapterTab adapter="xstate">
-    `defineFixtures` from `shiru/xstate` takes a `context` for each leaf that you list:
+    `defineFixtures` from `konat/xstate` takes a `context` for each leaf that you list:
 
     ```ts
     // src/debug/fixtures.ts
-    import { defineFixtures } from 'shiru/xstate';
+    import { defineFixtures } from 'konat/xstate';
     import { checkoutMachine } from '@/machines/checkout';
 
     const items = [{ id: 'sku_1', name: 'Linen tote', price: 2400, qty: 2 }];
@@ -60,24 +60,24 @@ The loader has a development condition. The condition removes the fixtures, and 
 In Vite:
 
 ```tsx
-import { Shiru } from 'shiru';
+import { Konat } from 'konat';
 
 const fixtures = import.meta.env.DEV ? () => import('@/debug/fixtures') : undefined;
 
 export function DevTools() {
-  return <Shiru fixtures={fixtures} />;
+  return <Konat fixtures={fixtures} />;
 }
 ```
 
 In Next.js and other bundlers:
 
 ```tsx
-import { Shiru } from 'shiru';
+import { Konat } from 'konat';
 
 const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
 
 export function DevTools() {
-  return <Shiru fixtures={fixtures} />;
+  return <Konat fixtures={fixtures} />;
 }
 ```
 
@@ -92,7 +92,7 @@ These rules apply to both adapters:
 - A fixture set applies to each instance of its machine.
 - The loader runs after the page loads.
 - You can give an array of sets in place of a loader. Then the sets are in your main bundle, also in production. Use a loader with a development check to keep them out.
-- `shiru/reducer` and `shiru/xstate` both export `defineFixtures`. A file with sets for both adapters imports one of them with another name, for example `import { defineFixtures as defineReducerFixtures } from 'shiru/reducer'`.
+- `konat/reducer` and `konat/xstate` both export `defineFixtures`. A file with sets for both adapters imports one of them with another name, for example `import { defineFixtures as defineReducerFixtures } from 'konat/reducer'`.
 
 Each adapter adds rules of its own:
 

@@ -27,7 +27,7 @@ As a machine, the same flow is:
     The state is a union with one key, `status`, that holds the name of the state. The request is the `effect` of `loading`, and it sends `DONE` or `FAIL`:
 
     ```ts
-    import { defineReducerMachine } from 'shiru/reducer';
+    import { defineReducerMachine } from 'konat/reducer';
 
     type OrdersState =
       | { status: 'idle' }
@@ -120,21 +120,21 @@ A state machine puts these rules in one place. The [orders machine](/docs/concep
 - **The state is one value.** The machine is in `idle`, `loading`, `success` or `failure`. Two states cannot be true at the same time.
 - **Each state lists its events.** `loading` does not accept `LOAD`. Thus, the handler does not need an `if`, and a second click does nothing.
 - **The UI shows each state.** The page shows the error only in the `failure` state. An old error cannot stay on the page during `loading`.
-- **The states are in the code.** You can read the full list, draw it, and do a test of each state. shiru reads the same list to show each state in the panel and to preview it. With flags, no tool can know which states exist.
+- **The states are in the code.** You can read the full list, draw it, and do a test of each state. konat reads the same list to show each state in the panel and to preview it. With flags, no tool can know which states exist.
 
 A component with one flag, such as a menu that is open or closed, does not need a machine. Use a machine when a component has three or more states. Also use one when an event is correct in one state but not in others.
 
 ## Machines and instances
 
-An instance is one copy of a machine that runs in the app. With `shiru/reducer`, each component that calls `useMachineReducer` is an instance, and the real state stays in React's `useReducer`. With `shiru/xstate`, each actor is an instance. XState makes an actor when the app starts a machine. The actor runs the machine and keeps its current state.
+An instance is one copy of a machine that runs in the app. With `konat/reducer`, each component that calls `useMachineReducer` is an instance, and the real state stays in React's `useReducer`. With `konat/xstate`, each actor is an instance. XState makes an actor when the app starts a machine. The actor runs the machine and keeps its current state.
 
 The panel groups the instances by machine id, such as `checkout`. Each instance of a machine has a number: `checkout · 1`, `checkout · 2`. A list with one machine per row has one instance for each row.
 
-One registry holds the instances of both adapters, so the machine ids of `shiru/reducer` and `shiru/xstate` share one namespace. Give each machine an id that no other machine on the page has. Two machines with one id show as one machine in the panel, and they share recordings and fixtures.
+One registry holds the instances of both adapters, so the machine ids of `konat/reducer` and `konat/xstate` share one namespace. Give each machine an id that no other machine on the page has. Two machines with one id show as one machine in the panel, and they share recordings and fixtures.
 
 ## Leaf ids
 
-A state without child states is a leaf. You preview a leaf, and shiru identifies it by its leaf id:
+A state without child states is a leaf. You preview a leaf, and konat identifies it by its leaf id:
 
 - **In a reducer machine, the states are flat.** Each state is a leaf, and its leaf id is its name, such as `loading`.
 - **In an XState machine, a state can contain child states.** The leaf id is the dot path to the leaf, such as `payment.error`. Refer to [Nested and parallel states](/docs/xstate#nested-and-parallel-states).
@@ -155,21 +155,21 @@ Events that the UI sends to a previewed instance do not get to the machine. The 
 
 ## Context for a preview
 
-A machine keeps data with its state, such as the items in a cart. XState calls this data context. In a reducer machine, the context of a state is the whole state object, so the states of a union do not share context. A preview needs context, and shiru looks for it in this sequence:
+A machine keeps data with its state, such as the items in a cart. XState calls this data context. In a reducer machine, the context of a state is the whole state object, so the states of a union do not share context. A preview needs context, and konat looks for it in this sequence:
 
-1. **Recorded:** the last context that the real instance had in this state. shiru records it on each transition and keeps it in `sessionStorage`, so it is still there after a reload.
+1. **Recorded:** the last context that the real instance had in this state. konat records it on each transition and keeps it in `sessionStorage`, so it is still there after a reload.
 2. **Fixture:** context that you wrote with `defineFixtures()`. See [Fixtures](/docs/fixtures).
-3. **Live:** the current context of the real instance. It fits the state that the instance is in, and often does not agree with other states. A reducer machine uses it only for its current state. An XState machine uses it for each state, and shiru logs a warning.
+3. **Live:** the current context of the real instance. It fits the state that the instance is in, and often does not agree with other states. A reducer machine uses it only for its current state. An XState machine uses it for each state, and konat logs a warning.
 
 The state tree marks each state with the data it has. In the panel, you can change the source of the context for each preview.
 
 ## Choose an adapter
 
-shiru has an adapter for each kind of machine. Neither is the default, and an app can use both. Use the adapter that fits the code that you have:
+konat has an adapter for each kind of machine. Neither is the default, and an app can use both. Use the adapter that fits the code that you have:
 
-| | `shiru/reducer` | `shiru/xstate` |
+| | `konat/reducer` | `konat/xstate` |
 |---|---|---|
-| Install | `shiru` | `shiru`, `xstate` and `@xstate/react` |
+| Install | `konat` | `konat`, `xstate` and `@xstate/react` |
 | The state | A union of state objects. One key holds the name of the state. | An XState snapshot, with a `value` and a `context`. |
 | Nested and parallel states | No. The states are flat. | Yes |
 | Production builds keep | A small runtime that runs your transitions and effects | The hooks of `@xstate/react` |
@@ -179,16 +179,16 @@ shiru has an adapter for each kind of machine. Neither is the default, and an ap
 
 `pnpm check:bundles` in the repository measures the sizes, in gzip, with esbuild and Vite.
 
-## How shiru works
+## How konat works
 
-shiru has three parts: an adapter for each kind of machine, a registry for the page, and the overlay. The adapters are `shiru/reducer` and `shiru/xstate`. Each adapter page tells how its adapter works: [useReducer](/docs/reducer#how-the-adapter-works) and [XState](/docs/xstate#how-the-adapter-works).
+konat has three parts: an adapter for each kind of machine, a registry for the page, and the overlay. The adapters are `konat/reducer` and `konat/xstate`. Each adapter page tells how its adapter works: [useReducer](/docs/reducer#how-the-adapter-works) and [XState](/docs/xstate#how-the-adapter-works).
 
-**One registry holds the instances of the page.** Each component that calls `useMachineReducer`, and each proxy of an XState actor, registers under a machine id and an instance id. The machine id is `machine.id`. For an XState machine, `debug.id` replaces it if you set it. The registry is on `globalThis`, so all React roots and all copies of shiru on the page use the same registry. On the server, the registry does nothing, because one server process renders the pages of many users.
+**One registry holds the instances of the page.** Each component that calls `useMachineReducer`, and each proxy of an XState actor, registers under a machine id and an instance id. The machine id is `machine.id`. For an XState machine, `debug.id` replaces it if you set it. The registry is on `globalThis`, so all React roots and all copies of konat on the page use the same registry. On the server, the registry does nothing, because one server process renders the pages of many users.
 
-**The list of states comes from the machine.** shiru reads the states of the machine one time and keeps the tree. Thus, the panel can show the states that the app never went to. Each state of a reducer machine is a leaf. In an XState machine, each atomic or final state is a leaf. You can preview each leaf.
+**The list of states comes from the machine.** konat reads the states of the machine one time and keeps the tree. Thus, the panel can show the states that the app never went to. Each state of a reducer machine is a leaf. In an XState machine, each atomic or final state is a leaf. You can preview each leaf.
 
-**Context comes from recordings, fixtures or the live instance.** shiru records the context of each instance in memory, under its set of leaves. Each 500 ms, it writes a JSON copy of the recordings to `sessionStorage`. The limits are 50 sets of leaves for each machine, 100,000 characters for each context, and 1,000,000 characters in total. The copy does not have functions. A context that JSON cannot copy correctly, for example one with an actor ref, stays only in memory. A preview uses the recording of the same set of leaves. If there is none, it uses the most recent recording that has a selected leaf. If there is no recording, it uses a [fixture](/docs/fixtures), and then the live context, as [Context for a preview](/docs/concepts#context-for-a-preview) describes.
+**Context comes from recordings, fixtures or the live instance.** konat records the context of each instance in memory, under its set of leaves. Each 500 ms, it writes a JSON copy of the recordings to `sessionStorage`. The limits are 50 sets of leaves for each machine, 100,000 characters for each context, and 1,000,000 characters in total. The copy does not have functions. A context that JSON cannot copy correctly, for example one with an actor ref, stays only in memory. A preview uses the recording of the same set of leaves. If there is none, it uses the most recent recording that has a selected leaf. If there is no recording, it uses a [fixture](/docs/fixtures), and then the live context, as [Context for a preview](/docs/concepts#context-for-a-preview) describes.
 
-**The overlay renders in a shadow root.** `<Shiru />` adds a `<div data-shiru-root>` to `document.body`, or to `portalTarget`. It attaches a shadow root to the `div`, puts the CSS of the overlay in it, and renders the panel there with a React portal. The CSS of the page and the CSS of the overlay cannot change each other. shiru adds the `div` in a layout effect, after hydration. Thus, the server renders nothing.
+**The overlay renders in a shadow root.** `<Konat />` adds a `<div data-konat-root>` to `document.body`, or to `portalTarget`. It attaches a shadow root to the `div`, puts the CSS of the overlay in it, and renders the panel there with a React portal. The CSS of the page and the CSS of the overlay cannot change each other. konat adds the `div` in a layout effect, after hydration. Thus, the server renders nothing.
 
-**Production builds keep none of the debugger.** Each hook of an adapter is `process.env.NODE_ENV !== 'production' ? <development version> : <production version>`. The bundler replaces `process.env.NODE_ENV` with `"production"` and removes the branch that cannot run. The package sets `"sideEffects": false`, so the bundler also removes the modules that nothing imports. `<Shiru />` becomes a component that returns `null`.
+**Production builds keep none of the debugger.** Each hook of an adapter is `process.env.NODE_ENV !== 'production' ? <development version> : <production version>`. The bundler replaces `process.env.NODE_ENV` with `"production"` and removes the branch that cannot run. The package sets `"sideEffects": false`, so the bundler also removes the modules that nothing imports. `<Konat />` becomes a component that returns `null`.

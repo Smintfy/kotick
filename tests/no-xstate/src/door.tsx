@@ -1,6 +1,6 @@
 'use client';
 
-import { defineReducerMachine, useMachineReducer } from 'shiru/reducer';
+import { defineReducerMachine, useMachineReducer } from 'konat/reducer';
 
 type DoorState = { status: 'closed' } | { status: 'opening' } | { status: 'open'; openedAt: number };
 

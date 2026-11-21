@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMachineReducer } from 'shiru/reducer';
+import { useMachineReducer } from 'konat/reducer';
 import { formatPrice } from '@/lib/format.ts';
 import { useRenderStats } from '@/lib/renderStats.ts';
 import { searchProducts } from '@/lib/searchProducts.ts';

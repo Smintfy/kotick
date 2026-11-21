@@ -1,4 +1,4 @@
-import { useMachine } from 'shiru/xstate';
+import { useMachine } from 'konat/xstate';
 import { formatPrice } from '@/lib/format.ts';
 import { useRenderStats } from '@/lib/renderStats.ts';
 import { checkoutMachine, type CheckoutEvent } from '@/machines/checkout.ts';

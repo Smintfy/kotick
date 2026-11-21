@@ -1,5 +1,5 @@
-import { defineFixtures as defineReducerFixtures } from 'shiru/reducer';
-import { defineFixtures } from 'shiru/xstate';
+import { defineFixtures as defineReducerFixtures } from 'konat/reducer';
+import { defineFixtures } from 'konat/xstate';
 import { toggleReducerMachine } from './reducer-machine';
 import { toggleMachine } from './toggle';
 

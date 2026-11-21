@@ -1,6 +1,6 @@
-import { Shiru } from 'shiru';
-import { useMachineReducer } from 'shiru/reducer';
-import { useMachine } from 'shiru/xstate';
+import { Konat } from 'konat';
+import { useMachineReducer } from 'konat/reducer';
+import { useMachine } from 'konat/xstate';
 import { downloadMachine } from '@/download.ts';
 import { playerMachine } from '@/player.ts';
 
@@ -66,7 +66,7 @@ export function App() {
 
       <Download />
 
-      <Shiru />
+      <Konat />
     </>
   );
 }

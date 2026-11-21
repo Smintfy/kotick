@@ -2,7 +2,7 @@
 
 import { RotateCcw, SquareArrowOutUpRight } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useState } from 'react';
-import { type FixturesInput, Shiru } from 'shiru';
+import { type FixturesInput, Konat } from 'konat';
 import { CopyButton } from '@/components/copy-button';
 import { AdapterSwitch, useAdapter } from '@/components/docs/adapter-tabs';
 import { barTab } from '@/components/docs/bar-tab';
@@ -79,7 +79,7 @@ export function DemoWindow({ apps, fixtures, href, sources }: DemoWindowProps) {
           <div key={run} className="mx-auto flex w-full max-w-[360px] flex-1 flex-col">
             {apps[adapter]}
           </div>
-          <OverlayDock className="pointer-events-none absolute inset-x-0 top-10 bottom-0" overlay={(dock) => <Shiru portalTarget={dock} fixtures={fixtures} />}>
+          <OverlayDock className="pointer-events-none absolute inset-x-0 top-10 bottom-0" overlay={(dock) => <Konat portalTarget={dock} fixtures={fixtures} />}>
             <p className="absolute right-16 bottom-8 m-0 translate-y-1/2 text-[0.8rem] text-muted-foreground">Click the bubble, or press {toggleKeys}.</p>
           </OverlayDock>
         </TabsContent>
