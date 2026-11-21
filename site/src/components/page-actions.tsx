@@ -18,21 +18,21 @@ function MarkdownIcon({ className }: { className?: string }) {
 const action = 'font-normal text-muted-foreground';
 
 export function PageActions({
-  markdown,
+  copy,
   markdownHref,
   repoHref,
 }: {
-  markdown: string;
+  copy: { label: string; text: string };
   markdownHref: string;
   repoHref: string;
 }) {
-  const { copied, copy } = useCopy();
+  const { copied, copy: copyText } = useCopy();
 
   return (
     <div className="-ml-2.5 flex flex-wrap items-center gap-1">
-      <Button variant="ghost" size="sm" className={action} onClick={() => copy(markdown)}>
+      <Button variant="ghost" size="sm" className={action} onClick={() => copyText(copy.text)}>
         {copied ? <Check /> : <Copy />}
-        Copy page
+        {copy.label}
         <span className="sr-only" aria-live="polite">
           {copied ? 'Copied' : ''}
         </span>

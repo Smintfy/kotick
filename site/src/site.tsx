@@ -1,5 +1,6 @@
 import 'server-only';
 import type { MDXContent } from 'mdx/types';
+import * as agentSkill from '@/content/docs/agent-skill.mdx';
 import * as api from '@/content/docs/api.mdx';
 import * as concepts from '@/content/docs/concepts.mdx';
 import * as faq from '@/content/docs/faq.mdx';
@@ -39,6 +40,7 @@ const docs = [
   ['troubleshooting', troubleshooting],
   ['limitations', limitations],
   ['faq', faq],
+  ['agent-skill', agentSkill],
 ] as const;
 
 type DocsSlug = (typeof docs)[number][0];
@@ -125,7 +127,7 @@ export const navSections: readonly NavSection[] = [
   },
   {
     title: 'Reference',
-    items: [docsItem('api'), docsItem('panel'), docsItem('troubleshooting'), docsItem('limitations'), docsItem('faq')],
+    items: [docsItem('api'), docsItem('panel'), docsItem('troubleshooting'), docsItem('limitations'), docsItem('faq'), docsItem('agent-skill')],
   },
 ];
 

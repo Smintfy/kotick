@@ -11,6 +11,7 @@ import { unified } from 'unified';
 import { adapters } from '@/content/adapters';
 import { costs } from '@/content/costs';
 import { packageManagers } from '@/content/package-managers';
+import { skill } from '@/content/skill';
 import { demoHref } from '@/site';
 
 type JsxElement = MdxJsxFlowElement | MdxJsxTextElement;
@@ -233,4 +234,14 @@ export async function pageMarkdown(page: { slug: string; title: string; descript
   const source = await readFile(path.join(process.cwd(), 'src/content/docs', `${page.slug}.mdx`), 'utf8');
 
   return `# ${page.title}\n\n${page.description}\n\n${mdxToMarkdown(source)}\n`;
+}
+
+/** The SKILL.md of the skill page: the frontmatter, then the text after the MDX comment that says SKILL.md. */
+export async function skillMarkdown(): Promise<string> {
+  const source = await readFile(path.join(process.cwd(), 'src/content/docs/agent-skill.mdx'), 'utf8');
+  const [, body, ...others] = source.split('{/* SKILL.md */}');
+
+  if (body === undefined || others.length > 0) throw new Error('src/content/docs/agent-skill.mdx must have one {/* SKILL.md */} comment.');
+
+  return `---\nname: ${skill.name}\ndescription: ${skill.description}\n---\n\n# ${skill.name}\n\n${mdxToMarkdown(body)}\n`;
 }
