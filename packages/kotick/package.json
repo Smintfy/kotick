@@ -5,11 +5,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Smintfy/konat.git",
+    "url": "git+https://github.com/Smintfy/kotick.git",
     "directory": "packages/kotick"
   },
-  "homepage": "https://github.com/Smintfy/konat#readme",
-  "bugs": "https://github.com/Smintfy/konat/issues",
+  "homepage": "https://github.com/Smintfy/kotick#readme",
+  "bugs": "https://github.com/Smintfy/kotick/issues",
   "keywords": ["react", "xstate", "usereducer", "state-machine", "devtools", "debugger"],
   "type": "module",
   "sideEffects": false,
