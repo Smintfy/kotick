@@ -21,7 +21,7 @@ const logos: Record<Adapter, ComponentType<{ className?: string }>> = {
 };
 
 // One choice for the whole site, so each tab group and each demo shows the adapter that the reader selected last.
-const storageKey = 'konat-docs:adapter';
+const storageKey = 'kotick-docs:adapter';
 const listeners = new Set<() => void>();
 let chosen: Adapter | undefined;
 

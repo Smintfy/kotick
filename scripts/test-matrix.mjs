@@ -1,4 +1,4 @@
-// Runs the konat test suite against other versions of React, XState and @xstate/react.
+// Runs the kotick test suite against other versions of React, XState and @xstate/react.
 // The workspace installs one version of each, so every combination gets a copy of the package in a temporary
 // directory with its own install.
 //
@@ -16,7 +16,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 
 const root = join(import.meta.dirname, '..');
-const packageDir = join(root, 'packages/konat');
+const packageDir = join(root, 'packages/kotick');
 
 const { peerDependencies } = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
 const MIN = { xstate: lowestVersion('xstate'), xstateReact: lowestVersion('@xstate/react') };
@@ -39,12 +39,12 @@ const { values } = parseArgs({
   },
 });
 
-/** The lowest version that konat's peer range for `name`, such as "^5.28.0", allows. */
+/** The lowest version that kotick's peer range for `name`, such as "^5.28.0", allows. */
 function lowestVersion(name) {
   const range = peerDependencies[name];
   const match = /^\^(\d+\.\d+\.\d+)$/.exec(range ?? '');
 
-  if (!match) throw new Error(`packages/konat/package.json: expected a caret range for ${name}, not "${range}".`);
+  if (!match) throw new Error(`packages/kotick/package.json: expected a caret range for ${name}, not "${range}".`);
 
   return match[1];
 }
@@ -85,7 +85,7 @@ function run(command, args, cwd) {
 }
 
 function prepare(combo, catalog) {
-  const dir = mkdtempSync(join(tmpdir(), 'konat-matrix-'));
+  const dir = mkdtempSync(join(tmpdir(), 'kotick-matrix-'));
 
   for (const entry of ['src', 'test', 'tsconfig.json', 'vitest.config.ts']) {
     cpSync(join(packageDir, entry), join(dir, entry), { recursive: true });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMachine } from 'konat/xstate';
+import { useMachine } from 'kotick/xstate';
 import { Cart, EmptyCart, Payment, Receipt } from '@/components/demo/checkout-screens';
 import { checkoutMachine } from '@/demo/checkout/xstate/machine';
 

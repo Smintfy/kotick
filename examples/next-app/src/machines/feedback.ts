@@ -1,6 +1,6 @@
-import { defineReducerMachine } from 'konat/reducer';
+import { defineReducerMachine } from 'kotick/reducer';
 
-// konat/reducer has no 'use client' directive, so server components can import this file and call feedbackMachine.reducer.
+// kotick/reducer has no 'use client' directive, so server components can import this file and call feedbackMachine.reducer.
 
 export type Rating = 1 | 2 | 3 | 4 | 5;
 

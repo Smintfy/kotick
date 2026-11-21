@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import { Konat } from 'konat';
+import { Kotick } from 'kotick';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <Konat />
+        <Kotick />
       </body>
     </html>
   );

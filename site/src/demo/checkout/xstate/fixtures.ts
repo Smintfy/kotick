@@ -1,4 +1,4 @@
-import { defineFixtures } from 'konat/xstate';
+import { defineFixtures } from 'kotick/xstate';
 import { emptyCard, startItems } from '@/demo/checkout/order';
 import { type CheckoutContext, checkoutMachine } from '@/demo/checkout/xstate/machine';
 

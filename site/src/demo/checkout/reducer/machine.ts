@@ -1,4 +1,4 @@
-import { defineReducerMachine } from 'konat/reducer';
+import { defineReducerMachine } from 'kotick/reducer';
 import {
   type Card,
   type CheckoutEvent,

@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { Konat } from 'konat';
+import { Kotick } from 'kotick';
 import { Demo } from './demo';
 
 // The condition removes the fixtures chunk from production builds.
@@ -9,6 +9,6 @@ const fixtures = process.env.NODE_ENV !== 'production' ? () => import('./fixture
 createRoot(document.getElementById('root')!).render(
   <>
     <Demo />
-    <Konat fixtures={fixtures} />
+    <Kotick fixtures={fixtures} />
   </>,
 );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMachine } from 'konat/xstate';
+import { useMachine } from 'kotick/xstate';
 import { signupMachine } from '@/machines/signup';
 
 export function SignupForm() {

@@ -1,7 +1,7 @@
 'use client';
 
-import type { FixtureSet } from 'konat';
-import { type FigurePage, figureReducer, KonatFigure, type KonatFigureProps } from 'konat/figure';
+import type { FixtureSet } from 'kotick';
+import { type FigurePage, figureReducer, KotickFigure, type KotickFigureProps } from 'kotick/figure';
 import { AdapterSwitch, useAdapter, useInlineSwitch } from '@/components/docs/adapter-tabs';
 import { OverlayDock } from '@/components/overlay-dock';
 import type { Adapter } from '@/content/adapters';
@@ -25,7 +25,7 @@ type PanelFigureProps = { height?: number } & (
   | ({ page: 'machine'; demo: keyof typeof demos } & Record<`${Adapter}Preview` | `${Adapter}Caption`, string>)
 );
 
-type Scene = Pick<KonatFigureProps, 'machines' | 'reducers' | 'fixtures'>;
+type Scene = Pick<KotickFigureProps, 'machines' | 'reducers' | 'fixtures'>;
 
 /** The set without the fixtures of these leaves, so that the figure shows states with no data. */
 function withoutFixtures(set: FixtureSet, leaves: readonly string[]): FixtureSet {
@@ -99,7 +99,7 @@ export function PanelFigure(props: PanelFigureProps) {
           className="absolute left-1/2 h-[800px] -translate-x-1/2"
           style={{ top: dockTop, width: dockWidth }}
           overlay={(dock) => (
-            <KonatFigure
+            <KotickFigure
               key={`${scene ? adapter : ''} ${JSON.stringify(page)}`}
               {...scene}
               page={page}

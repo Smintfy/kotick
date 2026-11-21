@@ -5,12 +5,12 @@ import type { NextConfig } from 'next';
 import { MARKERS } from '../scripts/debug-markers.mjs';
 
 const keepOverlayInProduction = {
-  condition: { path: /packages\/konat\/src\// },
-  loaders: [path.join(import.meta.dirname, 'konat-dev-loader.cjs')],
+  condition: { path: /packages\/kotick\/src\// },
+  loaders: [path.join(import.meta.dirname, 'kotick-dev-loader.cjs')],
 };
 
 const config: NextConfig = {
-  transpilePackages: ['konat'],
+  transpilePackages: ['kotick'],
   async redirects() {
     return [{ source: '/docs', destination: '/', permanent: false }];
   },
@@ -38,12 +38,12 @@ const config: NextConfig = {
 
       if (missing.length > 0) {
         throw new Error(
-          `The client chunks do not have these parts of konat: ${missing.join(', ')}. ` +
+          `The client chunks do not have these parts of kotick: ${missing.join(', ')}. ` +
             'The demo needs them. Check the *.ts and *.tsx rules in site/next.config.ts.',
         );
       }
 
-      console.log(`✓ The client chunks have all ${Object.keys(MARKERS).length} parts of the konat debug code`);
+      console.log(`✓ The client chunks have all ${Object.keys(MARKERS).length} parts of the kotick debug code`);
     },
   },
 };

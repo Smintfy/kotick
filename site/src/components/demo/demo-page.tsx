@@ -3,7 +3,7 @@
 import { ArrowLeft, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { type ComponentType, useState } from 'react';
-import { type FixturesInput, Konat } from 'konat';
+import { type FixturesInput, Kotick } from 'kotick';
 import { AdapterSwitch, useAdapter } from '@/components/docs/adapter-tabs';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -60,7 +60,7 @@ export function DemoPage({ id, title, backHref }: { id: DemoId; title: string; b
           <App />
         </div>
       </main>
-      <Konat fixtures={fixtures} />
+      <Kotick fixtures={fixtures} />
     </>
   );
 }

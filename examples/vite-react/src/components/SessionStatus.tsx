@@ -1,4 +1,4 @@
-import { useSelector } from 'konat/xstate';
+import { useSelector } from 'kotick/xstate';
 import { useRenderStats } from '@/lib/renderStats.ts';
 import { sessionActor } from '@/machines/session.ts';
 

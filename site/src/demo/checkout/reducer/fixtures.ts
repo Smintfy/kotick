@@ -1,4 +1,4 @@
-import { type CompleteFixtures, defineFixtures } from 'konat/reducer';
+import { type CompleteFixtures, defineFixtures } from 'kotick/reducer';
 import { checkoutReducerMachine, initialCheckout, type Order } from '@/demo/checkout/reducer/machine';
 
 const order: Order = initialCheckout.order;

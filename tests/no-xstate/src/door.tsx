@@ -1,6 +1,6 @@
 'use client';
 
-import { defineReducerMachine, useMachineReducer } from 'konat/reducer';
+import { defineReducerMachine, useMachineReducer } from 'kotick/reducer';
 
 type DoorState = { status: 'closed' } | { status: 'opening' } | { status: 'open'; openedAt: number };
 

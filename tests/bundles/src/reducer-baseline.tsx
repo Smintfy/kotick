@@ -1,6 +1,6 @@
 'use client';
 
-// src/reducer-demo.tsx written with useReducer, a switch and useEffect, without konat.
+// src/reducer-demo.tsx written with useReducer, a switch and useEffect, without kotick.
 // A production build of the reducer demo must stay close to this.
 
 import { useEffect, useReducer } from 'react';

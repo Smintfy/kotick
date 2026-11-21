@@ -27,7 +27,7 @@ export function Nav({ sections }: { sections: readonly NavSection[] }) {
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">
       <SidebarHeader className="mt-8 ml-5 flex-row items-center gap-2">
-        <Link href="/" aria-label="konat home" className="w-fit rounded-sm" onClick={() => setOpenMobile(false)}>
+        <Link href="/" aria-label="kotick home" className="w-fit rounded-sm" onClick={() => setOpenMobile(false)}>
           <Logo className="size-5" />
         </Link>
         <Separator orientation="vertical" className="mx-0.5 bg-input data-vertical:h-4 data-vertical:self-center" />

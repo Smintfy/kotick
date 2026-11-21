@@ -1,9 +1,9 @@
 'use client';
 
-// Uses every hook and helper of konat/xstate, as an app does.
+// Uses every hook and helper of kotick/xstate, as an app does.
 // The production build must keep only what @xstate/react gives.
 
-import { connect, createActorContext, useActor, useActorRef, useMachine, useSelector } from 'konat/xstate';
+import { connect, createActorContext, useActor, useActorRef, useMachine, useSelector } from 'kotick/xstate';
 import { createActor } from 'xstate';
 import { toggleMachine } from './toggle';
 

@@ -48,16 +48,16 @@ function scan(dir) {
   return hits;
 }
 
-// Every export of konat that holds code. A server bundle that leaves konat/figure to Node loads konat at runtime too.
-const konatSpecifiers = Object.keys(JSON.parse(readFileSync(join(root, 'packages/konat/package.json'), 'utf8')).exports)
+// Every export of kotick that holds code. A server bundle that leaves kotick/figure to Node loads kotick at runtime too.
+const kotickSpecifiers = Object.keys(JSON.parse(readFileSync(join(root, 'packages/kotick/package.json'), 'utf8')).exports)
   .filter((path) => path !== './package.json')
-  .map((path) => path.replace(/^\./, 'konat'));
+  .map((path) => path.replace(/^\./, 'kotick'));
 
-const konatLoad = new RegExp(`(?:\\bfrom|\\bimport|\\brequire\\()\\s*\\(?\\s*["'](?:${konatSpecifiers.join('|')})["']`);
+const kotickLoad = new RegExp(`(?:\\bfrom|\\bimport|\\brequire\\()\\s*\\(?\\s*["'](?:${kotickSpecifiers.join('|')})["']`);
 
-/** True when a server bundle leaves konat to Node, which reads NODE_ENV when the server starts. */
+/** True when a server bundle leaves kotick to Node, which reads NODE_ENV when the server starts. */
 function importsAtRuntime(dir) {
-  return jsFiles(dir).some((file) => konatLoad.test(readFileSync(file, 'utf8')));
+  return jsFiles(dir).some((file) => kotickLoad.test(readFileSync(file, 'utf8')));
 }
 
 /** One row per scanned output. */
@@ -68,7 +68,7 @@ export function check(name, output, dir, extra = '') {
   if (!existsSync(dir)) throw new Error(`${name}: no ${output} output in ${dir}.`);
   const hits = scan(dir);
   const runtime = output === 'server' && hits.length === 0 && importsAtRuntime(dir);
-  rows.push({ name, output, hits, note: runtime ? 'imports konat at runtime' : extra });
+  rows.push({ name, output, hits, note: runtime ? 'imports kotick at runtime' : extra });
 }
 
 /**

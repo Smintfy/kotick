@@ -1,10 +1,10 @@
 import { createRoot } from 'react-dom/client';
-import { Konat } from 'konat';
+import { Kotick } from 'kotick';
 import { Door } from './door';
 
 createRoot(document.getElementById('root')!).render(
   <>
     <Door delay={500} />
-    <Konat />
+    <Kotick />
   </>,
 );
