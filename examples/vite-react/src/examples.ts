@@ -1,7 +1,7 @@
 export type Example = {
   path: string;
   title: string;
-  /** The konat API that the page uses to read its machine. */
+  /** The kotick API that the page uses to read its machine. */
   api: string;
   summary: string;
 };

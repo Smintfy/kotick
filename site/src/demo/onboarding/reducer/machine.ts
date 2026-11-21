@@ -1,4 +1,4 @@
-import { defineReducerMachine } from 'konat/reducer';
+import { defineReducerMachine } from 'kotick/reducer';
 import { type Account, canInvite, emptyAccount, type OnboardingEvent, saveWorkspace } from '@/demo/onboarding/account';
 
 export type OnboardingState =

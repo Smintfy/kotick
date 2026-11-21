@@ -1,21 +1,21 @@
 export const metadata = {
   title: 'useReducer',
-  description: 'Declare a useReducer union as a machine through konat/reducer, and preview each state in place.',
+  description: 'Declare a useReducer union as a machine through kotick/reducer, and preview each state in place.',
 };
 
-If a component keeps a union of states in `useReducer`, declare the reducer as a machine with `konat/reducer`. konat then lists every state of it and previews any state in place.
+If a component keeps a union of states in `useReducer`, declare the reducer as a machine with `kotick/reducer`. kotick then lists every state of it and previews any state in place.
 
 ```ts
-import { defineFixtures, defineReducerMachine, useMachineReducer } from 'konat/reducer';
+import { defineFixtures, defineReducerMachine, useMachineReducer } from 'kotick/reducer';
 ```
 
-An app that uses only `konat/reducer` does not need `xstate` or `@xstate/react`. Install `konat` alone.
+An app that uses only `kotick/reducer` does not need `xstate` or `@xstate/react`. Install `kotick` alone.
 
 ## Quick start
 
 1. Declare the reducer as a machine with `defineReducerMachine`. [From a switch reducer](/docs/reducer#from-a-switch-reducer) gives the steps.
 2. In the component, call `useMachineReducer(machine, initial)` in place of `useReducer(reducer, initial)`.
-3. Mount `<Konat />` once, as [Installation](/docs/install#quick-start) shows.
+3. Mount `<Kotick />` once, as [Installation](/docs/install#quick-start) shows.
 4. Use the app until the component is in a second state. The panel lists every state, and an **R** mark shows each state that you visited.
 5. Select a visited state in the panel. The component shows that state in place, with the data of your visit.
 
@@ -57,7 +57,7 @@ As a machine, each state lists the events that it accepts. The search request, w
 
 ```ts
 // src/machines/search.ts
-import { defineReducerMachine } from 'konat/reducer';
+import { defineReducerMachine } from 'kotick/reducer';
 
 export type SearchState =
   | { status: 'idle' }
@@ -106,7 +106,7 @@ A machine has five rules. The types check rules 1 and 3, and each fixture of rul
 2. **A state needs data before it can preview.** A visit in the app records its state object, and `defineFixtures` takes a state object for each state that you list. A fixture is a whole state of its own name. To make the file fail when a state has no fixture, check the set with `satisfies CompleteFixtures<typeof machine>`. Refer to [Fixtures](/docs/fixtures#define-fixtures).
 3. **Transitions are per state and per event.** A handler gets the state object of its state and the event of its type, and returns the next state. A state ignores the events that it does not list, and a handler that returns `state` ignores its event. A handler gets no input, because it must be pure, as a reducer is. `machine.reducer` is the plain reducer, for unit tests.
 4. **Effects are per state.** An `effect` starts after the commit that enters its state. Its cleanup runs after the commit that leaves the state, and when the component unmounts. A transition that keeps the name of the state keeps the effect running. A batch of events that leaves the state and enters it again also runs the cleanup and starts the effect again. After the cleanup, its `send` does nothing. React's rules for effects apply, so StrictMode starts the effect, runs its cleanup and starts it again when the component mounts. An effect gets `(state, send, input)`. `input()` returns the newest input that the component gave the hook, so an effect can call the router, a client from React context or a callback prop.
-5. **Async work is in the machine.** Start a request in the `effect` of a state, and give its result to `send`. During a preview, konat blocks each event that the component dispatches, and it does not replay the events after the release. So a click handler that does `dispatch({ type: 'SUBMIT' })`, then `await submitOrder()`, then `dispatch({ type: 'RESOLVE' })` loses `RESOLVE` if a preview is open when the response comes. After the release, the real state is `loading`, and it stays in `loading`. A component `useEffect` that sends the result has the same problem, and it also runs for a previewed state. konat never blocks the `send` of a machine effect, and a previewed state runs no machine effect.
+5. **Async work is in the machine.** Start a request in the `effect` of a state, and give its result to `send`. During a preview, kotick blocks each event that the component dispatches, and it does not replay the events after the release. So a click handler that does `dispatch({ type: 'SUBMIT' })`, then `await submitOrder()`, then `dispatch({ type: 'RESOLVE' })` loses `RESOLVE` if a preview is open when the response comes. After the release, the real state is `loading`, and it stays in `loading`. A component `useEffect` that sends the result has the same problem, and it also runs for a previewed state. kotick never blocks the `send` of a machine effect, and a previewed state runs no machine effect.
 
 ## Use the machine
 
@@ -114,7 +114,7 @@ A machine has five rules. The types check rules 1 and 3, and each fixture of rul
 
 ```tsx
 // src/components/search-box.tsx
-import { useMachineReducer } from 'konat/reducer';
+import { useMachineReducer } from 'kotick/reducer';
 import { useSearchClient } from '@/lib/search-client';
 import { searchMachine } from '@/machines/search';
 
@@ -135,7 +135,7 @@ export function SearchBox({ onHits }: { onHits(hits: string[]): void }) {
 
 `RESOLVE` comes from `send`, so a preview that is open when the response comes does not block it. The real state goes to `ready`, and the release shows it.
 
-`options.debug` takes `{ label, disabled }`. `label` is the name of the instance in the panel, and `disabled: true` keeps the instance out of konat. konat reads `debug` in development builds only.
+`options.debug` takes `{ label, disabled }`. `label` is the name of the instance in the panel, and `disabled: true` keeps the instance out of kotick. kotick reads `debug` in development builds only.
 
 Each component that calls the hook is one instance. Do not give `machine.reducer` to `useReducer` in a component. The state then changes, but no effect runs, and the panel does not list the component.
 
@@ -147,22 +147,22 @@ The state object comes from a recording or a fixture of the selected state. The 
 
 During a preview, the panel logs the events that the component dispatches, and they do not get to the machine. The effect of the real state continues to run. When you release the preview, the component shows the real state at that time.
 
-konat checks only the name of the state. A recording from before you added a field to a state does not have that field.
+kotick checks only the name of the state. A recording from before you added a field to a state does not have that field.
 
 ## Production builds
 
 Production builds keep `defineReducerMachine` and `useMachineReducer` as a small runtime around React's `useReducer` and `useEffect`. The runtime runs your transitions and effects. The registry, the panel, the recordings and the fixtures are removed. `defineFixtures` stays only if production code imports it. Refer to [Choose an adapter](/docs/concepts#choose-an-adapter) for the size of the runtime.
 
 - A server component or a route handler can import a machine file and call `machine.reducer`. Only `useMachineReducer` is client code.
-- The runtime calls only built-in functions that every browser that runs React has, such as `Object.freeze` and `Object.is`. Its code uses ES2020 syntax, so a build for an older browser must transpile `konat`.
+- The runtime calls only built-in functions that every browser that runs React has, such as `Object.freeze` and `Object.is`. Its code uses ES2020 syntax, so a build for an older browser must transpile `kotick`.
 
 ### The rules are public API
 
-The rules above are public API. A change to a rule, to the arguments of a handler or an effect, or to the order of start and cleanup is a breaking change. While konat is 0.x, a breaking change bumps the minor version, and never a patch.
+The rules above are public API. A change to a rule, to the arguments of a handler or an effect, or to the order of start and cleanup is a breaking change. While kotick is 0.x, a breaking change bumps the minor version, and never a patch.
 
-### Remove konat
+### Remove kotick
 
-To remove konat, write a reducer that picks the handler by the name of the state and the type of the event, and a `useEffect` that runs the effect of the state. The handlers and the effects are plain functions, so they move as they are.
+To remove kotick, write a reducer that picks the handler by the name of the state and the type of the event, and a `useEffect` that runs the effect of the state. The handlers and the effects are plain functions, so they move as they are.
 
 ## How the adapter works
 

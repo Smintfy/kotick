@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ActorRefFrom } from 'xstate';
-import { useActor, useSelector } from 'konat/xstate';
+import { useActor, useSelector } from 'kotick/xstate';
 import { formatSize } from '@/lib/format.ts';
 import { useRenderStats } from '@/lib/renderStats.ts';
 import { uploadMachine, type UploadInput } from '@/machines/upload.ts';

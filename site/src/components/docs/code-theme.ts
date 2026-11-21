@@ -2,7 +2,7 @@ import type { Theme } from '@pierre/highlights';
 
 // Each color is the suffix of a --code- variable in site.css. Thus, the light and dark themes share the same tokens.
 export const codeTheme = {
-  name: 'konat',
+  name: 'kotick',
   appearance: 'light',
   cssVariables: { prefix: '--code-' },
   style: {

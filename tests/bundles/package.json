@@ -1,5 +1,5 @@
 {
-  "name": "konat-bundle-check",
+  "name": "kotick-bundle-check",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -11,7 +11,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router": "8.4.0",
-    "konat": "file:./konat.tgz",
+    "kotick": "file:./kotick.tgz",
     "xstate": "5.33.2"
   },
   "devDependencies": {

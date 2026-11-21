@@ -1,6 +1,6 @@
 'use client';
 
-import { useMachine } from 'konat/xstate';
+import { useMachine } from 'kotick/xstate';
 import { Done, InviteStep, ProfileStep, RoleStep, WorkspaceStep } from '@/components/demo/onboarding-steps';
 import { onboardingMachine } from '@/demo/onboarding/xstate/machine';
 

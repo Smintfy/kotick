@@ -1,34 +1,34 @@
 export const metadata = {
   title: 'Tests',
-  description: 'What konat does in a test runner, and how to turn it off there.',
+  description: 'What kotick does in a test runner, and how to turn it off there.',
 };
 
-konat turns off only when `process.env.NODE_ENV` is `"production"`. Test runners such as Vitest and Jest set it to `"test"`. Thus, in your tests, konat works as it does in development.
+kotick turns off only when `process.env.NODE_ENV` is `"production"`. Test runners such as Vitest and Jest set it to `"test"`. Thus, in your tests, kotick works as it does in development.
 
 <PageAdapterTabs />
 
-## What konat does in a test
+## What kotick does in a test
 
-What konat does depends on the test environment:
+What kotick does depends on the test environment:
 
-| Environment | What konat does |
+| Environment | What kotick does |
 |---|---|
-| A DOM, such as `jsdom` | `useMachineReducer`, the hooks of `konat/xstate` and `connect()` register each instance in a registry on `globalThis`. konat records the context of each instance in `sessionStorage`, under keys that start with `konat:recorded:`. If the test renders `<Konat />`, konat adds a `<div data-konat-root>` to `document.body`. |
-| `node`, with no DOM | Nothing. konat does nothing when `window` or `document` is missing, as on the server. |
+| A DOM, such as `jsdom` | `useMachineReducer`, the hooks of `kotick/xstate` and `connect()` register each instance in a registry on `globalThis`. kotick records the context of each instance in `sessionStorage`, under keys that start with `kotick:recorded:`. If the test renders `<Kotick />`, kotick adds a `<div data-kotick-root>` to `document.body`. |
+| `node`, with no DOM | Nothing. kotick does nothing when `window` or `document` is missing, as on the server. |
 
-Without a preview, `useMachineReducer` behaves as it does in production, and the hooks of `konat/xstate` behave as the hooks of `@xstate/react`. Thus, your tests do not have to change. konat writes nothing to the console when it has no problem.
+Without a preview, `useMachineReducer` behaves as it does in production, and the hooks of `kotick/xstate` behave as the hooks of `@xstate/react`. Thus, your tests do not have to change. kotick writes nothing to the console when it has no problem.
 
-A test that reads `sessionStorage` also sees the keys of konat. konat writes them 500 ms after a transition, so a write can occur during the next test.
+A test that reads `sessionStorage` also sees the keys of kotick. kotick writes them 500 ms after a transition, so a write can occur during the next test.
 
-## Turn konat off in tests
+## Turn kotick off in tests
 
-Mock `konat` in a setup file, so that `<Konat />` renders nothing. This example is for Vitest:
+Mock `kotick` in a setup file, so that `<Kotick />` renders nothing. This example is for Vitest:
 
 ```ts
 // vitest.setup.ts
 import { vi } from 'vitest';
 
-vi.mock('konat', () => ({ Konat: () => null }));
+vi.mock('kotick', () => ({ Kotick: () => null }));
 ```
 
 Add the file to `test.setupFiles` in the Vitest config. Other test runners have a function that does the same thing, for example `jest.mock()` in Jest.
@@ -37,15 +37,15 @@ The next step depends on the adapter:
 
 <AdapterTabs>
   <AdapterTab adapter="reducer">
-    Do not mock `konat/reducer`. Its hook runs your transitions and effects, so a mock must keep them. Without a preview, the hook gives the state and the effects of its production version, because it calls that version. It also registers each instance and writes `konat:recorded:` keys, as the XState hooks do.
+    Do not mock `kotick/reducer`. Its hook runs your transitions and effects, so a mock must keep them. Without a preview, the hook gives the state and the effects of its production version, because it calls that version. It also registers each instance and writes `kotick:recorded:` keys, as the XState hooks do.
   </AdapterTab>
 
   <AdapterTab adapter="xstate">
-    Also mock `konat/xstate` in the setup file:
+    Also mock `kotick/xstate` in the setup file:
 
     ```ts
-    vi.mock('konat/xstate', async (importOriginal) => ({
-      ...(await importOriginal<typeof import('konat/xstate')>()),
+    vi.mock('kotick/xstate', async (importOriginal) => ({
+      ...(await importOriginal<typeof import('kotick/xstate')>()),
       ...(await vi.importActual<typeof import('@xstate/react')>('@xstate/react')),
       connect: <TActor>(actor: TActor) => actor,
     }));

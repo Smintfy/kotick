@@ -1,10 +1,10 @@
 import { setup } from 'xstate';
-import { createActorContext } from 'konat/xstate';
+import { createActorContext } from 'kotick/xstate';
 
 type PreferencesEvent = { type: 'TOGGLE_THEME' } | { type: 'DAILY' } | { type: 'WEEKLY' } | { type: 'OFF' };
 
 // Import this file only from client components.
-// konat/xstate is a client module, so server components can't call createActorContext.
+// kotick/xstate is a client module, so server components can't call createActorContext.
 
 export const preferencesMachine = setup({
   // SAFETY: XState reads the types of setup() only at compile time. It never reads these values.

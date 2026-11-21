@@ -1,26 +1,26 @@
 export const metadata = {
   title: 'Troubleshooting',
-  description: 'The console warnings of konat, their causes and fixes, and how to reset the panel.',
+  description: 'The console warnings of kotick, their causes and fixes, and how to reset the panel.',
 };
 
 ## Console warnings
 
-konat writes its messages to the browser console, and each message starts with `[konat]`. konat writes nothing when it starts, so each message tells you about a problem. The table shows the start of each message. The parts in quotes change.
+kotick writes its messages to the browser console, and each message starts with `[kotick]`. kotick writes nothing when it starts, so each message tells you about a problem. The table shows the start of each message. The parts in quotes change.
 
 | Message | Cause | Fix |
 |---|---|---|
-| `A machine has no id, so it's listed as "machine-…".` | The machine has no `id`. konat makes an id from the shape of the machine. | Add an `id` to the machine, or set `debug: { id }` on the hook or on `connect()`. |
+| `A machine has no id, so it's listed as "machine-…".` | The machine has no `id`. kotick makes an id from the shape of the machine. | Add an `id` to the machine, or set `debug: { id }` on the hook or on `connect()`. |
 | `connect() was given an actor that a hook already registers, so it keeps the hook's id and label.` | You gave an actor from a hook to `connect()`, with an `id` or a `label`. | Remove the `connect()` call, and set `debug` on the hook. |
-| `Ignoring the shortcut "…": expected something like "alt+s".` | konat cannot read the `shortcut` prop. The panel has no shortcut. | Write the shortcut as [Shortcut](/docs/api#shortcut) shows. |
+| `Ignoring the shortcut "…": expected something like "alt+s".` | kotick cannot read the `shortcut` prop. The panel has no shortcut. | Write the shortcut as [Shortcut](/docs/api#shortcut) shows. |
 | `Fixtures for "…" name "…", which isn't a leaf state of the machine.` | A key of a fixture set is not the dot path of a leaf. TypeScript also shows this error. | Use [leaf ids](/docs/concepts#leaf-ids), such as `payment.error`. |
-| `The fixtures loader failed.` | The `fixtures` function threw, or its import failed. The error follows the message. | Correct the error. Until you do, konat has no fixtures. |
+| `The fixtures loader failed.` | The `fixtures` function threw, or its import failed. The error follows the message. | Correct the error. Until you do, kotick has no fixtures. |
 | `Expected fixtures to be an array of sets from defineFixtures(), or a module whose default export is one.` | The `fixtures` prop, or the result of the loader, is not an array. | Export an array from the fixtures file: `export default [defineFixtures(…)]`. |
 | `Ignoring fixture entries that are not sets from defineFixtures().` or `Ignoring fixture set at index …` | An item of the array is not a fixture set. | Make each item with `defineFixtures()`. |
 | `Ignoring fixture "…" for "…": expected an object with a context.` | The value of a leaf is not an object with a `context` property. | Write each value as `{ context: { … } }`. |
-| `No recorded or fixture context for "…" on "…", so the preview uses the live context.` | konat has no recording and no fixture for the state. Refer to [Context for a preview](/docs/concepts#context-for-a-preview). | Go to the state one time in the app, or write a [fixture](/docs/fixtures) for it. |
-| `No recorded context for "…" on "…", so the preview uses the fixture context.` | In the panel, you selected a context source that the state does not have. The message names the source that you selected and the source that konat used. | Select a different source, or add the context. |
-| `Storage is full or unavailable, so …` or `Recordings are limited to 1,000,000 characters of storage in total, so …` | konat cannot write all the recordings to `sessionStorage`. | No action is necessary. All recordings stay in memory until the page reloads. |
-| `Two versions of konat are on this page (… and …).` | The bundle has two versions of konat. Both use the registry of the version that loaded first. | Install one version. Run `npm ls konat` to find the package that brings in the other version. |
+| `No recorded or fixture context for "…" on "…", so the preview uses the live context.` | kotick has no recording and no fixture for the state. Refer to [Context for a preview](/docs/concepts#context-for-a-preview). | Go to the state one time in the app, or write a [fixture](/docs/fixtures) for it. |
+| `No recorded context for "…" on "…", so the preview uses the fixture context.` | In the panel, you selected a context source that the state does not have. The message names the source that you selected and the source that kotick used. | Select a different source, or add the context. |
+| `Storage is full or unavailable, so …` or `Recordings are limited to 1,000,000 characters of storage in total, so …` | kotick cannot write all the recordings to `sessionStorage`. | No action is necessary. All recordings stay in memory until the page reloads. |
+| `Two versions of kotick are on this page (… and …).` | The bundle has two versions of kotick. Both use the registry of the version that loaded first. | Install one version. Run `npm ls kotick` to find the package that brings in the other version. |
 | `The output of "…" couldn't be computed for the preview.` | The `output` of the machine threw with the context of the preview. The error follows the message. | `snapshot.output` is `undefined` in this preview. Write a fixture with the full context, or make `output` accept this context. |
 | `Can't show the preview of "…" on this actor; showing its real state.` | The machine changed after the preview started, for example after a hot reload. It does not have the previewed states. | Release the preview, and select the state again. |
 | `Dropped an event without a string type sent to "…" during a preview.` | During a preview, the UI sent a value that is not an event object with a string `type`. | Send events as objects, such as `send({ type: 'SUBMIT' })`. |
@@ -29,18 +29,18 @@ konat writes its messages to the browser console, and each message starts with `
 | `"…" is in "…", which its definition doesn't declare.` | A handler of a reducer machine, or the initial state, gave a state object whose discriminant is not a key of `states`. The panel shows a note under States. | Add the state to `states`, or correct the handler or the initial state. |
 | `Can't preview "…" on "…": it has no recorded or fixture context, and the live context belongs to another state.` | A state of a reducer machine has no recording and no fixture, and the machine is in another state. | Go to the state one time in the app, or write a [fixture](/docs/fixtures#define-fixtures) for it. |
 | `Can't preview "…" on "…" with the live context, because it belongs to another state.` | A preview asked for the live context of a state of a reducer machine, and the machine is in another state. | Select **Recorded** or **Fixture** as the source. |
-| `Ended the preview of "…" on "…", because its fixture context isn't in the "…" state.` or `Ended the preview of "…" on "…", because "…" has no state "…".` | A reducer machine got a preview with a state object of another state, or of a state that it does not have. The message names the source of that state object. The component showed its real state, and konat released the preview. | Make each fixture set with `defineFixtures()` from `konat/reducer`. If the console also shows `Two versions of konat are on this page`, install one version. |
-| Other messages, such as `Can't preview "…"` or `Can't follow "…"` | An error in konat. | Reload the page. If the message shows again, report it with the full message and the error that follows it. |
+| `Ended the preview of "…" on "…", because its fixture context isn't in the "…" state.` or `Ended the preview of "…" on "…", because "…" has no state "…".` | A reducer machine got a preview with a state object of another state, or of a state that it does not have. The message names the source of that state object. The component showed its real state, and kotick released the preview. | Make each fixture set with `defineFixtures()` from `kotick/reducer`. If the console also shows `Two versions of kotick are on this page`, install one version. |
+| Other messages, such as `Can't preview "…"` or `Can't follow "…"` | An error in kotick. | Reload the page. If the message shows again, report it with the full message and the error that follows it. |
 
 ## Reset the panel
 
-The panel keeps its settings in `localStorage`, under the key `konat:ui`. The settings are the open state, the corner and the machine whose page the panel shows. To reset the panel, remove the key and reload the page:
+The panel keeps its settings in `localStorage`, under the key `kotick:ui`. The settings are the open state, the corner and the machine whose page the panel shows. To reset the panel, remove the key and reload the page:
 
 ```js
-localStorage.removeItem('konat:ui');
+localStorage.removeItem('kotick:ui');
 location.reload();
 ```
 
 ## Remove the recordings
 
-konat keeps the recorded context in `sessionStorage`, under keys that start with `konat:recorded:`. The browser keeps `sessionStorage` for each tab. To start with no recordings, open the page in a new tab.
+kotick keeps the recorded context in `sessionStorage`, under keys that start with `kotick:recorded:`. The browser keeps `sessionStorage` for each tab. To start with no recordings, open the page in a new tab.

@@ -1,5 +1,5 @@
-import { defineFixtures as defineReducerFixtures } from 'konat/reducer';
-import { defineFixtures } from 'konat/xstate';
+import { defineFixtures as defineReducerFixtures } from 'kotick/reducer';
+import { defineFixtures } from 'kotick/xstate';
 import { toggleReducerMachine } from './reducer-machine';
 import { toggleMachine } from './toggle';
 

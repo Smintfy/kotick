@@ -1,6 +1,6 @@
 'use client';
 
-import { useMachineReducer } from 'konat/reducer';
+import { useMachineReducer } from 'kotick/reducer';
 import { Cart, EmptyCart, Payment, Receipt } from '@/components/demo/checkout-screens';
 import { isCardComplete } from '@/demo/checkout/order';
 import { checkoutReducerMachine, initialCheckout } from '@/demo/checkout/reducer/machine';

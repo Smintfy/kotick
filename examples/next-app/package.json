@@ -14,7 +14,7 @@
     "next": "^16.4.6",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "konat": "workspace:*",
+    "kotick": "workspace:*",
     "xstate": "catalog:"
   },
   "devDependencies": {

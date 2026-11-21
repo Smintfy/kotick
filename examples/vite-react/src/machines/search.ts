@@ -1,4 +1,4 @@
-import { defineReducerMachine } from 'konat/reducer';
+import { defineReducerMachine } from 'kotick/reducer';
 import type { Product } from '@/lib/products.ts';
 
 export type SearchState =

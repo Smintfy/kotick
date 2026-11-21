@@ -1,6 +1,6 @@
-import { Konat } from 'konat';
-import { useMachineReducer } from 'konat/reducer';
-import { useMachine } from 'konat/xstate';
+import { Kotick } from 'kotick';
+import { useMachineReducer } from 'kotick/reducer';
+import { useMachine } from 'kotick/xstate';
 import { downloadMachine } from '@/download.ts';
 import { playerMachine } from '@/player.ts';
 
@@ -66,7 +66,7 @@ export function App() {
 
       <Download />
 
-      <Konat />
+      <Kotick />
     </>
   );
 }

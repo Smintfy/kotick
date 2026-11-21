@@ -1,5 +1,5 @@
 import { assign, createActor, fromPromise, setup } from 'xstate';
-import { connect } from 'konat/xstate';
+import { connect } from 'kotick/xstate';
 
 type User = { name: string };
 

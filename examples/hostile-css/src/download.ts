@@ -1,4 +1,4 @@
-import { defineReducerMachine } from 'konat/reducer';
+import { defineReducerMachine } from 'kotick/reducer';
 
 export type DownloadState = { status: 'idle' } | { status: 'downloading'; progress: number } | { status: 'done' };
 

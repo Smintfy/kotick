@@ -1,6 +1,6 @@
 'use client';
 
-import { useMachineReducer } from 'konat/reducer';
+import { useMachineReducer } from 'kotick/reducer';
 import { Done, InviteStep, ProfileStep, RoleStep, WorkspaceStep } from '@/components/demo/onboarding-steps';
 import { canInvite } from '@/demo/onboarding/account';
 import { initialOnboarding, onboardingReducerMachine } from '@/demo/onboarding/reducer/machine';
