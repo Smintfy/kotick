@@ -5,7 +5,7 @@ export const metadata = {
 
 ## My machine is not in the panel. Why?
 
-Make sure that `<Shiru />` is mounted. For a reducer machine, make sure that the component calls `useMachineReducer`. A component that gives `machine.reducer` to `useReducer` is not listed. For an XState machine, make sure that the component imports the hook from `shiru/xstate`, not from `@xstate/react`. An actor that you create with `createActor()` must go through `connect()`. To find imports from `@xstate/react`, add a [lint rule](/docs/xstate#prevent-imports-from-xstatereact). With either adapter, an instance with `debug: { disabled: true }` is not listed.
+Make sure that `<Konat />` is mounted. For a reducer machine, make sure that the component calls `useMachineReducer`. A component that gives `machine.reducer` to `useReducer` is not listed. For an XState machine, make sure that the component imports the hook from `konat/xstate`, not from `@xstate/react`. An actor that you create with `createActor()` must go through `connect()`. To find imports from `@xstate/react`, add a [lint rule](/docs/xstate#prevent-imports-from-xstatereact). With either adapter, an instance with `debug: { disabled: true }` is not listed.
 
 ## Can a preview change my data or call my API?
 
@@ -21,11 +21,11 @@ Yes. The test suite runs on React 18 and 19, with StrictMode on.
 
 ## Does it work with `useReducer`?
 
-Yes, through `shiru/reducer`. Declare the reducer as a machine that names each state, and call `useMachineReducer` instead of `useReducer`. Refer to [useReducer](/docs/reducer).
+Yes, through `konat/reducer`. Declare the reducer as a machine that names each state, and call `useMachineReducer` instead of `useReducer`. Refer to [useReducer](/docs/reducer).
 
 ## Does it work with Zustand or other state libraries?
 
-Not in this version. shiru lists states that the UI never went to, so it needs a machine that declares its states. Reducer machines and XState machines do. Support for other libraries is on the roadmap.
+Not in this version. konat lists states that the UI never went to, so it needs a machine that declares its states. Reducer machines and XState machines do. Support for other libraries is on the roadmap.
 
 ## Does it work with XState v4 or v6?
 
@@ -33,8 +33,8 @@ No. It works with XState v5 only. Support for v6 will come when v6 is stable.
 
 ## Can I use it in a staging or preview build?
 
-Not in this version. shiru is a development tool. Staging and preview builds are usually production builds, and `<Shiru />` renders nothing in a production build. Support for staging and preview builds is on the roadmap.
+Not in this version. konat is a development tool. Staging and preview builds are usually production builds, and `<Konat />` renders nothing in a production build. Support for staging and preview builds is on the roadmap.
 
-## Two copies of shiru are in my bundle. Is that a problem?
+## Two copies of konat are in my bundle. Is that a problem?
 
 No. All copies use one registry on `globalThis`. If the versions are different, the console shows a warning.

@@ -1,4 +1,4 @@
-import { defineFixtures } from 'shiru/xstate';
+import { defineFixtures } from 'konat/xstate';
 import { emptyAccount, takenWorkspace } from '@/demo/onboarding/account';
 import { type OnboardingContext, onboardingMachine } from '@/demo/onboarding/xstate/machine';
 

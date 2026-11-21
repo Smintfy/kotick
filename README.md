@@ -1,19 +1,19 @@
-# shiru
+# konat
 
-A development overlay that lists every state of every state machine on the page, and previews any of them in place. It has an adapter for XState v5 machines, `shiru/xstate`, and one for `useReducer` machines, `shiru/reducer`. Neither is the default.
-For installation and usage, see the [package README](packages/shiru/README.md).
+A development overlay that lists every state of every state machine on the page, and previews any of them in place. It has an adapter for XState v5 machines, `konat/xstate`, and one for `useReducer` machines, `konat/reducer`. Neither is the default.
+For installation and usage, see the [package README](packages/konat/README.md).
 
 ## Repository
 
 | Path | Contents |
 |---|---|
-| `packages/shiru` | The package: the registry and overlay (`shiru`), the XState adapter (`shiru/xstate`) and the reducer adapter (`shiru/reducer`) |
+| `packages/konat` | The package: the registry and overlay (`konat`), the XState adapter (`konat/xstate`) and the reducer adapter (`konat/reducer`) |
 | `examples/vite-react` | Vite and React Router. One page for each way to read a machine: `useMachine`, `createActorContext`, `useActor`, `connect()` in the header, and `useMachineReducer` on the Search page |
 | `examples/hostile-css` | A page with global styles that try to change the overlay, with an XState machine and a reducer machine |
 | `examples/next-app` | The Next.js App Router, with server rendering. The Feedback page is a server component that imports a reducer machine file |
 | `site` | The landing page and the docs, in Next.js. The docs pages are MDX files in `site/src/content/docs` |
 | `tests/bundles` | A fixture app for the production-build check |
-| `tests/no-xstate` | A fixture app with shiru and no XState, for the same check |
+| `tests/no-xstate` | A fixture app with konat and no XState, for the same check |
 | `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` and the site build |
 
 ## Development
@@ -37,18 +37,18 @@ pnpm install
 | `pnpm lint` | Runs oxlint over the repository with the rules in `.oxlintrc.json` |
 | `pnpm test:matrix` | Runs the tests on React 18 and 19, each with the minimum and the latest XState |
 | `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, with and without XState, and looks for debug code |
-| `pnpm --filter shiru styles` | Writes the overlay's CSS from `styles.css` to `src/styles.generated.ts` |
-| `pnpm --filter shiru bench` | Measures the cost of the adapter in development, against `@xstate/react` |
+| `pnpm --filter konat styles` | Writes the overlay's CSS from `styles.css` to `src/styles.generated.ts` |
+| `pnpm --filter konat bench` | Measures the cost of the adapter in development, against `@xstate/react` |
 
 The overlay's components use Tailwind v4 utilities. Tailwind is a devDependency: it compiles
-`packages/shiru/styles.css` into `src/styles.generated.ts`, and the package ships that CSS as a string.
+`packages/konat/styles.css` into `src/styles.generated.ts`, and the package ships that CSS as a string.
 The style watcher writes the file again when a component or `styles.css` changes. Commit the file with the change.
 
 `test:matrix` and `check:bundles` install packages in temporary directories, so they need network access and take a
 few minutes. Both accept `--only <name>` to run part of the work, and `--keep` to keep the temporary directories.
 
 Tests use the package the way an app does, with no mocks. The rules are in
-[writing-tests](packages/shiru/.claude/skills/writing-tests/SKILL.md), and `pnpm lint` enforces most of them.
+[writing-tests](packages/konat/.claude/skills/writing-tests/SKILL.md), and `pnpm lint` enforces most of them.
 
 The docs pages of the site are MDX files in `site/src/content/docs`, and `site/src/site.tsx` lists them in the
 sequence of the nav. The site build fails when a docs link goes to a page or a heading that does not exist, when a code

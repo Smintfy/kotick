@@ -85,7 +85,7 @@ export const overviewPage = docsPage('overview', overview, '/', '/index.md');
 
 export const pitch = overviewPage.description;
 
-export const repoHref = 'https://github.com/Smintfy/shiru';
+export const repoHref = 'https://github.com/Smintfy/konat';
 
 export const pages: readonly DocsPage[] = docs.map(([slug, module]) =>
   docsPage(slug, module, `/docs/${slug}`, `/docs/${slug}.md`),

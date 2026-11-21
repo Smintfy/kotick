@@ -1,5 +1,5 @@
 import { assign, createActor, fromPromise, setup } from 'xstate';
-import { connect } from 'shiru/xstate';
+import { connect } from 'konat/xstate';
 
 type User = { name: string };
 

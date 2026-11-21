@@ -1,4 +1,4 @@
-import { defineFixtures } from 'shiru/xstate';
+import { defineFixtures } from 'konat/xstate';
 import { emptyCard, startItems } from '@/demo/checkout/order';
 import { type CheckoutContext, checkoutMachine } from '@/demo/checkout/xstate/machine';
 

@@ -1,46 +1,46 @@
 export const metadata = {
   title: 'Skill',
-  description: 'A SKILL.md file that teaches coding agents to set up and use shiru.',
+  description: 'A SKILL.md file that teaches coding agents to set up and use konat.',
 };
 
-This page is a skill in the [Agent Skills](https://agentskills.io) format. It tells a coding agent how to set up shiru, change a reducer into a machine, write fixtures, and fix the console warnings.
+This page is a skill in the [Agent Skills](https://agentskills.io) format. It tells a coding agent how to set up konat, change a reducer into a machine, write fixtures, and fix the console warnings.
 
-To use it with Claude Code, select **Copy skill**, and save the text as `.claude/skills/shiru/SKILL.md` in your project. Other agents that support Agent Skills read skills from a folder of their own. Refer to the docs of your agent.
+To use it with Claude Code, select **Copy skill**, and save the text as `.claude/skills/konat/SKILL.md` in your project. Other agents that support Agent Skills read skills from a folder of their own. Refer to the docs of your agent.
 
 {/* SKILL.md */}
 
-shiru is a development overlay for React 18 and 19. It lists each state machine on the page and all of its states, and shows any state in the running app. The package has three entries:
+konat is a development overlay for React 18 and 19. It lists each state machine on the page and all of its states, and shows any state in the running app. The package has three entries:
 
 | Entry | Exports |
 |---|---|
-| `shiru` | `<Shiru />`, the overlay. Mount it once. |
-| `shiru/reducer` | `defineReducerMachine`, `useMachineReducer` and `defineFixtures`, for `useReducer` machines. It needs only React. |
-| `shiru/xstate` | The hooks of `@xstate/react` with the same names and signatures, `connect` and `defineFixtures`, for XState v5 machines. |
+| `konat` | `<Konat />`, the overlay. Mount it once. |
+| `konat/reducer` | `defineReducerMachine`, `useMachineReducer` and `defineFixtures`, for `useReducer` machines. It needs only React. |
+| `konat/xstate` | The hooks of `@xstate/react` with the same names and signatures, `connect` and `defineFixtures`, for XState v5 machines. |
 
-Neither adapter is the default, and an app can use both. In a production build, `<Shiru />` renders nothing, and the bundler removes the registry and the panel. Do not remove `<Shiru />` or change imports before a release.
+Neither adapter is the default, and an app can use both. In a production build, `<Konat />` renders nothing, and the bundler removes the registry and the panel. Do not remove `<Konat />` or change imports before a release.
 
-Use only the API in this file. Do not guess the API of shiru from XState or other libraries. The examples import from `src` through the `@/` alias. Use the import style of the project.
+Use only the API in this file. Do not guess the API of konat from XState or other libraries. The examples import from `src` through the `@/` alias. Use the import style of the project.
 
 ## Select the adapter
 
-- If the app uses `xstate` 5.28 or later with `@xstate/react` 6.1 or later, use `shiru/xstate`.
-- If a component keeps a union of states in `useReducer`, with one key that holds the name of the state, use `shiru/reducer`.
-- XState v4, Zustand, Redux and other state libraries do not work. shiru needs a machine that declares its states.
+- If the app uses `xstate` 5.28 or later with `@xstate/react` 6.1 or later, use `konat/xstate`.
+- If a component keeps a union of states in `useReducer`, with one key that holds the name of the state, use `konat/reducer`.
+- XState v4, Zustand, Redux and other state libraries do not work. konat needs a machine that declares its states.
 - If the app has no machine, tell the user, and offer to declare one `useReducer` flow as a reducer machine.
 
 ## Set up
 
-1. Install `shiru` with the package manager of the project. Put it in `dependencies`, not `devDependencies`, because the production build imports the adapters. For `shiru/xstate`, also install `xstate` and `@xstate/react` if the app does not have them.
-2. Mount `<Shiru />` once, in a component that stays mounted when the page changes. In a Vite or other single-page app, put it in the root component, after the routes. In Next.js, do the steps in [Next.js](#nextjs).
+1. Install `konat` with the package manager of the project. Put it in `dependencies`, not `devDependencies`, because the production build imports the adapters. For `konat/xstate`, also install `xstate` and `@xstate/react` if the app does not have them.
+2. Mount `<Konat />` once, in a component that stays mounted when the page changes. In a Vite or other single-page app, put it in the root component, after the routes. In Next.js, do the steps in [Next.js](#nextjs).
 
    ```tsx
-   import { Shiru } from 'shiru';
+   import { Konat } from 'konat';
 
    export function App() {
      return (
        <>
          <Routes />
-         <Shiru />
+         <Konat />
        </>
      );
    }
@@ -51,34 +51,34 @@ Use only the API in this file. Do not guess the API of shiru from XState or othe
 
 ## Connect XState machines
 
-1. Change each import from `@xstate/react` to `shiru/xstate`. Search the source for `@xstate/react` to find all of them. A component that keeps the old import works, but the panel does not list its machine.
+1. Change each import from `@xstate/react` to `konat/xstate`. Search the source for `@xstate/react` to find all of them. A component that keeps the old import works, but the panel does not list its machine.
 
    ```diff
    - import { useMachine, useSelector, createActorContext } from '@xstate/react';
-   + import { useMachine, useSelector, createActorContext } from 'shiru/xstate';
+   + import { useMachine, useSelector, createActorContext } from 'konat/xstate';
    ```
 
 2. Wrap each actor that the app creates outside React with `connect()`. Use the actor that `connect()` returns everywhere in the app, for example in `useSelector(sessionActor, …)`.
 
    ```ts
    import { createActor } from 'xstate';
-   import { connect } from 'shiru/xstate';
+   import { connect } from 'konat/xstate';
    import { sessionMachine } from '@/machines/session';
 
    export const sessionActor = connect(createActor(sessionMachine).start(), { id: 'session' });
    ```
 
-3. Give each machine an `id` in its definition. Without one, shiru makes an id from the states and the context keys, and that id changes when they change.
+3. Give each machine an `id` in its definition. Without one, konat makes an id from the states and the context keys, and that id changes when they change.
 4. Add this rule to the ESLint or Oxlint config of the project, so that new imports from `@xstate/react` fail:
 
    ```js
    'no-restricted-imports': [
      'error',
-     { name: '@xstate/react', message: 'Import the XState hooks from shiru/xstate, so that the panel lists the machine.' },
+     { name: '@xstate/react', message: 'Import the XState hooks from konat/xstate, so that the panel lists the machine.' },
    ],
    ```
 
-The hooks and `createActorContext` take one more option, `debug`, and `connect()` takes the same object as its second argument. `debug: { label }` names an instance in the panel. `debug: { id }` replaces the machine id. `debug: { disabled: true }` keeps the actor out of shiru.
+The hooks and `createActorContext` take one more option, `debug`, and `connect()` takes the same object as its second argument. `debug: { label }` names an instance in the panel. `debug: { id }` replaces the machine id. `debug: { disabled: true }` keeps the actor out of konat.
 
 ## Convert a useReducer reducer
 
@@ -94,7 +94,7 @@ A `switch` reducer has one branch for each event. A machine has one handler for 
 
 ```ts
 // src/machines/search.ts
-import { defineReducerMachine } from 'shiru/reducer';
+import { defineReducerMachine } from 'konat/reducer';
 
 export type SearchState =
   | { status: 'idle' }
@@ -139,7 +139,7 @@ The component calls `useMachineReducer`, which returns `[state, dispatch]` as `u
 
 ```tsx
 // src/components/search-box.tsx
-import { useMachineReducer } from 'shiru/reducer';
+import { useMachineReducer } from 'konat/reducer';
 import { useSearchClient } from '@/lib/search-client';
 import { searchMachine } from '@/machines/search';
 
@@ -162,7 +162,7 @@ Obey these rules:
 - A handler gets `(state, event)` and returns the next state. It is pure, and it gets no input. A state ignores each event that it does not list, and a handler that returns `state` ignores its event.
 - An `effect` gets `(state, send, input)`, and can return a cleanup. It starts after the commit that enters its state. Its cleanup runs after the commit that leaves the state, and when the component unmounts. After the cleanup, `send` does nothing. StrictMode starts the effect, runs its cleanup, and starts it again, so cancel a request in the cleanup, as the `loading` effect above does with `AbortController`.
 - `input()` returns the newest input that the component gave the hook. A new input does not restart an effect.
-- Send the result of async work with `send` from an `effect`. Do not `await` in an event handler and then `dispatch` the result, and do not `dispatch` it from a component `useEffect`. During a preview, shiru blocks `dispatch` and does not replay the events, so the machine stays in the loading state.
+- Send the result of async work with `send` from an `effect`. Do not `await` in an event handler and then `dispatch` the result, and do not `dispatch` it from a component `useEffect`. During a preview, konat blocks `dispatch` and does not replay the events, so the machine stays in the loading state.
 - Call `useMachineReducer` in place of `useReducer`. Do not give `machine.reducer` to `useReducer`. Then no effect runs, and the panel does not list the component.
 - Call `useMachineReducer` only in client components. Server code can import the machine file and call `machine.reducer`.
 
@@ -170,11 +170,11 @@ Obey these rules:
 
 A fixture gives data to a state that the app did not go to yet, such as an error. Without a recording or a fixture, a reducer machine cannot preview the state, and an XState machine uses the live context and logs a warning.
 
-Put the fixture sets in a file of their own. With `shiru/reducer`, each key is a state name, and each value is a whole state object whose discriminant is that key. The keys are optional. `satisfies CompleteFixtures<typeof machine>` requires a fixture for each state:
+Put the fixture sets in a file of their own. With `konat/reducer`, each key is a state name, and each value is a whole state object whose discriminant is that key. The keys are optional. `satisfies CompleteFixtures<typeof machine>` requires a fixture for each state:
 
 ```ts
 // src/debug/fixtures.ts
-import { defineFixtures, type CompleteFixtures } from 'shiru/reducer';
+import { defineFixtures, type CompleteFixtures } from 'konat/reducer';
 import { searchMachine } from '@/machines/search';
 
 export default [
@@ -186,11 +186,11 @@ export default [
 ];
 ```
 
-With `shiru/xstate`, each key is a leaf id, the dot path to a state without child states, such as `payment.error`. Each value is `{ context }`, with the full context type of the machine:
+With `konat/xstate`, each key is a leaf id, the dot path to a state without child states, such as `payment.error`. Each value is `{ context }`, with the full context type of the machine:
 
 ```ts
 // src/debug/fixtures.ts
-import { defineFixtures } from 'shiru/xstate';
+import { defineFixtures } from 'konat/xstate';
 import { checkoutMachine } from '@/machines/checkout';
 
 const items = [{ id: 'sku_1', name: 'Linen tote', price: 2400, qty: 2 }];
@@ -204,38 +204,38 @@ export default [
 ];
 ```
 
-Give `<Shiru />` a loader with a development check, so that production builds do not have the fixtures. Put the loader in a `const` at module scope. A function made during render is new on each render, and shiru calls it again each time.
+Give `<Konat />` a loader with a development check, so that production builds do not have the fixtures. Put the loader in a `const` at module scope. A function made during render is new on each render, and konat calls it again each time.
 
 ```tsx
-import { Shiru } from 'shiru';
+import { Konat } from 'konat';
 
 const fixtures = import.meta.env.DEV ? () => import('@/debug/fixtures') : undefined;
 
 export function DevTools() {
-  return <Shiru fixtures={fixtures} />;
+  return <Konat fixtures={fixtures} />;
 }
 ```
 
 That check is for Vite. In Next.js and other bundlers, use `process.env.NODE_ENV !== 'production'`. Do not use `process.env` in Vite, because a default Vite app does not have the Node.js types.
 
-A file with sets for both adapters imports one `defineFixtures` under another name, for example `import { defineFixtures as defineReducerFixtures } from 'shiru/reducer'`. In the panel, **Copy context** copies the shown state as JSON. For a reducer machine, the JSON is a fixture. For an XState machine, it is the value of `context`.
+A file with sets for both adapters imports one `defineFixtures` under another name, for example `import { defineFixtures as defineReducerFixtures } from 'konat/reducer'`. In the panel, **Copy context** copies the shown state as JSON. For a reducer machine, the JSON is a fixture. For an XState machine, it is the value of `context`.
 
 ## Next.js
 
-`shiru` and `shiru/xstate` start with `'use client'`. `shiru/reducer` has no directive, so a server component or a route handler can import a machine file and call `machine.reducer`.
+`konat` and `konat/xstate` start with `'use client'`. `konat/reducer` has no directive, so a server component or a route handler can import a machine file and call `machine.reducer`.
 
-In the App Router, render the overlay in the root layout, after `{children}`. A server component cannot give a function to a client component, so render `<Shiru fixtures={…} />` in a client component:
+In the App Router, render the overlay in the root layout, after `{children}`. A server component cannot give a function to a client component, so render `<Konat fixtures={…} />` in a client component:
 
 ```tsx
 // src/components/dev-tools.tsx
 'use client';
 
-import { Shiru } from 'shiru';
+import { Konat } from 'konat';
 
 const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
 
 export function DevTools() {
-  return <Shiru fixtures={fixtures} />;
+  return <Konat fixtures={fixtures} />;
 }
 ```
 
@@ -256,7 +256,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 }
 ```
 
-Call `useMachineReducer`, the hooks of `shiru/xstate` and `createActorContext()` only in client components. In the Pages Router, render `<Shiru />` in `pages/_app.tsx`. On the server, shiru does nothing, and the overlay mounts after hydration.
+Call `useMachineReducer`, the hooks of `konat/xstate` and `createActorContext()` only in client components. In the Pages Router, render `<Konat />` in `pages/_app.tsx`. On the server, konat does nothing, and the overlay mounts after hydration.
 
 ## Verify
 
@@ -264,13 +264,13 @@ Call `useMachineReducer`, the hooks of `shiru/xstate` and `createActorContext()`
 2. If you can control a browser, open the app in development, and run this in the page. The result is the list of machine ids, such as `['search']`. Each machine must be in it.
 
    ```js
-   const shadow = document.querySelector('[data-shiru-root]')?.shadowRoot;
-   shadow.querySelector('button[aria-label^="Shiru"]').click();
+   const shadow = document.querySelector('[data-konat-root]')?.shadowRoot;
+   shadow.querySelector('button[aria-label^="Konat"]').click();
    [...shadow.querySelectorAll('[data-machine]')].map((row) => row.getAttribute('data-machine'));
    ```
 
-   If `shadow` is `undefined`, `<Shiru />` is not mounted, or the page is from a production build. The panel keeps its open state in `localStorage` under `shiru:ui`, so the click can close it. To start with a closed panel, remove that key and reload the page.
-3. Read the browser console. shiru writes nothing when it works. Each message that starts with `[shiru]` tells you about a problem.
+   If `shadow` is `undefined`, `<Konat />` is not mounted, or the page is from a production build. The panel keeps its open state in `localStorage` under `konat:ui`, so the click can close it. To start with a closed panel, remove that key and reload the page.
+3. Read the browser console. konat writes nothing when it works. Each message that starts with `[konat]` tells you about a problem.
 
 | Message starts with | Fix |
 |---|---|
@@ -285,12 +285,12 @@ Call `useMachineReducer`, the hooks of `shiru/xstate` and `createActorContext()`
 | `The fixtures loader failed` | Correct the error that follows the message. |
 | `Expected fixtures to be an array` | Export an array from the fixtures file: `export default [defineFixtures(…)]`. |
 | `Dropped an event without a string type` | Send events as objects, such as `send({ type: 'SUBMIT' })`. |
-| `Two versions of shiru are on this page` | Install one version. `npm ls shiru` finds the package that brings in the other one. |
+| `Two versions of konat are on this page` | Install one version. `npm ls konat` finds the package that brings in the other one. |
 | Other messages, such as `Can't preview` or `Can't follow` | Reload the page. If the message shows again, tell the user to report it. |
 
 If a machine is not in the panel, examine these causes:
 
-- `<Shiru />` is not mounted.
+- `<Konat />` is not mounted.
 - A component imports the hook from `@xstate/react`.
 - An actor from `createActor()` does not go through `connect()`.
 - A component gives `machine.reducer` to `useReducer`.
@@ -298,26 +298,26 @@ If a machine is not in the panel, examine these causes:
 
 ## Tests
 
-Test runners set `NODE_ENV` to `test`, so shiru works in tests as in development. Without a preview, the hooks behave as without shiru, so the tests do not have to change. To turn the overlay off, mock `shiru` in the setup file. For `shiru/xstate`, also mock it as this Vitest example shows:
+Test runners set `NODE_ENV` to `test`, so konat works in tests as in development. Without a preview, the hooks behave as without konat, so the tests do not have to change. To turn the overlay off, mock `konat` in the setup file. For `konat/xstate`, also mock it as this Vitest example shows:
 
 ```ts
 // vitest.setup.ts
 import { vi } from 'vitest';
 
-vi.mock('shiru', () => ({ Shiru: () => null }));
+vi.mock('konat', () => ({ Konat: () => null }));
 
-vi.mock('shiru/xstate', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('shiru/xstate')>()),
+vi.mock('konat/xstate', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('konat/xstate')>()),
   ...(await vi.importActual<typeof import('@xstate/react')>('@xstate/react')),
   connect: <TActor>(actor: TActor) => actor,
 }));
 ```
 
-Do not mock `shiru/reducer`, because its hook runs the transitions and effects of the app. To test the transitions of a reducer machine, call `machine.reducer(state, event)` with no React. A state that does not list the event returns the same object, so `toBe(state)` checks that the state ignores the event.
+Do not mock `konat/reducer`, because its hook runs the transitions and effects of the app. To test the transitions of a reducer machine, call `machine.reducer(state, event)` with no React. A state that does not list the event returns the same object, so `toBe(state)` checks that the state ignores the event.
 
 ## Props of the overlay
 
-All props of `<Shiru />` are optional.
+All props of `<Konat />` are optional.
 
 | Prop | Type | Default | Use |
 |---|---|---|---|
@@ -333,4 +333,4 @@ All props of `<Shiru />` are optional.
 - Events that the UI sends during a preview go to the event log of the panel, not to the machine.
 - The machine effects of the previewed state do not run. For XState, these are invoked actors, delayed transitions and entry actions. For a reducer machine, this is the `effect` of the state. Component effects that react to the state do run.
 - Child actors of an XState machine are listed under their parent, but they cannot be previewed. History states cannot be selected.
-- shiru checks only the name of a reducer state. A recording from before you added a field to a state does not have that field.
+- konat checks only the name of a reducer state. A recording from before you added a field to a state does not have that field.

@@ -1,46 +1,46 @@
 export const metadata = {
   title: 'Installation',
-  description: 'Install the package, mount the overlay, and connect your machines through shiru/reducer or shiru/xstate.',
+  description: 'Install the package, mount the overlay, and connect your machines through konat/reducer or konat/xstate.',
 };
 
-shiru has an adapter for each kind of machine. `shiru/reducer` is for `useReducer` machines, and `shiru/xstate` is for XState v5 machines. Neither is the default. Select the adapter that your app uses:
+konat has an adapter for each kind of machine. `konat/reducer` is for `useReducer` machines, and `konat/xstate` is for XState v5 machines. Neither is the default. Select the adapter that your app uses:
 
 <PageAdapterTabs />
 
-<InstallTabs reducer="shiru" xstate="shiru xstate @xstate/react">
+<InstallTabs reducer="konat" xstate="konat xstate @xstate/react">
   <AdapterTab adapter="reducer">
-    `shiru/reducer` needs only React. Your app does not need `xstate` or `@xstate/react`.
+    `konat/reducer` needs only React. Your app does not need `xstate` or `@xstate/react`.
   </AdapterTab>
 
   <AdapterTab adapter="xstate">
-    The command also installs `xstate` and `@xstate/react`, because shiru does not install them. If your app already has them, install only `shiru`. An app can use both adapters, and this command installs all that both need.
+    The command also installs `xstate` and `@xstate/react`, because konat does not install them. If your app already has them, install only `konat`. An app can use both adapters, and this command installs all that both need.
   </AdapterTab>
 </InstallTabs>
 
-Add shiru to `dependencies`, not to `devDependencies`. Your app code imports `shiru/reducer` or `shiru/xstate`, thus the production build needs the package.
+Add konat to `dependencies`, not to `devDependencies`. Your app code imports `konat/reducer` or `konat/xstate`, thus the production build needs the package.
 
 ## Requirements
 
-shiru uses the versions of these packages that your app has:
+konat uses the versions of these packages that your app has:
 
 | Package | Versions | Needed for |
 |---|---|---|
 | `react`, `react-dom` | 18 or 19 | Both adapters |
-| `xstate` | 5.28 or later | `shiru/xstate` only |
-| `@xstate/react` | 6.1 or later | `shiru/xstate` only |
+| `xstate` | 5.28 or later | `konat/xstate` only |
+| `@xstate/react` | 6.1 or later | `konat/xstate` only |
 
 ## Quick start
 
 1. Mount the overlay once, near the root of the app. Both adapters use the same overlay:
 
    ```tsx
-   import { Shiru } from 'shiru';
+   import { Konat } from 'konat';
 
    export function App() {
      return (
        <>
          <Routes />
-         <Shiru />
+         <Konat />
        </>
      );
    }
@@ -61,11 +61,11 @@ shiru uses the versions of these packages that your app has:
      </AdapterTab>
 
      <AdapterTab adapter="xstate">
-       Import the XState hooks from `shiru/xstate` instead of `@xstate/react`:
+       Import the XState hooks from `konat/xstate` instead of `@xstate/react`:
 
        ```diff
        - import { useMachine, useSelector, createActorContext } from '@xstate/react';
-       + import { useMachine, useSelector, createActorContext } from 'shiru/xstate';
+       + import { useMachine, useSelector, createActorContext } from 'konat/xstate';
        ```
 
        The hooks have the same names and signatures as in `@xstate/react`. Actors that you create outside React need one more step, with `connect()`. Refer to [XState](/docs/xstate#actors-outside-react) for that step, and for a lint rule that finds the imports from `@xstate/react`.
@@ -76,20 +76,20 @@ Start the dev server and click the bubble in the bottom-right corner, or press <
 
 ## Check the install
 
-You can check the install without a screen, for example in a browser test or from an agent. In development, `<Shiru />` adds a `<div data-shiru-root>` to `document.body`, or to `portalTarget`. The overlay is in the open shadow root of this element.
+You can check the install without a screen, for example in a browser test or from an agent. In development, `<Konat />` adds a `<div data-konat-root>` to `document.body`, or to `portalTarget`. The overlay is in the open shadow root of this element.
 
 1. Get the shadow root:
 
    ```js
-   const shadow = document.querySelector('[data-shiru-root]')?.shadowRoot;
+   const shadow = document.querySelector('[data-konat-root]')?.shadowRoot;
    ```
 
-   If `shadow` is `undefined`, `<Shiru />` is not mounted, or the page is from a production build.
+   If `shadow` is `undefined`, `<Konat />` is not mounted, or the page is from a production build.
 
 2. Open the panel:
 
    ```js
-   shadow.querySelector('button[aria-label^="Shiru"]').click();
+   shadow.querySelector('button[aria-label^="Konat"]').click();
    ```
 
 3. After the panel renders, read the machine ids:
@@ -102,11 +102,11 @@ You can check the install without a screen, for example in a browser test or fro
 
 The panel keeps its open state and its page from the last visit. Thus, in a browser that used the panel before, step 2 can close the panel, or open the page of one machine. To start with a closed panel, [reset the panel](/docs/troubleshooting#reset-the-panel) before step 1.
 
-shiru writes nothing to the console when it starts. A message that starts with `[shiru]` tells you about a problem. Refer to [Troubleshooting](/docs/troubleshooting#console-warnings).
+konat writes nothing to the console when it starts. A message that starts with `[konat]` tells you about a problem. Refer to [Troubleshooting](/docs/troubleshooting#console-warnings).
 
 ## Before you release
 
-You do not have to remove `<Shiru />` or change the imports before a release. In a production build, `<Shiru />` renders nothing, and the bundler removes the registry and the panel. Refer to [Choose an adapter](/docs/concepts#choose-an-adapter) for what each adapter keeps, and for its size.
+You do not have to remove `<Konat />` or change the imports before a release. In a production build, `<Konat />` renders nothing, and the bundler removes the registry and the panel. Refer to [Choose an adapter](/docs/concepts#choose-an-adapter) for what each adapter keeps, and for its size.
 
 Check two things in your build:
 

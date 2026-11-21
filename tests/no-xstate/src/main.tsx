@@ -1,10 +1,10 @@
 import { createRoot } from 'react-dom/client';
-import { Shiru } from 'shiru';
+import { Konat } from 'konat';
 import { Door } from './door';
 
 createRoot(document.getElementById('root')!).render(
   <>
     <Door delay={500} />
-    <Shiru />
+    <Konat />
   </>,
 );

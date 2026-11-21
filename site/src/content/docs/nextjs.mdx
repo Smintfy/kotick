@@ -1,31 +1,31 @@
 export const metadata = {
   title: 'Next.js',
-  description: 'Use shiru in the App Router, with server components, and in the Pages Router.',
+  description: 'Use konat in the App Router, with server components, and in the Pages Router.',
 };
 
-`shiru` and `shiru/xstate` start with `'use client'`, so you can import them in the App Router.
+`konat` and `konat/xstate` start with `'use client'`, so you can import them in the App Router.
 
-`shiru/reducer` has no directive, so any module can import a machine file, also a server component or a route handler. Only client components call `useMachineReducer`.
+`konat/reducer` has no directive, so any module can import a machine file, also a server component or a route handler. Only client components call `useMachineReducer`.
 
 ## Server components
 
-- A server component can render `<Shiru />`.
-- A server component cannot give a function to a client component, so it cannot give the `fixtures` loader. Render `<Shiru fixtures={…} />` in a client component:
+- A server component can render `<Konat />`.
+- A server component cannot give a function to a client component, so it cannot give the `fixtures` loader. Render `<Konat fixtures={…} />` in a client component:
 
   ```tsx
   // src/components/dev-tools.tsx
   'use client';
 
-  import { Shiru } from 'shiru';
+  import { Konat } from 'konat';
 
   const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
 
   export function DevTools() {
-    return <Shiru fixtures={fixtures} />;
+    return <Konat fixtures={fixtures} />;
   }
   ```
 
-- Call `useMachineReducer` only in client components. A server component can import a machine file of `shiru/reducer` and call `machine.reducer`, for example to make the initial state from the URL. Give that state to the client component as a prop:
+- Call `useMachineReducer` only in client components. A server component can import a machine file of `konat/reducer` and call `machine.reducer`, for example to make the initial state from the URL. Give that state to the client component as a prop:
 
   ```tsx
   // src/app/feedback/page.tsx
@@ -42,8 +42,8 @@ export const metadata = {
   }
   ```
 
-- Call the hooks of `shiru/xstate` and `createActorContext()` only in client components, as with `@xstate/react`.
-- On the server, shiru does nothing: the overlay renders nothing, and nothing registers. The overlay mounts after hydration, so it does not cause hydration errors.
+- Call the hooks of `konat/xstate` and `createActorContext()` only in client components, as with `@xstate/react`.
+- On the server, konat does nothing: the overlay renders nothing, and nothing registers. The overlay mounts after hydration, so it does not cause hydration errors.
 
 ## Root layout
 
@@ -68,12 +68,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
 ## Pages Router
 
-shiru also works in the Pages Router. Render `<Shiru />` in `pages/_app.tsx`, so that it stays mounted when the page changes:
+konat also works in the Pages Router. Render `<Konat />` in `pages/_app.tsx`, so that it stays mounted when the page changes:
 
 ```tsx
 // src/pages/_app.tsx
 import type { AppProps } from 'next/app';
-import { Shiru } from 'shiru';
+import { Konat } from 'konat';
 
 const fixtures = process.env.NODE_ENV !== 'production' ? () => import('@/debug/fixtures') : undefined;
 
@@ -81,10 +81,10 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <>
       <Component {...pageProps} />
-      <Shiru fixtures={fixtures} />
+      <Konat fixtures={fixtures} />
     </>
   );
 }
 ```
 
-The Pages Router has no server components. Thus, `_app.tsx` can give the `fixtures` loader, and each page and component can call the hooks of both adapters. During server rendering, shiru does nothing, as in the App Router.
+The Pages Router has no server components. Thus, `_app.tsx` can give the `fixtures` loader, and each page and component can call the hooks of both adapters. During server rendering, konat does nothing, as in the App Router.

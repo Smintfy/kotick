@@ -48,16 +48,16 @@ function scan(dir) {
   return hits;
 }
 
-// Every export of shiru that holds code. A server bundle that leaves shiru/figure to Node loads shiru at runtime too.
-const shiruSpecifiers = Object.keys(JSON.parse(readFileSync(join(root, 'packages/shiru/package.json'), 'utf8')).exports)
+// Every export of konat that holds code. A server bundle that leaves konat/figure to Node loads konat at runtime too.
+const konatSpecifiers = Object.keys(JSON.parse(readFileSync(join(root, 'packages/konat/package.json'), 'utf8')).exports)
   .filter((path) => path !== './package.json')
-  .map((path) => path.replace(/^\./, 'shiru'));
+  .map((path) => path.replace(/^\./, 'konat'));
 
-const shiruLoad = new RegExp(`(?:\\bfrom|\\bimport|\\brequire\\()\\s*\\(?\\s*["'](?:${shiruSpecifiers.join('|')})["']`);
+const konatLoad = new RegExp(`(?:\\bfrom|\\bimport|\\brequire\\()\\s*\\(?\\s*["'](?:${konatSpecifiers.join('|')})["']`);
 
-/** True when a server bundle leaves shiru to Node, which reads NODE_ENV when the server starts. */
+/** True when a server bundle leaves konat to Node, which reads NODE_ENV when the server starts. */
 function importsAtRuntime(dir) {
-  return jsFiles(dir).some((file) => shiruLoad.test(readFileSync(file, 'utf8')));
+  return jsFiles(dir).some((file) => konatLoad.test(readFileSync(file, 'utf8')));
 }
 
 /** One row per scanned output. */
@@ -68,7 +68,7 @@ export function check(name, output, dir, extra = '') {
   if (!existsSync(dir)) throw new Error(`${name}: no ${output} output in ${dir}.`);
   const hits = scan(dir);
   const runtime = output === 'server' && hits.length === 0 && importsAtRuntime(dir);
-  rows.push({ name, output, hits, note: runtime ? 'imports shiru at runtime' : extra });
+  rows.push({ name, output, hits, note: runtime ? 'imports konat at runtime' : extra });
 }
 
 /**

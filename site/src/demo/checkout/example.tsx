@@ -100,8 +100,8 @@ export function CheckoutExample({ fixturesHref, pageHref, sources }: CheckoutExa
           preview.
         </p>
         <p className="border-l-2 border-muted-foreground/30 px-4 py-3 text-sm text-muted-foreground">
-          This site builds shiru in development mode for the demo. In your production build,{' '}
-          <code>&lt;Shiru /&gt;</code> renders nothing.
+          This site builds konat in development mode for the demo. In your production build,{' '}
+          <code>&lt;Konat /&gt;</code> renders nothing.
         </p>
       </div>
     </>

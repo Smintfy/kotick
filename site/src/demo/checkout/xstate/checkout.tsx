@@ -1,6 +1,6 @@
 'use client';
 
-import { useMachine } from 'shiru/xstate';
+import { useMachine } from 'konat/xstate';
 import { Cart, EmptyCart, Payment, Receipt } from '@/components/demo/checkout-screens';
 import { checkoutMachine } from '@/demo/checkout/xstate/machine';
 

@@ -1,4 +1,4 @@
-import { defineReducerMachine } from 'shiru/reducer';
+import { defineReducerMachine } from 'konat/reducer';
 
 export type DownloadState = { status: 'idle' } | { status: 'downloading'; progress: number } | { status: 'done' };
 

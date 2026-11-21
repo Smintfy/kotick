@@ -2,10 +2,10 @@
 // dev-tools.tsx loads this file only in development, so production builds don't include it.
 //
 // The feedback machine is a reducer machine, and each of its fixtures is a whole state object.
-// Both entries export defineFixtures, so this file imports the one of shiru/reducer with another name.
+// Both entries export defineFixtures, so this file imports the one of konat/reducer with another name.
 
-import { defineFixtures as defineReducerFixtures } from 'shiru/reducer';
-import { defineFixtures } from 'shiru/xstate';
+import { defineFixtures as defineReducerFixtures } from 'konat/reducer';
+import { defineFixtures } from 'konat/xstate';
 import { feedbackMachine } from '@/machines/feedback';
 import { signupMachine } from '@/machines/signup';
 
