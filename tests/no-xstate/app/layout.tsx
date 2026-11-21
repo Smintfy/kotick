@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import { Konat } from 'konat';
+import { Shiru } from 'shiru';
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <Konat />
+        <Shiru />
       </body>
     </html>
   );

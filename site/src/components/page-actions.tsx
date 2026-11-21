@@ -2,6 +2,7 @@
 
 import { Check, Copy } from 'lucide-react';
 import { useCopy } from '@/components/copy-button';
+import { GitHubLogo } from '@/components/logo/github';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -16,7 +17,15 @@ function MarkdownIcon({ className }: { className?: string }) {
 
 const action = 'font-normal text-muted-foreground';
 
-export function PageActions({ markdown, markdownHref }: { markdown: string; markdownHref: string }) {
+export function PageActions({
+  markdown,
+  markdownHref,
+  repoHref,
+}: {
+  markdown: string;
+  markdownHref: string;
+  repoHref: string;
+}) {
   const { copied, copy } = useCopy();
 
   return (
@@ -38,6 +47,17 @@ export function PageActions({ markdown, markdownHref }: { markdown: string; mark
       >
         <MarkdownIcon />
         View as Markdown
+      </Button>
+      <Separator orientation="vertical" className="bg-input data-vertical:h-4 data-vertical:self-center" />
+      <Button
+        variant="ghost"
+        size="sm"
+        className={action}
+        nativeButton={false}
+        render={<a href={repoHref} target="_blank" rel="noopener" />}
+      >
+        <GitHubLogo aria-hidden className="size-3.5 text-current" />
+        Star on GitHub
       </Button>
     </div>
   );

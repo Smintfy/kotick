@@ -1,4 +1,4 @@
-import { defineReducerMachine } from 'konat/reducer';
+import { defineReducerMachine } from 'shiru/reducer';
 import {
   type Card,
   type CheckoutEvent,

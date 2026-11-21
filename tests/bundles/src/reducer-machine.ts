@@ -1,4 +1,4 @@
-import { defineReducerMachine } from 'konat/reducer';
+import { defineReducerMachine } from 'shiru/reducer';
 
 type ToggleState = { status: 'off'; count: number } | { status: 'on'; count: number };
 

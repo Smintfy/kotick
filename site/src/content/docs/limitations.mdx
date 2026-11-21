@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Limitations',
-  description: 'What konat cannot do in this version.',
+  description: 'What shiru cannot do in this version.',
 };
 
 ## Previews
@@ -13,9 +13,9 @@ These limits apply to both adapters:
 ### Reducer machines
 
 - **A state without a recording or a fixture cannot be previewed.** The live state object fits only the state that the machine is in. The panel greys out the other states until you visit them or write a [fixture](/docs/fixtures#define-fixtures) for them.
-- **Events that the component dispatches during a preview are lost.** konat blocks them, and does not replay them after the release. A click handler or a component `useEffect` that dispatches the result of a request loses that event if a preview is open when the response comes. Send the result from the `effect` of the state instead, as rule 5 in [Define a machine](/docs/reducer#define-a-machine) shows.
+- **Events that the component dispatches during a preview are lost.** shiru blocks them, and does not replay them after the release. A click handler or a component `useEffect` that dispatches the result of a request loses that event if a preview is open when the response comes. Send the result from the `effect` of the state instead, as rule 5 in [Define a machine](/docs/reducer#define-a-machine) shows.
 - **The effect of the previewed state does not run.** The effect of the real state continues to run, and its `send` is never blocked.
-- **konat checks only the name of the state.** A recording or a fixture without a field of the state previews, and the component gets the object without that field.
+- **shiru checks only the name of the state.** A recording or a fixture without a field of the state previews, and the component gets the object without that field.
 
 ### XState machines
 
@@ -25,20 +25,16 @@ These limits apply to both adapters:
 
 ## Recordings
 
-konat records context to show it in [previews](/docs/concepts#context-for-a-preview). It keeps the recordings in memory, and writes a copy to `sessionStorage`, so that they are still there after a reload. These limits apply:
+shiru records context to show it in [previews](/docs/concepts#context-for-a-preview). It keeps the recordings in memory, and writes a copy to `sessionStorage`, so that they are still there after a reload. These limits apply:
 
-- **50 sets of leaves for each machine.** When a machine gets to a 51st set of leaves, konat removes the oldest recording of that machine.
-- **100,000 characters for each context.** konat keeps a larger context in memory only, so it is not there after a reload.
-- **1,000,000 characters in `sessionStorage` for all machines.** Over this limit, konat writes only the newest recordings. It keeps the others in memory until the page reloads, and shows a [warning](/docs/troubleshooting#console-warnings) one time for each machine.
+- **50 sets of leaves for each machine.** When a machine gets to a 51st set of leaves, shiru removes the oldest recording of that machine.
+- **100,000 characters for each context.** shiru keeps a larger context in memory only, so it is not there after a reload.
+- **1,000,000 characters in `sessionStorage` for all machines.** Over this limit, shiru writes only the newest recordings. It keeps the others in memory until the page reloads, and shows a [warning](/docs/troubleshooting#console-warnings) one time for each machine.
 
 ## The panel
 
-- **Only machines that an adapter registers are listed.** These are the components that call `useMachineReducer`, and the actors of the hooks of `konat/xstate` and of `connect()`. A component that gives `machine.reducer` to `useReducer` is not in the panel. An actor from `createActor()` that you do not give to `connect()` is not in the panel.
+- **Only machines that an adapter registers are listed.** These are the components that call `useMachineReducer`, and the actors of the hooks of `shiru/xstate` and of `connect()`. A component that gives `machine.reducer` to `useReducer` is not in the panel. An actor from `createActor()` that you do not give to `connect()` is not in the panel.
 - **History states cannot be selected.**
 - **The arrow keys move through the leaves that show.** Compound and parallel states cannot get focus, so only a click collapses or expands them. The arrow keys skip the leaves of a collapsed state.
 - **The state tree shows the fixtures of the first instance of a machine id.** When `debug.id` gives two different machines the same id, the instance of the second machine can get other fixtures.
 - **A transform on `body` moves the overlay.** If `body` has a `transform`, a `filter` or `contain`, it becomes the containing block of the overlay. Use `portalTarget={document.documentElement}` on such pages.
-
-## Builds
-
-- **Development builds only.** For staging builds in production mode, the overlay is not available.

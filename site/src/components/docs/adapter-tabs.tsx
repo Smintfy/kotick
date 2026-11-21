@@ -21,7 +21,7 @@ const logos: Record<Adapter, ComponentType<{ className?: string }>> = {
 };
 
 // One choice for the whole site, so each tab group and each demo shows the adapter that the reader selected last.
-const storageKey = 'konat-docs:adapter';
+const storageKey = 'shiru-docs:adapter';
 const listeners = new Set<() => void>();
 let chosen: Adapter | undefined;
 
@@ -82,12 +82,12 @@ const tabBar = 'border-b border-input pb-0.5';
 
 function AdapterTabList() {
   return (
-    <TabsList variant="line" aria-label="Adapter">
+    <TabsList variant="line" aria-label="Adapter" className="gap-5">
       {adapters.map(({ id, label }) => {
         const Logo = logos[id];
 
         return (
-          <TabsTrigger key={id} value={id}>
+          <TabsTrigger key={id} value={id} className="px-0">
             <Logo className="size-4" />
             {label}
           </TabsTrigger>

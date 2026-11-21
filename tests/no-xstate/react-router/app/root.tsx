@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from 'react-router';
-import { Konat } from 'konat';
+import { Shiru } from 'shiru';
 
 export function Layout({ children }: { children: ReactNode }) {
   return (
@@ -12,7 +12,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
-        <Konat />
+        <Shiru />
         <ScrollRestoration />
         <Scripts />
       </body>

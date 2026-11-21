@@ -198,6 +198,7 @@
 
   h1 {
     font-size: var(--text-4xl);
+    font-weight: var(--font-weight-semibold);
   }
 
   h2 {

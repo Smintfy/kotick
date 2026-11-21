@@ -1,13 +1,13 @@
 // Confirms that production builds keep none of the debugger.
 //
-// The fixture app in this directory uses every public export. The script packs konat as npm publishes it,
+// The fixture app in this directory uses every public export. The script packs shiru as npm publishes it,
 // installs the tarball into a copy of the fixture in a temporary directory, and builds the copy for production with
 // esbuild, Vite, Next.js (Turbopack and webpack) and React Router. It does the same with tests/no-xstate, an app that
-// installs konat without XState, and runs the builds of tests/no-xstate/check.mjs on it. Then it builds the examples,
+// installs shiru without XState, and runs the builds of tests/no-xstate/check.mjs on it. Then it builds the examples,
 // which use the workspace source.
 // In each output, it looks for strings that only the registry, the overlay and the adapters contain.
 // For esbuild and Vite it also compares the JavaScript loaded at startup of each app in PAIRS with the same app written
-// without konat, and fails when the difference is over the budget of that pair.
+// without shiru, and fails when the difference is over the budget of that pair.
 // It starts the Next.js and React Router builds with their production servers, and compares the answers to requests
 // with literal text. In the Next.js app, a server component and a route handler run the reducer of a machine file.
 //
@@ -31,7 +31,7 @@ import { noXstate } from '../no-xstate/check.mjs';
 import { buildNext, buildReactRouter, check, env, failures, root, rows, run } from './harness.mjs';
 
 /**
- * Each pair is an app that uses one adapter and the same app without konat, as an esbuild entry and a Vite page.
+ * Each pair is an app that uses one adapter and the same app without shiru, as an esbuild entry and a Vite page.
  * Each pair has its own budget, so one adapter can't use the headroom of the other.
  * The output then names the adapter that grew.
  */
@@ -130,7 +130,7 @@ function compare(name, pair, app, baseline) {
 
 /**
  * Builds both apps of each pair with `buildApp(side, outdir)`, and compares the files that `startup(outdir)` lists.
- * Only the app of a pair has konat, so only its output gets a row.
+ * Only the app of a pair has shiru, so only its output gets a row.
  */
 function measurePairs(bundler, dir, buildApp, startup) {
   for (const pair of PAIRS) {
@@ -292,24 +292,24 @@ const examples = [
   },
 ];
 
-/** Each fixture is a directory with a package.json that installs konat from konat.tgz, and the builds to run in it. */
+/** Each fixture is a directory with a package.json that installs shiru from shiru.tgz, and the builds to run in it. */
 const fixtures = [{ dir: import.meta.dirname, builds }, noXstate];
 
-/** Builds konat, packs it into `dir` as npm publishes it, and returns the path of the tarball. */
-function packKonat(dir) {
-  run('pnpm', ['--filter', 'konat', 'build'], root);
-  run('pnpm', ['pack', '--pack-destination', dir], join(root, 'packages/konat'));
+/** Builds shiru, packs it into `dir` as npm publishes it, and returns the path of the tarball. */
+function packShiru(dir) {
+  run('pnpm', ['--filter', 'shiru', 'build'], root);
+  run('pnpm', ['pack', '--pack-destination', dir], join(root, 'packages/shiru'));
 
-  return join(dir, readdirSync(dir).find((file) => /^konat-.*\.tgz$/.test(file)));
+  return join(dir, readdirSync(dir).find((file) => /^shiru-.*\.tgz$/.test(file)));
 }
 
-/** Copies a fixture into `dir`, and installs it with the tarball as konat. */
+/** Copies a fixture into `dir`, and installs it with the tarball as shiru. */
 function installFixture(fixture, dir, tarball) {
   cpSync(fixture, dir, {
     recursive: true,
     filter: (source) => !/(node_modules|\.next[^/]*|\/out|\/build|check\.mjs|harness\.mjs)$/.test(source),
   });
-  cpSync(tarball, join(dir, 'konat.tgz'));
+  cpSync(tarball, join(dir, 'shiru.tgz'));
   // pnpm runs no install scripts it wasn't allowed to. esbuild's script puts its binary in place.
   writeFileSync(join(dir, 'pnpm-workspace.yaml'), 'allowBuilds:\n  esbuild: true\n');
   run('pnpm', ['install', '--no-frozen-lockfile', '--reporter=silent'], dir);
@@ -327,12 +327,12 @@ const temporary = [];
 
 try {
   if (selected.length > 0) {
-    const packDir = mkdtempSync(join(tmpdir(), 'konat-pack-'));
+    const packDir = mkdtempSync(join(tmpdir(), 'shiru-pack-'));
     temporary.push(packDir);
-    const tarball = packKonat(packDir);
+    const tarball = packShiru(packDir);
 
     for (const fixture of selected) {
-      const dir = mkdtempSync(join(tmpdir(), `konat-${basename(fixture.dir)}-`));
+      const dir = mkdtempSync(join(tmpdir(), `shiru-${basename(fixture.dir)}-`));
       temporary.push(dir);
       installFixture(fixture.dir, dir, tarball);
       console.log(`\nFixture: ${dir}`);

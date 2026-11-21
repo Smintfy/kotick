@@ -1,6 +1,6 @@
 'use client';
 
-import { useMachineReducer } from 'konat/reducer';
+import { useMachineReducer } from 'shiru/reducer';
 import { type FeedbackState, feedbackMachine, ratings } from '@/machines/feedback';
 
 export function FeedbackForm({ initial }: { initial: FeedbackState }) {

@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
-import { Konat } from 'konat';
+import { Shiru } from 'shiru';
 
-// A server component renders <Konat /> directly: the 'use client' at the top of the package entry allows it.
+// A server component renders <Shiru /> directly: the 'use client' at the top of the package entry allows it.
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
         {children}
-        <Konat />
+        <Shiru />
       </body>
     </html>
   );

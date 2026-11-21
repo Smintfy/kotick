@@ -9,7 +9,6 @@ import * as limitations from '@/content/docs/limitations.mdx';
 import * as nextjs from '@/content/docs/nextjs.mdx';
 import * as overview from '@/content/docs/overview.mdx';
 import * as panel from '@/content/docs/panel.mdx';
-import * as production from '@/content/docs/production.mdx';
 import * as reducer from '@/content/docs/reducer.mdx';
 import * as tests from '@/content/docs/tests.mdx';
 import * as troubleshooting from '@/content/docs/troubleshooting.mdx';
@@ -22,7 +21,7 @@ export type NavItem = { href: string; title: string; headings: readonly Heading[
 export type DocsPage = NavItem & {
   slug: string;
   description: string;
-  markdownHref: string | undefined;
+  markdownHref: string;
   adapterTabs: boolean;
   Content: MDXContent;
 };
@@ -36,7 +35,6 @@ const docs = [
   ['fixtures', fixtures],
   ['api', api],
   ['nextjs', nextjs],
-  ['production', production],
   ['tests', tests],
   ['troubleshooting', troubleshooting],
   ['limitations', limitations],
@@ -44,8 +42,6 @@ const docs = [
 ] as const;
 
 type DocsSlug = (typeof docs)[number][0];
-
-const withoutMarkdown: ReadonlySet<DocsSlug> = new Set(['faq', 'limitations']);
 
 const examplesHeadings = [
   { id: 'checkout', text: 'Checkout', depth: 2 },
@@ -74,7 +70,7 @@ function docsPage(
   slug: string,
   { metadata, headings, adapterTabs, default: Content }: typeof overview,
   href: string,
-  markdownHref: string | undefined,
+  markdownHref: string,
 ): DocsPage {
   if (!metadata?.title || !metadata.description) {
     throw new Error(`src/content/docs/${slug}.mdx must export metadata with a title and a description.`);
@@ -87,8 +83,10 @@ export const overviewPage = docsPage('overview', overview, '/', '/index.md');
 
 export const pitch = overviewPage.description;
 
+export const repoHref = 'https://github.com/Smintfy/shiru';
+
 export const pages: readonly DocsPage[] = docs.map(([slug, module]) =>
-  docsPage(slug, module, `/docs/${slug}`, withoutMarkdown.has(slug) ? undefined : `/docs/${slug}.md`),
+  docsPage(slug, module, `/docs/${slug}`, `/docs/${slug}.md`),
 );
 
 export function findPage(slug: string): DocsPage | undefined {
@@ -122,7 +120,6 @@ export const navSections: readonly NavSection[] = [
       docsItem('xstate'),
       docsItem('fixtures'),
       docsItem('nextjs'),
-      docsItem('production'),
       docsItem('tests'),
     ],
   },

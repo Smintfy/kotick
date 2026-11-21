@@ -1,4 +1,4 @@
-import { type CompleteFixtures, defineFixtures } from 'konat/reducer';
+import { type CompleteFixtures, defineFixtures } from 'shiru/reducer';
 import { type Account, emptyAccount, takenWorkspace } from '@/demo/onboarding/account';
 import { onboardingReducerMachine } from '@/demo/onboarding/reducer/machine';
 

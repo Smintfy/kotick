@@ -1,11 +1,11 @@
 {
-  "name": "konat-no-xstate-check",
+  "name": "shiru-no-xstate-check",
   "private": true,
   "type": "module",
   "dependencies": {
     "@react-router/node": "8.4.0",
     "isbot": "5.2.2",
-    "konat": "file:./konat.tgz",
+    "shiru": "file:./shiru.tgz",
     "next": "16.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",

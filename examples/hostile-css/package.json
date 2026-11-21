@@ -13,7 +13,7 @@
     "@xstate/react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "konat": "workspace:*",
+    "shiru": "workspace:*",
     "xstate": "catalog:"
   },
   "devDependencies": {

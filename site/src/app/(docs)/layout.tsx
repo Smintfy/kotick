@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { version } from 'konat/package.json';
 import { Logo } from '@/components/logo';
 import { Nav } from '@/components/nav';
 import { Toc } from '@/components/toc';
@@ -18,10 +17,10 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
         Skip to content
       </a>
       <SidebarProvider style={{ '--sidebar-width': '240px' }}>
-        <Nav sections={navSections} version={version} />
+        <Nav sections={navSections} />
         <SidebarInset className="h-svh">
           <header className="flex h-bar shrink-0 items-center justify-between border-b bg-background px-4 md:hidden">
-            <Link href="/" aria-label="konat home" className="rounded-sm">
+            <Link href="/" aria-label="shiru home" className="rounded-sm">
               <Logo className="size-5" />
             </Link>
             <SidebarTrigger className="-mr-1.5" />

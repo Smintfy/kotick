@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '@/components/logo';
 import { ThemeSwitcher } from '@/components/theme-switcher';
-import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import {
   Sidebar,
   SidebarContent,
@@ -20,19 +20,18 @@ import {
 } from '@/components/ui/sidebar';
 import type { NavSection } from '@/site';
 
-export function Nav({ sections, version }: { sections: readonly NavSection[]; version: string }) {
+export function Nav({ sections }: { sections: readonly NavSection[] }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar className="group-data-[side=left]:border-r-0">
       <SidebarHeader className="mt-8 ml-5 flex-row items-center gap-2">
-        <Link href="/" aria-label="konat home" className="w-fit rounded-sm" onClick={() => setOpenMobile(false)}>
+        <Link href="/" aria-label="shiru home" className="w-fit rounded-sm" onClick={() => setOpenMobile(false)}>
           <Logo className="size-5" />
         </Link>
-        <Badge variant="outline" className="text-[11px] text-muted-foreground">
-          v{version}
-        </Badge>
+        <Separator orientation="vertical" className="mx-0.5 bg-input data-vertical:h-4 data-vertical:self-center" />
+        <span className="text-sm font-medium text-muted-foreground">Docs</span>
       </SidebarHeader>
       <SidebarContent role="navigation" aria-label="Docs" className="scroll-fade-y gap-6 px-2 pt-4 pb-10">
         {sections.map((section) => (
@@ -64,7 +63,7 @@ export function Nav({ sections, version }: { sections: readonly NavSection[]; ve
           </SidebarGroup>
         ))}
       </SidebarContent>
-      <SidebarFooter className="px-3.5 pt-2 pb-4">
+      <SidebarFooter className="px-7 pt-2 pb-4">
         <ThemeSwitcher />
       </SidebarFooter>
     </Sidebar>

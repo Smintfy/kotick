@@ -6,7 +6,6 @@ import { CodeBlock, HighlightedCode } from '@/components/docs/code-block';
 import { AdapterInstallTabs, type InstallCommand, InstallTabs } from '@/components/docs/install-tabs';
 import { Prop, PropsTable } from '@/components/docs/props-table';
 import { Shortcut } from '@/components/docs/shortcut';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Kbd } from '@/components/ui/kbd';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Adapter } from '@/content/adapters';
@@ -27,30 +26,6 @@ function AnchorHeading({ as: Tag, id, children }: ComponentProps<'h2'> & { as: '
       </a>
     </Tag>
   );
-}
-
-function Faq({ children }: { children: ReactNode }) {
-  return (
-    <Accordion multiple hiddenUntilFound>
-      {children}
-    </Accordion>
-  );
-}
-
-function FaqItem({ id, children }: { id: string; children: ReactNode }) {
-  return (
-    <AccordionItem id={id} value={id}>
-      {children}
-    </AccordionItem>
-  );
-}
-
-function FaqQuestion({ children }: { children: ReactNode }) {
-  return <AccordionTrigger className="text-sm/[1.6]">{children}</AccordionTrigger>;
-}
-
-function FaqAnswer({ children }: { children: ReactNode }) {
-  return <AccordionContent className="text-sm/[1.6]">{children}</AccordionContent>;
 }
 
 function installCommands(packages: string): InstallCommand[] {
@@ -102,10 +77,6 @@ const components = {
   CheckoutDemo,
   PropsTable,
   Prop,
-  Faq,
-  FaqItem,
-  FaqQuestion,
-  FaqAnswer,
 } satisfies MDXComponents;
 
 export function useMDXComponents(): MDXComponents {

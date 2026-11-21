@@ -1,13 +1,13 @@
 {
-  "name": "konat-repo",
+  "name": "shiru-repo",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "dev": "pnpm --parallel --filter konat --filter vite-react dev",
-    "dev:hostile-css": "pnpm --parallel --filter konat --filter hostile-css dev",
-    "dev:next": "pnpm --parallel --filter konat --filter next-app dev",
-    "dev:site": "pnpm --parallel --filter konat --filter site dev",
+    "dev": "pnpm --parallel --filter shiru --filter vite-react dev",
+    "dev:hostile-css": "pnpm --parallel --filter shiru --filter hostile-css dev",
+    "dev:next": "pnpm --parallel --filter shiru --filter next-app dev",
+    "dev:site": "pnpm --parallel --filter shiru --filter site dev",
     "test": "pnpm lint && pnpm -r test",
     "test:matrix": "node scripts/test-matrix.mjs",
     "check:bundles": "node tests/bundles/check.mjs",
