@@ -4,7 +4,7 @@ import { ArrowLeft, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { type ComponentType, useState } from 'react';
 import { type FixturesInput, Kotick } from 'kotick';
-import { AdapterSwitch, useAdapter } from '@/components/docs/adapter-tabs';
+import { useAdapter } from '@/components/docs/adapter-tabs';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Adapter } from '@/content/adapters';
@@ -29,15 +29,12 @@ export function DemoPage({ id, title, backHref }: { id: DemoId; title: string; b
 
   return (
     <>
-      <header className="relative flex h-bar items-center px-4">
+      <header className="flex h-bar items-center px-4">
         <Button variant="ghost" className="-ml-1.5" nativeButton={false} render={<Link href={backHref} />}>
           <ArrowLeft />
           Docs
         </Button>
         <h1 className="sr-only">{title}</h1>
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <AdapterSwitch />
-        </div>
         <Tooltip>
           <TooltipTrigger
             render={
