@@ -233,3 +233,21 @@
   white-space: nowrap;
   border: 0;
 }
+
+@keyframes kotick-glide {
+  from {
+    translate: var(--kotick-glide-from);
+    animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  70% {
+    translate: var(--kotick-glide-past);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+@utility glide {
+  animation: kotick-glide 400ms;
+}

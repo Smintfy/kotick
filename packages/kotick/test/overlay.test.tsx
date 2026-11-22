@@ -16,7 +16,6 @@ import {
   marks,
   overlay,
   panel,
-  pickCorner,
   preview,
   releaseAll,
   show,
@@ -702,7 +701,7 @@ describe('Copy JSON', () => {
 });
 
 describe('settings', () => {
-  test('the panel remembers whether it is open, its corner and the shown machine, until Back shows the list', async () => {
+  test('the panel remembers whether it is open and the shown machine, until Back shows the list', async () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
 
@@ -716,25 +715,24 @@ describe('settings', () => {
 
     const { unmount } = render(page());
     await flush();
-    const first = { open: isOpen(), corner: look().corner };
+    const first = isOpen();
     await click(bubble());
-    await pickCorner('Bottom left');
     await show(toggle.id);
     const saved = stored();
     unmount();
 
     const second = render(page());
     await flush();
-    const reloaded = { open: isOpen(), corner: look().corner, machine: shownMachine() };
+    const reloaded = { open: isOpen(), machine: shownMachine() };
     await click(button('Back'));
     second.unmount();
     render(page());
     await flush();
     expect({ first, saved, reloaded, back: { saved: stored(), machine: shownMachine() } }).toEqual({
-      first: { open: false, corner: 'bottom-right' },
-      saved: { v: 1, open: true, machine: toggle.id, position: 'bottom-left', positionDefault: 'bottom-right' },
-      reloaded: { open: true, corner: 'bottom-left', machine: toggle.id },
-      back: { saved: { v: 1, open: true, position: 'bottom-left', positionDefault: 'bottom-right' }, machine: 'none' },
+      first: false,
+      saved: { v: 1, open: true, machine: toggle.id },
+      reloaded: { open: true, machine: toggle.id },
+      back: { saved: { v: 1, open: true }, machine: 'none' },
     });
   });
 
