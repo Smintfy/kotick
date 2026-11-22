@@ -294,27 +294,6 @@ export function shownMachine(): string {
 	);
 }
 
-/** Goes to the settings page from the machine list, and picks a corner, such as `Bottom left`. */
-export async function pickCorner(label: string): Promise<void> {
-	await toList();
-
-	const settings = all<HTMLButtonElement>("button").find(
-		(candidate) =>
-			candidate.querySelector('[data-part="row-label"]')?.textContent ===
-			"Settings",
-	);
-
-	if (!settings) throw new Error("The machine list has no Settings button.");
-	await click(settings);
-
-	const corner = all<HTMLLabelElement>('[role="radiogroup"] label').find(
-		(found) => found.textContent === label,
-	);
-
-	if (!corner) throw new Error(`The settings page has no corner ${label}.`);
-	await click(corner.querySelector("input") ?? corner);
-}
-
 /** The name of the shown instance, such as `checkout · 1`, as the label of its state tree gives it. */
 function shownName(): string | undefined {
 	return overlay()

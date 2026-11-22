@@ -114,7 +114,7 @@ test.each([
       chips: [],
       rows: [],
       leaves: {},
-      radios: { Corner: 'top-left' },
+      radios: {},
       context: [],
     },
   },

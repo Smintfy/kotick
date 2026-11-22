@@ -25,7 +25,7 @@ export const metadata = {
   </Prop>
 </PropsTable>
 
-The panel keeps its open state, its corner and the machine whose page it shows in `localStorage`, so `position` and `defaultOpen` apply only until the user changes them. The user changes the corner in **Settings**. After a reload, the panel shows the page of the same machine when that machine registers.
+The panel keeps its open state, its corner and the machine whose page it shows in `localStorage`, so `position` and `defaultOpen` apply only until the user changes them. The user changes the corner when they drag the bubble. After a reload, the panel shows the page of the same machine when that machine registers.
 
 The overlay renders in a shadow root, so the styles of the page do not change it, and its styles do not change the page. It is dark on every page.
 

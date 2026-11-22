@@ -197,14 +197,14 @@ describe('focus', () => {
     });
   });
 
-  test('opening on the machine list puts focus on its first row, a page puts it on its tree or its checked corner, and Back on the row that opened it', async () => {
+  test('opening on the machine list puts focus on its first row, a machine page on its tree, the settings page on the panel, and Back on the row that opened it', async () => {
     const checkout = createCheckoutMachine();
     const toggle = createToggleMachine();
     render(
       <>
         <Run machine={checkout} />
         <Run machine={toggle} />
-        <Kotick position="bottom-left" />
+        <Kotick />
       </>,
     );
     await flush();
@@ -217,13 +217,13 @@ describe('focus', () => {
     await click(control('button[aria-label="Back"]'));
     const back = focusedRow();
     await click(control('[data-row="settings"]'));
-    const corner = focused(HTMLInputElement)?.value;
+    const settings = focused(HTMLElement)?.dataset.page;
     await click(control('button[aria-label="Back"]'));
-    expect({ first, opened, back, corner, backFromSettings: focusedRow() }).toEqual({
+    expect({ first, opened, back, settings, backFromSettings: focusedRow() }).toEqual({
       first: checkout.id,
       opened: { machine: toggle.id, focus: 'off' },
       back: toggle.id,
-      corner: 'bottom-left',
+      settings: 'settings',
       backFromSettings: 'Settings',
     });
   });

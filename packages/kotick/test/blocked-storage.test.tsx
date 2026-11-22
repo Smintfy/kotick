@@ -6,7 +6,8 @@ import { useMachine } from 'kotick/xstate';
 import { expect, test } from 'vitest';
 import { assign, setup } from 'xstate';
 import { watchConsole } from './support/console';
-import { flush, freshId, isOpen, marks, overlay, panel, pickCorner, preview, show } from './support/panel';
+import { bubbleCenter, drag, SLOW, stroke } from './support/drag';
+import { flush, freshId, isOpen, marks, overlay, panel, preview, show } from './support/panel';
 
 // A sandboxed frame, or a browser that blocks site data, has no storage.
 // There, a read of localStorage or sessionStorage throws.
@@ -70,7 +71,7 @@ function readable(storage: 'localStorage' | 'sessionStorage'): boolean {
   }
 }
 
-test('without storage, recordings mark leaves and feed previews from memory, and the panel opens and moves', async () => {
+test('without storage, recordings mark leaves and feed previews from memory, and the bubble moves and opens the panel', async () => {
   jsdom.reconfigure({ url: 'about:blank' });
   const output = watchConsole();
   render(
@@ -81,10 +82,10 @@ test('without storage, recordings mark leaves and feed previews from memory, and
   );
   await flush();
 
+  await drag(stroke(bubbleCenter(), { x: 60, y: 568 }, SLOW));
+  const moved = corner();
   await clickOverlay('Kotick');
   const opened = { open: isOpen(), corner: corner() };
-  await pickCorner('Bottom left');
-  const moved = corner();
 
   await press('Start');
   await press('Fail');
@@ -94,15 +95,15 @@ test('without storage, recordings mark leaves and feed previews from memory, and
   await preview(machine.id, ['paying']);
   expect({
     storage: { local: readable('localStorage'), session: readable('sessionStorage') },
-    opened,
     moved,
+    opened,
     visited,
     previewed: { shown: screen.getByRole('status').textContent, source: panel().source, context: panel().context },
     output,
   }).toEqual({
     storage: { local: false, session: false },
-    opened: { open: true, corner: 'bottom-right' },
     moved: 'bottom-left',
+    opened: { open: true, corner: 'bottom-left' },
     visited: { idle: ['recorded'], paying: ['recorded'], failed: ['recorded'] },
     previewed: {
       shown: '{"value":"paying","context":{"step":1,"note":"none"}}',

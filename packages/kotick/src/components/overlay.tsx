@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { warnOnce } from '../core/warn-once';
+import { useBubbleDrag } from '../hooks/use-bubble-drag';
 import { useLatest } from '../hooks/use-latest';
 import { useRegistrySnapshot } from '../hooks/use-registry-snapshot';
 import { useIsomorphicLayoutEffect } from '../shared-hooks/use-isomorphic-layout-effect';
@@ -40,6 +41,14 @@ export function Overlay(props: OverlayProps) {
   const page = pageToShow(subpage, groups, settings.machine, instanceKey);
 
   const { panelRef, bubbleRef, onToggle, focusWithPage } = usePanelFocus(open, host, page);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  const drag = useBubbleDrag({
+    rootRef,
+    position,
+    enabled: !open,
+    onMove: (next) => update({ position: next, positionDefault: defaultPosition }),
+  });
 
   function openMachine(machineId: string): void {
     focusWithPage();
@@ -140,13 +149,7 @@ export function Overlay(props: OverlayProps) {
         return {
           title: 'Settings',
           onBack: back,
-          body: (
-            <SettingsPage
-              position={position}
-              shortcutLabel={shortcut?.label}
-              onPosition={(next) => update({ position: next, positionDefault: defaultPosition })}
-            />
-          ),
+          body: <SettingsPage shortcutLabel={shortcut?.label} />,
         };
       case 'machine': {
         const requested = snapshot.overrides[page.instance.key]?.requested.length ?? 0;
@@ -181,18 +184,23 @@ export function Overlay(props: OverlayProps) {
   return (
     // "all" on the host leaves direction alone, so the root sets it, or the page's would be inherited.
     <div
+      ref={rootRef}
       className="pointer-events-none absolute inset-0 text-left font-sans text-base leading-normal font-normal text-fg [direction:ltr] [-webkit-font-smoothing:antialiased]"
       data-position={position}
     >
       <button
         ref={bubbleRef}
         type="button"
-        className="pointer-events-auto absolute grid size-8 cursor-pointer place-items-center rounded-lg border border-bubble-edge bg-bubble p-0 text-white [transition:background-color_120ms_ease] hover:bg-bubble-hover in-data-[position$=left]:left-4 in-data-[position$=right]:right-4 in-data-[position^=bottom]:bottom-4 in-data-[position^=top]:top-4 motion-reduce:[transition:none]"
+        className="pointer-events-auto absolute grid size-8 cursor-pointer place-items-center rounded-lg border border-bubble-edge bg-bubble p-0 text-white [transition:background-color_120ms_ease] hover:bg-bubble-hover in-data-[position$=left]:left-4 in-data-[position$=right]:right-4 in-data-[position^=bottom]:bottom-4 in-data-[position^=top]:top-4 touch-none select-none data-dragging:cursor-grabbing motion-reduce:[transition:none] motion-safe:data-glide:glide"
         aria-label={bubbleLabel}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         title={shortcut ? `Kotick (${shortcut.label})` : 'Kotick'}
-        onClick={() => setOpen(!open, 'bubble')}
+        onPointerDown={drag.onPointerDown}
+        onAnimationEnd={drag.onAnimationEnd}
+        onClick={() => {
+          if (!drag.clickEndsDrag()) setOpen(!open, 'bubble');
+        }}
       >
         <HexagonIcon />
         {previewCount > 0 && (
@@ -318,7 +326,7 @@ function focusTarget(panel: HTMLElement, page: PanelPage, from: PanelPage | unde
         panel
       );
     case 'settings':
-      return panel.querySelector<HTMLElement>('[role="radiogroup"] input:checked') ?? panel;
+      return panel;
     case 'machines': {
       const rows = [...panel.querySelectorAll<HTMLElement>('[data-row]')];
 
