@@ -7,7 +7,7 @@ export const metadata = {
 
 ## State machines
 
-A state machine is a model of a UI flow. It has a fixed list of states, and it is in one state at a time. An event moves the machine to a different state. This move is a transition. Each state accepts only the events that it lists, and the machine ignores all other events.
+A state machine is a model of a UI flow. It has a fixed list of states, and it is in one state at a time. An event moves the machine to a different state. That move is a transition. Each state accepts only the events that it lists, and the machine ignores all other events.
 
 A component that loads a list of orders has four states:
 
@@ -18,13 +18,13 @@ A component that loads a list of orders has four states:
 | `loading` | The request fails | `failure` |
 | `failure` | `RETRY` | `loading` |
 
-`loading` does not accept `LOAD`. Thus, a second click on the button does nothing while the request runs.
+`loading` does not accept `LOAD`, so a second click on the button does nothing while the request runs.
 
-As a machine, the same flow is:
+Here is the same flow as a machine:
 
 <AdapterTabs>
   <AdapterTab adapter="reducer">
-    The state is a union with one key, `status`, that holds the name of the state. The request is the `effect` of `loading`, and it sends `DONE` or `FAIL`:
+    The state is a union with one key, `status`, that holds the name of the state. The request is the `effect` of `loading`, and it sends `DONE` or `FAIL`. Its cleanup aborts the request when the machine leaves `loading`:
 
     ```ts
     import { defineReducerMachine } from 'kotick/reducer';
@@ -49,10 +49,13 @@ As a machine, the same flow is:
         loading: {
           on: { DONE: () => ({ status: 'success' }), FAIL: () => ({ status: 'failure' }) },
           effect: (_state, send) => {
-            fetch('/api/orders').then(
+            const controller = new AbortController();
+            fetch('/api/orders', { signal: controller.signal }).then(
               () => send({ type: 'DONE' }),
               () => send({ type: 'FAIL' }),
             );
+
+            return () => controller.abort();
           },
         },
         failure: { on: { RETRY: () => ({ status: 'loading' }) } },
@@ -86,7 +89,7 @@ As a machine, the same flow is:
 
 ## Why use a state machine
 
-Many React components keep their state in flags. This is the orders component with `useState`:
+Many React components keep their state in flags. Here is the orders component with `useState`:
 
 ```tsx
 const [isLoading, setIsLoading] = useState(false);
@@ -108,7 +111,7 @@ async function load() {
 }
 ```
 
-The component has four states, but the code does not name them. Each state is a combination of three flags, and each handler must set all three in the correct sequence. A small error in a handler causes a bug:
+The component has four states, but the code does not name them. Each state is a combination of three flags, and each handler must set all three in the correct order. A small mistake in a handler causes a bug:
 
 - If you forget `setError(undefined)`, the old error stays on the page while the new request runs.
 - If you forget `if (isLoading) return`, a second click sends a second request.
@@ -117,27 +120,27 @@ Three flags make eight combinations, and TypeScript accepts all eight. Only four
 
 A state machine puts these rules in one place. The [orders machine](/docs/concepts#state-machines) has the same four states:
 
-- **The state is one value.** The machine is in `idle`, `loading`, `success` or `failure`. Two states cannot be true at the same time.
-- **Each state lists its events.** `loading` does not accept `LOAD`. Thus, the handler does not need an `if`, and a second click does nothing.
+- **The state is one value.** The machine is in `idle`, `loading`, `success`, or `failure`. Two states cannot be true at the same time.
+- **Each state lists its events.** `loading` does not accept `LOAD`. So the handler does not need an `if`, and a second click does nothing.
 - **The UI shows each state.** The page shows the error only in the `failure` state. An old error cannot stay on the page during `loading`.
-- **The states are in the code.** You can read the full list, draw it, and do a test of each state. kotick reads the same list to show each state in the panel and to preview it. With flags, no tool can know which states exist.
+- **The states are in the code.** You can read the full list, draw it, and test each state. kotick reads the same list to show each state in the panel and to preview it. With flags, no tool can know which states exist.
 
-A component with one flag, such as a menu that is open or closed, does not need a machine. Use a machine when a component has three or more states. Also use one when an event is correct in one state but not in others.
+A component with one flag, such as a menu that is open or closed, does not need a machine. Use a machine when a component has three or more states, or when an event is valid in some states and not in others.
 
 ## Machines and instances
 
 An instance is one copy of a machine that runs in the app. With `kotick/reducer`, each component that calls `useMachineReducer` is an instance, and the real state stays in React's `useReducer`. With `kotick/xstate`, each actor is an instance. XState makes an actor when the app starts a machine. The actor runs the machine and keeps its current state.
 
-The panel groups the instances by machine id, such as `checkout`. Each instance of a machine has a number: `checkout · 1`, `checkout · 2`. A list with one machine per row has one instance for each row.
+The panel groups the instances by machine id, such as `checkout`. Each instance of a machine has a number: `checkout · 1`, `checkout · 2`. A list that renders one machine per row has one instance per row.
 
-One registry holds the instances of both adapters, so the machine ids of `kotick/reducer` and `kotick/xstate` share one namespace. Give each machine an id that no other machine on the page has. Two machines with one id show as one machine in the panel, and they share recordings and fixtures.
+One registry holds the instances of both adapters, so the machine ids of `kotick/reducer` and `kotick/xstate` share one namespace. Give each machine an id that no other machine on the page has. Two machines with the same id show as one machine in the panel, and they share recordings and fixtures.
 
 ## Leaf ids
 
 A state without child states is a leaf. You preview a leaf, and kotick identifies it by its leaf id:
 
 - **In a reducer machine, the states are flat.** Each state is a leaf, and its leaf id is its name, such as `loading`.
-- **In an XState machine, a state can contain child states.** The leaf id is the dot path to the leaf, such as `payment.error`. Refer to [Nested and parallel states](/docs/xstate#nested-and-parallel-states).
+- **In an XState machine, a state can contain child states.** The leaf id is the dot path to the leaf, such as `payment.error`. See [Nested and parallel states](/docs/xstate#nested-and-parallel-states).
 
 The panel and the keys of a fixture set use the leaf ids.
 
@@ -145,50 +148,36 @@ The panel and the keys of a fixture set use the leaf ids.
 
 When you select a leaf, the components that read the instance show that state. They do not mount again.
 
-A preview changes only what the components see. The real machine does not stop, and its effects continue to run. When you release the preview, the components show the real state at that time. This state can be different from the state before the preview.
+A preview changes only what the components see. The real machine does not stop, and its effects continue to run. When you release the preview, the components show the real state at that time. That state can differ from the state before the preview, because the real machine kept running.
 
-Each adapter adds rules of its own. Refer to [Previews](/docs/reducer#previews) in useReducer and [Previews](/docs/xstate#previews) in XState.
+Each adapter adds its own rules. See [previews of reducer machines](/docs/reducer#previews) and [previews of XState machines](/docs/xstate#previews).
 
 ## Blocked events
 
-Events that the UI sends to a previewed instance do not get to the machine. The panel logs each one with the state that the UI showed. Use the log to see what a button does in a state that is difficult to get to.
+Events that the UI sends to a previewed instance do not reach the machine. The panel logs each one with the state that the UI showed. Use the log to see what a button does in a state that is hard to visit in the app.
 
 ## Context for a preview
 
-A machine keeps data with its state, such as the items in a cart. XState calls this data context. In a reducer machine, the context of a state is the whole state object, so the states of a union do not share context. A preview needs context, and kotick looks for it in this sequence:
+A machine keeps data with its state, such as the items in a cart. XState calls this data context. In a reducer machine, the context of a state is the whole state object, so the states of a union do not share context. A preview needs context, and kotick looks for it in this order:
 
-1. **Recorded:** the last context that the real instance had in this state. kotick records it on each transition and keeps it in `sessionStorage`, so it is still there after a reload.
-2. **Fixture:** context that you wrote with `defineFixtures()`. See [Fixtures](/docs/fixtures).
-3. **Live:** the current context of the real instance. It fits the state that the instance is in, and often does not agree with other states. A reducer machine uses it only for its current state. An XState machine uses it for each state, and kotick logs a warning.
+1. **Recorded.** The last context that the real instance had in this state. kotick records it on each transition and keeps it in `sessionStorage`, so it is still there after a reload.
+2. **Fixture.** Context that you wrote with `defineFixtures()`. See [Fixtures](/docs/fixtures).
+3. **Live.** The current context of the real instance. It fits the state that the instance is in, and often does not fit the other states. A reducer machine uses it only for its current state. An XState machine uses it for each state, and kotick logs a warning.
 
-The state tree marks each state with the data it has. In the panel, you can change the source of the context for each preview.
+The state tree marks each state with the context that it has. In the panel, you can change the context source of each preview.
 
 ## Choose an adapter
 
-kotick has an adapter for each kind of machine. Neither is the default, and an app can use both. Use the adapter that fits the code that you have:
+kotick has an adapter for each kind of machine. Use the adapter that fits the code that you have. An app can use both.
 
 | | `kotick/reducer` | `kotick/xstate` |
 |---|---|---|
-| Install | `kotick` | `kotick`, `xstate` and `@xstate/react` |
+| Install | `kotick` | `kotick`, `xstate`, and `@xstate/react` |
 | The state | A union of state objects. One key holds the name of the state. | An XState snapshot, with a `value` and a `context`. |
 | Nested and parallel states | No. The states are flat. | Yes |
 | Production builds keep | A small runtime that runs your transitions and effects | The hooks of `@xstate/react` |
-| Startup JavaScript in production | Larger by {costs.reducerStartup} than with `useReducer`, a `switch` and `useEffect` | Larger by {costs.startup} than with `@xstate/react` |
+| Startup JavaScript in production | Larger by {costs.reducerStartup} than with `useReducer`, a `switch`, and `useEffect` | Larger by {costs.startup} than with `@xstate/react` |
 | Live context | Only for the state that the machine is in | For each state, with a warning |
-| Guide | [useReducer](/docs/reducer) | [XState](/docs/xstate) |
+| Guide | [Reducer machines](/docs/reducer) | [XState machines](/docs/xstate) |
 
-`pnpm check:bundles` in the repository measures the sizes, in gzip, with esbuild and Vite.
-
-## How kotick works
-
-kotick has three parts: an adapter for each kind of machine, a registry for the page, and the overlay. The adapters are `kotick/reducer` and `kotick/xstate`. Each adapter page tells how its adapter works: [useReducer](/docs/reducer#how-the-adapter-works) and [XState](/docs/xstate#how-the-adapter-works).
-
-**One registry holds the instances of the page.** Each component that calls `useMachineReducer`, and each proxy of an XState actor, registers under a machine id and an instance id. The machine id is `machine.id`. For an XState machine, `debug.id` replaces it if you set it. The registry is on `globalThis`, so all React roots and all copies of kotick on the page use the same registry. On the server, the registry does nothing, because one server process renders the pages of many users.
-
-**The list of states comes from the machine.** kotick reads the states of the machine one time and keeps the tree. Thus, the panel can show the states that the app never went to. Each state of a reducer machine is a leaf. In an XState machine, each atomic or final state is a leaf. You can preview each leaf.
-
-**Context comes from recordings, fixtures or the live instance.** kotick records the context of each instance in memory, under its set of leaves. Each 500 ms, it writes a JSON copy of the recordings to `sessionStorage`. The limits are 50 sets of leaves for each machine, 100,000 characters for each context, and 1,000,000 characters in total. The copy does not have functions. A context that JSON cannot copy correctly, for example one with an actor ref, stays only in memory. A preview uses the recording of the same set of leaves. If there is none, it uses the most recent recording that has a selected leaf. If there is no recording, it uses a [fixture](/docs/fixtures), and then the live context, as [Context for a preview](/docs/concepts#context-for-a-preview) describes.
-
-**The overlay renders in a shadow root.** `<Kotick />` adds a `<div data-kotick-root>` to `document.body`, or to `portalTarget`. It attaches a shadow root to the `div`, puts the CSS of the overlay in it, and renders the panel there with a React portal. The CSS of the page and the CSS of the overlay cannot change each other. kotick adds the `div` in a layout effect, after hydration. Thus, the server renders nothing.
-
-**Production builds keep none of the debugger.** Each hook of an adapter is `process.env.NODE_ENV !== 'production' ? <development version> : <production version>`. The bundler replaces `process.env.NODE_ENV` with `"production"` and removes the branch that cannot run. The package sets `"sideEffects": false`, so the bundler also removes the modules that nothing imports. `<Kotick />` becomes a component that returns `null`.
+The sizes are gzip sizes of esbuild and Vite builds. `pnpm check:bundles` in the [kotick repository](https://github.com/Smintfy/kotick/blob/main/tests/bundles/check.mjs) measures them.

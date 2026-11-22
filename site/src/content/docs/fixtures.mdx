@@ -1,9 +1,9 @@
 export const metadata = {
   title: 'Fixtures',
-  description: 'Give context to the states that you have not recorded yet.',
+  description: 'Give context to the states that you have not visited yet.',
 };
 
-Fixtures give context to states that you have not recorded yet, such as an error after a slow request.
+Fixtures give context to the states that you have not visited yet, such as an error after a slow request.
 
 <PageAdapterTabs />
 
@@ -29,7 +29,7 @@ Put them in a file of their own, and give `<Kotick />` a loader for that file. E
     ];
     ```
 
-    `searchMachine` is the machine of [From a switch reducer](/docs/reducer#from-a-switch-reducer).
+    `searchMachine` is the machine in [Convert a switch reducer](/docs/reducer#convert-a-switch-reducer).
   </AdapterTab>
 
   <AdapterTab adapter="xstate">
@@ -55,7 +55,7 @@ Put them in a file of their own, and give `<Kotick />` a loader for that file. E
   </AdapterTab>
 </AdapterTabs>
 
-The loader has a development condition. The condition removes the fixtures, and the import, from production builds. Use the condition of your bundler.
+The loader has a development check, which removes the fixtures and their import from production builds. Use the check of your bundler.
 
 In Vite:
 
@@ -81,7 +81,7 @@ export function DevTools() {
 }
 ```
 
-Do not use `process.env.NODE_ENV` in Vite. A default Vite app does not have the Node.js types, thus TypeScript does not know `process`. In Next.js, put `'use client'` at the top of the file. Refer to [Next.js](/docs/nextjs).
+Do not use `process.env.NODE_ENV` in Vite. A default Vite app does not have the Node.js types, so TypeScript does not know `process`. In Next.js, put `'use client'` at the top of the file. See [Next.js](/docs/nextjs).
 
 The examples import from `src` through the `@/` alias. Next.js sets this alias, but Vite does not. In Vite, add the alias to `paths` in your TypeScript config and to `resolve.alias` in `vite.config.ts`, or use relative imports.
 
@@ -91,24 +91,25 @@ These rules apply to both adapters:
 
 - A fixture set applies to each instance of its machine.
 - The loader runs after the page loads.
-- You can give an array of sets in place of a loader. Then the sets are in your main bundle, also in production. Use a loader with a development check to keep them out.
-- `kotick/reducer` and `kotick/xstate` both export `defineFixtures`. A file with sets for both adapters imports one of them with another name, for example `import { defineFixtures as defineReducerFixtures } from 'kotick/reducer'`.
+- Put the loader in a `const` at module scope, as the examples do. A function that you make during render is new on each render, and kotick calls it again each time.
+- You can give an array of sets in place of a loader. Then the sets are in your main bundle, in production too. Use a loader with a development check to keep them out.
+- `kotick/reducer` and `kotick/xstate` both export `defineFixtures`. A file with sets for both adapters imports one of them under another name, for example `import { defineFixtures as defineReducerFixtures } from 'kotick/reducer'`.
 
-Each adapter adds rules of its own:
+Each adapter adds its own rules:
 
 <AdapterTabs>
   <AdapterTab adapter="reducer">
-    - The keys are optional, so a set can start with the one state that the app cannot get to. `satisfies CompleteFixtures<typeof searchMachine>` makes the file fail when the machine has a state without a fixture.
+    - The keys are optional, so a set can start with the one state that the app cannot reach. `satisfies CompleteFixtures<typeof searchMachine>` makes the file fail when the machine has a state without a fixture.
     - TypeScript checks each fixture against the state of its key. Without TypeScript, `defineFixtures` leaves out a fixture of another state and a key that is not a state. In development, it logs a [warning](/docs/troubleshooting#console-warnings) for each.
     - **Copy context** in the panel copies the state object of the shown state as JSON. The JSON is a fixture as it is.
-    - Until the loader finishes, a state without a recording stays greyed out in the panel. Its row enables when the set arrives.
+    - Until the loader finishes, a state without a recording stays greyed out in the panel. You can select it when the set arrives.
   </AdapterTab>
 
   <AdapterTab adapter="xstate">
     - The keys are leaf ids. TypeScript checks them against the states of the machine, and `context` against the context type of the machine.
     - A fixture set also applies to copies from `machine.provide()`, and to machines that `debug.id` renames.
     - A preview that started before the loader finished changes to the fixture when it arrives. Such a preview logs the warning about the live context only if the loader gives no fixture for it.
-    - In a parallel preview, the first leaf that has a fixture gives the context: the leaves you selected, in sequence, then the leaves of the other regions.
+    - In a parallel preview, the first leaf that has a fixture gives the context. kotick checks the leaves that you selected first, in order, and then the leaves of the other regions.
     - **Copy context** in the panel copies the context of the shown state as JSON. The JSON is the value of `context` in a fixture.
   </AdapterTab>
 </AdapterTabs>

@@ -130,7 +130,7 @@ export type FixturesResult = readonly FixtureSet[] | { default: readonly Fixture
 export type FixturesInput = readonly FixtureSet[] | (() => FixturesResult | PromiseLike<FixturesResult>);
 
 export interface KotickProps {
-  /** Corner for the toolbar and panel until the user moves them. Defaults to `'bottom-right'`. */
+  /** Corner for the bubble and panel until the user moves them. Defaults to `'bottom-right'`. */
   position?: Position;
   /** Whether the panel starts open, until the user opens or closes it. Defaults to `false`. */
   defaultOpen?: boolean;

@@ -5,7 +5,7 @@ export const metadata = {
 
 `kotick` and `kotick/xstate` start with `'use client'`, so you can import them in the App Router.
 
-`kotick/reducer` has no directive, so any module can import a machine file, also a server component or a route handler. Only client components call `useMachineReducer`.
+`kotick/reducer` has no directive, so any module can import a machine file, including a server component or a route handler. Only client components can call `useMachineReducer`.
 
 ## Server components
 
@@ -43,11 +43,11 @@ export const metadata = {
   ```
 
 - Call the hooks of `kotick/xstate` and `createActorContext()` only in client components, as with `@xstate/react`.
-- On the server, kotick does nothing: the overlay renders nothing, and nothing registers. The overlay mounts after hydration, so it does not cause hydration errors.
+- On the server, kotick does nothing. The overlay renders nothing, and no instance registers. The overlay mounts after hydration, so it does not cause hydration errors.
 
 ## Root layout
 
-Render the overlay in the root layout, after `{children}`. The root layout stays mounted when the page changes. Thus, the panel stays open while the machines of each page register and unregister.
+Render the overlay in the root layout, after `{children}`. The root layout stays mounted when the page changes. So the panel stays open while the machines of each page register and unregister.
 
 ```tsx
 // src/app/layout.tsx
@@ -87,4 +87,4 @@ export default function App({ Component, pageProps }: AppProps) {
 }
 ```
 
-The Pages Router has no server components. Thus, `_app.tsx` can give the `fixtures` loader, and each page and component can call the hooks of both adapters. During server rendering, kotick does nothing, as in the App Router.
+The Pages Router has no server components. So `_app.tsx` can give the `fixtures` loader, and each page and component can call the hooks of both adapters. During server rendering, kotick does nothing, as in the App Router.

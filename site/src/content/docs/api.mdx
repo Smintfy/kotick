@@ -15,19 +15,19 @@ export const metadata = {
     Opens the panel on the first visit.
   </Prop>
   <Prop name="shortcut" type="string | false" default="'alt+s'">
-    The keys that open and close the panel. `false` turns the shortcut off. Refer to [Shortcut](#shortcut).
+    The keys that open and close the panel. `false` turns the shortcut off. See [Shortcut](#shortcut).
   </Prop>
   <Prop name="fixtures" type="FixturesInput" detailedType="readonly FixtureSet[] | (() => FixturesResult | PromiseLike<FixturesResult>)">
-    Fixture sets, or a function that loads them. Refer to [Fixtures](/docs/fixtures).
+    Fixture sets, or a function that loads them. See [Fixtures](/docs/fixtures).
   </Prop>
   <Prop name="portalTarget" type="Element | ShadowRoot" default="document.body">
     The element that gets the host element of the overlay.
   </Prop>
 </PropsTable>
 
-The panel keeps its open state, its corner and the machine whose page it shows in `localStorage`, so `position` and `defaultOpen` apply only until the user changes them. The user changes the corner when they drag the bubble. After a reload, the panel shows the page of the same machine when that machine registers.
+The panel keeps its open state, its corner, and the machine whose page it shows in `localStorage`, so `position` and `defaultOpen` apply only until the user changes them. The user changes the corner when they drag the bubble. After a reload, the panel shows the page of the same machine when that machine registers.
 
-The overlay renders in a shadow root, so the styles of the page do not change it, and its styles do not change the page. It is dark on every page.
+The overlay renders in a shadow root, so the styles of the page do not change it, and its styles do not change the page. It uses a dark theme on every page.
 
 In production builds, `<Kotick />` renders nothing and does not call the fixtures loader.
 
@@ -43,10 +43,10 @@ Write the parts of a shortcut with `+` between them, for example `ctrl+shift+d`.
 | `meta` | `cmd`, `command` |
 | `mod` | ⌘ on macOS, Ctrl on other systems |
 
-The key is a value of `KeyboardEvent.key`, for example `s`, `f2` or `escape`. These names are also accepted: `esc`, `space`, `up`, `down`, `left`, `right`, `return`, `del`, and `plus` for the `+` key.
+The key is a value of `KeyboardEvent.key`, for example `s`, `f2`, or `escape`. kotick also accepts these names: `esc`, `space`, `up`, `down`, `left`, `right`, `return`, `del`, and `plus` for the `+` key.
 
-- The modifiers must agree exactly. `alt+s` does not open the panel when the user also holds Shift.
-- For letters and digits, the physical key also agrees. Thus, `alt+s` works on macOS, where Alt+S types `ß`, and on keyboard layouts that move the letters.
+- The modifiers must match exactly. `alt+s` does not open the panel when the user also holds Shift.
+- For letters and digits, the physical key also matches. So `alt+s` works on macOS, where Alt+S types `ß`, and on keyboard layouts that move the letters.
 - The shortcut does nothing while the focus is in a text field.
 - kotick ignores a shortcut that it cannot read, and logs a warning: `[kotick] Ignoring the shortcut "…": expected something like "alt+s".`
 
@@ -58,9 +58,9 @@ The key is a value of `KeyboardEvent.key`, for example `s`, `f2` or `escape`. Th
 |---|---|
 | `defineReducerMachine<State, Event, Input>()(definition)` | Declares a machine over your union of states and your union of events. Returns the machine. |
 | `useMachineReducer(machine, initial, options?)` | Runs a machine in a component. Returns `[state, dispatch]`, as `useReducer` does. |
-| `defineFixtures(machine, fixtures)` | Makes a fixture set for `<Kotick fixtures>`. Each fixture is a state object of the state of its key. Refer to [Fixtures](/docs/fixtures#define-fixtures). |
+| `defineFixtures(machine, fixtures)` | Makes a fixture set for `<Kotick fixtures>`. Each fixture is a state object of the state of its key. See [Define fixtures](/docs/fixtures#define-fixtures). |
 
-Refer to [Define a machine](/docs/reducer#define-a-machine) for the rules of a machine, and to [useReducer](/docs/reducer) for a guide.
+See [Define a machine](/docs/reducer#define-a-machine) for the rules of a machine, and [Reducer machines](/docs/reducer) for a guide.
 
 ### defineReducerMachine()
 
@@ -68,13 +68,13 @@ The first call takes three type arguments: the union of states, the union of eve
 
 <PropsTable>
   <Prop name="id" type="string">
-    The machine id on the page. The panel, the recordings and the fixtures find the machine by it. The ids of reducer machines and XState machines share one namespace.
+    The machine id on the page. The panel, the recordings, and the fixtures find the machine by it. The ids of reducer machines and XState machines share one namespace.
   </Prop>
   <Prop name="discriminant" type="keyof State">
     The key that holds the name of the state. Its value must be a string literal in each member of the union.
   </Prop>
   <Prop name="states" type="object" detailedType="{ [name]: { on?: { [type]?: (state, event) => State }; effect?: (state, send, input) => void | (() => void) } }">
-    One entry for each state name, and no other key. The panel lists the states in this sequence. Refer to [Define a machine](/docs/reducer#define-a-machine).
+    One entry for each state name, and no other key. The panel lists the states in this order. See [Define a machine](/docs/reducer#define-a-machine).
   </Prop>
 </PropsTable>
 
@@ -82,7 +82,7 @@ The machine is the definition, frozen, with one more property: `reducer(state, e
 
 ### useMachineReducer()
 
-`initial` is the state at mount, or a function that returns it, as for `useReducer`. `dispatch` is the same function for the life of the component, as the `dispatch` of `useReducer` is. During a preview, it logs each event in the panel, and the event does not get to the machine. Call the hook only in client components.
+`initial` is the state at mount, or a function that returns it, as for `useReducer`. `dispatch` is the same function for the life of the component, as the `dispatch` of `useReducer` is. During a preview, it logs each event in the panel, and the event does not reach the machine. Only client components can call the hook.
 
 The third argument takes these options:
 
@@ -91,7 +91,7 @@ The third argument takes these options:
     The value that `input()` returns in the effects. The hook requires it when the machine declares an input type. A new value does not restart an effect.
   </Prop>
   <Prop name="debug" type="object" detailedType="{ label?: string; disabled?: boolean }">
-    `label` is the name of the instance in the panel. `disabled: true` keeps the instance out of kotick. kotick reads `debug` in development builds only.
+    `label` is the name of the instance in the panel. `disabled: true` keeps the instance out of kotick. kotick reads `debug` only in development builds.
   </Prop>
 </PropsTable>
 
@@ -110,7 +110,7 @@ The third argument takes these options:
 | `connect(actor, debug?)` | Registers an actor that you created outside React. Returns the actor to use in the app. |
 | `defineFixtures(machine, states)` | Makes a fixture set for `<Kotick fixtures>`. |
 
-The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed. Refer to [XState](/docs/xstate) for a guide.
+The actors that the hooks return are proxies of the real actors. They have the same interface. `actorRef.send()` goes to the real actor when nothing is previewed. See [XState machines](/docs/xstate) for a guide.
 
 ### The debug option
 
@@ -126,18 +126,18 @@ type DebugOptions = {
 const [snapshot, send] = useMachine(checkoutMachine, { input, debug: { label: 'Checkout (modal)' } });
 ```
 
-In development, kotick removes `debug` before the options get to XState. In production builds, the hooks are the hooks of `@xstate/react`, so XState also gets `debug`. XState keeps it in `actor.options` and does nothing with it.
+In development, kotick removes `debug` before the options reach XState. In production builds, the hooks are the hooks of `@xstate/react`, so XState also gets `debug`. XState keeps it in `actor.options` and does nothing with it.
 
-Give each machine an `id`. A machine without one has the XState default id `(machine)`. kotick then makes an id from the states and context keys of the machine, and logs a warning once. That id changes when you add or remove states or context keys, so the previews and recordings of the machine do not carry over after such a change.
+A machine without an `id` has the XState default id `(machine)`. kotick then makes an id from the states and the context keys of the machine, and logs a warning once. That id changes when you add or remove states or context keys, so the previews and recordings of the machine do not carry over after such a change.
 
 ### connect()
 
-`connect()` registers the actor immediately, and unregisters it when the actor is done, fails or stops. Use the actor that `connect()` returns everywhere in the app. Refer to [Actors outside React](/docs/xstate#actors-outside-react).
+`connect()` registers the actor immediately, and unregisters it when the actor is done, fails, or stops. Use the actor that `connect()` returns everywhere in the app. See [Actors outside React](/docs/xstate#actors-outside-react).
 
 `connect()` returns the actor unchanged, and does not register it, when:
 
 - The actor is not a machine actor, for example a promise actor.
-- The actor is done, failed or stopped.
+- The actor is done, failed, or stopped.
 - `debug.disabled` is `true`.
 - The build is a production build.
 
@@ -159,7 +159,7 @@ An actor that kotick registered before does not register again. This includes an
 
 | Type | What it is |
 |---|---|
-| `ReducerMachine<State, Event, Key, Input>` | The return value of `defineReducerMachine()`: `id`, `discriminant`, `states` and `reducer`. `Input` is `undefined` when the effects read no input. |
+| `ReducerMachine<State, Event, Key, Input>` | The return value of `defineReducerMachine()`: `id`, `discriminant`, `states`, and `reducer`. `Input` is `undefined` when the effects read no input. |
 | `MachineEvent` | `{ readonly type: string }`. Each member of the event union extends it. |
 | `MachineReducerOptions<Input>` | The options of `useMachineReducer()`: `{ input?: Input; debug?: { label?: string; disabled?: boolean } }`. |
 | `ReducerFixtures<State, Key>` | The second argument of `defineFixtures()`: an optional state object for each state name. Each one is a state of its own name. |

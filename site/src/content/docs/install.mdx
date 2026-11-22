@@ -3,7 +3,7 @@ export const metadata = {
   description: 'Install the package, mount the overlay, and connect your machines through kotick/reducer or kotick/xstate.',
 };
 
-kotick has an adapter for each kind of machine. `kotick/reducer` is for `useReducer` machines, and `kotick/xstate` is for XState v5 machines. Neither is the default. Select the adapter that your app uses:
+kotick has an adapter for each kind of machine. `kotick/reducer` is for `useReducer` machines, and `kotick/xstate` is for XState v5 machines. [Choose an adapter](/docs/concepts#choose-an-adapter) compares them. Select the adapter that your app uses:
 
 <PageAdapterTabs />
 
@@ -13,11 +13,11 @@ kotick has an adapter for each kind of machine. `kotick/reducer` is for `useRedu
   </AdapterTab>
 
   <AdapterTab adapter="xstate">
-    The command also installs `xstate` and `@xstate/react`, because kotick does not install them. If your app already has them, install only `kotick`. An app can use both adapters, and this command installs all that both need.
+    `xstate` and `@xstate/react` are optional peer dependencies, so kotick does not install them. If your app already has them, install only `kotick`. This command also covers an app that uses both adapters.
   </AdapterTab>
 </InstallTabs>
 
-Add kotick to `dependencies`, not to `devDependencies`. Your app code imports `kotick/reducer` or `kotick/xstate`, thus the production build needs the package.
+Add kotick to `dependencies`, not to `devDependencies`. Your app code imports `kotick/reducer` or `kotick/xstate`, so the production build needs the package.
 
 ## Requirements
 
@@ -57,7 +57,7 @@ kotick uses the versions of these packages that your app has:
        + const [state, dispatch] = useMachineReducer(searchMachine, { status: 'idle' });
        ```
 
-       [From a switch reducer](/docs/reducer#from-a-switch-reducer) shows how to change a reducer into a machine.
+       [Convert a switch reducer](/docs/reducer#convert-a-switch-reducer) shows how to convert a reducer into a machine.
      </AdapterTab>
 
      <AdapterTab adapter="xstate">
@@ -68,15 +68,15 @@ kotick uses the versions of these packages that your app has:
        + import { useMachine, useSelector, createActorContext } from 'kotick/xstate';
        ```
 
-       The hooks have the same names and signatures as in `@xstate/react`. Actors that you create outside React need one more step, with `connect()`. Refer to [XState](/docs/xstate#actors-outside-react) for that step, and for a lint rule that finds the imports from `@xstate/react`.
+       The hooks have the same names and signatures as in `@xstate/react`. Actors that you create outside React also need `connect()`, as [Actors outside React](/docs/xstate#actors-outside-react) shows. To find the old imports, add the lint rule in [Prevent imports from @xstate/react](/docs/xstate#prevent-imports-from-xstatereact).
      </AdapterTab>
    </AdapterTabs>
 
-Start the dev server and click the bubble in the bottom-right corner, or press <Shortcut mac="⌥S" other={['Alt', 'S']} />. The panel lists each machine that runs on the page. Select a machine to see its states. Select a state to preview it, and select it again to release it.
+3. Start the dev server, and click the bubble in the bottom-right corner, or press <Shortcut mac="⌥S" other={['Alt', 'S']} />. The panel lists each machine that runs on the page. Select a machine to see its states. Select a state to preview it, and select it again to release it.
 
 ## Check the install
 
-You can check the install without a screen, for example in a browser test or from an agent. In development, `<Kotick />` adds a `<div data-kotick-root>` to `document.body`, or to `portalTarget`. The overlay is in the open shadow root of this element.
+You can check the install from code, for example in a browser test or from an agent. In development, `<Kotick />` adds a `<div data-kotick-root>` to `document.body`, or to `portalTarget`. The overlay is in the open shadow root of this element.
 
 1. Get the shadow root:
 
@@ -98,17 +98,17 @@ You can check the install without a screen, for example in a browser test or fro
    [...shadow.querySelectorAll('[data-machine]')].map((row) => row.getAttribute('data-machine'));
    ```
 
-   The result is a list such as `['checkout']`. If a machine is not in the list, refer to the [FAQ](/docs/faq).
+   The result is a list such as `['checkout']`. If a machine is not in the list, see [A machine is missing from the panel](/docs/troubleshooting#a-machine-is-missing-from-the-panel).
 
-The panel keeps its open state and its page from the last visit. Thus, in a browser that used the panel before, step 2 can close the panel, or open the page of one machine. To start with a closed panel, [reset the panel](/docs/troubleshooting#reset-the-panel) before step 1.
+The panel keeps its open state and its page across reloads. So in a browser that used the panel before, step 2 can close the panel, or open the page of one machine. To start with a closed panel, [reset the panel](/docs/troubleshooting#reset-the-panel) before step 1.
 
-kotick writes nothing to the console when it starts. A message that starts with `[kotick]` tells you about a problem. Refer to [Troubleshooting](/docs/troubleshooting#console-warnings).
+kotick writes nothing to the console when it starts. A message that starts with `[kotick]` tells you about a problem. See [Console warnings](/docs/troubleshooting#console-warnings).
 
-## Before you release
+## Before you deploy
 
-You do not have to remove `<Kotick />` or change the imports before a release. In a production build, `<Kotick />` renders nothing, and the bundler removes the registry and the panel. Refer to [Choose an adapter](/docs/concepts#choose-an-adapter) for what each adapter keeps, and for its size.
+You do not have to remove `<Kotick />` or change the imports before you deploy. In a production build, `<Kotick />` renders nothing, and the bundler removes the registry and the panel. [Choose an adapter](/docs/concepts#choose-an-adapter) shows what each adapter keeps, and its size.
 
 Check two things in your build:
 
-- The bundler must replace `process.env.NODE_ENV` with `"production"`. Vite, Next.js (webpack and Turbopack) and React Router do this. With esbuild, add `--define:process.env.NODE_ENV='"production"'`.
+- The bundler must replace `process.env.NODE_ENV` with `"production"`. Vite, Next.js (webpack and Turbopack), and React Router do this. With esbuild, add `--define:process.env.NODE_ENV='"production"'`.
 - The fixtures loader must have a development check, as in the [Fixtures](/docs/fixtures) examples. Without the check, the build makes a fixtures chunk that the app never loads.

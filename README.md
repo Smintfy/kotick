@@ -1,25 +1,25 @@
 # kotick
 
-A development overlay that lists every state of every state machine on the page, and previews any of them in place. It has an adapter for XState v5 machines, `kotick/xstate`, and one for `useReducer` machines, `kotick/reducer`. Neither is the default.
-For installation and usage, see the [package README](packages/kotick/README.md).
+A development overlay that lists every state of every state machine on the page, and previews any of them in place. It has an adapter for `useReducer` machines, `kotick/reducer`, and one for XState v5 machines, `kotick/xstate`.
+
+The docs are at [kotick.smintfy.com](https://kotick.smintfy.com). For installation and usage, see the [package README](packages/kotick/README.md).
 
 ## Repository
 
 | Path | Contents |
 |---|---|
-| `packages/kotick` | The package: the registry and overlay (`kotick`), the XState adapter (`kotick/xstate`) and the reducer adapter (`kotick/reducer`) |
+| `packages/kotick` | The package: the registry and overlay (`kotick`), the reducer adapter (`kotick/reducer`), and the XState adapter (`kotick/xstate`) |
 | `examples/vite-react` | Vite and React Router. One page for each way to read a machine: `useMachine`, `createActorContext`, `useActor`, `connect()` in the header, and `useMachineReducer` on the Search page |
 | `examples/hostile-css` | A page with global styles that try to change the overlay, with an XState machine and a reducer machine |
 | `examples/next-app` | The Next.js App Router, with server rendering. The Feedback page is a server component that imports a reducer machine file |
-| `site` | The landing page and the docs, in Next.js. The docs pages are MDX files in `site/src/content/docs` |
+| `site` | The landing page and the docs, in Next.js, deployed to [kotick.smintfy.com](https://kotick.smintfy.com). The docs pages are MDX files in `site/src/content/docs` |
 | `tests/bundles` | A fixture app for the production-build check |
 | `tests/no-xstate` | A fixture app with kotick and no XState, for the same check |
 | `scripts` | The test matrix, and the strings that only debug code contains, for `pnpm check:bundles` and the site build |
 
 ## Development
 
-The repository uses pnpm workspaces. The examples use the TypeScript source of the package, so changes show without a
-build.
+The repository uses pnpm workspaces. The examples use the TypeScript source of the package, so changes show without a build.
 
 ```bash
 pnpm install
@@ -31,26 +31,19 @@ pnpm install
 | `pnpm dev:hostile-css` | Starts the hostile-css example on port 5174, and the style watcher |
 | `pnpm dev:next` | Starts the Next.js example on port 3100, and the style watcher |
 | `pnpm dev:site` | Starts the site on port 3200, and the style watcher |
-| `pnpm build` | Builds the package, the examples and the site |
-| `pnpm test` | Runs `pnpm lint`, then the unit, adapter and type tests with Vitest, and builds the site |
-| `pnpm typecheck` | Checks the types of the package, the examples and the site |
+| `pnpm build` | Builds the package, the examples, and the site |
+| `pnpm test` | Runs `pnpm lint`, then the unit, adapter, and type tests with Vitest, and builds the site |
+| `pnpm typecheck` | Checks the types of the package, the examples, and the site |
 | `pnpm lint` | Runs oxlint over the repository with the rules in `.oxlintrc.json` |
 | `pnpm test:matrix` | Runs the tests on React 18 and 19, each with the minimum and the latest XState |
-| `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js and React Router, with and without XState, and looks for debug code |
+| `pnpm check:bundles` | Builds apps for production with esbuild, Vite, Next.js, and React Router, with and without XState, and looks for debug code |
 | `pnpm --filter kotick styles` | Writes the overlay's CSS from `styles.css` to `src/styles.generated.ts` |
 | `pnpm --filter kotick bench` | Measures the cost of the adapter in development, against `@xstate/react` |
 
-The overlay's components use Tailwind v4 utilities. Tailwind is a devDependency: it compiles
-`packages/kotick/styles.css` into `src/styles.generated.ts`, and the package ships that CSS as a string.
-The style watcher writes the file again when a component or `styles.css` changes. Commit the file with the change.
+The overlay's components use Tailwind v4 utilities. Tailwind is a devDependency. It compiles `packages/kotick/styles.css` into `src/styles.generated.ts`, and the package ships that CSS as a string. The style watcher writes the file again when a component or `styles.css` changes. Commit the file with the change.
 
-`test:matrix` and `check:bundles` install packages in temporary directories, so they need network access and take a
-few minutes. Both accept `--only <name>` to run part of the work, and `--keep` to keep the temporary directories.
+`test:matrix` and `check:bundles` install packages in temporary directories, so they need network access and take a few minutes. Both accept `--only <name>` to run part of the work, and `--keep` to keep the temporary directories.
 
-Tests use the package the way an app does, with no mocks. The rules are in
-[writing-tests](packages/kotick/.claude/skills/writing-tests/SKILL.md), and `pnpm lint` enforces most of them.
+Tests use the package the way an app does, with no mocks. The rules are in [writing-tests](packages/kotick/.claude/skills/writing-tests/SKILL.md), and `pnpm lint` enforces most of them.
 
-The docs pages of the site are MDX files in `site/src/content/docs`, and `site/src/site.tsx` lists them in the
-sequence of the nav. The site build fails when a docs link goes to a page or a heading that does not exist, when a code
-block has a language that Highlights does not support, or when the build loses the overlay that the demo on the landing
-page shows.
+The docs pages of the site are MDX files in `site/src/content/docs`, and `site/src/site.tsx` lists them in the order of the nav. The site build fails when a docs link goes to a page or a heading that does not exist, when a code block has a language that `@pierre/highlights` does not support, or when the build loses the overlay that the demo on the landing page shows.

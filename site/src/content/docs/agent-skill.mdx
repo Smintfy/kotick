@@ -1,11 +1,11 @@
 export const metadata = {
-  title: 'Skill',
+  title: 'Agent skill',
   description: 'A SKILL.md file that teaches coding agents to set up and use kotick.',
 };
 
 This page is a skill in the [Agent Skills](https://agentskills.io) format. It tells a coding agent how to set up kotick, change a reducer into a machine, write fixtures, and fix the console warnings.
 
-To use it with Claude Code, select **Copy skill**, and save the text as `.claude/skills/kotick/SKILL.md` in your project. Other agents that support Agent Skills read skills from a folder of their own. Refer to the docs of your agent.
+To use it with Claude Code, select **Copy skill**, and save the text as `.claude/skills/kotick/SKILL.md` in your project. Other agents that support Agent Skills read skills from a folder of their own. See the docs of your agent.
 
 {/* SKILL.md */}
 
@@ -14,10 +14,10 @@ kotick is a development overlay for React 18 and 19. It lists each state machine
 | Entry | Exports |
 |---|---|
 | `kotick` | `<Kotick />`, the overlay. Mount it once. |
-| `kotick/reducer` | `defineReducerMachine`, `useMachineReducer` and `defineFixtures`, for `useReducer` machines. It needs only React. |
-| `kotick/xstate` | The hooks of `@xstate/react` with the same names and signatures, `connect` and `defineFixtures`, for XState v5 machines. |
+| `kotick/reducer` | `defineReducerMachine`, `useMachineReducer`, and `defineFixtures`, for `useReducer` machines. It needs only React. |
+| `kotick/xstate` | The hooks of `@xstate/react` with the same names and signatures, `connect`, and `defineFixtures`, for XState v5 machines. |
 
-Neither adapter is the default, and an app can use both. In a production build, `<Kotick />` renders nothing, and the bundler removes the registry and the panel. Do not remove `<Kotick />` or change imports before a release.
+An app can use both adapters. In a production build, `<Kotick />` renders nothing, and the bundler removes the registry and the panel. Do not remove `<Kotick />` or change imports before you deploy.
 
 Use only the API in this file. Do not guess the API of kotick from XState or other libraries. The examples import from `src` through the `@/` alias. Use the import style of the project.
 
@@ -25,7 +25,7 @@ Use only the API in this file. Do not guess the API of kotick from XState or oth
 
 - If the app uses `xstate` 5.28 or later with `@xstate/react` 6.1 or later, use `kotick/xstate`.
 - If a component keeps a union of states in `useReducer`, with one key that holds the name of the state, use `kotick/reducer`.
-- XState v4, Zustand, Redux and other state libraries do not work. kotick needs a machine that declares its states.
+- XState v4, Zustand, Redux, and other state libraries do not work. kotick needs a machine that declares its states.
 - If the app has no machine, tell the user, and offer to declare one `useReducer` flow as a reducer machine.
 
 ## Set up
@@ -80,12 +80,12 @@ Use only the API in this file. Do not guess the API of kotick from XState or oth
 
 The hooks and `createActorContext` take one more option, `debug`, and `connect()` takes the same object as its second argument. `debug: { label }` names an instance in the panel. `debug: { id }` replaces the machine id. `debug: { disabled: true }` keeps the actor out of kotick.
 
-## Convert a useReducer reducer
+## Convert a switch reducer
 
 A `switch` reducer has one branch for each event. A machine has one handler for each state and event.
 
 1. Make the state a union with one key that holds the name of the state. That key is the `discriminant`.
-2. For each branch of the `switch`, write a handler under each state in which the event is valid. Leave it out of the other states, and they ignore the event.
+2. For each branch of the `switch`, write a handler under each state in which the event is valid. Leave the handler out of the other states, and they ignore the event.
 3. Move each `useEffect` that depends on the name of the state to the `effect` of that state. Change `dispatch` to `send`, and read props and hook values through `input()`.
 4. Change `useReducer(reducer, initial)` to `useMachineReducer(machine, initial)`.
 5. Keep the tests of the old reducer, and run them on `machine.reducer`.
@@ -156,7 +156,7 @@ export function SearchBox({ onHits }: { onHits(hits: string[]): void }) {
 }
 ```
 
-Obey these rules:
+Follow these rules:
 
 - `states` has one entry for each state name, and no other key. The discriminant has a string literal value in each member of the union.
 - A handler gets `(state, event)` and returns the next state. It is pure, and it gets no input. A state ignores each event that it does not list, and a handler that returns `state` ignores its event.
@@ -168,7 +168,7 @@ Obey these rules:
 
 ## Write fixtures
 
-A fixture gives data to a state that the app did not go to yet, such as an error. Without a recording or a fixture, a reducer machine cannot preview the state, and an XState machine uses the live context and logs a warning.
+A fixture gives data to a state that the user has not visited yet, such as an error. Without a recording or a fixture, a reducer machine cannot preview the state, and an XState machine uses the live context and logs a warning.
 
 Put the fixture sets in a file of their own. With `kotick/reducer`, each key is a state name, and each value is a whole state object whose discriminant is that key. The keys are optional. `satisfies CompleteFixtures<typeof machine>` requires a fixture for each state:
 
@@ -256,7 +256,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 }
 ```
 
-Call `useMachineReducer`, the hooks of `kotick/xstate` and `createActorContext()` only in client components. In the Pages Router, render `<Kotick />` in `pages/_app.tsx`. On the server, kotick does nothing, and the overlay mounts after hydration.
+Call `useMachineReducer`, the hooks of `kotick/xstate`, and `createActorContext()` only in client components. In the Pages Router, render `<Kotick />` in `pages/_app.tsx`. On the server, kotick does nothing, and the overlay mounts after hydration.
 
 ## Verify
 
@@ -276,8 +276,8 @@ Call `useMachineReducer`, the hooks of `kotick/xstate` and `createActorContext()
 |---|---|
 | `A machine has no id` | Add an `id` to the machine, or set `debug: { id }` on the hook or on `connect()`. |
 | `connect() was given an actor that a hook already registers` | Remove the `connect()` call, and set `debug` on the hook. |
-| `No recorded or fixture context for` | Go to the state one time in the app, or write a fixture for it. |
-| `Can't preview "…" on "…": it has no recorded or fixture context` | Go to the state one time in the app, or write a fixture for it. |
+| `No recorded or fixture context for` | Visit the state in the app, or write a fixture for it. |
+| `Can't preview "…" on "…": it has no recorded or fixture context` | Visit the state in the app, or write a fixture for it. |
 | `Fixtures for "…" name "…", which isn't a leaf state` | Use leaf ids, such as `payment.error`. |
 | `The fixture of "…" on "…" isn't in the "…" state` | Give each fixture the discriminant of its key. |
 | `"…" has no state "…", so the set leaves its fixture out` | Use the state names of the machine as keys. |
@@ -288,7 +288,7 @@ Call `useMachineReducer`, the hooks of `kotick/xstate` and `createActorContext()
 | `Two versions of kotick are on this page` | Install one version. `npm ls kotick` finds the package that brings in the other one. |
 | Other messages, such as `Can't preview` or `Can't follow` | Reload the page. If the message shows again, tell the user to report it. |
 
-If a machine is not in the panel, examine these causes:
+If a machine is not in the panel, check these causes:
 
 - `<Kotick />` is not mounted.
 - A component imports the hook from `@xstate/react`.
@@ -331,6 +331,6 @@ All props of `<Kotick />` are optional.
 
 - The real machine continues to run. When the user releases a preview, the app shows the real state at that time.
 - Events that the UI sends during a preview go to the event log of the panel, not to the machine.
-- The machine effects of the previewed state do not run. For XState, these are invoked actors, delayed transitions and entry actions. For a reducer machine, this is the `effect` of the state. Component effects that react to the state do run.
+- The machine effects of the previewed state do not run. For XState, these are invoked actors, delayed transitions, and entry actions. For a reducer machine, this is the `effect` of the state. Component effects that react to the state do run.
 - Child actors of an XState machine are listed under their parent, but they cannot be previewed. History states cannot be selected.
 - kotick checks only the name of a reducer state. A recording from before you added a field to a state does not have that field.

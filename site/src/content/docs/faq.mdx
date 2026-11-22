@@ -5,15 +5,17 @@ export const metadata = {
 
 ## My machine is not in the panel. Why?
 
-Make sure that `<Kotick />` is mounted. For a reducer machine, make sure that the component calls `useMachineReducer`. A component that gives `machine.reducer` to `useReducer` is not listed. For an XState machine, make sure that the component imports the hook from `kotick/xstate`, not from `@xstate/react`. An actor that you create with `createActor()` must go through `connect()`. To find imports from `@xstate/react`, add a [lint rule](/docs/xstate#prevent-imports-from-xstatereact). With either adapter, an instance with `debug: { disabled: true }` is not listed.
+The panel lists only the machines that an adapter registers. [A machine is missing from the panel](/docs/troubleshooting#a-machine-is-missing-from-the-panel) lists the causes and their fixes.
 
 ## Can a preview change my data or call my API?
 
-No. The real machine does not change, and events that the UI sends during a preview are blocked. Effects in components still run, for example a `useEffect` that fetches when a state shows. They run as they do when the real machine is in that state.
+Only through your components. During a preview, kotick blocks the events that the UI sends, and the machine does not run the effects of the previewed state. The real machine continues to run, with its own effects. Effects in your components do run for the previewed state. So a `useEffect` that fetches when a state shows also fetches when you preview that state.
 
 ## Why does a preview show the wrong data?
 
-A reducer machine does not use the live context for another state. The panel greys out such a state until it has a recording or a fixture. For an XState machine, the state had no recording and no fixture, so the preview uses the live context. The console shows a warning, and the state tree marks the state. Go to the state once in the real app, or write a [fixture](/docs/fixtures) for it.
+For an XState machine, the state had no recording and no fixture, so the preview uses the live context. The console shows a warning, and the state tree marks the state. Visit the state once in the real app, or write a [fixture](/docs/fixtures) for it.
+
+A reducer machine does not use the live context for another state. The panel greys out such a state until it has a recording or a fixture.
 
 ## Does it work with React 18 and StrictMode?
 
@@ -21,19 +23,19 @@ Yes. The test suite runs on React 18 and 19, with StrictMode on.
 
 ## Does it work with `useReducer`?
 
-Yes, through `kotick/reducer`. Declare the reducer as a machine that names each state, and call `useMachineReducer` instead of `useReducer`. Refer to [useReducer](/docs/reducer).
+Yes, through `kotick/reducer`. Declare the reducer as a machine that names each state, and call `useMachineReducer` instead of `useReducer`. See [Reducer machines](/docs/reducer).
 
 ## Does it work with Zustand or other state libraries?
 
-Not in this version. kotick lists states that the UI never went to, so it needs a machine that declares its states. Reducer machines and XState machines do. Support for other libraries is on the roadmap.
+No. kotick lists the states in the machine definition, including the states that you have not visited. So it needs a machine that declares its states, as reducer machines and XState machines do.
 
 ## Does it work with XState v4 or v6?
 
-No. It works with XState v5 only. Support for v6 will come when v6 is stable.
+No. It works with XState v5 only.
 
 ## Can I use it in a staging or preview build?
 
-Not in this version. kotick is a development tool. Staging and preview builds are usually production builds, and `<Kotick />` renders nothing in a production build. Support for staging and preview builds is on the roadmap.
+No. kotick is a development tool. Staging and preview builds are usually production builds, and `<Kotick />` renders nothing in a production build.
 
 ## Two copies of kotick are in my bundle. Is that a problem?
 

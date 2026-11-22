@@ -3,7 +3,7 @@ export const metadata = {
   description: 'What kotick does in a test runner, and how to turn it off there.',
 };
 
-kotick turns off only when `process.env.NODE_ENV` is `"production"`. Test runners such as Vitest and Jest set it to `"test"`. Thus, in your tests, kotick works as it does in development.
+kotick turns off only when `process.env.NODE_ENV` is `"production"`. Test runners such as Vitest and Jest set it to `"test"`. So in your tests, kotick works as it does in development.
 
 <PageAdapterTabs />
 
@@ -13,10 +13,10 @@ What kotick does depends on the test environment:
 
 | Environment | What kotick does |
 |---|---|
-| A DOM, such as `jsdom` | `useMachineReducer`, the hooks of `kotick/xstate` and `connect()` register each instance in a registry on `globalThis`. kotick records the context of each instance in `sessionStorage`, under keys that start with `kotick:recorded:`. If the test renders `<Kotick />`, kotick adds a `<div data-kotick-root>` to `document.body`. |
+| A DOM, such as `jsdom` | `useMachineReducer`, the hooks of `kotick/xstate`, and `connect()` register each instance in a registry on `globalThis`. kotick records the context of each instance in `sessionStorage`, under keys that start with `kotick:recorded:`. If the test renders `<Kotick />`, kotick adds a `<div data-kotick-root>` to `document.body`. |
 | `node`, with no DOM | Nothing. kotick does nothing when `window` or `document` is missing, as on the server. |
 
-Without a preview, `useMachineReducer` behaves as it does in production, and the hooks of `kotick/xstate` behave as the hooks of `@xstate/react`. Thus, your tests do not have to change. kotick writes nothing to the console when it has no problem.
+Without a preview, `useMachineReducer` behaves as it does in production, and the hooks of `kotick/xstate` behave as the hooks of `@xstate/react`. So your tests do not have to change. kotick writes nothing to the console when it has no problem.
 
 A test that reads `sessionStorage` also sees the keys of kotick. kotick writes them 500 ms after a transition, so a write can occur during the next test.
 
@@ -57,4 +57,4 @@ The next step depends on the adapter:
 
 ## Test a reducer machine
 
-`machine.reducer` is the plain reducer of a [reducer machine](/docs/reducer), so a test of its transitions needs no React. For the search machine, `searchMachine.reducer({ status: 'idle' }, { type: 'SEARCH', query: 'linen' })` returns `{ status: 'loading', query: 'linen' }`. A state that does not list an event returns the same object, so `toBe(state)` checks that the state ignores the event.
+`machine.reducer` is the plain reducer of a [reducer machine](/docs/reducer), so a test of its transitions needs no React. For the [search machine](/docs/reducer#convert-a-switch-reducer), `searchMachine.reducer({ status: 'idle' }, { type: 'SEARCH', query: 'linen' })` returns `{ status: 'loading', query: 'linen' }`. A state that does not list an event returns the same object, so `toBe(state)` checks that the state ignores the event.

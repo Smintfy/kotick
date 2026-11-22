@@ -1,11 +1,11 @@
 export const metadata = {
   title: 'Troubleshooting',
-  description: 'The console warnings of kotick, their causes and fixes, and how to reset the panel.',
+  description: 'The console warnings of kotick, their causes and fixes, missing machines, and how to reset the panel.',
 };
 
 ## Console warnings
 
-kotick writes its messages to the browser console, and each message starts with `[kotick]`. kotick writes nothing when it starts, so each message tells you about a problem. The table shows the start of each message. The parts in quotes change.
+kotick writes its messages to the browser console, and each message starts with `[kotick]`. kotick writes nothing when it starts, so each message tells you about a problem. The table shows the start of each message. A `…` marks a part that changes.
 
 | Message | Cause | Fix |
 |---|---|---|
@@ -15,9 +15,9 @@ kotick writes its messages to the browser console, and each message starts with 
 | `Fixtures for "…" name "…", which isn't a leaf state of the machine.` | A key of a fixture set is not the dot path of a leaf. TypeScript also shows this error. | Use [leaf ids](/docs/concepts#leaf-ids), such as `payment.error`. |
 | `The fixtures loader failed.` | The `fixtures` function threw, or its import failed. The error follows the message. | Correct the error. Until you do, kotick has no fixtures. |
 | `Expected fixtures to be an array of sets from defineFixtures(), or a module whose default export is one.` | The `fixtures` prop, or the result of the loader, is not an array. | Export an array from the fixtures file: `export default [defineFixtures(…)]`. |
-| `Ignoring fixture entries that are not sets from defineFixtures().` or `Ignoring fixture set at index …` | An item of the array is not a fixture set. | Make each item with `defineFixtures()`. |
+| `Ignoring fixture entries that are not sets from defineFixtures().` or `Ignoring fixture set …` | An item of the array is not a fixture set. | Make each item with `defineFixtures()`. |
 | `Ignoring fixture "…" for "…": expected an object with a context.` | The value of a leaf is not an object with a `context` property. | Write each value as `{ context: { … } }`. |
-| `No recorded or fixture context for "…" on "…", so the preview uses the live context.` | kotick has no recording and no fixture for the state. Refer to [Context for a preview](/docs/concepts#context-for-a-preview). | Go to the state one time in the app, or write a [fixture](/docs/fixtures) for it. |
+| `No recorded or fixture context for "…" on "…", so the preview uses the live context.` | kotick has no recording and no fixture for the state. See [Context for a preview](/docs/concepts#context-for-a-preview). | Visit the state in the app, or write a [fixture](/docs/fixtures) for it. |
 | `No recorded context for "…" on "…", so the preview uses the fixture context.` | In the panel, you selected a context source that the state does not have. The message names the source that you selected and the source that kotick used. | Select a different source, or add the context. |
 | `Storage is full or unavailable, so …` or `Recordings are limited to 1,000,000 characters of storage in total, so …` | kotick cannot write all the recordings to `sessionStorage`. | No action is necessary. All recordings stay in memory until the page reloads. |
 | `Two versions of kotick are on this page (… and …).` | The bundle has two versions of kotick. Both use the registry of the version that loaded first. | Install one version. Run `npm ls kotick` to find the package that brings in the other version. |
@@ -26,15 +26,25 @@ kotick writes its messages to the browser console, and each message starts with 
 | `Dropped an event without a string type sent to "…" during a preview.` | During a preview, the UI sent a value that is not an event object with a string `type`. | Send events as objects, such as `send({ type: 'SUBMIT' })`. |
 | `The fixture of "…" on "…" isn't in the "…" state, so the set leaves it out.` | In a fixture set of a [reducer machine](/docs/reducer), the discriminant of a state object is not the name of its key. TypeScript also shows this error. | Give each fixture the name of its key, such as `failed: { status: 'failed', … }`. |
 | `"…" has no state "…", so the set leaves its fixture out.` | A key of a fixture set of a reducer machine is not a state of the machine. TypeScript also shows this error. | Use the names of the states of the machine as keys. |
-| `"…" is in "…", which its definition doesn't declare.` | A handler of a reducer machine, or the initial state, gave a state object whose discriminant is not a key of `states`. The panel shows a note under States. | Add the state to `states`, or correct the handler or the initial state. |
-| `Can't preview "…" on "…": it has no recorded or fixture context, and the live context belongs to another state.` | A state of a reducer machine has no recording and no fixture, and the machine is in another state. | Go to the state one time in the app, or write a [fixture](/docs/fixtures#define-fixtures) for it. |
+| `"…" is in "…", which its definition doesn't declare.` | A handler of a reducer machine, or the initial state, gave a state object whose discriminant is not a key of `states`. The panel shows a note under **States**. | Add the state to `states`, or correct the handler or the initial state. |
+| `Can't preview "…" on "…": it has no recorded or fixture context, and the live context belongs to another state.` | A state of a reducer machine has no recording and no fixture, and the machine is in another state. | Visit the state in the app, or write a [fixture](/docs/fixtures#define-fixtures) for it. |
 | `Can't preview "…" on "…" with the live context, because it belongs to another state.` | A preview asked for the live context of a state of a reducer machine, and the machine is in another state. | Select **Recorded** or **Fixture** as the source. |
 | `Ended the preview of "…" on "…", because its fixture context isn't in the "…" state.` or `Ended the preview of "…" on "…", because "…" has no state "…".` | A reducer machine got a preview with a state object of another state, or of a state that it does not have. The message names the source of that state object. The component showed its real state, and kotick released the preview. | Make each fixture set with `defineFixtures()` from `kotick/reducer`. If the console also shows `Two versions of kotick are on this page`, install one version. |
-| Other messages, such as `Can't preview "…"` or `Can't follow "…"` | An error in kotick. | Reload the page. If the message shows again, report it with the full message and the error that follows it. |
+| Other messages, such as `Can't preview "…"` or `Can't follow "…"` | A bug in kotick. | Reload the page. If the message shows again, report it with the full message and the error that follows it. |
+
+## A machine is missing from the panel
+
+The panel lists only the machines that an adapter registers. Check these causes:
+
+- If `<Kotick />` is not mounted, mount it. [Check the install](/docs/install#check-the-install) tests this from code.
+- If a component gives `machine.reducer` to `useReducer`, call `useMachineReducer` instead.
+- If a component imports a hook from `@xstate/react`, import it from `kotick/xstate`. The lint rule in [Prevent imports from @xstate/react](/docs/xstate#prevent-imports-from-xstatereact) finds these imports.
+- If the app creates an actor with `createActor()`, wrap the actor with `connect()`, as [Actors outside React](/docs/xstate#actors-outside-react) shows.
+- If the instance has `debug: { disabled: true }`, remove that option.
 
 ## Reset the panel
 
-The panel keeps its settings in `localStorage`, under the key `kotick:ui`. The settings are the open state, the corner and the machine whose page the panel shows. To reset the panel, remove the key and reload the page:
+The panel keeps its settings in `localStorage`, under the key `kotick:ui`. The settings are the open state, the corner, and the machine whose page the panel shows. To reset the panel, remove the key and reload the page:
 
 ```js
 localStorage.removeItem('kotick:ui');

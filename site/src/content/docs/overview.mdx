@@ -3,31 +3,28 @@ export const metadata = {
   description: 'See every state of every state machine on the page, and preview any of them in place.',
 };
 
-`<Kotick />` is a development overlay for React apps that use state machines. It lists each machine that runs on the page and all of its states, also the states the UI never went to. Click a state to show it in the real app, with real layout and data. You do not have to click through the flow, slow down the network, or force an API error to get there. kotick supports `useReducer` machines through `kotick/reducer`, and XState v5 machines through `kotick/xstate`.
+`<Kotick />` is a development overlay for React apps that use state machines. It lists each machine that runs on the page and every state in its definition, including the states that you have not visited. Click a state to show it in the real app, with real layout and data. You do not have to click through the flow, slow down the network, or force an API error to get there.
 
-## How it works
+## Try a preview
 
 <CheckoutDemo />
 
-During a preview, your components get the selected state in place of the real one, and the real machine continues to run. With `kotick/reducer`, `useMachineReducer` returns it. With `kotick/xstate`, they read the state from a proxy of the actor. For the adapters, the registry and the overlay, see [How kotick works](/docs/concepts#how-kotick-works).
+During a preview, your components get the selected state in place of the real one, and the real machine continues to run. With `kotick/reducer`, `useMachineReducer` returns the selected state. With `kotick/xstate`, the components read it from a proxy of the actor. [How kotick works](/docs/how-it-works) explains the registry, the adapters, and the overlay.
 
 ## Why kotick
 
 | Benefit | What it means |
 |---|---|
 | [In context](/docs/concepts#previews) | Previews render in the running app, not in a separate story or sandbox. |
-| [Safe](/docs/concepts#blocked-events) | A preview changes only what components see. The real machine keeps running, and events that the UI sends during a preview are blocked and logged. |
+| [Blocked events](/docs/concepts#blocked-events) | A preview changes only what components see. The real machine keeps running, and kotick blocks and logs the events that the UI sends during a preview. |
 | [Realistic data](/docs/concepts#context-for-a-preview) | Previews use context recorded from earlier visits, context you write as fixtures, or the live context. The panel shows which one it uses. |
-| [Hidden](/docs/install#before-you-release) | `<Kotick />` renders nothing in a production build, and the registry and the panel are removed from the bundle. |
+| [No panel in production](/docs/install#before-you-deploy) | `<Kotick />` renders nothing in a production build, and the bundler removes the registry and the panel. |
 
-## Adapters
+## Pick an adapter
 
-kotick has an adapter for each kind of machine, and neither is the default. An app can use one of them or both. [Choose an adapter](/docs/concepts#choose-an-adapter) compares them.
+kotick has an adapter for each kind of machine. An app can use one of them or both. [Choose an adapter](/docs/concepts#choose-an-adapter) compares them.
 
-### Reducer machines
+- If a component keeps a union of states in `useReducer`, use `kotick/reducer`. The app does not need XState. See [Reducer machines](/docs/reducer).
+- If the app uses XState v5, use `kotick/xstate`. See [XState machines](/docs/xstate).
 
-If a component keeps a union of states in `useReducer`, declare the reducer as a machine with `defineReducerMachine`, and call `useMachineReducer` instead of `useReducer`. The app does not need XState. Refer to [useReducer](/docs/reducer).
-
-### XState machines
-
-The adapter needs two changes to your app. Mount `<Kotick />`, and import the hooks from `kotick/xstate` instead of `@xstate/react`. Refer to [XState](/docs/xstate).
+Both adapters start with the same steps in [Installation](/docs/install).

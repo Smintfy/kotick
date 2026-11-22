@@ -1,22 +1,21 @@
-import { ArchitectureDiagram } from '@/components/docs/architecture-diagram';
 import { costs } from '@/content/costs';
 
 export const metadata = {
-  title: 'XState',
+  title: 'XState machines',
   description: 'Connect XState v5 machines through kotick/xstate, and preview each state in place.',
 };
 
-`kotick/xstate` connects XState v5 machines to kotick. It exports all the functions of `@xstate/react`, with the same names and signatures. Thus, the change to your components is an import.
+`kotick/xstate` connects XState v5 machines to kotick. It exports all the functions of `@xstate/react`, with the same names and signatures, so the change to your components is an import.
 
 ```ts
 import { connect, defineFixtures, useMachine, useSelector } from 'kotick/xstate';
 ```
 
-The adapter uses the `xstate` and `@xstate/react` of your app. kotick does not install them. Refer to [Requirements](/docs/install#requirements) for the versions.
+The adapter uses the `xstate` and `@xstate/react` of your app. kotick does not install them. See [Requirements](/docs/install#requirements) for the versions.
 
 ## Quick start
 
-1. Install `kotick`, `xstate` and `@xstate/react`, and mount `<Kotick />` once, as [Installation](/docs/install#quick-start) shows.
+1. Install `kotick`, `xstate`, and `@xstate/react`, and mount `<Kotick />` once, as the [quick start](/docs/install#quick-start) shows.
 2. Import the XState hooks from `kotick/xstate` instead of `@xstate/react`:
 
    ```diff
@@ -44,7 +43,7 @@ Use the actor that `connect()` returns everywhere in the app, for example with `
 
 ## Prevent imports from @xstate/react
 
-A component that imports a hook from `@xstate/react` continues to work, but the panel does not list its machine. To find these imports, add the `no-restricted-imports` rule to your linter. `kotick/xstate` exports all the functions of `@xstate/react`, so the rule can block the full package. For ESLint:
+A component that imports a hook from `@xstate/react` continues to work, but the panel does not list its machine. To find these imports, add the `no-restricted-imports` rule to your linter. `kotick/xstate` exports all the functions of `@xstate/react`, so the rule can block the whole package. For ESLint:
 
 ```js
 // eslint.config.js
@@ -87,37 +86,37 @@ checkout
 
 The rules in [Previews](/docs/concepts#previews) apply. An XState machine adds these:
 
-- **The preview is a real XState snapshot.** `matches()`, `hasTag()`, `can()` and `status` work as usual.
-- **In a parallel machine, the regions that you did not touch keep their real state.**
-- **The real actor continues to run.** Timers, invoked promises and callbacks continue in it.
-- **A state without a recording or a fixture uses the live context.** kotick logs a warning, because the live context often does not agree with the state. To give the state its own context, visit it in the app or write a [fixture](/docs/fixtures) for it.
-- **Events from machines are blocked too.** The events that `sendTo()`, `forwardTo()` and delayed events send to a previewed actor go to the event log, as the events from the UI do.
+- **The preview is a real XState snapshot.** `matches()`, `hasTag()`, `can()`, and `status` work as usual.
+- **In a parallel machine, the regions that you did not select keep their real state.**
+- **The real actor continues to run.** Timers, invoked promises, and callbacks continue in it.
+- **A state without a recording or a fixture uses the live context.** kotick logs a warning, because the live context often does not fit the state. To give the state its own context, visit it in the app or write a [fixture](/docs/fixtures) for it.
+- **Events from machines are blocked too.** The events that `sendTo()`, `forwardTo()`, and delayed events send to a previewed actor go to the event log, as the events from the UI do.
 
 ## Child actors
 
-Machines that a machine invokes or spawns are listed under their parent. You can see their state, but you cannot preview them in this version.
+The panel lists the machines that a machine invokes or spawns under their parent. You can see their state, but you cannot preview them in this version.
 
 ## The debug option
 
 The hooks and `createActorContext` take one more option, `debug`. `connect()` takes the same object as its second argument. Use it to change how the panel shows an actor:
 
-- To give an instance a name in the panel, set `label`. This helps when a machine has more than one instance.
-- To give a machine an id that its definition does not have, set `id`. The panel, the recordings and the fixtures then find the machine by this id.
+- To give an instance a name in the panel, set `label`. A label helps when a machine has more than one instance.
+- To give a machine an id that its definition does not have, set `id`. The panel, the recordings, and the fixtures then find the machine by this id.
 - To keep an actor out of kotick, set `disabled: true`.
 
 ```ts
 const [snapshot, send] = useMachine(checkoutMachine, { input, debug: { label: 'Checkout (modal)' } });
 ```
 
-Give each machine an `id` in its definition when you can. Without one, kotick makes an id from the states and the context keys of the machine. That id changes when you add or remove states or context keys. Refer to [The debug option](/docs/api#the-debug-option) for the type, and for what XState does with `debug` in production builds.
+Give each machine an `id` in its definition when you can. Without one, kotick makes an id from the states and the context keys of the machine. That id changes when you add or remove states or context keys. See [The debug option](/docs/api#the-debug-option) for the type, and for what XState does with `debug` in production builds.
 
 ## Production builds
 
-In production builds, the hooks of `kotick/xstate` are the hooks of `@xstate/react`, and `connect()` returns the actor that you give it. The bundler removes the rest of the adapter. Refer to [Choose an adapter](/docs/concepts#choose-an-adapter) for the size that the adapter adds.
+In production builds, the hooks of `kotick/xstate` are the hooks of `@xstate/react`, and `connect()` returns the actor that you give it. The bundler removes the rest of the adapter. [Choose an adapter](/docs/concepts#choose-an-adapter) shows the size that the adapter adds.
 
 ## Performance in development
 
-When the panel is closed, the overlay itself costs almost nothing. The adapter costs a little more. It registers each actor, records its context, and passes snapshots through a proxy. These numbers are from the benchmarks in `bench/`, in jsdom with StrictMode. Compare the rows, not the absolute times.
+The adapter adds work in development. It registers each actor, records its context, and passes snapshots through a proxy. These numbers come from the [benchmarks](https://github.com/Smintfy/kotick/blob/main/packages/kotick/bench/overhead.bench.tsx) in the kotick repository, which run in jsdom with StrictMode. Compare the rows, not the absolute times.
 
 | Work | `@xstate/react` | `kotick/xstate` |
 |---|---|---|
@@ -125,14 +124,4 @@ When the panel is closed, the overlay itself costs almost nothing. The adapter c
 | Mount and unmount 50 rows, each with `useMachine` | 1.0 ms | 2.1 ms |
 | 100 events to an actor outside React (`connect()`) | 0.17 ms | 0.22 ms |
 
-Thus, a transition costs {costs.transition} more, a mount approximately 22 µs more, and an event to a `connect()`ed actor less than 1 µs more. Production builds do not have this cost.
-
-## How the adapter works
-
-<ArchitectureDiagram caption="A component gets a proxy from useMachine(). The proxy calls the real actor and registers in the registry. The overlay selects a preview in the registry, and the proxy reads it." />
-
-**The adapter gives your components a proxy of each actor.** The hooks call the hooks of `@xstate/react`, and return a proxy of the actor that they make. `connect()` does the same for an actor that you create outside React. The proxy sends each call to the real actor. During a preview, `getSnapshot()`, `subscribe()` and `send()` work differently.
-
-**A preview is a snapshot that XState makes.** When you select a leaf, the registry keeps an override for that instance: the leaves and a context. The proxy gives the leaves and the context to `machine.resolveState()`, and returns that snapshot from `getSnapshot()` and to subscribers. The components render again with a real XState snapshot, so `matches()`, `hasTag()` and `can()` work. In a parallel machine, the regions that you did not select keep their current leaf. The live child actors are copied into the preview. The real actor does not know about the preview, and continues to run.
-
-**Events go to a log during a preview.** `send()` on the proxy, and the internal send that `sendTo()`, `forwardTo()` and delayed events use, look for an override first. If there is one, the event goes to the event log of the panel, not to the actor.
+So a transition costs {costs.transition} more, a mount approximately 22 µs more, and an event to a `connect()`ed actor less than 1 µs more. Production builds do not have this cost.
